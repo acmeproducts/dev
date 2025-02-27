@@ -1,0 +1,20 @@
+{
+    "name": "My PWA App",
+    "short_name": "PWA",
+    "start_url": "./index.html",
+    "display": "standalone",
+    "background_color": "#ffffff",
+    "description": "A progressive web app deployed via GitHub Pages",
+    "icons": [
+        {
+            "src": "images/icon-192x192.png",
+            "type": "image/png",
+            "sizes": "192x192"
+        },
+        {
+            "src": "images/icon-512x512.png",
+            "type": "image/png",
+            "sizes": "512x512"
+        }
+    ]
+}
