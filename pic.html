@@ -1,0 +1,1373 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Image File Grouping</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            background-color: #f0f0f0;
+        }
+        /* Hidden file input */
+        input[type="file"] {
+            display: none;
+        }
+        h1 {
+            margin: 10px 0;
+        }
+        /* Main container for panels */
+        .main-container {
+            display: flex;
+            width: 90%;
+            max-width: 1400px;
+            justify-content: space-between;
+            flex: 1;
+        }
+        /* LEFT PANEL: File List */
+        .left-panel {
+            width: 15%;
+            min-width: 150px;
+            border: 1px solid #ddd;
+            background: white;
+            padding: 5px;
+            font-size: 12px;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            margin-right: 5px;
+        }
+        .choose-files-btn {
+            width: 100%;
+            background: #007BFF;
+            color: white;
+            border: none;
+            padding: 8px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .choose-files-btn:hover {
+            background: #0056b3;
+        }
+        .file-list {
+            flex: 1;
+            width: 100%;
+            overflow-y: auto;
+            margin-top: 5px;
+        }
+        .file-list ul {
+            list-style-type: none;
+            margin: 0;
+            padding: 0;
+            width: 100%;
+        }
+        .file-list li {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            width: 100%;
+            border-bottom: 1px solid #ddd;
+            padding: 5px;
+            cursor: pointer;
+        }
+        .file-list li:hover {
+            background-color: #007BFF;
+            color: white;
+        }
+        .selected-file {
+            background-color: #007BFF;
+            color: white;
+        }
+        .remove-btn {
+            background: grey;
+            color: black;
+            border: none;
+            cursor: pointer;
+            margin-left: 5px;
+            font-weight: bold;
+            font-size: 12px;
+        }
+        /* CENTER PANEL: Image and Navigation Grid */
+        .center-panel {
+            width: 65%;
+            min-width: 400px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            margin: 0 5px;
+        }
+        .image-container {
+            position: relative;
+            width: 100%;
+            height: 450px; /* Reduced from 500px to 450px to fit annotation field */
+            overflow: hidden;
+            margin-bottom: 10px;
+            background: black;
+        }
+        #imageViewer {
+            width: 55%; /* Reduced from 65% to 55% (10% reduction) */
+            height: auto;
+            transition: transform 0.3s ease;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform-origin: center;
+            transform: translate(-50%, -50%) scale(1);
+        }
+        .zoom-controls {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 10px;
+        }
+        .zoom-btn {
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+            padding: 5px 10px;
+            margin: 0 5px;
+        }
+        .zoom-btn:hover {
+            background-color: #0056b3;
+        }
+        /* File annotation text area */
+        .file-annotation {
+            width: 100%;
+            margin-top: 5px;
+            margin-bottom: 10px;
+            resize: none;
+            font-family: Arial, sans-serif;
+            font-size: 12px;
+            padding: 5px;
+        }
+        /* Navigation grid layout: Row 1: Group 1, Group 2, Group 3 Row 2: Back, "Swipe Here" placeholder, Forward Row 3: Group 4 (spanning all columns) */
+        .navigation-pad {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            grid-template-rows: 40px 40px 40px;
+            gap: 5px;
+            text-align: center;
+            width: 80%;
+            margin-top: 10px;
+        }
+        .nav-btn {
+            background-color: #007BFF;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: bold;
+            font-size: 14px;
+        }
+        .nav-btn:hover {
+            background-color: #0056b3;
+        }
+        .filename-tile {
+            background-color: #ddd;
+            color: black;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            cursor: default;
+        }
+        /* RIGHT PANEL: History with Undo (top) and Generate Script (bottom) */
+        .right-panel {
+            width: 15%;
+            min-width: 150px;
+            border: 1px solid #ddd;
+            background: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 5px;
+            margin-left: 5px;
+            font-size: 12px;
+        }
+        .right-panel .top-btn, .right-panel .bottom-btn {
+            width: 100%;
+            background: #007BFF;
+            color: white;
+            border: none;
+            padding: 8px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-bottom: 5px;
+        }
+        .right-panel .top-btn:hover, .right-panel .bottom-btn:hover {
+            background: #0056b3;
+        }
+        #historyLog {
+            flex: 1;
+            width: 100%;
+            border-top: 1px solid #ccc;
+            border-bottom: 1px solid #ccc;
+            overflow-y: auto;
+            padding: 5px;
+        }
+        /* Modal for Script Generation */
+        .modal {
+            display: none;
+            position: fixed;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 20px;
+            border: 1px solid #ccc;
+            box-shadow: 2px 2px 10px rgba(0, 0, 0, 0.1);
+            max-width: 80%;
+            max-height: 80%;
+            overflow-y: auto;
+        }
+        /* Control Panel Styles */
+        .control-panel-trigger {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 40px;
+            height: 40px;
+            background-color: #007BFF;
+            cursor: pointer;
+            z-index: 1000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        .control-panel-trigger:hover {
+            background-color: #0056b3;
+        }
+        .control-panel-icon {
+            width: 20px;
+            height: 3px;
+            background-color: white;
+            position: relative;
+        }
+        .control-panel-icon:before, .control-panel-icon:after {
+            content: '';
+            width: 20px;
+            height: 3px;
+            background-color: white;
+            position: absolute;
+        }
+        .control-panel-icon:before {
+            top: -6px;
+        }
+        .control-panel-icon:after {
+            top: 6px;
+        }
+        .control-panel {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background-color: white;
+            border-bottom: 2px solid #007BFF;
+            z-index: 999;
+            transform: translateY(-100%);
+            transition: transform 0.3s ease;
+            box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            padding: 10px;
+            box-sizing: border-box;
+        }
+        .control-panel.active {
+            transform: translateY(0);
+        }
+        .control-panel-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .control-panel-title {
+            font-size: 16px;
+            font-weight: bold;
+        }
+        .control-panel-close {
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            color: #333;
+        }
+        .control-panel-content {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+        }
+        .control-panel-section {
+            flex: 1;
+            min-width: 250px;
+        }
+        .control-panel-section h3 {
+            margin-top: 0;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 5px;
+        }
+        .group-settings {
+            display: grid;
+            grid-template-columns: auto 1fr 1fr;
+            gap: 5px 10px;
+            align-items: center;
+        }
+        .prefix-suffix-inputs {
+            display: flex;
+            gap: 5px;
+        }
+        .import-export-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        .control-panel-btn {
+            background: #007BFF;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .control-panel-btn:hover {
+            background: #0056b3;
+        }
+        input[type="text"] {
+            padding: 5px;
+            font-size: 12px;
+            border: 1px solid #ddd;
+            width: 100%;
+        }
+        /* Script Tabs */
+        .script-tabs {
+            display: flex;
+            margin-bottom: 10px;
+        }
+        .script-tab {
+            padding: 5px 10px;
+            background: #eee;
+            border: 1px solid #ddd;
+            cursor: pointer;
+            margin-right: 5px;
+        }
+        .script-tab.active {
+            background: #007BFF;
+            color: white;
+            border-color: #007BFF;
+        }
+        .script-content {
+            display: none;
+        }
+        .script-content.active {
+            display: block;
+        }
+        /* Version indicator */
+        .version-indicator {
+            position: fixed;
+            bottom: 5px;
+            right: 10px;
+            font-size: 10px;
+            color: #666;
+        }
+        /* Save indicator */
+        .save-indicator {
+            position: fixed;
+            top: 10px;
+            right: 10px;
+            background: rgba(0, 123, 255, 0.7);
+            color: white;
+            padding: 5px 10px;
+            border-radius: 3px;
+            z-index: 9999;
+            transition: opacity 1s;
+            opacity: 0;
+        }
+    </style>
+</head>
+<body>
+    <!-- Control Panel Trigger -->
+    <div class="control-panel-trigger" onclick="toggleControlPanel()">
+        <div class="control-panel-icon"></div>
+    </div>
+    
+    <!-- Control Panel -->
+    <div id="controlPanel" class="control-panel">
+        <div class="control-panel-header">
+            <div class="control-panel-title">Project Control Panel</div>
+            <button class="control-panel-close" onclick="toggleControlPanel()">×</button>
+        </div>
+        <div class="control-panel-content">
+            <div class="control-panel-section">
+                <h3>Group Management</h3>
+                <div class="group-settings">
+                    <div>Group 1:</div>
+                    <input type="text" id="group1Name" placeholder="Group 1 name" onchange="updateGroupName(1, this.value)">
+                    <div class="prefix-suffix-inputs">
+                        <input type="text" id="group1Prefix" placeholder="Prefix" onchange="updateGroupPrefix(1, this.value)">
+                        <input type="text" id="group1Suffix" placeholder="Suffix" onchange="updateGroupSuffix(1, this.value)">
+                    </div>
+                    
+                    <div>Group 2:</div>
+                    <input type="text" id="group2Name" placeholder="Group 2 name" onchange="updateGroupName(2, this.value)">
+                    <div class="prefix-suffix-inputs">
+                        <input type="text" id="group2Prefix" placeholder="Prefix" onchange="updateGroupPrefix(2, this.value)">
+                        <input type="text" id="group2Suffix" placeholder="Suffix" onchange="updateGroupSuffix(2, this.value)">
+                    </div>
+                    
+                    <div>Group 3:</div>
+                    <input type="text" id="group3Name" placeholder="Group 3 name" onchange="updateGroupName(3, this.value)">
+                    <div class="prefix-suffix-inputs">
+                        <input type="text" id="group3Prefix" placeholder="Prefix" onchange="updateGroupPrefix(3, this.value)">
+                        <input type="text" id="group3Suffix" placeholder="Suffix" onchange="updateGroupSuffix(3, this.value)">
+                    </div>
+                    
+                    <div>Group 4:</div>
+                    <input type="text" id="group4Name" placeholder="Group 4 name" onchange="updateGroupName(4, this.value)">
+                    <div class="prefix-suffix-inputs">
+                        <input type="text" id="group4Prefix" placeholder="Prefix" onchange="updateGroupPrefix(4, this.value)">
+                        <input type="text" id="group4Suffix" placeholder="Suffix" onchange="updateGroupSuffix(4, this.value)">
+                    </div>
+                </div>
+                <button class="control-panel-btn" onclick="updateAllGroupSettings()">Save Group Settings</button>
+            </div>
+            
+            <div class="control-panel-section">
+                <h3>Project Management</h3>
+                <div class="project-settings">
+                    <input type="text" id="projectName" placeholder="Project name (optional)" onchange="updateProjectName(this.value)">
+                </div>
+                <div class="import-export-buttons">
+                    <button class="control-panel-btn" onclick="exportProject()">Export Project</button>
+                    <button class="control-panel-btn" onclick="importProject()">Import Project</button>
+                    <button class="control-panel-btn" onclick="resetProject()">New Project</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <h1>Image File Grouping</h1>
+    <div id="saveIndicator" class="save-indicator">Saved</div>
+
+    <div class="main-container">
+        <!-- LEFT PANEL -->
+        <div class="left-panel">
+            <button class="choose-files-btn" onclick="document.getElementById('fileInput').click()">Choose Files</button>
+            <div class="file-list">
+                <ul id="fileList"></ul>
+            </div>
+        </div>
+        <!-- CENTER PANEL -->
+        <div class="center-panel">
+            <div class="image-container">
+                <img id="imageViewer" src="" alt="Selected Image">
+            </div>
+            <div class="zoom-controls">
+                <button class="zoom-btn" onclick="zoomIn()">+</button>
+                <button class="zoom-btn" onclick="zoomOut()">-</button>
+            </div>
+            <!-- File Annotation Field -->
+            <textarea id="fileAnnotation" class="file-annotation" rows="2" placeholder="Add notes about this file..."></textarea>
+            <div class="navigation-pad">
+                <!-- Row 1: Group 1, Group 2, Group 3 -->
+                <button class="nav-btn" id="group1Btn" onclick="assignGroup(1)">Group 1</button>
+                <button class="nav-btn" id="group2Btn" onclick="assignGroup(2)">Group 2</button>
+                <button class="nav-btn" id="group3Btn" onclick="assignGroup(3)">Group 3</button>
+                <!-- Row 2: Back, "Swipe Here" placeholder, Forward -->
+                <button class="nav-btn" onclick="navigate(-1)">Back</button>
+                <div class="filename-tile" id="filenameTile">Swipe Here</div>
+                <button class="nav-btn" onclick="navigate(1)">Forward</button>
+                <!-- Row 3: Group 4 spanning all columns -->
+                <button class="nav-btn" id="group4Btn" style="grid-column: 1 / 4;" onclick="assignGroup(4)">Group 4</button>
+            </div>
+        </div>
+        <!-- RIGHT PANEL -->
+        <div class="right-panel">
+            <button class="top-btn" onclick="undoAction()">Undo</button>
+            <div id="historyLog">History</div>
+            <button class="bottom-btn" onclick="openScriptModal()">Generate Script</button>
+        </div>
+    </div>
+    <!-- Hidden File Input -->
+    <input type="file" id="fileInput" accept="image/*" multiple />
+    
+    <!-- Hidden Import Project Input -->
+    <input type="file" id="importProjectInput" accept=".json" style="display: none;" />
+
+    <!-- Modal for Script Generation -->
+    <div id="scriptModal" class="modal">
+        <div id="platformSelection">
+            <p>Select script type:</p>
+            <button onclick="generateScript('windows')">Windows</button>
+            <button onclick="generateScript('linux')">Linux</button>
+            <button onclick="closeScriptModal()">Cancel</button>
+        </div>
+    </div>
+
+    <div class="version-indicator">v2.0</div>
+
+    <script>
+        /**
+         * Image File Grouping Tool - v2.0
+         * 
+         * Major changes in v2.0:
+         * 1. Added File Annotation System
+         * 2. Added Two-Pass Script Generation
+         * 3. Added Project State Management
+         * 4. Added Group Customization
+         * 5. Updated UI with Control Panel
+         * 6. Added Project Import/Export
+         */
+
+        let pendingFiles = []; // Array of { file: File, number: number }
+        let historyActions = []; // Array of { file: File, number: number, group: number }
+        let currentIndex = 0;
+        let zoomLevel = 1; // Initial zoom level
+        let fileAnnotations = {}; // Object to store annotations by file number
+        
+        // Group settings
+        let groupSettings = {
+            1: { name: "Group 1", prefix: "", suffix: "" },
+            2: { name: "Group 2", prefix: "", suffix: "" },
+            3: { name: "Group 3", prefix: "", suffix: "" },
+            4: { name: "Group 4", prefix: "", suffix: "" }
+        };
+        
+        // Project settings
+        let projectName = "Untitled Project";
+
+        // Project State Structure
+        let projectState = {
+            pendingFiles: [], // Files in the left panel (references only, not content)
+            historyActions: [], // History in the right panel (file references and group assignments)
+            currentIndex: 0,   // Current selected file index
+            fileAnnotations: {}, // Annotations for each file by number
+            groupSettings: groupSettings,
+            projectName: projectName,
+            zoomLevel: zoomLevel,
+            lastUpdated: Date.now() // Timestamp
+        };
+
+        // Save project state to localStorage
+        function saveProjectState() {
+            // Prepare pendingFiles for storage (File objects can't be serialized directly)
+            const serializedPendingFiles = pendingFiles.map(obj => {
+                return {
+                    number: obj.number,
+                    name: obj.file.name,
+                    size: obj.file.size,
+                    type: obj.file.type,
+                    lastModified: obj.file.lastModified
+                };
+            });
+
+            // Prepare historyActions for storage
+            const serializedHistoryActions = historyActions.map(action => {
+                return {
+                    number: action.number,
+                    fileName: action.file.name,
+                    fileSize: action.file.size,
+                    fileType: action.file.type,
+                    fileLastModified: action.file.lastModified,
+                    group: action.group
+                };
+            });
+
+            // Update the project state
+            projectState = {
+                pendingFiles: serializedPendingFiles,
+                historyActions: serializedHistoryActions,
+                currentIndex: currentIndex,
+                fileAnnotations: fileAnnotations,
+                groupSettings: groupSettings,
+                projectName: projectName,
+                zoomLevel: zoomLevel,
+                lastUpdated: Date.now()
+            };
+
+            // Save the state to localStorage
+            localStorage.setItem('cullimg.project', JSON.stringify(projectState));
+            console.log('Project state saved:', new Date().toLocaleTimeString());
+            
+            // Show save indicator
+            showSavedIndicator();
+        }
+
+        // Load project state from localStorage
+        function loadProjectState() {
+            const savedState = localStorage.getItem('cullimg.project');
+            if (!savedState) {
+                console.log('No saved project state found.');
+                return false;
+            }
+
+            try {
+                // Parse the saved state
+                const parsedState = JSON.parse(savedState);
+                
+                // Clear existing state
+                pendingFiles = [];
+                historyActions = [];
+                
+                // Restore annotations, group settings, and project name
+                fileAnnotations = parsedState.fileAnnotations || {};
+                groupSettings = parsedState.groupSettings || {
+                    1: { name: "Group 1", prefix: "", suffix: "" },
+                    2: { name: "Group 2", prefix: "", suffix: "" },
+                    3: { name: "Group 3", prefix: "", suffix: "" },
+                    4: { name: "Group 4", prefix: "", suffix: "" }
+                };
+                projectName = parsedState.projectName || "Untitled Project";
+                zoomLevel = parsedState.zoomLevel || 1;
+                
+                // Restore pendingFiles - create File objects for files that exist
+                for (const fileObj of parsedState.pendingFiles) {
+                    // Create a File object with minimal properties
+                    const file = new File(
+                        [''], // Empty content since we don't need to store content
+                        fileObj.name,
+                        { 
+                            type: fileObj.type,
+                            lastModified: fileObj.lastModified
+                        }
+                    );
+                    pendingFiles.push({ file: file, number: fileObj.number });
+                }
+
+                // Restore historyActions - create File objects for files that exist
+                for (const actionObj of parsedState.historyActions) {
+                    // Create a File object with minimal properties
+                    const file = new File(
+                        [''], // Empty content since we don't need to store content
+                        actionObj.fileName,
+                        { 
+                            type: actionObj.fileType,
+                            lastModified: actionObj.fileLastModified
+                        }
+                    );
+                    historyActions.push({ 
+                        file: file, 
+                        number: actionObj.number, 
+                        group: actionObj.group 
+                    });
+                }
+
+                // Restore current index
+                currentIndex = parsedState.currentIndex;
+                
+                // Safety check - if currentIndex is out of bounds
+                if (currentIndex >= pendingFiles.length && pendingFiles.length > 0) {
+                    currentIndex = 0;
+                }
+
+                console.log('Project state loaded from:', new Date(parsedState.lastUpdated).toLocaleString());
+                
+                // Update UI to reflect restored state
+                updateGroupButtons();
+                updateControlPanelInputs();
+                updateFileList();
+                updateHistory();
+                if (pendingFiles.length > 0) {
+                    loadFile(currentIndex);
+                } else {
+                    document.getElementById('imageViewer').src = '';
+                    document.getElementById('filenameTile').textContent = 'No file';
+                    document.getElementById('fileAnnotation').value = '';
+                }
+                
+                return true;
+            } catch (error) {
+                console.error('Error loading project state:', error);
+                return false;
+            }
+        }
+
+        // Toggle control panel visibility
+        function toggleControlPanel() {
+            const controlPanel = document.getElementById('controlPanel');
+            controlPanel.classList.toggle('active');
+            
+            // If opening, update inputs with current values
+            if (controlPanel.classList.contains('active')) {
+                updateControlPanelInputs();
+            }
+        }
+        
+        // Update control panel inputs with current values
+        function updateControlPanelInputs() {
+            // Update group name inputs
+            for (let i = 1; i <= 4; i++) {
+                document.getElementById(`group${i}Name`).value = groupSettings[i].name;
+                document.getElementById(`group${i}Prefix`).value = groupSettings[i].prefix;
+                document.getElementById(`group${i}Suffix`).value = groupSettings[i].suffix;
+            }
+            
+            // Update project name input
+            document.getElementById('projectName').value = projectName;
+        }
+        
+        // Update group buttons with custom names
+        function updateGroupButtons() {
+            for (let i = 1; i <= 4; i++) {
+                document.getElementById(`group${i}Btn`).textContent = groupSettings[i].name;
+            }
+        }
+        
+        // Update group name
+        function updateGroupName(groupNumber, name) {
+            groupSettings[groupNumber].name = name;
+            document.getElementById(`group${groupNumber}Btn`).textContent = name;
+            saveProjectState();
+        }
+        
+        // Update group prefix
+        function updateGroupPrefix(groupNumber, prefix) {
+            groupSettings[groupNumber].prefix = prefix;
+            saveProjectState();
+        }
+        
+        // Update group suffix
+        function updateGroupSuffix(groupNumber, suffix) {
+            groupSettings[groupNumber].suffix = suffix;
+            saveProjectState();
+        }
+        
+        // Update all group settings at once
+        function updateAllGroupSettings() {
+            for (let i = 1; i <= 4; i++) {
+                groupSettings[i].name = document.getElementById(`group${i}Name`).value;
+                groupSettings[i].prefix = document.getElementById(`group${i}Prefix`).value;
+                groupSettings[i].suffix = document.getElementById(`group${i}Suffix`).value;
+            }
+            updateGroupButtons();
+            saveProjectState();
+            alert("Group settings saved!");
+        }
+        
+        // Update project name
+        function updateProjectName(name) {
+            projectName = name;
+            saveProjectState();
+        }
+        
+        // Export project as JSON file
+        function exportProject() {
+            // Create a timestamp for the filename
+            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+            const filename = `${projectName.replace(/\s+/g, '-')}-${timestamp}.json`;
+            
+            // Create the JSON content
+            const exportData = JSON.stringify(projectState, null, 2);
+            
+            // Create a download link
+            const blob = new Blob([exportData], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = filename;
+            a.click();
+            
+            // Clean up
+            URL.revokeObjectURL(url);
+        }
+        
+        // Import project from JSON file
+        function importProject() {
+            document.getElementById('importProjectInput').click();
+        }
+        
+        // Handle project import file selection
+        document.getElementById('importProjectInput').addEventListener('change', function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const importedState = JSON.parse(e.target.result);
+                    
+                    // Validate the imported state has the required properties
+                    if (!importedState.pendingFiles || !importedState.historyActions) {
+                        throw new Error("Invalid project file format");
+                    }
+                    
+                    // Replace current state with imported state
+                    localStorage.setItem('cullimg.project', e.target.result);
+                    
+                    // Reload the page to apply the imported state
+                    loadProjectState();
+                    
+                    alert("Project imported successfully!");
+                } catch (error) {
+                    alert("Error importing project: " + error.message);
+                }
+            };
+            reader.readAsText(file);
+            
+            // Reset the input so the same file can be selected again
+            this.value = '';
+        });
+        
+        // Reset project (start new)
+        function resetProject() {
+            if (confirm("Start a new project? This will clear all current data.")) {
+                // Clear localStorage
+                localStorage.removeItem('cullimg.project');
+                
+                // Reset variables
+                pendingFiles = [];
+                historyActions = [];
+                currentIndex = 0;
+                fileAnnotations = {};
+                zoomLevel = 1;
+                groupSettings = {
+                    1: { name: "Group 1", prefix: "", suffix: "" },
+                    2: { name: "Group 2", prefix: "", suffix: "" },
+                    3: { name: "Group 3", prefix: "", suffix: "" },
+                    4: { name: "Group 4", prefix: "", suffix: "" }
+                };
+                projectName = "Untitled Project";
+                
+                // Update UI
+                resetZoom();
+                updateGroupButtons();
+                updateControlPanelInputs();
+                updateFileList();
+                updateHistory();
+                document.getElementById('imageViewer').src = '';
+                document.getElementById('filenameTile').textContent = 'No file';
+                document.getElementById('fileAnnotation').value = '';
+                
+                // Save the empty state
+                saveProjectState();
+                
+                alert("New project created!");
+            }
+        }
+
+        // Save annotation for the current file
+        function saveAnnotation() {
+            if (pendingFiles.length === 0 || currentIndex < 0 || currentIndex >= pendingFiles.length) {
+                return;
+            }
+            
+            const fileNumber = pendingFiles[currentIndex].number;
+            const annotation = document.getElementById('fileAnnotation').value;
+            
+            // Store annotation by file number
+            fileAnnotations[fileNumber] = annotation;
+            
+            // Save state
+            saveProjectState();
+        }
+
+        // Show saved indicator
+        function showSavedIndicator() {
+            const indicator = document.getElementById('saveIndicator');
+            indicator.style.opacity = '1';
+            
+            setTimeout(() => {
+                indicator.style.opacity = '0';
+            }, 1000);
+        }
+
+        document.getElementById('fileInput').addEventListener('change', function(event) {
+            const files = event.target.files;
+            pendingFiles = [];
+            for (let i = 0; i < files.length; i++) {
+                pendingFiles.push({ file: files[i], number: i + 1 });
+            }
+            updateFileList();
+            if (pendingFiles.length > 0) {
+                currentIndex = 0;
+                loadFile(currentIndex);
+            }
+        });
+
+        // Update file list: highlight currently displayed file
+        function updateFileList() {
+            const fileListElem = document.getElementById('fileList');
+            fileListElem.innerHTML = '';
+            pendingFiles.forEach((obj, idx) => {
+                const li = document.createElement('li');
+                li.innerHTML = `<span>${obj.number}. ${obj.file.name}</span> <button class="remove-btn" onclick="removeFile(${obj.number}, event)">X</button>`;
+                if (pendingFiles[currentIndex] && obj.number === pendingFiles[currentIndex].number) {
+                    li.classList.add("selected-file");
+                }
+                li.onclick = (evt) => {
+                    if (evt.target.tagName !== 'BUTTON') {
+                        loadFileByNumber(obj.number);
+                    }
+                };
+                fileListElem.appendChild(li);
+            });
+            saveProjectState(); // Save after updating
+        }
+
+        // Load file by its original number
+        function loadFileByNumber(num) {
+            const index = pendingFiles.findIndex(obj => obj.number === num);
+            if (index !== -1) {
+                currentIndex = index;
+                loadFile(currentIndex);
+                saveProjectState(); // Save after changing current file
+            }
+        }
+
+        // Load file into image viewer and update filename tile
+        function loadFile(index) {
+            const obj = pendingFiles[index];
+            if (!obj) {
+                document.getElementById('imageViewer').src = '';
+                document.getElementById('filenameTile').textContent = 'No file';
+                document.getElementById('fileAnnotation').value = '';
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                document.getElementById('imageViewer').src = event.target.result;
+                document.getElementById('filenameTile').textContent = obj.file.name;
+                
+                // Load annotation for this file if it exists
+                const fileNumber = obj.number;
+                document.getElementById('fileAnnotation').value = fileAnnotations[fileNumber] || '';
+                
+                // Apply the current zoom level instead of resetting it
+                applyZoomLevel();
+            };
+            reader.readAsDataURL(obj.file);
+            updateFileList();
+        }
+
+        // Apply the current zoom level to the image
+        function applyZoomLevel() {
+            document.getElementById('imageViewer').style.transform = `translate(-50%, -50%) scale(${zoomLevel})`;
+        }
+        
+        // Reset zoom level when a new file is loaded (only if not saved in state)
+        function resetZoom() {
+            zoomLevel = 1;
+            applyZoomLevel();
+        }
+
+        // Remove file from pendingFiles and update list
+        function removeFile(num, evt) {
+            evt.stopPropagation();
+            pendingFiles = pendingFiles.filter(obj => obj.number !== num);
+            if (currentIndex >= pendingFiles.length) {
+                currentIndex = pendingFiles.length - 1;
+            }
+            updateFileList(); // This now includes saveProjectState
+            if (pendingFiles.length > 0) {
+                loadFile(currentIndex);
+            } else {
+                document.getElementById('imageViewer').src = '';
+                document.getElementById('filenameTile').textContent = 'No file';
+                document.getElementById('fileAnnotation').value = '';
+            }
+        }
+
+        // Navigation: navigate among pendingFiles
+        function navigate(direction) {
+            if (previewMode) {
+                // Exit preview mode when using navigation controls
+                previewMode = false;
+                document.getElementById('filenameTile').style.backgroundColor = "#ddd";
+                
+                if (pendingFiles.length > 0) {
+                    loadFile(currentIndex);
+                } else {
+                    document.getElementById('imageViewer').src = '';
+                    document.getElementById('filenameTile').textContent = 'No file';
+                    document.getElementById('fileAnnotation').value = '';
+                }
+                return;
+            }
+            
+            if (pendingFiles.length === 0) return;
+            
+            // Save current annotation before navigating
+            saveAnnotation();
+            
+            currentIndex = (currentIndex + direction + pendingFiles.length) % pendingFiles.length;
+            loadFile(currentIndex);
+            saveProjectState(); // Save after navigation
+        }
+
+        // Group assignment: assign current file to a group, remove from pendingFiles, and add to history
+        function assignGroup(group) {
+            if (previewMode) {
+                // Get the file from history
+                const historyItem = historyActions[previewFileIndex];
+                
+                // Save current annotation
+                const newAnnotation = document.getElementById('fileAnnotation').value;
+                fileAnnotations[historyItem.number] = newAnnotation;
+                
+                // Remove from current group
+                historyActions.splice(previewFileIndex, 1);
+                
+                // Add to new group
+                historyActions.push({
+                    file: historyItem.file,
+                    number: historyItem.number,
+                    group: group
+                });
+                
+                // Exit preview mode
+                previewMode = false;
+                document.getElementById('filenameTile').style.backgroundColor = "#ddd";
+                
+                // Update UI
+                updateHistory();
+                
+                if (pendingFiles.length > 0) {
+                    loadFile(currentIndex);
+                } else {
+                    document.getElementById('imageViewer').src = '';
+                    document.getElementById('filenameTile').textContent = 'No file';
+                    document.getElementById('fileAnnotation').value = '';
+                }
+                
+                saveProjectState();
+                return;
+            }
+            
+            if (pendingFiles.length === 0) return;
+            
+            // Save current annotation
+            saveAnnotation();
+            
+            const obj = pendingFiles[currentIndex];
+            const fileNumber = obj.number;
+            
+            historyActions.push({ 
+                file: obj.file, 
+                number: fileNumber, 
+                group: group
+            });
+            
+            pendingFiles.splice(currentIndex, 1);
+            if (currentIndex >= pendingFiles.length) {
+                currentIndex = 0;
+            }
+            
+            updateFileList(); // This now includes saveProjectState
+            updateHistory(); // Update and save
+            
+            if (pendingFiles.length > 0) {
+                loadFile(currentIndex);
+            } else {
+                document.getElementById('imageViewer').src = '';
+                document.getElementById('filenameTile').textContent = 'No file';
+                document.getElementById('fileAnnotation').value = '';
+            }
+        }
+
+        // Undo: revert last group assignment
+        function undoAction() {
+            if (historyActions.length === 0) return;
+            const action = historyActions.pop();
+            pendingFiles.push({ file: action.file, number: action.number });
+            pendingFiles.sort((a, b) => a.number - b.number);
+            updateFileList(); // This now includes saveProjectState
+            updateHistory(); // Update and save
+            currentIndex = pendingFiles.findIndex(obj => obj.number === action.number);
+            if (currentIndex === -1) currentIndex = 0;
+            loadFile(currentIndex);
+        }
+
+        // Track whether we're viewing a file from history
+        let previewMode = false;
+        let previewFileIndex = -1; // Index in historyActions
+
+        // Function to load a file from history for preview
+        function previewHistoryFile(historyIndex) {
+            previewMode = true;
+            previewFileIndex = historyIndex;
+            
+            const historyItem = historyActions[historyIndex];
+            
+            // Load the file content
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                document.getElementById('imageViewer').src = event.target.result;
+                document.getElementById('filenameTile').textContent = 
+                    historyItem.file.name + " (from " + groupSettings[historyItem.group].name + ")";
+                
+                // Load annotation
+                document.getElementById('fileAnnotation').value = 
+                    fileAnnotations[historyItem.number] || "";
+                
+                // Apply saved zoom or reset to 1
+                applyZoomLevel();
+            };
+            reader.readAsDataURL(historyItem.file);
+            
+            // Visual indication that we're in preview mode
+            document.getElementById('filenameTile').style.backgroundColor = "#ffcccc";
+        }
+
+        // Update history log with clickable items
+        function updateHistory() {
+            const historyElem = document.getElementById('historyLog');
+            if (historyActions.length === 0) {
+                historyElem.innerHTML = 'History';
+            } else {
+                historyElem.innerHTML = historyActions.map((action, index) =>
+                    `<div style="cursor:pointer" onclick="previewHistoryFile(${index})">
+                        ${action.number}. ${action.file.name} → ${groupSettings[action.group].name}
+                    </div>`
+                ).join('');
+            }
+            saveProjectState(); // Save after updating history
+        }
+
+        // Zoom in functionality
+        function zoomIn() {
+            zoomLevel += 0.1;
+            applyZoomLevel();
+            saveProjectState(); // Save zoom level
+        }
+
+        // Zoom out functionality
+        function zoomOut() {
+            zoomLevel -= 0.1;
+            if (zoomLevel < 0.1) zoomLevel = 0.1; // Prevent scaling down too much
+            applyZoomLevel();
+            saveProjectState(); // Save zoom level
+        }
+
+        // Modal functions for script generation
+        function openScriptModal() {
+            document.getElementById('scriptModal').style.display = 'block';
+            // Set initial content for platform selection
+            document.getElementById('scriptModal').innerHTML = `
+                <div id="platformSelection">
+                    <p>Select script type:</p>
+                    <button onclick="generateScript('windows')">Windows</button>
+                    <button onclick="generateScript('linux')">Linux</button>
+                    <button onclick="closeScriptModal()">Cancel</button>
+                </div>
+            `;
+        }
+
+        function closeScriptModal() {
+            document.getElementById('scriptModal').style.display = 'none';
+        }
+        
+        // Switch between tabs in the script modal
+        function switchScriptTab(tabName) {
+            // Hide all content
+            const contents = document.querySelectorAll('.script-content');
+            contents.forEach(content => content.classList.remove('active'));
+            
+            // Deactivate all tabs
+            const tabs = document.querySelectorAll('.script-tab');
+            tabs.forEach(tab => tab.classList.remove('active'));
+            
+            // Activate selected tab and content
+            document.getElementById(tabName + 'Tab').classList.add('active');
+            document.getElementById(tabName + 'Content').classList.add('active');
+        }
+
+        function generateScript(type) {
+            // Extract unique groups that have files assigned
+            let groupsSet = new Set();
+            historyActions.forEach(action => groupsSet.add(action.group));
+            let groupNumbers = Array.from(groupsSet).sort();
+            
+            // FIRST PASS: Create directories and move files
+            let firstPassCommands = [];
+            
+            // First create all directories
+            groupNumbers.forEach(g => {
+                const safeGroupName = groupSettings[g].name.replace(/[<>:"/\\|?*]/g, '_');
+                if (type === 'linux') {
+                    firstPassCommands.push(`mkdir -p "${safeGroupName}"`);
+                } else {
+                    firstPassCommands.push(`if not exist "${safeGroupName}" mkdir "${safeGroupName}"`);
+                }
+            });
+            
+            // Then move all files to their respective directories
+            historyActions.forEach(action => {
+                const safeGroupName = groupSettings[action.group].name.replace(/[<>:"/\\|?*]/g, '_');
+                if (type === 'linux') {
+                    firstPassCommands.push(`mv "${action.file.name}" "${safeGroupName}/"`);
+                } else {
+                    firstPassCommands.push(`move "${action.file.name}" "${safeGroupName}\\"`);
+                }
+            });
+            
+            const firstPassScript = firstPassCommands.join('\n');
+            
+            // SECOND PASS: Generate file.metadata JSON in each group directory
+            let secondPassCommands = [];
+            
+            // Loop through each group to create metadata
+            groupNumbers.forEach(g => {
+                const safeGroupName = groupSettings[g].name.replace(/[<>:"/\\|?*]/g, '_');
+                const groupFiles = historyActions.filter(action => action.group === g);
+                
+                // Create JSON content for this group
+                // Apply prefix/suffix only for non-empty annotations
+                let filesJson = groupFiles.map(action => {
+                    const fileName = action.file.name;
+                    const annotation = fileAnnotations[action.number] || "";
+                    
+                    // Only apply prefix/suffix if annotation is not empty
+                    let comment;
+                    if (annotation.trim() !== "") {
+                        comment = groupSettings[g].prefix + annotation + groupSettings[g].suffix;
+                    } else {
+                        comment = "";
+                    }
+                    
+                    // Escape quotes in the comment
+                    const escapedComment = comment.replace(/"/g, '\\"');
+                    
+                    return `    {"filename": "${fileName}", "comment": "${escapedComment}"}`;
+                }).join(',\n');
+                
+                // Create file.metadata JSON content
+                const jsonContent = `{\n  "files": [\n${filesJson}\n  ]\n}`;
+                
+                // Add command to create file.metadata
+                if (type === 'linux') {
+                    secondPassCommands.push(`cat > "${safeGroupName}/file.metadata" << 'EOL'`);
+                    secondPassCommands.push(jsonContent);
+                    secondPassCommands.push('EOL');
+                } else {
+                    // For Windows, we use echo commands with special handling for newlines
+                    secondPassCommands.push(`@echo off`);
+                    secondPassCommands.push(`(`);
+                    secondPassCommands.push(`echo {`);
+                    secondPassCommands.push(`echo   "files": [`);
+                    
+                    // Each file entry on a separate line
+                    groupFiles.forEach((action, index) => {
+                        const fileName = action.file.name;
+                        const annotation = fileAnnotations[action.number] || "";
+                        
+                        // Only apply prefix/suffix if annotation is not empty
+                        let comment;
+                        if (annotation.trim() !== "") {
+                            comment = groupSettings[g].prefix + annotation + groupSettings[g].suffix;
+                        } else {
+                            comment = "";
+                        }
+                        
+                        // Escape quotes in the comment
+                        const escapedComment = comment.replace(/"/g, '\\"');
+                        
+                        const line = `echo     {"filename": "${fileName}", "comment": "${escapedComment}"}${index < groupFiles.length - 1 ? ',' : ''}`;
+                        secondPassCommands.push(line);
+                    });
+                    
+                    secondPassCommands.push(`echo   ]`);
+                    secondPassCommands.push(`echo }`);
+                    secondPassCommands.push(`) > "${safeGroupName}\\file.metadata"`);
+                }
+                
+                // Add an empty line between groups
+                secondPassCommands.push('');
+            });
+            
+            const secondPassScript = secondPassCommands.join('\n');
+            
+            // Combined script (both passes)
+            const combinedScript = firstPassScript + '\n\n# Second pass: Generate file.metadata\n' + secondPassScript;
+            
+            // Create tabbed interface for scripts
+            document.getElementById('scriptModal').innerHTML = `
+                <div class="script-tabs">
+                    <div id="combinedTab" class="script-tab active" onclick="switchScriptTab('combined')">Combined Script</div>
+                    <div id="firstPassTab" class="script-tab" onclick="switchScriptTab('firstPass')">First Pass: Move Files</div>
+                    <div id="secondPassTab" class="script-tab" onclick="switchScriptTab('secondPass')">Second Pass: Metadata</div>
+                </div>
+                
+                <div id="combinedContent" class="script-content active">
+                    <p>Combined script (both passes):</p>
+                    <textarea id="combinedText" style="width:100%; height:300px;" readonly>${combinedScript}</textarea>
+                </div>
+                
+                <div id="firstPassContent" class="script-content">
+                    <p>First pass: Create directories and move files</p>
+                    <textarea id="firstPassText" style="width:100%; height:300px;" readonly>${firstPassScript}</textarea>
+                </div>
+                
+                <div id="secondPassContent" class="script-content">
+                    <p>Second pass: Generate file.metadata in each group</p>
+                    <textarea id="secondPassText" style="width:100%; height:300px;" readonly>${secondPassScript}</textarea>
+                </div>
+                
+                <div style="margin-top: 10px;">
+                    <button onclick="copyCurrentScript()">Copy Current Script</button>
+                    <button onclick="downloadCurrentScript('${type}')">Download Current Script</button>
+                    <button onclick="closeScriptModal()">Close</button>
+                </div>
+            `;
+        }
+        
+        // Copy the currently visible script
+        function copyCurrentScript() {
+            let scriptText;
+            if (document.getElementById('combinedContent').classList.contains('active')) {
+                scriptText = document.getElementById('combinedText').value;
+            } else if (document.getElementById('firstPassContent').classList.contains('active')) {
+                scriptText = document.getElementById('firstPassText').value;
+            } else {
+                scriptText = document.getElementById('secondPassText').value;
+            }
+            
+            navigator.clipboard.writeText(scriptText).then(() => {
+                alert('Script copied to clipboard.');
+            }, () => {
+                alert('Copy failed.');
+            });
+        }
+        
+        // Download the currently visible script
+        function downloadCurrentScript(type) {
+            let scriptText, filename;
+            
+            if (document.getElementById('combinedContent').classList.contains('active')) {
+                scriptText = document.getElementById('combinedText').value;
+                filename = type === 'linux' ? 'combined_script.sh' : 'combined_script.bat';
+            } else if (document.getElementById('firstPassContent').classList.contains('active')) {
+                scriptText = document.getElementById('firstPassText').value;
+                filename = type === 'linux' ? 'move_files.sh' : 'move_files.bat';
+            } else {
+                scriptText = document.getElementById('secondPassText').value;
+                filename = type === 'linux' ? 'generate_metadata.sh' : 'generate_metadata.bat';
+            }
+            
+            const blob = new Blob([scriptText], { type: 'text/plain' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = filename;
+            a.click();
+        }
+
+        // Add event listener for annotation changes - save immediately
+        document.getElementById('fileAnnotation').addEventListener('input', function() {
+            saveAnnotation();
+        });
+
+        // Add event listener to load project state on page load
+        window.addEventListener('DOMContentLoaded', function() {
+            loadProjectState();
+        });
+
+        // Placeholder for swiping functionality (no drag/drop)
+        function dragStart(event) {
+            // No drag functionality now; this is a placeholder.
+            event.dataTransfer.setData('text/plain', event.target.textContent);
+        }
+    </script>
+</body>
+</html>

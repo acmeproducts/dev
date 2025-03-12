@@ -1,0 +1,2038 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#4299e1">
+    <title>HTML Viewer</title>
+    <style>
+/* Updated styles to support consistent layout with side menu and home screen */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+    background: #f0f0f0;
+    position: fixed;
+    top: 0;
+    left: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Main Layout Structure */
+.layout-container {
+    display: flex;
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Home Screen */
+.home-screen {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background: linear-gradient(135deg, #4299e1, #3182ce);
+    color: white;
+    z-index: 5;
+    padding: 20px;
+    text-align: center;
+    transition: transform 0.3s ease;
+}
+
+.home-screen.hidden {
+    transform: translateX(100%);
+}
+
+.splash-image {
+    width: 120px;
+    height: 120px;
+    border-radius: 60px;
+    background: white;
+    margin-bottom: 20px;
+    object-fit: cover;
+}
+
+.splash-title {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+}
+
+.splash-description {
+    font-size: 1.1rem;
+    margin-bottom: 1rem;
+    opacity: 0.8;
+    max-width: 80%;
+}
+
+.splash-date {
+    margin-top: 2rem;
+    font-size: 1.2rem;
+    opacity: 0.8;
+}
+
+/* Title Bar */
+.title-bar {
+    position: sticky;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: calc(30px + env(safe-area-inset-top, 0));
+    background: rgba(0, 0, 0, 0.1);
+    color: rgba(255, 255, 255, 0.8);
+    display: flex;
+    align-items: flex-end;
+    padding: env(safe-area-inset-top, 0) 15px 2px 50px;
+    font-size: 14px;
+    z-index: 50;
+}
+
+/* Touch Area for Menu */
+.menu-touch-area {
+    position: absolute;
+    top: env(safe-area-inset-top, 0);
+    left: 0;
+    width: 50px;
+    height: 50px;
+    z-index: 50;
+    cursor: pointer;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+}
+
+.menu-touch-area .menu-icon {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 24px;
+    margin-top: 5px;
+}
+
+/* Menu Panel */
+.menu-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 15;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s;
+}
+
+.menu-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.menu-panel {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 80%;
+    max-width: 320px;
+    height: 100%;
+    background: white;
+    z-index: 20;
+    transform: translateX(-100%);
+    transition: transform 0.3s;
+    padding: 1rem;
+    padding-top: 2rem;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.menu-panel.active {
+    transform: translateX(0);
+}
+
+.menu-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.menu-title {
+    font-size: 1.2rem;
+    font-weight: bold;
+}
+
+/* Menu List Scroll Area */
+.menu-scroll {
+    flex: 1;
+    overflow-y: auto;
+    margin-bottom: 1rem;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Menu Items */
+.menu-list {
+    list-style: none;
+}
+
+.menu-item {
+    margin-bottom: 0.75rem;
+}
+
+.menu-item a {
+    display: flex;
+    align-items: center;
+    padding: 1rem;
+    background: #f8f8f8;
+    border-radius: 8px;
+    color: #333;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.menu-item a.active {
+    background: #e2e8f0;
+    border-left: 4px solid #4299e1;
+}
+
+.menu-item a:active {
+    background: #e8e8e8;
+}
+
+.menu-item-main {
+    flex: 1;
+}
+
+.menu-item-title {
+    margin-bottom: 0.25rem;
+}
+
+.menu-item-desc {
+    font-size: 0.85rem;
+    opacity: 0.7;
+}
+
+.menu-item-icon {
+    margin-right: 0.75rem;
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+}
+
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1rem;
+    text-align: center;
+    color: #718096;
+}
+
+.empty-state-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+/* Config Panel */
+.panel {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: white;
+    z-index: 25;
+    padding: 1rem;
+    display: none;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.panel.active {
+    display: block;
+}
+
+.panel-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding-top: 1rem;
+}
+
+.back-btn {
+    width: 40px;
+    height: 40px;
+    background: none;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 1rem;
+    cursor: pointer;
+}
+
+.panel-title {
+    font-size: 1.5rem;
+    font-weight: bold;
+}
+
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group label {
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+}
+
+.form-group input, 
+.form-group textarea {
+    padding: 0.75rem;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 1rem;
+}
+
+.color-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 0.5rem;
+}
+
+.color-option {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    cursor: pointer;
+    border: 2px solid transparent;
+}
+
+.color-option.selected {
+    border-color: #333;
+}
+
+.save-btn {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: #3182ce;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.save-btn:active {
+    background: #2c5282;
+}
+
+/* File Viewer */
+.viewer-frame {
+    width: 100%;
+    height: 100%;
+    border: none;
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 10;
+}
+
+.viewer-panel {
+    position: relative;
+    flex: 1;
+    overflow: hidden;
+    transition: margin-left 0.3s;
+    z-index: 10; /* Explicitly set z-index lower than config panel */
+}
+
+.viewer-panel.menu-open {
+    margin-left: min(80%, 320px);
+}
+
+/* File Management Section */
+.section-header {
+    margin-top: 2rem;
+    padding-top: 1rem;
+    border-top: 1px solid #eee;
+    margin-bottom: 1rem;
+    font-size: 1.2rem;
+    font-weight: bold;
+}
+
+.file-manager {
+    margin-bottom: 2rem;
+}
+
+.file-list {
+    list-style: none;
+    margin-bottom: 1rem;
+}
+
+.file-item {
+    display: flex;
+    align-items: center;
+    padding: 1rem;
+    background: #f8f8f8;
+    border-radius: 8px;
+    margin-bottom: 0.75rem;
+}
+
+.file-item-icon {
+    margin-right: 0.75rem;
+    flex-shrink: 0;
+}
+
+.file-item-main {
+    flex: 1;
+}
+
+.file-item-controls {
+    display: flex;
+    gap: 8px;
+}
+
+.file-control-btn {
+    width: 36px;
+    height: 36px;
+    border: none;
+    background: rgba(0, 0, 0, 0.05);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.file-control-btn:active {
+    background: rgba(0, 0, 0, 0.1);
+}
+
+.upload-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.75rem 1rem;
+    background: #3182ce;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    margin-bottom: 1rem;
+    width: 100%;
+}
+
+.upload-btn:active {
+    background: #2c5282;
+}
+
+.upload-btn-icon {
+    width: 20px;
+    height: 20px;
+    margin-right: 8px;
+}
+
+/* File Edit Dialog */
+.file-edit-dialog {
+    background: #f8f8f8;
+    border-radius: 12px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    display: none;
+}
+
+.file-edit-dialog.active {
+    display: block;
+}
+
+.file-edit-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+}
+
+.file-edit-title {
+    font-weight: bold;
+}
+
+.file-edit-close {
+    width: 24px;
+    height: 24px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.image-preview {
+    width: 80px;
+    height: 80px;
+    border-radius: 8px;
+    margin-top: 0.5rem;
+    display: none;
+    object-fit: cover;
+}
+
+/* Confirm Dialog */
+.confirm-dialog {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 35;
+    display: none;
+    justify-content: center;
+    align-items: center;
+    padding: 1rem;
+}
+
+.confirm-dialog.active {
+    display: flex;
+}
+
+.confirm-box {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    width: 100%;
+    max-width: 320px;
+}
+
+.confirm-title {
+    font-size: 1.2rem;
+    font-weight: bold;
+    margin-bottom: 1rem;
+    text-align: center;
+}
+
+.confirm-buttons {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+
+.confirm-btn {
+    flex: 1;
+    padding: 0.75rem;
+    border-radius: 8px;
+    font-weight: 500;
+    text-align: center;
+    cursor: pointer;
+    border: none;
+}
+
+.confirm-btn-cancel {
+    background: #e2e8f0;
+    color: #4a5568;
+}
+
+.confirm-btn-confirm {
+    background: #e53e3e;
+    color: white;
+}
+
+/* Alert */
+.alert {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #2d3748;
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 500;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    z-index: 40;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.alert.active {
+    opacity: 1;
+}
+
+/* Footer area */
+.footer {
+    height: 30px;
+    background: rgba(0, 0, 0, 0.1);
+    color: rgba(255, 255, 255, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    padding: 0 15px;
+}
+
+/* Home button in menu */
+.home-menu-item {
+    margin-bottom: 1rem;
+}
+
+.home-menu-item a {
+    background: #ebf8ff;
+    border-left: 4px solid #4299e1;
+}
+</style>
+    
+    <!-- Other Head Elements -->
+</head>
+<body>
+    <!-- Converting splash screen to permanent home screen display that shows when no app is selected -->
+<div class="home-screen" id="splash">
+    <img id="splashImage" class="splash-image" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNjAwIiBoZWlnaHQ9IjE2MDAiIHZpZXdCb3g9IjAgMCAxNjAwIDE2MDAiPgogIDxjaXJjbGUgY3g9IjgwMCIgY3k9IjgwMCIgcj0iODAwIiBmaWxsPSIjZmZmZmZmIi8+CiAgPHBhdGggZD0iTTExNTAgODUwYzAgMTkzLjMtMTU2LjcgMzUwLTM1MCAzNTBzLTM1MC0xNTYuNy0zNTAtMzUwYzAtMTkzLjMgMTU2LjctMzUwIDM1MC0zNTBzMzUwIDE1Ni43IDM1MCAzNTB6IiBmaWxsPSIjZjNmNGY2Ii8+CiAgPHBhdGggZD0iTTg1MCA1NTBjLTgzIDAtMTUwIDY3LTE1MCAxNTB2MzAwYzAgODMgNjcgMTUwIDE1MCAxNTBoMEMxMTAwIDExNTAgMTEwMCA4NTAgMTEwMCA1NTBIODUweiIgZmlsbD0iI2YzZjRmNiIvPgogIDxwYXRoIGQ9Ik03MDAgNTUwYy04MyAwLTE1MCA2Ny0xNTAgMTUwdjMwMGMwIDgzIDY3IDE1MCAxNTAgMTUwaDBDOTUwIDExNTAgOTUwIDg1MCA5NTAgNTUwSDcwMHoiIGZpbGw9IiNmM2Y0ZjYiLz4KPC9zdmc+Cg==" alt="App Logo">
+    <h1 class="splash-title" id="splashTitle">HTML Viewer</h1>
+    <p class="splash-description" id="splashDesc">Patch #1001 Applied</p>
+    <div class="splash-date" id="dateTime">Loading date...</div>
+</div>
+    <!-- Ensuring title bar is always visible at the top of the layout -->
+<div class="title-bar" id="titleBar">HTML Viewer</div>
+    <!-- Improving menu touch area for more reliable menu opening -->
+<div class="menu-touch-area" id="menuTouchArea"><div class="menu-icon">&#9776;</div></div>
+    <!-- Simplifying menu overlay for side panel behavior -->
+<div class="menu-overlay" id="menuOverlay"></div>
+    <!-- Converting menu panel to consistent side panel that slides in/out -->
+<div class="menu-panel" id="menuPanel">
+    <div class="menu-header">
+        <h2 class="menu-title">Apps</h2>
+    </div>
+    
+    <!-- Home Menu Item (Always First) -->
+    <ul class="menu-list">
+        <li class="menu-item home-menu-item">
+            <a href="#" id="homeLink">
+                <svg class="menu-item-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M9 22V12h6v10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                <div class="menu-item-main">
+                    <div class="menu-item-title">Home</div>
+                </div>
+            </a>
+        </li>
+    </ul>
+    
+    <!-- File List -->
+    <div class="menu-scroll">
+        <ul class="menu-list" id="fileList">
+            <div class="empty-state" id="emptyState">
+                <div class="empty-state-icon">📂</div>
+                <p>No files yet</p>
+                <p>Use Configuration to add files</p>
+            </div>
+        </ul>
+    </div>
+    
+    <!-- Config Menu Item (Always at bottom) -->
+    <ul class="menu-list">
+        <li class="menu-item">
+            <a href="#" id="configLink">
+                <svg class="menu-item-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M12 15C13.6569 15 15 13.6569 15 12C15 10.3431 13.6569 9 12 9C10.3431 9 9 10.3431 9 12C9 13.6569 10.3431 15 12 15Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M19.4 15C19.2669 15.3016 19.2272 15.6362 19.286 15.9606C19.3448 16.285 19.4995 16.5843 19.73 16.82L19.79 16.88C19.976 17.0657 20.1235 17.2863 20.2241 17.5291C20.3248 17.7719 20.3766 18.0322 20.3766 18.295C20.3766 18.5578 20.3248 18.8181 20.2241 19.0609C20.1235 19.3037 19.976 19.5243 19.79 19.71C19.6043 19.896 19.3837 20.0435 19.1409 20.1441C18.8981 20.2448 18.6378 20.2966 18.375 20.2966C18.1122 20.2966 17.8519 20.2448 17.6091 20.1441C17.3663 20.0435 17.1457 19.896 16.96 19.71L16.9 19.65C16.6643 19.4195 16.365 19.2648 16.0406 19.206C15.7162 19.1472 15.3816 19.1869 15.08 19.32C14.7842 19.4468 14.532 19.6572 14.3543 19.9255C14.1766 20.1938 14.0813 20.5082 14.08 20.83V21C14.08 21.5304 13.8693 22.0391 13.4942 22.4142C13.1191 22.7893 12.6104 23 12.08 23C11.5496 23 11.0409 22.7893 10.6658 22.4142C10.2907 22.0391 10.08 21.5304 10.08 21V20.91C10.0723 20.579 9.96512 20.258 9.77251 19.9887C9.5799 19.7194 9.31074 19.5143 9 19.4C8.69838 19.2669 8.36381 19.2272 8.03941 19.286C7.71502 19.3448 7.41568 19.4995 7.18 19.73L7.12 19.79C6.93425 19.976 6.71368 20.1235 6.47088 20.2241C6.22808 20.3248 5.96783 20.3766 5.705 20.3766C5.44217 20.3766 5.18192 20.3248 4.93912 20.2241C4.69632 20.1235 4.47575 19.976 4.29 19.79C4.10405 19.6043 3.95653 19.3837 3.85588 19.1409C3.75523 18.8981 3.70343 18.6378 3.70343 18.375C3.70343 18.1122 3.75523 17.8519 3.85588 17.6091C3.95653 17.3663 4.10405 17.1457 4.29 16.96L4.35 16.9C4.58054 16.6643 4.73519 16.365 4.794 16.0406C4.85282 15.7162 4.81312 15.3816 4.68 15.08C4.55324 14.7842 4.34276 14.532 4.07447 14.3543C3.80618 14.1766 3.49179 14.0813 3.17 14.08H3C2.46957 14.08 1.96086 13.8693 1.58579 13.4942C1.21071 13.1191 1 12.6104 1 12.08C1 11.5496 1.21071 11.0409 1.58579 10.6658C1.96086 10.2907 2.46957 10.08 3 10.08H3.09C3.42099 10.0723 3.742 9.96512 4.0113 9.77251C4.28059 9.5799 4.48572 9.31074 4.6 9C4.73312 8.69838 4.77282 8.36381 4.714 8.03941C4.65519 7.71502 4.50054 7.41568 4.27 7.18L4.21 7.12C4.02405 6.93425 3.87653 6.71368 3.77588 6.47088C3.67523 6.22808 3.62343 5.96783 3.62343 5.705C3.62343 5.44217 3.67523 5.18192 3.77588 4.93912C3.87653 4.69632 4.02405 4.47575 4.21 4.29C4.39575 4.10405 4.61632 3.95653 4.85912 3.85588C5.10192 3.75523 5.36217 3.70343 5.625 3.70343C5.88783 3.70343 6.14808 3.75523 6.39088 3.85588C6.63368 3.95653 6.85425 4.10405 7.04 4.29L7.1 4.35C7.33568 4.58054 7.63502 4.73519 7.95941 4.794C8.28381 4.85282 8.61838 4.81312 8.92 4.68H9C9.29577 4.55324 9.54802 4.34276 9.72569 4.07447C9.90337 3.80618 9.99872 3.49179 10 3.17V3C10 2.46957 10.2107 1.96086 10.5858 1.58579C10.9609 1.21071 11.4696 1 12 1C12.5304 1 13.0391 1.21071 13.4142 1.58579C13.7893 1.96086 14 2.46957 14 3V3.09C14.0013 3.41179 14.0966 3.72618 14.2743 3.99447C14.452 4.26276 14.7042 4.47324 15 4.6C15.3016 4.73312 15.6362 4.77282 15.9606 4.714C16.285 4.65519 16.5843 4.50054 16.82 4.27L16.88 4.21C17.0657 4.02405 17.2863 3.87653 17.5291 3.77588C17.77193.67523 18.0322 20.3766 18.295C20.3766 18.5578 20.3248 18.8181 20.2241 19.0609C20.1235 19.3037 19.976 19.5243 19.79 19.71C19.896 19.5243 20.0435 19.3037 20.1441 19.0609C20.2448 18.8181 20.2966 18.5578 20.2966 18.295C20.2966 18.0322 20.2448 17.7719 20.1441 17.5291C20.0435 17.2863 19.896 17.0657 19.71 16.88L19.65 16.82C19.4195 16.5843 19.2648 16.285 19.206 15.9606C19.1472 15.6362 19.1869 15.3016 19.32 15V15C19.4468 14.7042 19.6572 14.452 19.9255 14.2743C20.1938 14.0966 20.5082 14.0013 20.83 14H21C21.5304 14 22.0391 13.7893 22.4142 13.4142C22.7893 13.0391 23 12.5304 23 12C23 11.4696 22.7893 10.9609 22.4142 10.5858C22.0391 10.2107 21.5304 10 21 10H20.91C20.5882 9.99872 20.2738 9.90337 20.0055 9.72569C19.7372 9.54802 19.5268 9.29577 19.4 9V9C19.2669 8.69838 19.2272 8.36381 19.286 8.03941C19.3448 7.71502 19.4995 7.41568 19.73 7.18L19.79 7.12C19.976 6.93425 20.1235 6.71368 20.2241 6.47088C20.3248 6.22808 20.3766 5.96783 20.3766 5.705C20.3766 5.44217 20.3248 5.18192 20.2241 4.93912C20.1235 4.69632 19.976 4.47575 19.79 4.29C19.6043 4.10405 19.3837 3.95653 19.1409 3.85588C18.8981 3.75523 18.6378 3.70343 18.375 3.70343C18.1122 3.70343 17.8519 3.75523 17.6091 3.85588C17.3663 3.95653 17.1457 4.10405 16.96 4.29L16.9 4.35C16.6643 4.58054 16.365 4.73519 16.0406 4.794C15.7162 4.85282 15.3816 4.81312 15.08 4.68H15C14.7042 4.55324 14.452 4.34276 14.2743 4.07447C14.0966 3.80618 14.0013 3.49179 14 3.17V3C14 2.46957 13.7893 1.96086 13.4142 1.58579C13.0391 1.21071 12.5304 1 12 1C11.4696 1 10.9609 1.21071 10.5858 1.58579C10.2107 1.96086 10 2.46957 10 3V3.09C9.99872 3.41179 9.90337 3.72618 9.72569 3.99447C9.54802 4.26276 9.29577 4.47324 9 4.6V4.6C8.69838 4.73312 8.36381 4.77282 8.03941 4.714C7.71502 4.65519 7.41568 4.50054 7.18 4.27L7.12 4.21C6.93425 4.02405 6.71368 3.87653 6.47088 3.77588C6.22808 3.67523 5.96783 3.62343 5.705 3.62343C5.44217 3.62343 5.18192 3.67523 4.93912 3.77588C4.69632 3.87653 4.47575 4.02405 4.29 4.21C4.10405 4.39575 3.95653 4.61632 3.85588 4.85912C3.75523 5.10192 3.70343 5.36217 3.70343 5.625C3.70343 5.88783 3.75523 6.14808 3.85588 6.39088C3.95653 6.63368 4.10405 6.85425 4.29 7.04L4.35 7.1C4.58054 7.33568 4.73519 7.63502 4.794 7.95941C4.85282 8.28381 4.81312 8.61838 4.68 8.92V9C4.55324 9.29577 4.34276 9.54802 4.07447 9.72569C3.80618 9.90337 3.49179 9.99872 3.17 10H3C2.46957 10 1.96086 10.2107 1.58579 10.5858C1.21071 10.9609 1 11.4696 1 12C1 12.5304 1.21071 13.0391 1.58579 13.4142C1.96086 13.7893 2.46957 14 3 14H3.09C3.41179 14.0013 3.72618 14.0966 3.99447 14.2743C4.26276 14.452 4.47324 14.7042 4.6 15V15C4.73312 15.3016 4.77282 15.6362 4.714 15.9606C4.65519 16.285 4.50054 16.5843 4.27 16.82L4.21 16.88C4.02405 17.0657 3.87653 17.2863 3.77588 17.5291C3.67523 17.7719 3.62343 18.0322 3.62343 18.295C3.62343 18.5578 3.67523 18.8181 3.77588 19.0609C3.87653 19.3037 4.02405 19.5243 4.21 19.71C4.39575 19.896 4.61632 20.0435 4.85912 20.1441C5.10192 20.2448 5.36217 20.2966 5.625 20.2966C5.88783 20.2966 6.14808 20.2448 6.39088 20.1441C6.63368 20.0435 6.85425 19.896 7.04 19.71L7.1 19.65C7.33568 19.4195 7.63502 19.2648 7.95941 19.206C8.28381 19.1472 8.61838 19.1869 8.92 19.32H9C9.29577 19.4468 9.54802 19.6572 9.72569 19.9255C9.90337 20.1938 9.99872 20.5082 10 20.83V21C10 21.5304 10.2107 22.0391 10.5858 22.4142C10.9609 22.7893 11.4696 23 12 23C12.5304 23 13.0391 22.7893 13.4142 22.4142C13.7893 22.0391 14 21.5304 14 21V20.91C14.0013 20.5882 14.0966 20.2738 14.2743 20.0055C14.452 19.7372 14.7042 19.5268 15 19.4V19.4C15.3016 19.2669 15.6362 19.2272 15.9606 19.286C16.285 19.3448 16.5843 19.4995 16.82 19.73L16.88 19.79C17.0657 19.976 17.2863 20.1235 17.5291 20.2241C17.7719 20.3248 18.0322 20.3766 18.295 20.3766C18.5578 20.3766 18.8181 20.3248 19.0609 20.1441C19.3037 20.0435 19.5243 19.896 19.71 19.71C19.896 19.5243 20.0435 19.3037 20.1441 19.0609C20.2448 18.8181 20.2966 18.5578 20.2966 18.295C20.2966 18.0322 20.2448 17.7719 20.1441 17.5291C20.0435 17.2863 19.896 17.0657 19.71 16.88L19.65 16.82C19.4195 16.5843 19.2648 16.285 19.206 15.9606C19.1472 15.6362 19.1869 15.3016 19.32 15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                Configuration
+            </a>
+        </li>
+    </ul>
+</div>
+    <!-- Updating config panel to work within the new layout structure -->
+<div class="panel" id="configPanel">
+    <div class="panel-header">
+        <button class="back-btn" id="configBackBtn" aria-label="Back to menu">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </button>
+        <h2 class="panel-title">Configuration</h2>
+    </div>
+    
+    <div class="form">
+        <div class="form-group">
+            <label for="appTitle">App Title</label>
+            <input type="text" id="appTitle" placeholder="Enter app title">
+        </div>
+        
+        <div class="form-group">
+            <label for="appDesc">App Description</label>
+            <textarea id="appDesc" rows="2" placeholder="Enter app description"></textarea>
+        </div>
+        
+        <div class="form-group">
+            <label for="appImage">App Image</label>
+            <button class="upload-btn" id="appImageBtn" style="margin-top: 0.5rem;">
+                <svg class="upload-btn-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect x="3" y="3" width="18" height="18" rx="2" ry="2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <circle cx="8.5" cy="8.5" r="1.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <polyline points="21 15 16 10 5 21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                Choose Image
+            </button>
+            <input type="file" id="appImageInput" accept="image/*" style="display: none;">
+            <img id="appImagePreview" class="image-preview" src="">
+        </div>
+        
+        <div class="form-group">
+            <label>Theme Color</label>
+            <div class="color-options" id="colorOptions">
+                <div class="color-option selected" data-color="4299e1" style="background-color: #4299e1;"></div>
+                <div class="color-option" data-color="48bb78" style="background-color: #48bb78;"></div>
+                <div class="color-option" data-color="ed8936" style="background-color: #ed8936;"></div>
+                <div class="color-option" data-color="9f7aea" style="background-color: #9f7aea;"></div>
+                <div class="color-option" data-color="f56565" style="background-color: #f56565;"></div>
+                <div class="color-option" data-color="4a5568" style="background-color: #4a5568;"></div>
+            </div>
+        </div>
+        
+        <div class="form-group">
+            <label>Configuration Import/Export</label>
+            <div style="display: flex; gap: 10px; margin-top: 10px;">
+                <button class="upload-btn" id="exportConfigBtn" style="flex: 1;">
+                    <svg class="upload-btn-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M7 10l5 5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M12 15V3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    Export Config
+                </button>
+                <button class="upload-btn" id="importConfigBtn" style="flex: 1;">
+                    <svg class="upload-btn-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M17 8l-5-5-5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M12 3v12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    Import Config
+                </button>
+            </div>
+            <input type="file" id="importConfigInput" accept=".json" style="display: none;">
+        </div>
+        
+        <!-- File Management Section -->
+        <h3 class="section-header">File Management</h3>
+        
+        <button class="upload-btn" id="uploadBtn">
+            <svg class="upload-btn-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M21 15V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M17 8L12 3L7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M12 3V15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            Upload HTML File
+        </button>
+        <input type="file" id="fileInput" accept=".html,.htm" multiple style="display: none;">
+        
+        <!-- File Edit Dialog -->
+        <div class="file-edit-dialog" id="fileEditDialog">
+            <div class="file-edit-header">
+                <div class="file-edit-title">Edit File</div>
+                <button class="file-edit-close" id="fileEditClose">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M18 6L6 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                </button>
+            </div>
+            
+            <div class="form">
+                <div class="form-group">
+                    <label for="fileTitle">File Title</label>
+                    <input type="text" id="fileTitle" placeholder="Enter file title">
+                </div>
+                
+                <div class="form-group">
+                    <label for="fileDesc">Description (optional)</label>
+                    <textarea id="fileDesc" rows="2" placeholder="Enter file description"></textarea>
+                </div>
+                
+                <div class="form-group">
+                    <label>Icon Type</label>
+                    <div class="color-options">
+                        <select id="iconType" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 8px; font-size: 1rem;">
+                            <option value="file">File</option>
+                            <option value="code">Code</option>
+                            <option value="chart">Chart</option>
+                            <option value="game">Game</option>
+                            <option value="form">Form</option>
+                            <option value="custom">Custom Icon</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-group" id="customIconGroup" style="display: none;">
+                    <label for="customIcon">Custom Icon</label>
+                    <button class="upload-btn" id="customIconBtn" style="margin-top: 0.5rem;">
+                        <svg class="upload-btn-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <rect x="3" y="3" width="18" height="18" rx="2" ry="2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <circle cx="8.5" cy="8.5" r="1.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <polyline points="21 15 16 10 5 21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        Choose Icon
+                    </button>
+                    <input type="file" id="customIconInput" accept="image/*" style="display: none;">
+                    <img id="customIconPreview" class="image-preview" src="">
+                </div>
+                
+                <button class="save-btn" id="saveFileBtn">Save File</button>
+            </div>
+        </div>
+        
+        <div class="file-manager">
+            <h4>Your HTML Files</h4>
+            <ul class="file-list" id="configFileList">
+                <!-- File items will be added here dynamically -->
+            </ul>
+        </div>
+        
+        <button class="save-btn" id="saveConfigBtn">Save Configuration</button>
+    </div>
+</div>
+    <!-- Updating viewer panel to properly scale with menu open/closed -->
+<div class="layout-container">
+    <div class="viewer-panel" id="viewerPanel">
+        <iframe id="viewerFrame" class="viewer-frame" sandbox="allow-scripts allow-same-origin"></iframe>
+    </div>
+</div>
+<div class="footer">HTML Viewer v1.0</div>
+    <div class="confirm-dialog" id="confirmDialog">
+        <div class="confirm-box">
+            <div class="confirm-title">Delete this file?</div>
+            <p>This action cannot be undone.</p>
+            <div class="confirm-buttons">
+                <button class="confirm-btn confirm-btn-cancel" id="cancelDeleteBtn">Cancel</button>
+                <button class="confirm-btn confirm-btn-confirm" id="confirmDeleteBtn">Delete</button>
+            </div>
+        </div>
+    </div>
+    <div class="alert" id="alert"></div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Improved event handling for consistent menu open/close and app switching
+            console.log('DOM loaded - initializing app');
+            
+            // Database setup
+            let db;
+            const DB_NAME = 'htmlFileManagerDB';
+            const DB_VERSION = 1;
+            const STORE_NAME = 'files';
+            const CONFIG_STORE = 'config';
+            
+            // App state
+            let files = [];
+            let currentFileId = null;
+            let appConfig = {
+                title: 'HTML Viewer',
+                description: 'Patch #1001 Applied',
+                image: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNjAwIiBoZWlnaHQ9IjE2MDAiIHZpZXdCb3g9IjAgMCAxNjAwIDE2MDAiPgogIDxjaXJjbGUgY3g9IjgwMCIgY3k9IjgwMCIgcj0iODAwIiBmaWxsPSIjZmZmZmZmIi8+CiAgPHBhdGggZD0iTTExNTAgODUwYzAgMTkzLjMtMTU2LjcgMzUwLTM1MCAzNTBzLTM1MC0xNTYuNy0zNTAtMzUwYzAtMTkzLjMgMTU2LjctMzUwIDM1MC0zNTBzMzUwIDE1Ni43IDM1MCAzNTB6IiBmaWxsPSIjZjNmNGY2Ii8+CiAgPHBhdGggZD0iTTg1MCA1NTBjLTgzIDAtMTUwIDY3LTE1MCAxNTB2MzAwYzAgODMgNjcgMTUwIDE1MCAxNTBoMEMxMTAwIDExNTAgMTEwMCA4NTAgMTEwMCA1NTBIODUweiIgZmlsbD0iI2YzZjRmNiIvPgogIDxwYXRoIGQ9Ik03MDAgNTUwYy04MyAwLTE1MCA2Ny0xNTAgMTUwdjMwMGMwIDgzIDY3IDE1MCAxNTAgMTUwaDBDOTUwIDExNTAgOTUwIDg1MCA5NTAgNTUwSDcwMHoiIGZpbGw9IiNmM2Y0ZjYiLz4KPC9zdmc+Cg==',
+                themeColor: '4299e1'
+            };
+            
+            // DOM Elements
+            const elements = {
+                splash: document.getElementById('splash'),
+                splashTitle: document.getElementById('splashTitle'),
+                splashDesc: document.getElementById('splashDesc'),
+                splashImage: document.getElementById('splashImage'),
+                dateTime: document.getElementById('dateTime'),
+                titleBar: document.getElementById('titleBar'),
+                menuTouchArea: document.getElementById('menuTouchArea'),
+                menuPanel: document.getElementById('menuPanel'),
+                menuOverlay: document.getElementById('menuOverlay'),
+                uploadBtn: document.getElementById('uploadBtn'),
+                fileInput: document.getElementById('fileInput'),
+                fileList: document.getElementById('fileList'),
+                configFileList: document.getElementById('configFileList'),
+                emptyState: document.getElementById('emptyState'),
+                configLink: document.getElementById('configLink'),
+                configPanel: document.getElementById('configPanel'),
+                configBackBtn: document.getElementById('configBackBtn'),
+                appTitle: document.getElementById('appTitle'),
+                appDesc: document.getElementById('appDesc'),
+                appImageBtn: document.getElementById('appImageBtn'),
+                appImageInput: document.getElementById('appImageInput'),
+                appImagePreview: document.getElementById('appImagePreview'),
+                colorOptions: document.getElementById('colorOptions'),
+                saveConfigBtn: document.getElementById('saveConfigBtn'),
+                fileEditDialog: document.getElementById('fileEditDialog'),
+                fileEditClose: document.getElementById('fileEditClose'),
+                fileTitle: document.getElementById('fileTitle'),
+                fileDesc: document.getElementById('fileDesc'),
+                iconType: document.getElementById('iconType'),
+                customIconGroup: document.getElementById('customIconGroup'),
+                customIconBtn: document.getElementById('customIconBtn'),
+                customIconInput: document.getElementById('customIconInput'),
+                customIconPreview: document.getElementById('customIconPreview'),
+                saveFileBtn: document.getElementById('saveFileBtn'),
+                viewerPanel: document.getElementById('viewerPanel'),
+                viewerFrame: document.getElementById('viewerFrame'),
+                confirmDialog: document.getElementById('confirmDialog'),
+                cancelDeleteBtn: document.getElementById('cancelDeleteBtn'),
+                confirmDeleteBtn: document.getElementById('confirmDeleteBtn'),
+                alert: document.getElementById('alert'),
+                homeLink: document.getElementById('homeLink')
+            };
+            
+            // Update date and time
+            function updateDateTime() {
+                if (elements.dateTime) {
+                    const now = new Date();
+                    const options = { 
+                        weekday: 'long', 
+                        year: 'numeric', 
+                        month: 'long', 
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit' 
+                    };
+                    elements.dateTime.textContent = now.toLocaleDateString(undefined, options);
+                }
+            }
+            
+            // Initialize IndexedDB
+            function initDB() {
+                return new Promise((resolve, reject) => {
+                    console.log('Initializing IndexedDB...');
+                    const request = indexedDB.open(DB_NAME, DB_VERSION);
+                    
+                    request.onupgradeneeded = (event) => {
+                        console.log('Database upgrade needed');
+                        const db = event.target.result;
+                        
+                        // Create files store if it doesn't exist
+                        if (!db.objectStoreNames.contains(STORE_NAME)) {
+                            const store = db.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
+                            store.createIndex('title', 'title', { unique: false });
+                            store.createIndex('order', 'order', { unique: false });
+                        }
+                        
+                        // Create config store if it doesn't exist
+                        if (!db.objectStoreNames.contains(CONFIG_STORE)) {
+                            db.createObjectStore(CONFIG_STORE, { keyPath: 'id' });
+                        }
+                    };
+                    
+                    request.onsuccess = (event) => {
+                        db = event.target.result;
+                        console.log('Database initialized successfully');
+                        resolve();
+                    };
+                    
+                    request.onerror = (event) => {
+                        console.error('Database error:', event.target.error);
+                        reject('Could not initialize database');
+                    };
+                });
+            }
+            
+            // Load all files
+            function loadFiles() {
+                return new Promise((resolve, reject) => {
+                    if (!db) {
+                        reject('Database not initialized');
+                        return;
+                    }
+                    
+                    const transaction = db.transaction(STORE_NAME, 'readonly');
+                    const store = transaction.objectStore(STORE_NAME);
+                    const request = store.getAll();
+                    
+                    request.onsuccess = (event) => {
+                        files = event.target.result;
+                        console.log(`Loaded ${files.length} files`);
+                        resolve(files);
+                    };
+                    
+                    request.onerror = (event) => {
+                        console.error('Error loading files:', event.target.error);
+                        reject('Could not load files');
+                    };
+                });
+            }
+            
+            // Load app configuration
+            function loadConfig() {
+                return new Promise((resolve, reject) => {
+                    if (!db) {
+                        resolve(appConfig);
+                        return;
+                    }
+                    
+                    const transaction = db.transaction(CONFIG_STORE, 'readonly');
+                    const store = transaction.objectStore(CONFIG_STORE);
+                    const request = store.get('appConfig');
+                    
+                    request.onsuccess = (event) => {
+                        if (event.target.result) {
+                            appConfig = event.target.result.config;
+                            console.log('Loaded app config', appConfig);
+                        }
+                        resolve(appConfig);
+                    };
+                    
+                    request.onerror = (event) => {
+                        console.error('Error loading config:', event.target.error);
+                        resolve(appConfig);
+                    };
+                });
+            }
+            
+            // Save app configuration
+            function saveConfig() {
+                return new Promise((resolve, reject) => {
+                    if (!db) {
+                        console.error('Database not initialized, trying to initialize...');
+                        initDB().then(() => {
+                            saveConfig().then(resolve).catch(reject);
+                        }).catch(err => {
+                            console.error('Failed to initialize database:', err);
+                            reject('Database initialization failed');
+                        });
+                        return;
+                    }
+                    
+                    const transaction = db.transaction(CONFIG_STORE, 'readwrite');
+                    const store = transaction.objectStore(CONFIG_STORE);
+                    const request = store.put({
+                        id: 'appConfig',
+                        config: appConfig
+                    });
+                    
+                    request.onsuccess = () => {
+                        console.log('Config saved successfully');
+                        resolve();
+                    };
+                    
+                    request.onerror = (event) => {
+                        console.error('Error saving config:', event.target.error);
+                        reject('Could not save configuration');
+                    };
+                    
+                    // Add transaction completion handler
+                    transaction.oncomplete = () => {
+                        console.log('Config save transaction completed');
+                    };
+                    
+                    transaction.onerror = (event) => {
+                        console.error('Transaction error while saving config:', event.target.error);
+                    };
+                });
+            }
+            
+            // Add a new file
+            function addFile(file) {
+                return new Promise((resolve, reject) => {
+                    if (!db) {
+                        reject('Database not initialized');
+                        return;
+                    }
+                    
+                    // Get the highest order value
+                    const transaction = db.transaction(STORE_NAME, 'readwrite');
+                    const store = transaction.objectStore(STORE_NAME);
+                    
+                    // Get all files to find the highest order
+                    const getAllRequest = store.getAll();
+                    getAllRequest.onsuccess = () => {
+                        const existingFiles = getAllRequest.result;
+                        let highestOrder = -1;
+                        
+                        // Find the highest order value
+                        existingFiles.forEach(f => {
+                            if (f.order > highestOrder) {
+                                highestOrder = f.order;
+                            }
+                        });
+                        
+                        // Set the order to be one higher than the highest existing order
+                        file.order = highestOrder + 1;
+                        console.log('Setting new file order to:', file.order);
+                        
+                        const addRequest = store.add(file);
+                        addRequest.onsuccess = (event) => {
+                            console.log('File added successfully with ID:', event.target.result);
+                            resolve(event.target.result);
+                        };
+                        
+                        addRequest.onerror = (event) => {
+                            console.error('Error adding file:', event.target.error);
+                            reject('Could not add file');
+                        };
+                    };
+                    
+                    getAllRequest.onerror = (event) => {
+                        console.error('Error getting files:', event.target.error);
+                        reject('Could not get files');
+                    };
+                });
+            }
+            
+            // Update a file
+            function updateFile(file) {
+                return new Promise((resolve, reject) => {
+                    if (!db) {
+                        reject('Database not initialized');
+                        return;
+                    }
+                    
+                    const transaction = db.transaction(STORE_NAME, 'readwrite');
+                    const store = transaction.objectStore(STORE_NAME);
+                    const request = store.put(file);
+                    
+                    request.onsuccess = () => {
+                        console.log(`File ${file.id} updated successfully`);
+                        resolve();
+                    };
+                    
+                    request.onerror = (event) => {
+                        console.error('Error updating file:', event.target.error);
+                        reject('Could not update file');
+                    };
+                });
+            }
+            
+            // Delete a file
+            function deleteFile(id) {
+                return new Promise((resolve, reject) => {
+                    if (!db) {
+                        reject('Database not initialized');
+                        return;
+                    }
+                    
+                    const transaction = db.transaction(STORE_NAME, 'readwrite');
+                    const store = transaction.objectStore(STORE_NAME);
+                    const request = store.delete(id);
+                    
+                    request.onsuccess = () => {
+                        console.log(`File ${id} deleted successfully`);
+                        resolve();
+                    };
+                    
+                    request.onerror = (event) => {
+                        console.error('Error deleting file:', event.target.error);
+                        reject('Could not delete file');
+                    };
+                });
+            }
+            
+            // Move a file up in order
+            function moveFileUp(id) {
+                console.log('Moving file up:', id);
+                const fileIndex = files.findIndex(f => f.id === id);
+                if (fileIndex <= 0) {
+                    console.log('Already at the top');
+                    return; // Already at the top
+                }
+                
+                const prevFile = files[fileIndex - 1];
+                const currentFile = files[fileIndex];
+                
+                console.log('Swapping order:', currentFile.order, 'with', prevFile.order);
+                
+                // Swap the order values
+                const tempOrder = prevFile.order;
+                prevFile.order = currentFile.order;
+                currentFile.order = tempOrder;
+                
+                // Update both files in the database
+                Promise.all([
+                    updateFile(prevFile),
+                    updateFile(currentFile)
+                ]).then(() => {
+                    console.log('Files updated, reloading...');
+                    // Reload and re-render
+                    return loadFiles();
+                }).then(() => {
+                    console.log('Files reloaded, rendering...');
+                    // Sort files by order before rendering
+                    files.sort((a, b) => a.order - b.order);
+                    renderConfigFileList();
+                    renderMenuFileList();
+                    showAlert('File order updated');
+                }).catch(error => {
+                    console.error('Error updating file order:', error);
+                    showAlert('Error updating file order');
+                });
+            }
+            
+            // Move a file down in order
+            function moveFileDown(id) {
+                console.log('Moving file down:', id);
+                const fileIndex = files.findIndex(f => f.id === id);
+                if (fileIndex === -1 || fileIndex >= files.length - 1) {
+                    console.log('Already at the bottom');
+                    return; // Already at the bottom
+                }
+                
+                const nextFile = files[fileIndex + 1];
+                const currentFile = files[fileIndex];
+                
+                console.log('Swapping order:', currentFile.order, 'with', nextFile.order);
+                
+                // Swap the order values
+                const tempOrder = nextFile.order;
+                nextFile.order = currentFile.order;
+                currentFile.order = tempOrder;
+                
+                // Update both files in the database
+                Promise.all([
+                    updateFile(nextFile),
+                    updateFile(currentFile)
+                ]).then(() => {
+                    console.log('Files updated, reloading...');
+                    // Reload and re-render
+                    return loadFiles();
+                }).then(() => {
+                    console.log('Files reloaded, rendering...');
+                    // Sort files by order before rendering
+                    files.sort((a, b) => a.order - b.order);
+                    renderConfigFileList();
+                    renderMenuFileList();
+                    showAlert('File order updated');
+                }).catch(error => {
+                    console.error('Error updating file order:', error);
+                    showAlert('Error updating file order');
+                });
+            }
+            
+            // Apply app configuration to UI
+            function applyConfig() {
+                // Update title and splash screen
+                elements.splashTitle.textContent = appConfig.title;
+                elements.splashDesc.textContent = appConfig.description;
+                elements.splashImage.src = appConfig.image;
+                
+                // Update subtle title bar
+                elements.titleBar.textContent = appConfig.title;
+                
+                // Apply theme color
+                const bgColor = `#${appConfig.themeColor}`;
+                const secondColor = getLighterColor(appConfig.themeColor);
+                elements.splash.style.background = `linear-gradient(135deg, ${bgColor}, ${secondColor})`;
+                
+                // Update meta tags
+                const themeColorMeta = document.querySelector('meta[name="theme-color"]');
+                if (themeColorMeta) {
+                    themeColorMeta.content = bgColor;
+                }
+                
+                // Update buttons
+                elements.uploadBtn.style.backgroundColor = bgColor;
+                elements.saveConfigBtn.style.backgroundColor = bgColor;
+                elements.saveFileBtn.style.backgroundColor = bgColor;
+                
+                // Update form values
+                elements.appTitle.value = appConfig.title;
+                elements.appDesc.value = appConfig.description;
+                
+                if (appConfig.image) {
+                    elements.appImagePreview.src = appConfig.image;
+                    elements.appImagePreview.style.display = 'block';
+                }
+                
+                // Update theme color selection
+                const colorOptions = elements.colorOptions.querySelectorAll('.color-option');
+                colorOptions.forEach(option => {
+                    option.classList.remove('selected');
+                    if (option.dataset.color === appConfig.themeColor) {
+                        option.classList.add('selected');
+                    }
+                });
+                
+                document.title = appConfig.title;
+            }
+            
+            // Get a lighter color from a hex color
+            function getLighterColor(hex) {
+                const r = parseInt(hex.substr(0, 2), 16);
+                const g = parseInt(hex.substr(2, 2), 16);
+                const b = parseInt(hex.substr(4, 2), 16);
+                
+                const lighterR = Math.min(r + 40, 255).toString(16).padStart(2, '0');
+                const lighterG = Math.min(g + 40, 255).toString(16).padStart(2, '0');
+                const lighterB = Math.min(b + 40, 255).toString(16).padStart(2, '0');
+                
+                return `#${lighterR}${lighterG}${lighterB}`;
+            }
+            
+            // Render menu file list
+            function renderMenuFileList() {
+                const fileList = elements.fileList;
+                
+                // Clear the list first
+                while (fileList.firstChild) {
+                    fileList.removeChild(fileList.firstChild);
+                }
+                
+                // Show empty state if no files
+                if (files.length === 0) {
+                    fileList.appendChild(elements.emptyState);
+                    return;
+                }
+                
+                // Sort files by order
+                files.sort((a, b) => a.order - b.order);
+                
+                // Create list items for each file
+                files.forEach(file => {
+                    const listItem = createMenuFileItem(file);
+                    fileList.appendChild(listItem);
+                });
+            }
+            
+            // Render config file list
+            function renderConfigFileList() {
+                const fileList = elements.configFileList;
+                
+                // Clear the list first
+                while (fileList.firstChild) {
+                    fileList.removeChild(fileList.firstChild);
+                }
+                
+                // Show message if no files
+                if (files.length === 0) {
+                    const emptyItem = document.createElement('li');
+                    emptyItem.textContent = 'No files added yet';
+                    emptyItem.style.padding = '1rem';
+                    emptyItem.style.color = '#718096';
+                    fileList.appendChild(emptyItem);
+                    return;
+                }
+                
+                // Sort files by order
+                files.sort((a, b) => a.order - b.order);
+                
+                // Create list items for each file
+                files.forEach(file => {
+                    const listItem = createConfigFileItem(file);
+                    fileList.appendChild(listItem);
+                });
+            }
+            
+            // Create a menu item for a file
+            function createMenuFileItem(file) {
+                const li = document.createElement('li');
+                li.className = 'menu-item';
+                
+                const link = document.createElement('a');
+                link.href = '#';
+                link.dataset.id = file.id;
+                
+                // Create icon
+                const icon = document.createElement('div');
+                icon.className = 'menu-item-icon';
+                
+                if (file.iconType === 'custom' && file.customIcon) {
+                    const img = document.createElement('img');
+                    img.src = file.customIcon;
+                    img.style.width = '24px';
+                    img.style.height = '24px';
+                    icon.appendChild(img);
+                } else {
+                    icon.innerHTML = getIconSVG(file.iconType || 'file');
+                }
+                
+                // Create main content
+                const main = document.createElement('div');
+                main.className = 'menu-item-main';
+                
+                const title = document.createElement('div');
+                title.className = 'menu-item-title';
+                title.textContent = file.title || 'Untitled';
+                main.appendChild(title);
+                
+                if (file.description) {
+                    const desc = document.createElement('div');
+                    desc.className = 'menu-item-desc';
+                    desc.textContent = file.description;
+                    main.appendChild(desc);
+                }
+                
+                // Assemble the link
+                link.appendChild(icon);
+                link.appendChild(main);
+                
+                // Add click event to open file
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    openFile(file);
+                });
+                
+                li.appendChild(link);
+                return li;
+            }
+            
+            // Create a config file item
+            function createConfigFileItem(file) {
+                const li = document.createElement('li');
+                li.className = 'file-item';
+                
+                // Create icon
+                const icon = document.createElement('div');
+                icon.className = 'file-item-icon';
+                
+                if (file.iconType === 'custom' && file.customIcon) {
+                    const img = document.createElement('img');
+                    img.src = file.customIcon;
+                    img.style.width = '24px';
+                    img.style.height = '24px';
+                    icon.appendChild(img);
+                } else {
+                    icon.innerHTML = getIconSVG(file.iconType || 'file');
+                }
+                
+                // Create main content
+                const main = document.createElement('div');
+                main.className = 'file-item-main';
+                
+                const title = document.createElement('div');
+                title.className = 'file-item-title';
+                title.textContent = file.title || 'Untitled';
+                main.appendChild(title);
+                
+                if (file.description) {
+                    const desc = document.createElement('div');
+                    desc.style.fontSize = '0.85rem';
+                    desc.style.opacity = '0.7';
+                    desc.textContent = file.description;
+                    main.appendChild(desc);
+                }
+                
+                // Create controls
+                const controls = document.createElement('div');
+                controls.className = 'file-item-controls';
+                
+                // Edit button
+                const editBtn = document.createElement('button');
+                editBtn.className = 'file-control-btn';
+                editBtn.innerHTML = `
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                `;
+                editBtn.addEventListener('click', () => {
+                    openFileEditDialog(file);
+                });
+                
+                // Delete button
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'file-control-btn';
+                deleteBtn.innerHTML = `
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M3 6h18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                `;
+                deleteBtn.addEventListener('click', () => {
+                    confirmDelete(file.id);
+                });
+                
+                // Move up button
+                const upBtn = document.createElement('button');
+                upBtn.className = 'file-control-btn';
+                upBtn.innerHTML = `
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 19V5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M5 12l7-7 7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                `;
+                upBtn.addEventListener('click', () => {
+                    moveFileUp(file.id);
+                });
+                
+                // Move down button
+                const downBtn = document.createElement('button');
+                downBtn.className = 'file-control-btn';
+                downBtn.innerHTML = `
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 5v14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M19 12l-7 7-7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                `;
+                downBtn.addEventListener('click', () => {
+                    moveFileDown(file.id);
+                });
+                
+                controls.appendChild(editBtn);
+                controls.appendChild(deleteBtn);
+                controls.appendChild(upBtn);
+                controls.appendChild(downBtn);
+                
+                // Assemble the item
+                li.appendChild(icon);
+                li.appendChild(main);
+                li.appendChild(controls);
+                
+                return li;
+            }
+            
+            // Get SVG for icon type
+            function getIconSVG(type) {
+                switch(type) {
+                    case 'code':
+                        return `
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M16 18l6-6-6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M8 6l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        `;
+                    case 'chart':
+                        return `
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M18 20V10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M12 20V4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M6 20v-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        `;
+                    case 'game':
+                        return `
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <rect x="2" y="6" width="20" height="12" rx="2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M12 10v4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M10 12h4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M17 10.5v3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M7 10.5v3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        `;
+                    case 'form':
+                        return `
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M11 4h6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M11 8h6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M11 12h6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M11 16h6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M7 8.5a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M7 12.5a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M7 16.5a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        `;
+                    default: // file
+                        return `
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M14 2v6h6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M16 13H8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M16 17H8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M10 9H9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        `;
+                }
+            }
+            
+            // Process file upload
+            function processFiles(uploadedFiles) {
+                if (!uploadedFiles || uploadedFiles.length === 0) return;
+                
+                const filePromises = [];
+                
+                for (let i = 0; i < uploadedFiles.length; i++) {
+                    const file = uploadedFiles[i];
+                    filePromises.push(processFile(file));
+                }
+                
+                Promise.all(filePromises)
+                    .then(() => {
+                        return loadFiles();
+                    })
+                    .then(() => {
+                        renderConfigFileList();
+                        renderMenuFileList();
+                        showAlert('Files uploaded successfully');
+                    })
+                    .catch(error => {
+                        console.error('Error processing files:', error);
+                        showAlert('Error uploading files');
+                    });
+            }
+            
+            // Process a single file
+            function processFile(file) {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    
+                    reader.onload = (e) => {
+                        const content = e.target.result;
+                        
+                        // Try to extract title from the file
+                        let title = file.name;
+                        const titleMatch = content.match(/<title[^>]*>(.*?)<\/title>/i);
+                        if (titleMatch && titleMatch[1]) {
+                            title = titleMatch[1];
+                        }
+                        
+                        // Create new file object
+                        const newFile = {
+                            title: title,
+                            description: '',
+                            content: content,
+                            dateAdded: new Date().toISOString(),
+                            iconType: 'file',
+                            customIcon: null
+                        };
+                        
+                        // Add to database
+                        addFile(newFile)
+                            .then(id => {
+                                console.log(`File added with ID: ${id}`);
+                                resolve(id);
+                            })
+                            .catch(reject);
+                    };
+                    
+                    reader.onerror = () => {
+                        reject(`Error reading file: ${file.name}`);
+                    };
+                    
+                    reader.readAsText(file);
+                });
+            }
+            
+            // Open menu
+            function openMenu() {
+                console.log('Opening menu');
+                elements.menuPanel.classList.add('active');
+                elements.menuOverlay.classList.add('active');
+                elements.viewerPanel.classList.add('menu-open');
+            }
+            
+            // Close menu
+            function closeMenu() {
+                console.log('Closing menu');
+                elements.menuPanel.classList.remove('active');
+                elements.menuOverlay.classList.remove('active');
+                elements.viewerPanel.classList.remove('menu-open');
+            }
+            
+            // Toggle menu (open if closed, close if open)
+            function toggleMenu() {
+                if (elements.menuPanel.classList.contains('active')) {
+                    closeMenu();
+                } else {
+                    openMenu();
+                }
+            }
+            
+            // Open config panel
+            function openConfigPanel() {
+                console.log('Opening config panel');
+                closeMenu();
+                
+                // Fill in current values
+                elements.appTitle.value = appConfig.title;
+                elements.appDesc.value = appConfig.description;
+                
+                if (appConfig.image) {
+                    elements.appImagePreview.src = appConfig.image;
+                    elements.appImagePreview.style.display = 'block';
+                }
+                
+                // Set correct color option
+                const colorOptions = elements.colorOptions.querySelectorAll('.color-option');
+                colorOptions.forEach(option => {
+                    option.classList.remove('selected');
+                    if (option.dataset.color === appConfig.themeColor) {
+                        option.classList.add('selected');
+                    }
+                });
+                
+                // Render file list
+                renderConfigFileList();
+                
+                elements.configPanel.classList.add('active');
+                
+                // Hide home screen
+                elements.splash.classList.add('hidden');
+            }
+            
+            // Open file edit dialog
+            function openFileEditDialog(file) {
+                console.log('Opening file edit dialog for:', file.id);
+                currentFileId = file.id;
+                
+                // Fill in current values
+                elements.fileTitle.value = file.title || '';
+                elements.fileDesc.value = file.description || '';
+                elements.iconType.value = file.iconType || 'file';
+                
+                // Handle custom icon display
+                if (file.iconType === 'custom' && file.customIcon) {
+                    elements.customIconGroup.style.display = 'block';
+                    elements.customIconPreview.src = file.customIcon;
+                    elements.customIconPreview.style.display = 'block';
+                } else {
+                    elements.customIconGroup.style.display = 'none';
+                    elements.customIconPreview.style.display = 'none';
+                }
+                
+                elements.fileEditDialog.classList.add('active');
+            }
+            
+            // Close file edit dialog
+            function closeFileEditDialog() {
+                elements.fileEditDialog.classList.remove('active');
+                currentFileId = null;
+            }
+            
+            // Open file viewer
+            function openFile(file) {
+                console.log('Opening file:', file.id);
+                closeMenu();
+                
+                // Hide home screen
+                elements.splash.classList.add('hidden');
+                
+                // Pre-load content before showing
+                const blob = new Blob([file.content], { type: 'text/html' });
+                const url = URL.createObjectURL(blob);
+                
+                // Prepare iframe with content
+                elements.viewerFrame.onload = () => {
+                    // Show viewer panel after content is loaded
+                    elements.viewerPanel.classList.add('active');
+                    
+                    // Make sure title bar is visible
+                    elements.titleBar.style.opacity = '1';
+                    
+                    // Clean up URL
+                    setTimeout(() => URL.revokeObjectURL(url), 100);
+                };
+                
+                // Set source to load content
+                elements.viewerFrame.src = url;
+            }
+            
+            // Go back to home
+            function showHomeScreen() {
+                console.log('Showing home screen');
+                closeMenu();
+                
+                // Hide viewer panel
+                elements.viewerFrame.src = 'about:blank';
+                
+                // Show home screen
+                elements.splash.classList.remove('hidden');
+            }
+            
+            // Show alert message
+            function showAlert(message, duration = 3000) {
+                const alert = elements.alert;
+                alert.textContent = message;
+                alert.classList.add('active');
+                
+                setTimeout(() => {
+                    alert.classList.remove('active');
+                }, duration);
+            }
+            
+            // Confirm delete
+            function confirmDelete(id) {
+                currentFileId = id;
+                elements.confirmDialog.classList.add('active');
+            }
+            
+            // Add swipe gesture support
+            function addSwipeSupport() {
+                let touchStartX = 0;
+                let touchEndX = 0;
+                
+                // Minimum distance required for swipe
+                const minSwipeDistance = 50;
+                
+                document.addEventListener('touchstart', function(e) {
+                    touchStartX = e.changedTouches[0].screenX;
+                }, false);
+                
+                document.addEventListener('touchend', function(e) {
+                    touchEndX = e.changedTouches[0].screenX;
+                    handleSwipe();
+                }, false);
+                
+                function handleSwipe() {
+                    if (touchEndX - touchStartX > minSwipeDistance) {
+                        // Swipe right - open menu
+                        openMenu();
+                    } else if (touchStartX - touchEndX > minSwipeDistance) {
+                        // Swipe left - close menu
+                        closeMenu();
+                    }
+                }
+            }
+            
+            // Set up event listeners
+            function setupEventListeners() {
+                // Menu button
+                elements.menuTouchArea.addEventListener('click', toggleMenu);
+                
+                // Menu overlay (close menu when clicking outside)
+                elements.menuOverlay.addEventListener('click', closeMenu);
+                
+                // Home link
+                elements.homeLink.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    showHomeScreen();
+                });
+                
+                // Upload button
+                elements.uploadBtn.addEventListener('click', () => {
+                    elements.fileInput.click();
+                });
+                
+                // File input change
+                elements.fileInput.addEventListener('change', (e) => {
+                    processFiles(e.target.files);
+                    e.target.value = ''; // Reset input
+                });
+                
+                // Config link
+                elements.configLink.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    openConfigPanel();
+                });
+                
+                // Config back button
+                elements.configBackBtn.addEventListener('click', () => {
+                    elements.configPanel.classList.remove('active');
+                    showHomeScreen();
+                    openMenu();
+                });
+                
+                // App image button
+                elements.appImageBtn.addEventListener('click', () => {
+                    elements.appImageInput.click();
+                });
+                
+                // App image input change
+                elements.appImageInput.addEventListener('change', (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (event) => {
+                            elements.appImagePreview.src = event.target.result;
+                            elements.appImagePreview.style.display = 'block';
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                });
+                
+                // Color options
+                elements.colorOptions.querySelectorAll('.color-option').forEach(option => {
+                    option.addEventListener('click', () => {
+                        // Remove selected from all options
+                        elements.colorOptions.querySelectorAll('.color-option').forEach(opt => {
+                            opt.classList.remove('selected');
+                        });
+                        
+                        // Select this one
+                        option.classList.add('selected');
+                    });
+                });
+                
+                // Save config button
+                elements.saveConfigBtn.addEventListener('click', async () => {
+                    // Get values from form
+                    appConfig.title = elements.appTitle.value.trim() || 'HTML Viewer';
+                    appConfig.description = elements.appDesc.value.trim() || 'Patch #1001 Applied';
+                    
+                    if (elements.appImagePreview.src) {
+                        appConfig.image = elements.appImagePreview.src;
+                    }
+                    
+                    // Get selected color
+                    const selectedColor = elements.colorOptions.querySelector('.color-option.selected');
+                    if (selectedColor) {
+                        appConfig.themeColor = selectedColor.dataset.color;
+                    }
+                    
+                    try {
+                        // Save to database
+                        await saveConfig();
+                        
+                        // Apply to UI
+                        applyConfig();
+                        
+                        // Show confirmation message
+                        showAlert('Configuration saved successfully');
+                        
+                        // Close panel after saving
+                        elements.configPanel.classList.remove('active');
+                        showHomeScreen();
+                        openMenu();
+                    } catch (error) {
+                        console.error('Error saving config:', error);
+                        showAlert('Error saving configuration');
+                    }
+                });
+                
+                // Icon type change
+                elements.iconType.addEventListener('change', () => {
+                    if (elements.iconType.value === 'custom') {
+                        elements.customIconGroup.style.display = 'block';
+                    } else {
+                        elements.customIconGroup.style.display = 'none';
+                    }
+                });
+                
+                // Custom icon button
+                elements.customIconBtn.addEventListener('click', () => {
+                    elements.customIconInput.click();
+                });
+                
+                // Custom icon input change
+                elements.customIconInput.addEventListener('change', (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (event) => {
+                            elements.customIconPreview.src = event.target.result;
+                            elements.customIconPreview.style.display = 'block';
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                });
+                
+                // Close edit dialog
+                elements.fileEditClose.addEventListener('click', closeFileEditDialog);
+                
+                // Save file button
+                elements.saveFileBtn.addEventListener('click', async () => {
+                    if (!currentFileId) {
+                        showAlert('No file selected');
+                        return;
+                    }
+                    
+                    try {
+                        // Find file in array
+                        const fileIndex = files.findIndex(f => f.id === currentFileId);
+                        if (fileIndex === -1) {
+                            showAlert('File not found');
+                            return;
+                        }
+                        
+                        // Update file object
+                        files[fileIndex].title = elements.fileTitle.value.trim() || 'Untitled';
+                        files[fileIndex].description = elements.fileDesc.value.trim();
+                        files[fileIndex].iconType = elements.iconType.value;
+                        
+                        if (elements.iconType.value === 'custom' && elements.customIconPreview.src) {
+                            files[fileIndex].customIcon = elements.customIconPreview.src;
+                        }
+                        
+                        // Save to database
+                        await updateFile(files[fileIndex]);
+                        
+                        showAlert('File updated');
+                        
+                        // Close dialog and refresh list
+                        closeFileEditDialog();
+                        renderConfigFileList();
+                        renderMenuFileList();
+                    } catch (error) {
+                        console.error('Error updating file:', error);
+                        showAlert('Error updating file');
+                    }
+                });
+                
+                // Confirm delete - cancel
+                if (elements.cancelDeleteBtn) {
+                    elements.cancelDeleteBtn.addEventListener('click', () => {
+                        elements.confirmDialog.classList.remove('active');
+                        currentFileId = null;
+                    });
+                }
+                
+                // Confirm delete - confirm
+                if (elements.confirmDeleteBtn) {
+                    elements.confirmDeleteBtn.addEventListener('click', async () => {
+                        if (!currentFileId) return;
+                        
+                        try {
+                            await deleteFile(currentFileId);
+                            await loadFiles();
+                            renderConfigFileList();
+                            renderMenuFileList();
+                            showAlert('File deleted');
+                        } catch (error) {
+                            console.error('Error deleting file:', error);
+                            showAlert('Error deleting file');
+                        }
+                        
+                        elements.confirmDialog.classList.remove('active');
+                        currentFileId = null;
+                    });
+                }
+            }
+            
+            // Initialize app
+            async function initApp() {
+                try {
+                    // Update date time immediately
+                    updateDateTime();
+                    setInterval(updateDateTime, 60000);
+                    
+                    // Initialize database
+                    await initDB();
+                    
+                    // Load app configuration
+                    await loadConfig();
+                    
+                    // Apply configuration to UI
+                    applyConfig();
+                    
+                    // Load files
+                    await loadFiles();
+                    
+                    // Render file lists
+                    renderMenuFileList();
+                    renderConfigFileList();
+                    
+                    // Add swipe gesture support
+                    addSwipeSupport();
+                    
+                    // Set up event listeners
+                    setupEventListeners();
+                    
+                    console.log('App initialized successfully');
+                } catch (error) {
+                    console.error('Error initializing app:', error);
+                    showAlert('Error initializing app');
+                }
+            }
+            
+            // Start the app
+            initApp();
+        });
+    </script>
+    
+</body>
+</html>
