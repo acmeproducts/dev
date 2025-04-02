@@ -1,0 +1,1506 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Crystal Polyhedra</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            touch-action: manipulation;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0f172a;
+            color: #f1f5f9;
+            height: 100vh;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        #header {
+            background: #1e293b;
+            padding: 12px 16px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+            position: relative;
+            z-index: 10;
+        }
+        
+        .title {
+            font-size: 22px;
+            font-weight: 300;
+            margin-bottom: 16px;
+        }
+        
+        .button-row {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+        
+        button {
+            padding: 12px 18px;
+            border-radius: 50px;
+            border: none;
+            font-size: 16px;
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            cursor: pointer;
+            color: white;
+            transition: transform 0.15s ease, background-color 0.15s ease;
+        }
+        
+        button:active {
+            transform: scale(0.95);
+        }
+        
+        .primary {
+            background: #7e22ce;
+        }
+        
+        .primary:active {
+            background: #9333ea;
+        }
+        
+        .secondary {
+            background: #475569;
+        }
+        
+        .secondary:active {
+            background: #64748b;
+        }
+        
+        .icon {
+            font-size: 18px;
+        }
+        
+        #gameCanvas {
+            flex-grow: 1;
+            width: 100%;
+            background: #111827;
+            touch-action: manipulation;
+        }
+        
+        #floatingButton {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: #7e22ce;
+            color: white;
+            font-size: 30px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 4px 15px rgba(126, 34, 206, 0.4);
+            z-index: 100;
+            border: none;
+        }
+        
+        #floatingButton:active {
+            background: #9333ea;
+            transform: scale(0.95);
+        }
+
+        #sphereControl {
+            position: fixed;
+            bottom: 30px;
+            left: 30px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: #0ea5e9;
+            color: white;
+            font-size: 24px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 4px 15px rgba(14, 165, 233, 0.4);
+            z-index: 100;
+            border: none;
+        }
+        
+        #sphereControl:active {
+            background: #38bdf8;
+            transform: scale(0.95);
+        }
+        
+        #overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(4px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+        }
+        
+        #overlay.visible {
+            opacity: 1;
+            pointer-events: all;
+        }
+        
+        #popup {
+            background: #1e293b;
+            padding: 20px;
+            border-radius: 16px;
+            width: 85%;
+            max-width: 350px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+        }
+        
+        #closePopup {
+            float: right;
+            background: none;
+            border: none;
+            color: #94a3b8;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .popup-title {
+            font-size: 20px;
+            font-weight: 500;
+            margin-bottom: 20px;
+            margin-top: 5px;
+        }
+        
+        .slider-container {
+            margin: 16px 0;
+        }
+        
+        .slider-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        
+        .slider-header label {
+            font-size: 16px;
+            color: #cbd5e1;
+        }
+        
+        .slider-value {
+            font-size: 16px;
+            color: #a855f7;
+            font-weight: 500;
+        }
+        
+        input[type="range"] {
+            width: 100%;
+            height: 6px;
+            -webkit-appearance: none;
+            background: #334155;
+            border-radius: 3px;
+            outline: none;
+        }
+        
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 20px;
+            height: 20px;
+            background: #a855f7;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+        
+        .action-buttons {
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+            margin-top: 25px;
+        }
+
+        .toggle-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 16px 0;
+        }
+
+        .toggle-container label {
+            font-size: 16px;
+            color: #cbd5e1;
+        }
+
+        .switch {
+            position: relative;
+            display: inline-block;
+            width: 50px;
+            height: 24px;
+        }
+
+        .switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #334155;
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 16px;
+            width: 16px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: #a855f7;
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+    </style>
+</head>
+<body>
+    <div id="header">
+        <div class="title">Crystal Polyhedra</div>
+        
+        <div class="button-row">
+            <button id="spawnBtn" class="primary">
+                <span class="icon">+</span> Spawn
+            </button>
+            <button id="clearBtn" class="secondary">
+                <span class="icon">🗑️</span> Clear
+            </button>
+            <button id="settingsBtn" class="secondary">
+                <span class="icon">⚙️</span> Settings
+            </button>
+        </div>
+    </div>
+    
+    <canvas id="gameCanvas"></canvas>
+    
+    <button id="floatingButton">+</button>
+    <button id="sphereControl">🔮</button>
+    
+    <div id="overlay">
+        <div id="popup">
+            <button id="closePopup">×</button>
+            <div class="popup-title">Settings</div>
+            
+            <div class="slider-container">
+                <div class="slider-header">
+                    <label for="gravitySlider">Gravity</label>
+                    <span id="gravityValue" class="slider-value">0.08</span>
+                </div>
+                <input type="range" id="gravitySlider" min="0" max="0.2" step="0.01" value="0.08">
+            </div>
+            
+            <div class="slider-container">
+                <div class="slider-header">
+                    <label for="bounceSlider">Bounce</label>
+                    <span id="bounceValue" class="slider-value">0.8</span>
+                </div>
+                <input type="range" id="bounceSlider" min="0.2" max="1" step="0.05" value="0.8">
+            </div>
+            
+            <div class="slider-container">
+                <div class="slider-header">
+                    <label for="sizeSlider">Crystal Size</label>
+                    <span id="sizeValue" class="slider-value">1.0</span>
+                </div>
+                <input type="range" id="sizeSlider" min="0.5" max="1.5" step="0.1" value="1.0">
+            </div>
+            
+            <div class="slider-container">
+                <div class="slider-header">
+                    <label for="rotationSlider">Rotation Speed</label>
+                    <span id="rotationValue" class="slider-value">1.0</span>
+                </div>
+                <input type="range" id="rotationSlider" min="0" max="2" step="0.1" value="1.0">
+            </div>
+
+            <div class="toggle-container">
+                <label for="soundToggle">Sound Effects</label>
+                <label class="switch">
+                    <input type="checkbox" id="soundToggle" checked>
+                    <span class="slider"></span>
+                </label>
+            </div>
+            
+            <div class="action-buttons">
+                <button id="applySettings" class="primary">Apply</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Game setup
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const spawnBtn = document.getElementById('spawnBtn');
+        const clearBtn = document.getElementById('clearBtn');
+        const settingsBtn = document.getElementById('settingsBtn');
+        const floatingButton = document.getElementById('floatingButton');
+        const sphereControl = document.getElementById('sphereControl');
+        const overlay = document.getElementById('overlay');
+        const closePopup = document.getElementById('closePopup');
+        const applySettings = document.getElementById('applySettings');
+        const soundToggle = document.getElementById('soundToggle');
+        
+        // Settings elements
+        const gravitySlider = document.getElementById('gravitySlider');
+        const bounceSlider = document.getElementById('bounceSlider');
+        const sizeSlider = document.getElementById('sizeSlider');
+        const rotationSlider = document.getElementById('rotationSlider');
+        const gravityValue = document.getElementById('gravityValue');
+        const bounceValue = document.getElementById('bounceValue');
+        const sizeValue = document.getElementById('sizeValue');
+        const rotationValue = document.getElementById('rotationValue');
+        
+        // Interaction variables
+        let isDragging = false;
+        let draggedCrystal = null;
+        let lastTouchX = 0;
+        let lastTouchY = 0;
+        let soundEnabled = true;
+        
+        // Sphere control
+        let sphereActive = false;
+        let controlSphere = null;
+        let trailPoints = [];
+        
+        // Physics settings
+        let GRAVITY = 0.08;
+        let BOUNCE_FACTOR = 0.8;
+        let DRAG = 0.98;
+        let GROUND_FRICTION = 0.95; // New friction for resting crystals
+        let REST_THRESHOLD = 0.1; // Threshold for entering rest state
+        let SIZE_MULTIPLIER = 1.0;
+        let ROTATION_MULTIPLIER = 1.0;
+
+        // Audio context and sounds
+        let audioContext;
+        let soundInitialized = false;
+
+        // Color palettes - multiple harmonious variations
+        const crystalPalettes = [
+            // Purple family
+            ['#9333ea', '#a855f7', '#c084fc', '#d8b4fe'],
+            // Blue family
+            ['#2563eb', '#3b82f6', '#60a5fa', '#93c5fd'],
+            // Teal family
+            ['#0d9488', '#14b8a6', '#2dd4bf', '#5eead4'],
+            // Pink family
+            ['#db2777', '#ec4899', '#f472b6', '#f9a8d4'],
+            // Amber family
+            ['#d97706', '#f59e0b', '#fbbf24', '#fcd34d']
+        ];
+        
+        // Game state
+        const crystals = [];
+        
+        // Initialize audio context (must be triggered by user interaction)
+        function initAudio() {
+            if (soundInitialized) return;
+            
+            try {
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                soundInitialized = true;
+            } catch(e) {
+                console.warn('Web Audio API not supported', e);
+            }
+        }
+        
+        // Play a bounce sound
+        function playBounceSound(size, velocity) {
+            if (!soundEnabled || !soundInitialized || !audioContext) return;
+            
+            try {
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                // Higher pitch for smaller crystals
+                const baseFreq = 300 + (1 / size) * 300;
+                oscillator.frequency.value = baseFreq;
+                oscillator.type = 'sine';
+                
+                // Volume based on impact velocity
+                const volume = Math.min(0.15, Math.abs(velocity) / 30);
+                gainNode.gain.value = volume;
+                
+                // Short decay envelope
+                gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.3);
+                
+                oscillator.start();
+                oscillator.stop(audioContext.currentTime + 0.3);
+            } catch(e) {
+                console.warn('Error playing sound', e);
+            }
+        }
+        
+        // Play a collision sound
+        function playCollisionSound(intensity) {
+            if (!soundEnabled || !soundInitialized || !audioContext) return;
+            
+            try {
+                const oscillator = audioContext.createOscillator();
+                const gainNode = audioContext.createGain();
+                
+                oscillator.connect(gainNode);
+                gainNode.connect(audioContext.destination);
+                
+                // Random note from a harmonic scale
+                const notes = [261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88]; // C major scale
+                const noteIndex = Math.floor(Math.random() * notes.length);
+                oscillator.frequency.value = notes[noteIndex];
+                oscillator.type = 'triangle';
+                
+                // Volume based on collision intensity
+                const volume = Math.min(0.1, intensity * 0.3);
+                gainNode.gain.value = volume;
+                
+                // Very short decay for subtle chime
+                gainNode.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.2);
+                
+                oscillator.start();
+                oscillator.stop(audioContext.currentTime + 0.2);
+            } catch(e) {
+                console.warn('Error playing sound', e);
+            }
+        }
+        
+        // Play spawn sound
+        function playSpawnSound(size) {
+            if (!soundEnabled || !soundInitialized || !audioContext) return;
+            
+            try {
+                // Create a more complex sound using multiple oscillators
+                const mainOsc = audioContext.createOscillator();
+                const subOsc = audioContext.createOscillator();
+                const mainGain = audioContext.createGain();
+                const subGain = audioContext.createGain();
+                
+                mainOsc.connect(mainGain);
+                subOsc.connect(subGain);
+                mainGain.connect(audioContext.destination);
+                subGain.connect(audioContext.destination);
+                
+                // Main tone
+                mainOsc.frequency.value = 400 - size * 100;
+                mainOsc.type = 'sine';
+                
+                // Subtle undertone
+                subOsc.frequency.value = (400 - size * 100) * 1.5;
+                subOsc.type = 'triangle';
+                
+                // Volume and envelope
+                mainGain.gain.value = 0.2;
+                subGain.gain.value = 0.05;
+                
+                mainGain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.8);
+                subGain.gain.exponentialRampToValueAtTime(0.001, audioContext.currentTime + 0.6);
+                
+                // Start/stop
+                mainOsc.start();
+                subOsc.start();
+                mainOsc.stop(audioContext.currentTime + 0.8);
+                subOsc.stop(audioContext.currentTime + 0.6);
+            } catch(e) {
+                console.warn('Error playing sound', e);
+            }
+        }
+        
+        // Resize canvas
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight - document.getElementById('header').offsetHeight;
+        }
+        
+        // Initialize
+        function init() {
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            
+            // Apply settings
+            updateSettings();
+            
+            // Start game loop
+            gameLoop();
+        }
+        
+        // Update settings from sliders
+        function updateSettings() {
+            GRAVITY = parseFloat(gravitySlider.value);
+            BOUNCE_FACTOR = parseFloat(bounceSlider.value);
+            SIZE_MULTIPLIER = parseFloat(sizeSlider.value);
+            ROTATION_MULTIPLIER = parseFloat(rotationSlider.value);
+            soundEnabled = soundToggle.checked;
+            
+            // Update display values
+            gravityValue.textContent = GRAVITY.toFixed(2);
+            bounceValue.textContent = BOUNCE_FACTOR.toFixed(2);
+            sizeValue.textContent = SIZE_MULTIPLIER.toFixed(1);
+            rotationValue.textContent = ROTATION_MULTIPLIER.toFixed(1);
+        }
+        
+        // Single shape definition - Icosahedron (looks most like a gemstone)
+        const icosahedron = {
+            vertices: [
+                {x: 0, y: 0.5, z: 0.8},
+                {x: 0, y: 0.5, z: -0.8},
+                {x: 0, y: -0.5, z: 0.8},
+                {x: 0, y: -0.5, z: -0.8},
+                {x: 0.5, y: 0.8, z: 0},
+                {x: 0.5, y: -0.8, z: 0},
+                {x: -0.5, y: 0.8, z: 0},
+                {x: -0.5, y: -0.8, z: 0},
+                {x: 0.8, y: 0, z: 0.5},
+                {x: 0.8, y: 0, z: -0.5},
+                {x: -0.8, y: 0, z: 0.5},
+                {x: -0.8, y: 0, z: -0.5}
+            ],
+            faces: [
+                [0, 4, 8], [0, 8, 2], [0, 2, 10], [0, 10, 6], [0, 6, 4],
+                [3, 5, 9], [3, 9, 1], [3, 1, 11], [3, 11, 7], [3, 7, 5],
+                [1, 9, 4], [1, 4, 6], [1, 6, 11], [2, 8, 5], [2, 5, 7],
+                [2, 7, 10], [8, 9, 5], [4, 9, 8], [11, 6, 10], [7, 11, 10]
+            ]
+        };
+        
+        // 3D projection functions
+        function project3Dto2D(vertex, rotation, scale = 40) {
+            // Apply 3D rotations
+            // X-axis rotation
+            let y1 = vertex.y * Math.cos(rotation.x) - vertex.z * Math.sin(rotation.x);
+            let z1 = vertex.y * Math.sin(rotation.x) + vertex.z * Math.cos(rotation.x);
+            
+            // Y-axis rotation
+            let x2 = vertex.x * Math.cos(rotation.y) + z1 * Math.sin(rotation.y);
+            let z2 = -vertex.x * Math.sin(rotation.y) + z1 * Math.cos(rotation.y);
+            
+            // Z-axis rotation
+            let x3 = x2 * Math.cos(rotation.z) - y1 * Math.sin(rotation.z);
+            let y3 = x2 * Math.sin(rotation.z) + y1 * Math.cos(rotation.z);
+            
+            return { x: x3 * scale, y: y3 * scale };
+        }
+        
+        // Convert 3D object to 2D paths for drawing
+        function convert3DObjectToPaths(shape, rotation) {
+            const paths = [];
+            
+            for (const faceIndices of shape.faces) {
+                const points = [];
+                
+                for (const index of faceIndices) {
+                    const vertex = shape.vertices[index];
+                    const point = project3Dto2D(vertex, rotation);
+                    points.push(point);
+                }
+                
+                // Close the path
+                if (points.length > 0) {
+                    points.push({ ...points[0] });
+                }
+                
+                paths.push(points);
+            }
+            
+            return paths;
+        }
+        
+        // Check if a point is inside a crystal
+        function isPointInCrystal(x, y, crystal) {
+            // Simple circle-based hit testing
+            const dx = x - crystal.x;
+            const dy = y - crystal.y;
+            const distance = Math.sqrt(dx * dx + dy * dy);
+            return distance < 40 * crystal.scale; // Approximate size
+        }
+        
+        // The Control Sphere class
+        class Sphere {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.vx = 0;
+                this.vy = 0;
+                this.radius = 20;
+                this.color = '#0ea5e9';
+                this.glowColor = 'rgba(14, 165, 233, 0.3)';
+                this.trail = [];
+                this.maxTrailLength = 20;
+            }
+            
+            update() {
+                // Update position
+                this.x += this.vx;
+                this.vy += GRAVITY * 0.5; // Half the gravity of crystals
+                this.y += this.vy;
+                
+                // Add trail point
+                if (Math.abs(this.vx) > 0.1 || Math.abs(this.vy) > 0.1) {
+                    this.trail.unshift({ x: this.x, y: this.y, alpha: 1 });
+                    if (this.trail.length > this.maxTrailLength) {
+                        this.trail.pop();
+                    }
+                }
+                
+                // Fade trail
+                for (let i = 0; i < this.trail.length; i++) {
+                    this.trail[i].alpha -= 0.05;
+                    if (this.trail[i].alpha < 0) this.trail[i].alpha = 0;
+                }
+                
+                // Boundary collision
+                const margin = this.radius;
+                if (this.x < margin) {
+                    this.x = margin;
+                    this.vx *= -BOUNCE_FACTOR;
+                }
+                if (this.x > canvas.width - margin) {
+                    this.x = canvas.width - margin;
+                    this.vx *= -BOUNCE_FACTOR;
+                }
+                if (this.y > canvas.height - margin) {
+                    this.y = canvas.height - margin;
+                    this.vy *= -BOUNCE_FACTOR;
+                }
+                
+                // Apply drag
+                this.vx *= DRAG;
+                this.vy *= DRAG;
+            }
+            
+            draw(ctx) {
+                // Draw trail
+                for (let i = 0; i < this.trail.length; i++) {
+                    const point = this.trail[i];
+                    const size = this.radius * (1 - i / this.maxTrailLength) * 0.8;
+                    ctx.beginPath();
+                    ctx.arc(point.x, point.y, size, 0, Math.PI * 2);
+                    ctx.fillStyle = `rgba(14, 165, 233, ${point.alpha * 0.3})`;
+                    ctx.fill();
+                }
+                
+                // Draw glow
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius * 1.6, 0, Math.PI * 2);
+                ctx.fillStyle = this.glowColor;
+                ctx.fill();
+                
+                // Draw sphere
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                ctx.fillStyle = this.color;
+                ctx.fill();
+                
+                // Draw highlight
+                ctx.beginPath();
+                ctx.arc(this.x - this.radius * 0.3, this.y - this.radius * 0.3, this.radius * 0.4, 0, Math.PI * 2);
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+                ctx.fill();
+            }
+        }
+        
+        // Crystal class
+        class Crystal {
+            constructor(x, y) {
+                this.x = x;
+                this.y = y;
+                this.vx = Math.random() * 6 - 3;    // Random velocity
+                this.vy = Math.random() * -10 - 5;
+                this.rotation = {
+                    x: Math.random() * Math.PI * 2,
+                    y: Math.random() * Math.PI * 2,
+                    z: Math.random() * Math.PI * 2
+                };
+                this.rotationSpeed = {
+                    x: (Math.random() - 0.5) * 0.05 * ROTATION_MULTIPLIER,
+                    y: (Math.random() - 0.5) * 0.05 * ROTATION_MULTIPLIER,
+                    z: (Math.random() - 0.5) * 0.05 * ROTATION_MULTIPLIER
+                };
+                this.shape = icosahedron;
+                this.paths = convert3DObjectToPaths(this.shape, this.rotation);
+                this.scale = (0.8 + Math.random() * 0.4) * SIZE_MULTIPLIER;
+                this.opacity = 1;
+                this.fadeOut = false;
+                this.isHeld = false;
+                this.mass = this.scale * this.scale; // Mass based on size for physics
+                this.id = Math.random(); // Unique ID for collision priority
+                
+                // NEW: Rest state properties
+                this.isResting = false;
+                this.restTime = 0;
+                this.restRotation = {
+                    x: 0,
+                    y: 0,
+                    z: 0
+                };
+                
+                // Light direction for shading
+                this.lightDirection = {
+                    x: Math.random() * 2 - 1,
+                    y: -1,
+                    z: Math.random() * 2 - 1
+                };
+                
+                // Normalize light direction
+                const magnitude = Math.sqrt(
+                    this.lightDirection.x * this.lightDirection.x +
+                    this.lightDirection.y * this.lightDirection.y +
+                    this.lightDirection.z * this.lightDirection.z
+                );
+                
+                this.lightDirection.x /= magnitude;
+                this.lightDirection.y /= magnitude;
+                this.lightDirection.z /= magnitude;
+                
+                // NEW: Choose a random palette
+                this.palette = crystalPalettes[Math.floor(Math.random() * crystalPalettes.length)];
+                
+                // NEW: Each crystal gets a slight color variation
+                this.colorVariation = Math.random() * 0.2 + 0.9; // 0.9 to 1.1
+            }
+            
+            update() {
+                // Skip physics if being dragged
+                if (this.isHeld) {
+                    this.isResting = false; // No longer resting if held
+                    this.restTime = 0;
+                    
+                    // Update paths with new rotation
+                    this.paths = convert3DObjectToPaths(this.shape, this.rotation);
+                    return true;
+                }
+                
+                // Check if crystal should be in rest state
+                const isNearGround = this.y > canvas.height - 30 * this.scale;
+                const isMovingSlow = Math.abs(this.vx) < REST_THRESHOLD && Math.abs(this.vy) < REST_THRESHOLD;
+                
+                if (isNearGround && isMovingSlow) {
+                    if (!this.isResting) {
+                        // Just started resting
+                        this.restTime = 0;
+                        this.isResting = true;
+                        
+                        // Save current rotation to gradually slow down to
+                        this.restRotation.x = this.rotation.x;
+                        this.restRotation.y = this.rotation.y;
+                        this.restRotation.z = this.rotation.z;
+                    } else {
+                        // Continue resting
+                        this.restTime++;
+                        
+                        // Apply stronger ground friction
+                        this.vx *= GROUND_FRICTION;
+                        this.vy *= GROUND_FRICTION;
+                        
+                        // Gradually slow down rotation
+                        const slowdownFactor = Math.max(0, 1 - this.restTime / 100);
+                        this.rotationSpeed.x *= slowdownFactor;
+                        this.rotationSpeed.y *= slowdownFactor;
+                        this.rotationSpeed.z *= slowdownFactor;
+                    }
+                } else {
+                    // Not resting
+                    this.isResting = false;
+                    this.restTime = 0;
+                }
+                
+                // Physics
+                this.vy += GRAVITY;
+                this.x += this.vx;
+                this.y += this.vy;
+                this.vx *= DRAG;
+                this.vy *= DRAG;
+                
+                // Update rotation
+                this.rotation.x += this.rotationSpeed.x;
+                this.rotation.y += this.rotationSpeed.y;
+                this.rotation.z += this.rotationSpeed.z;
+                
+                // Boundaries
+                const margin = 20;
+                const prevVy = this.vy; // Store previous velocity for sound
+                
+                // Bottom collision
+                if (this.y > canvas.height - margin) {
+                    this.y = canvas.height - margin;
+                    this.vy *= -BOUNCE_FACTOR;
+                    this.vx *= 0.9;
+                    
+                    // Play bounce sound if velocity is significant
+                    if (Math.abs(prevVy) > 1) {
+                        playBounceSound(this.scale, prevVy);
+                    }
+                }
+                
+                // Side collisions
+                if (this.x < margin) {
+                    this.x = margin;
+                    this.vx *= -BOUNCE_FACTOR;
+                }
+                if (this.x > canvas.width - margin) {
+                    this.x = canvas.width - margin;
+                    this.vx *= -BOUNCE_FACTOR;
+                }
+                
+                // Update paths with new rotation
+                this.paths = convert3DObjectToPaths(this.shape, this.rotation);
+                
+                // Handle fade out
+                if (this.fadeOut) {
+                    this.opacity -= 0.05;
+                    if (this.opacity <= 0) {
+                        this.opacity = 0;
+                        return false; // Remove this object
+                    }
+                }
+                
+                return true;
+            }
+            
+            draw(ctx) {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.scale(this.scale, this.scale);
+                
+                // Draw highlight if held
+                if (this.isHeld) {
+                    ctx.fillStyle = 'rgba(255, 255, 255, 0.15)';
+                    ctx.beginPath();
+                    ctx.arc(0, 0, 45, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                
+                // Calculate face visibility for backface culling and depth sorting
+                const facesWithDepth = [];
+                
+                for (let i = 0; i < this.paths.length; i++) {
+                    const face = this.shape.faces[i];
+                    if (face.length < 3) continue;
+                    
+                    // Calculate face center in 3D
+                    let centerX = 0, centerY = 0, centerZ = 0;
+                    for (const idx of face) {
+                        const vertex = this.shape.vertices[idx];
+                        centerX += vertex.x;
+                        centerY += vertex.y;
+                        centerZ += vertex.z;
+                    }
+                    centerX /= face.length;
+                    centerY /= face.length;
+                    centerZ /= face.length;
+                    
+                    // Rotate center point
+                    const rotatedCenter = {
+                        x: centerX,
+                        y: centerY * Math.cos(this.rotation.x) - centerZ * Math.sin(this.rotation.x),
+                        z: centerY * Math.sin(this.rotation.x) + centerZ * Math.cos(this.rotation.x)
+                    };
+                    
+                    const temp = {
+                        x: rotatedCenter.x * Math.cos(this.rotation.y) + rotatedCenter.z * Math.sin(this.rotation.y),
+                        y: rotatedCenter.y,
+                        z: -rotatedCenter.x * Math.sin(this.rotation.y) + rotatedCenter.z * Math.cos(this.rotation.y)
+                    };
+                    
+                    rotatedCenter.x = temp.x * Math.cos(this.rotation.z) - temp.y * Math.sin(this.rotation.z);
+                    rotatedCenter.y = temp.x * Math.sin(this.rotation.z) + temp.y * Math.cos(this.rotation.z);
+                    rotatedCenter.z = temp.z;
+                    
+                    // Calculate dot product for backface culling
+                    const normalZ = rotatedCenter.z;
+                    
+                    // Only include visible faces (facing towards viewer)
+                    if (normalZ <= 0) {
+                        facesWithDepth.push({
+                            index: i,
+                            z: rotatedCenter.z, // For depth sorting
+                            path: this.paths[i]
+                        });
+                    }
+                }
+                
+                // Sort faces by depth
+                facesWithDepth.sort((a, b) => b.z - a.z);
+                
+                // First, calculate face normals for lighting
+                const faceNormals = [];
+                this.paths.forEach((points, index) => {
+                    if (points.length < 3) return;
+                    
+                    // Use the first three points to calculate the normal
+                    const p1 = { 
+                        x: points[0].x, 
+                        y: points[0].y, 
+                        z: this.shape.vertices[this.shape.faces[index][0]].z 
+                    };
+                    const p2 = { 
+                        x: points[1].x, 
+                        y: points[1].y, 
+                        z: this.shape.vertices[this.shape.faces[index][1]].z 
+                    };
+                    const p3 = { 
+                        x: points[2].x, 
+                        y: points[2].y, 
+                        z: this.shape.vertices[this.shape.faces[index][2]].z 
+                    };
+                    
+                    // Calculate normal (simplified for 2D)
+                    const normal = {
+                        x: (p2.y - p1.y) * (p3.z - p1.z) - (p2.z - p1.z) * (p3.y - p1.y),
+                        y: (p2.z - p1.z) * (p3.x - p1.x) - (p2.x - p1.x) * (p3.z - p1.z),
+                        z: (p2.x - p1.x) * (p3.y - p1.y) - (p2.y - p1.y) * (p3.x - p1.x)
+                    };
+                    
+                    // Normalize
+                    const length = Math.sqrt(normal.x * normal.x + normal.y * normal.y + normal.z * normal.z);
+                    normal.x /= length;
+                    normal.y /= length;
+                    normal.z /= length;
+                    
+                    faceNormals.push(normal);
+                });
+                
+                // Draw faces in depth order (back to front)
+                facesWithDepth.forEach(({ index, path }) => {
+                    ctx.beginPath();
+                    ctx.moveTo(path[0].x, path[0].y);
+                    
+                    for (let i = 1; i < path.length; i++) {
+                        ctx.lineTo(path[i].x, path[i].y);
+                    }
+                    
+                    // Use color from palette with variation
+                    const baseColor = this.palette[index % this.palette.length];
+                    
+                    // Calculate lighting
+                    let light = 0.5; // Ambient light
+                    
+                    if (index < faceNormals.length) {
+                        // Calculate dot product with light direction
+                        const normal = faceNormals[index];
+                        const dotProduct = 
+                            normal.x * this.lightDirection.x + 
+                            normal.y * this.lightDirection.y + 
+                            normal.z * this.lightDirection.z;
+                        
+                        // Add diffuse lighting (dotProduct ranges from -1 to 1)
+                        light += Math.max(0, dotProduct) * 0.5;
+                    }
+                    
+                    // Clamp light value
+                    light = Math.min(1.0, Math.max(0.3, light));
+                    
+                    // Parse base color
+                    const r = parseInt(baseColor.substring(1, 3), 16);
+                    const g = parseInt(baseColor.substring(3, 5), 16);
+                    const b = parseInt(baseColor.substring(5, 7), 16);
+                    
+                    // Apply lighting and color variation
+                    const adjustedR = Math.floor(r * light * this.colorVariation);
+                    const adjustedG = Math.floor(g * light * this.colorVariation);
+                    const adjustedB = Math.floor(b * light * this.colorVariation);
+                    
+                    ctx.fillStyle = `rgb(${adjustedR}, ${adjustedG}, ${adjustedB})`;
+                    
+                    // Apply opacity
+                    if (this.opacity < 1) {
+                        ctx.globalAlpha = this.opacity;
+                    }
+                    
+                    ctx.fill();
+                    
+                    // Add highlight edges for crystalline effect
+                    ctx.strokeStyle = 'rgba(255,255,255,0.2)';
+                    ctx.lineWidth = 0.5;
+                    ctx.stroke();
+                    
+                    // Optional: Add small highlights at vertices for sparkle
+                    if (Math.random() < 0.3 && !this.isResting) {
+                        for (let i = 0; i < path.length - 1; i++) {
+                            if (Math.random() < 0.1) {
+                                ctx.beginPath();
+                                ctx.arc(path[i].x, path[i].y, 1, 0, Math.PI * 2);
+                                ctx.fillStyle = 'rgba(255,255,255,0.7)';
+                                ctx.fill();
+                            }
+                        }
+                    }
+                });
+                
+                ctx.restore();
+            }
+        }
+        
+        // Process collisions between crystals
+        function processCollisions() {
+            // Sphere collision with crystals
+            if (sphereActive && controlSphere) {
+                for (const crystal of crystals) {
+                    // Skip if crystal is fading out
+                    if (crystal.fadeOut) continue;
+                    
+                    const dx = crystal.x - controlSphere.x;
+                    const dy = crystal.y - controlSphere.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    const minDistance = (35 * crystal.scale) + controlSphere.radius;
+                    
+                    if (distance < minDistance) {
+                        // Calculate collision response
+                        const angle = Math.atan2(dy, dx);
+                        const overlap = minDistance - distance;
+                        
+                        // Move objects apart
+                        crystal.x += Math.cos(angle) * overlap * 0.5;
+                        crystal.y += Math.sin(angle) * overlap * 0.5;
+                        controlSphere.x -= Math.cos(angle) * overlap * 0.5;
+                        controlSphere.y -= Math.sin(angle) * overlap * 0.5;
+                        
+                        // Calculate impact velocity
+                        const vx = controlSphere.vx - crystal.vx;
+                        const vy = controlSphere.vy - crystal.vy;
+                        
+                        // Calculate dot product (collision force)
+                        const dotProduct = dx * vx + dy * vy;
+                        
+                        // Only apply impulse if objects are moving toward each other
+                        if (dotProduct < 0) {
+                            const impulseStrength = dotProduct / distance;
+                            const impulseX = dx / distance * impulseStrength;
+                            const impulseY = dy / distance * impulseStrength;
+                            
+                            // Apply impulse (sphere has fixed mass of 1)
+                            const totalMass = crystal.mass + 1;
+                            const crystalRatio = 1 / totalMass;
+                            const sphereRatio = crystal.mass / totalMass;
+                            
+                            crystal.vx += impulseX * crystalRatio * BOUNCE_FACTOR * 1.2;
+                            crystal.vy += impulseY * crystalRatio * BOUNCE_FACTOR * 1.2;
+                            controlSphere.vx -= impulseX * sphereRatio * BOUNCE_FACTOR * 1.2;
+                            controlSphere.vy -= impulseY * sphereRatio * BOUNCE_FACTOR * 1.2;
+                            
+                            // Wake up crystal if it was resting
+                            if (crystal.isResting) {
+                                crystal.isResting = false;
+                                crystal.restTime = 0;
+                                
+                                // Add a bit of rotation impulse
+                                crystal.rotationSpeed.x += (Math.random() - 0.5) * 0.02;
+                                crystal.rotationSpeed.y += (Math.random() - 0.5) * 0.02;
+                                crystal.rotationSpeed.z += (Math.random() - 0.5) * 0.02;
+                            }
+                            
+                            // Play collision sound
+                            const collisionIntensity = Math.sqrt(impulseX*impulseX + impulseY*impulseY);
+                            playCollisionSound(collisionIntensity);
+                        }
+                    }
+                }
+            }
+            
+            // Crystal-to-crystal collisions
+            // Sort crystals by ID for consistent collision handling
+            const sortedCrystals = [...crystals].sort((a, b) => a.id - b.id);
+            
+            for (let i = 0; i < sortedCrystals.length; i++) {
+                const crystal1 = sortedCrystals[i];
+                
+                // Skip if being held or fading out
+                if (crystal1.isHeld || crystal1.fadeOut) continue;
+                
+                for (let j = i + 1; j < sortedCrystals.length; j++) {
+                    const crystal2 = sortedCrystals[j];
+                    
+                    // Skip if being held or fading out
+                    if (crystal2.isHeld || crystal2.fadeOut) continue;
+                    
+                    const dx = crystal2.x - crystal1.x;
+                    const dy = crystal2.y - crystal1.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    const minDistance = (35 * crystal1.scale) + (35 * crystal2.scale);
+                    
+                    if (distance < minDistance) {
+                        // Calculate collision response
+                        const angle = Math.atan2(dy, dx);
+                        const overlap = minDistance - distance;
+                        
+                        // Calculate mass ratio for physics response
+                        const totalMass = crystal1.mass + crystal2.mass;
+                        const crystal1Ratio = crystal2.mass / totalMass;
+                        const crystal2Ratio = crystal1.mass / totalMass;
+                        
+                        // Move crystals apart based on mass
+                        const moveX = Math.cos(angle) * overlap;
+                        const moveY = Math.sin(angle) * overlap;
+                        
+                        // Apply position adjustment (heavier objects move less)
+                        crystal1.x -= moveX * crystal1Ratio * 0.5;
+                        crystal1.y -= moveY * crystal1Ratio * 0.5;
+                        crystal2.x += moveX * crystal2Ratio * 0.5;
+                        crystal2.y += moveY * crystal2Ratio * 0.5;
+                        
+                        // Calculate impact velocity
+                        const vx = crystal2.vx - crystal1.vx;
+                        const vy = crystal2.vy - crystal1.vy;
+                        
+                        // Calculate dot product (collision force)
+                        const dotProduct = dx * vx + dy * vy;
+                        
+                        // Only apply impulse if objects are moving toward each other
+                        if (dotProduct < 0) {
+                            const impulseStrength = dotProduct / distance;
+                            const impulseX = dx / distance * impulseStrength;
+                            const impulseY = dy / distance * impulseStrength;
+                            
+                            // Calculate collision intensity for sound volume
+                            const collisionIntensity = Math.abs(impulseStrength) / 10;
+                            
+                            // Apply impulse based on mass
+                            crystal1.vx += impulseX * crystal1Ratio * BOUNCE_FACTOR;
+                            crystal1.vy += impulseY * crystal1Ratio * BOUNCE_FACTOR;
+                            crystal2.vx -= impulseX * crystal2Ratio * BOUNCE_FACTOR;
+                            crystal2.vy -= impulseY * crystal2Ratio * BOUNCE_FACTOR;
+                            
+                            // Wake up crystals if they were resting
+                            if (crystal1.isResting) {
+                                crystal1.isResting = false;
+                                crystal1.restTime = 0;
+                            }
+                            if (crystal2.isResting) {
+                                crystal2.isResting = false;
+                                crystal2.restTime = 0;
+                            }
+                            
+                            // Play a subtle collision sound if intense enough
+                            if (collisionIntensity > 0.1) {
+                                playCollisionSound(collisionIntensity);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        // Game functions
+        function spawnCrystal(x, y) {
+            const crystal = new Crystal(x, y);
+            crystals.push(crystal);
+            
+            // Play spawn sound
+            if (soundInitialized) {
+                playSpawnSound(crystal.scale);
+            }
+        }
+        
+        function clearCrystals() {
+            crystals.forEach(crystal => {
+                crystal.fadeOut = true;
+            });
+        }
+        
+        // Game loop
+        function gameLoop() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Process all crystal collisions
+            processCollisions();
+            
+            // Update and draw control sphere
+            if (sphereActive && controlSphere) {
+                controlSphere.update();
+                controlSphere.draw(ctx);
+            }
+            
+            // Update and draw crystals
+            for (let i = crystals.length - 1; i >= 0; i--) {
+                const crystal = crystals[i];
+                const keepCrystal = crystal.update();
+                
+                if (keepCrystal) {
+                    crystal.draw(ctx);
+                } else {
+                    crystals.splice(i, 1);
+                }
+            }
+            
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // Drag and drop functionality
+        function startDrag(e) {
+            e.preventDefault();
+            
+            // Initialize audio on first interaction
+            initAudio();
+            
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX || (e.touches && e.touches[0].clientX)) - rect.left;
+            const y = (e.clientY || (e.touches && e.touches[0].clientY)) - rect.top;
+            
+            // Check if sphere is active and being controlled
+            if (sphereActive && controlSphere) {
+                // Simply set sphere position and reset velocity
+                controlSphere.x = x;
+                controlSphere.y = y;
+                controlSphere.vx = 0;
+                controlSphere.vy = 0;
+                isDragging = true;
+                return;
+            }
+            
+            // Check if we clicked on a crystal
+            for (let i = crystals.length - 1; i >= 0; i--) {
+                const crystal = crystals[i];
+                if (isPointInCrystal(x, y, crystal)) {
+                    isDragging = true;
+                    draggedCrystal = crystal;
+                    crystal.isHeld = true;
+                    
+                    // Store the offset from the center of the crystal
+                    crystal.dragOffsetX = x - crystal.x;
+                    crystal.dragOffsetY = y - crystal.y;
+                    
+                    // Lift the dragged crystal
+                    crystal.vx = 0;
+                    crystal.vy = 0;
+                    
+                    // Add subtle 'lift' effect - scale slightly
+                    crystal.initialScale = crystal.scale;
+                    crystal.scale *= 1.05;
+                    
+                    break;
+                }
+            }
+        }
+        
+        function handleDrag(e) {
+            e.preventDefault();
+            
+            if (!isDragging) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const x = (e.clientX || (e.touches && e.touches[0].clientX)) - rect.left;
+            const y = (e.clientY || (e.touches && e.touches[0].clientY)) - rect.top;
+            
+            // Handle sphere dragging
+            if (sphereActive && controlSphere && !draggedCrystal) {
+                // Calculate velocity based on movement
+                controlSphere.vx = (x - controlSphere.x) * 0.7;
+                controlSphere.vy = (y - controlSphere.y) * 0.7;
+                
+                // Smooth positioning for better feel
+                controlSphere.x = controlSphere.x * 0.2 + x * 0.8;
+                controlSphere.y = controlSphere.y * 0.2 + y * 0.8;
+                return;
+            }
+            
+            // Handle crystal dragging
+            if (draggedCrystal) {
+                // Apply offset for more natural dragging
+                const dragX = x - draggedCrystal.dragOffsetX;
+                const dragY = y - draggedCrystal.dragOffsetY;
+                
+                // Calculate velocity based on movement
+                draggedCrystal.vx = (dragX - draggedCrystal.x) * 0.7;
+                draggedCrystal.vy = (dragY - draggedCrystal.y) * 0.7;
+                
+                // Smooth positioning for better feel
+                draggedCrystal.x = draggedCrystal.x * 0.2 + dragX * 0.8;
+                draggedCrystal.y = draggedCrystal.y * 0.2 + dragY * 0.8;
+            }
+            
+            if (e.touches) {
+                lastTouchX = x;
+                lastTouchY = y;
+            }
+        }
+        
+        function endDrag(e) {
+            if (e) e.preventDefault();
+            
+            if (draggedCrystal) {
+                // Return to original scale
+                if (draggedCrystal.initialScale) {
+                    draggedCrystal.scale = draggedCrystal.initialScale;
+                }
+                
+                // Release with current velocity for momentum
+                draggedCrystal.isHeld = false;
+                draggedCrystal = null;
+            }
+            
+            isDragging = false;
+        }
+        
+        // Sphere controls
+        function toggleSphere() {
+            sphereActive = !sphereActive;
+            
+            if (sphereActive) {
+                if (!controlSphere) {
+                    // Create a new sphere
+                    controlSphere = new Sphere(canvas.width / 2, canvas.height / 2);
+                }
+                sphereControl.style.backgroundColor = '#38bdf8';
+            } else {
+                sphereControl.style.backgroundColor = '#0ea5e9';
+            }
+        }
+        
+        // Event listeners
+        canvas.addEventListener('mousedown', startDrag);
+        canvas.addEventListener('mousemove', handleDrag);
+        canvas.addEventListener('mouseup', endDrag);
+        canvas.addEventListener('mouseleave', endDrag);
+        
+        // Touch events for mobile
+        canvas.addEventListener('touchstart', startDrag, { passive: false });
+        canvas.addEventListener('touchmove', handleDrag, { passive: false });
+        canvas.addEventListener('touchend', endDrag, { passive: false });
+        canvas.addEventListener('touchcancel', endDrag, { passive: false });
+        
+        // Button events
+        spawnBtn.addEventListener('click', () => {
+            initAudio(); // Initialize audio on button click
+            spawnCrystal(canvas.width / 2, canvas.height / 3);
+        });
+        
+        clearBtn.addEventListener('click', () => {
+            clearCrystals();
+        });
+        
+        floatingButton.addEventListener('click', () => {
+            initAudio(); // Initialize audio on button click
+            spawnCrystal(canvas.width / 2, canvas.height / 3);
+        });
+        
+        sphereControl.addEventListener('click', () => {
+            initAudio(); // Initialize audio on button click
+            toggleSphere();
+        });
+        
+        // Canvas click - spawn crystal
+        canvas.addEventListener('click', (e) => {
+            if (isDragging) return; // Don't spawn if dragging
+            
+            const rect = canvas.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const y = e.clientY - rect.top;
+            
+            // Check if we clicked on an existing crystal
+            let clickedOnCrystal = false;
+            for (const crystal of crystals) {
+                if (isPointInCrystal(x, y, crystal)) {
+                    clickedOnCrystal = true;
+                    break;
+                }
+            }
+            
+            // Only spawn if we didn't click on a crystal
+            if (!clickedOnCrystal) {
+                initAudio(); // Initialize audio on canvas click
+                spawnCrystal(x, y);
+            }
+        });
+        
+        // Settings
+        settingsBtn.addEventListener('click', () => {
+            overlay.classList.add('visible');
+        });
+        
+        closePopup.addEventListener('click', () => {
+            overlay.classList.remove('visible');
+            updateSettings();
+        });
+        
+        // Click outside to close popup
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) {
+                overlay.classList.remove('visible');
+                updateSettings();
+            }
+        });
+        
+        // Apply settings
+        applySettings.addEventListener('click', () => {
+            updateSettings();
+            overlay.classList.remove('visible');
+        });
+        
+        // Setting sliders - update values while sliding
+        gravitySlider.addEventListener('input', () => {
+            gravityValue.textContent = parseFloat(gravitySlider.value).toFixed(2);
+        });
+        
+        bounceSlider.addEventListener('input', () => {
+            bounceValue.textContent = parseFloat(bounceSlider.value).toFixed(2);
+        });
+        
+        sizeSlider.addEventListener('input', () => {
+            sizeValue.textContent = parseFloat(sizeSlider.value).toFixed(1);
+        });
+        
+        rotationSlider.addEventListener('input', () => {
+            rotationValue.textContent = parseFloat(rotationSlider.value).toFixed(1);
+        });
+        
+        // Sound toggle
+        soundToggle.addEventListener('change', function() {
+            soundEnabled = this.checked;
+        });
+        
+        // Prevent page scrolling on touch
+        document.body.addEventListener('touchmove', function(e) {
+            if (e.target === canvas) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+        
+        // Spawn initial crystal
+        window.addEventListener('load', function() {
+            // Initialize the game
+            init();
+            
+            // Spawn a crystal after a short delay
+            setTimeout(() => {
+                spawnCrystal(canvas.width / 2, canvas.height / 3);
+            }, 500);
+        });
+    </script>
+</body>
+</html>

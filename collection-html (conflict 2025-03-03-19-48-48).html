@@ -1,0 +1,1832 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visual Canvas Collection</title>
+    <style>
+        /* Core styles - clean design with slide-out menu */
+        :root {
+            --primary: #3b82f6;
+            --primary-dark: #2563eb;
+            --secondary: #f8fafc;
+            --text: #1e293b;
+            --text-light: #94a3b8;
+            --background: #ffffff;
+            --menu-bg: #1e293b;
+            --menu-text: #f8fafc;
+            --menu-item-hover: #334155;
+            --menu-item-active: #3b82f6;
+            --shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            --transition-speed: 0.3s;
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: var(--background);
+            color: var(--text);
+            min-height: 100vh;
+            overflow-x: hidden;
+            position: relative;
+        }
+        
+        /* Slide-out menu */
+        .menu-toggle {
+            position: fixed;
+            top: 1rem;
+            left: 1rem;
+            z-index: 300;
+            background: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 4px;
+            width: 2.5rem;
+            height: 2.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: var(--shadow);
+            transition: background-color var(--transition-speed);
+        }
+        
+        .menu-toggle:hover {
+            background: var(--primary-dark);
+        }
+        
+        .menu-toggle svg {
+            width: 1.5rem;
+            height: 1.5rem;
+        }
+        
+        .menu-backdrop {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 290;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity var(--transition-speed), visibility var(--transition-speed);
+        }
+        
+        .menu-backdrop.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        
+        .side-menu {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 280px;
+            height: 100%;
+            background: var(--menu-bg);
+            z-index: 295;
+            transform: translateX(-100%);
+            transition: transform var(--transition-speed);
+            overflow-y: auto;
+            box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        .side-menu.active {
+            transform: translateX(0);
+        }
+        
+        @media (max-width: 768px) {
+            .side-menu {
+                width: 85%;
+            }
+        }
+        
+        .menu-header {
+            padding: 1.5rem;
+            background: var(--primary);
+            color: white;
+        }
+        
+        .menu-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+        
+        .menu-subtitle {
+            font-size: 0.875rem;
+            opacity: 0.8;
+            margin-top: 0.25rem;
+        }
+        
+        .menu-items {
+            padding: 1rem 0;
+            list-style: none;
+        }
+        
+        .menu-item {
+            padding: 0;
+            transition: background-color var(--transition-speed);
+        }
+        
+        .menu-item a {
+            display: flex;
+            align-items: center;
+            padding: 0.875rem 1.5rem;
+            color: var(--menu-text);
+            text-decoration: none;
+            transition: background var(--transition-speed);
+        }
+        
+        .menu-item a:hover {
+            background: var(--menu-item-hover);
+        }
+        
+        .menu-item.active a {
+            background: var(--menu-item-active);
+            color: white;
+        }
+        
+        .menu-item-icon {
+            margin-right: 0.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 1.5rem;
+            height: 1.5rem;
+        }
+        
+        .menu-item-text {
+            font-size: 0.9375rem;
+        }
+        
+        /* App container */
+        .app-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: var(--background);
+            display: none;
+            z-index: 100;
+            overflow: hidden;
+            opacity: 0;
+            transition: opacity var(--transition-speed);
+        }
+        
+        .app-container.active {
+            opacity: 1;
+            display: block;
+        }
+        
+        /* Canvas default styling */
+        canvas {
+            display: block;
+            touch-action: none;
+        }
+        
+        /* Loading indicator */
+        .loading {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.8);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity var(--transition-speed);
+        }
+        
+        .loading.visible {
+            opacity: 1;
+            pointer-events: all;
+        }
+        
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-left-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        /* App-specific styles */
+        /* Zen Spiral Garden Styles */
+        #app1-container {
+            background: #e6e2d3;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        #app1-container canvas {
+            border: 2px solid #6b5b45;
+            border-radius: 5px;
+            background: #f0ede5;
+        }
+        
+        /* Zen Pattern Garden Styles */
+        #app2-container {
+            background: #e6e2d3;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        #app2-container canvas {
+            border: 2px solid #6b5b45;
+            border-radius: 5px;
+            background: #f0ede5;
+        }
+        
+        /* Nature Flow Visualizer Styles */
+        #app3-container {
+            margin: 0;
+            overflow: hidden;
+            background: #0a1a0a;
+        }
+        
+        #app3-container #controls {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,20,0,0.7);
+            padding: 15px 25px;
+            border-radius: 10px;
+            color: #afa;
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            font-family: Arial, sans-serif;
+        }
+        
+        #app3-container .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        #app3-container input[type="range"] {
+            accent-color: #8f8;
+        }
+        
+        /* Animated Fractal Styles */
+        #app4-container {
+            background: #f0ede5;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-family: Arial, sans-serif;
+        }
+        
+        #app4-container canvas {
+            border: 2px solid #6b5b45;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        
+        #app4-container #message {
+            text-align: center;
+            color: #6b5b45;
+            font-size: 18px;
+            margin: 0;
+            padding: 10px;
+            display: none;
+        }
+        
+        /* Zen Fractal Triangles Styles */
+        #app5-container {
+            background: #f0ede5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        #app5-container canvas {
+            border: 2px solid #6b5b45;
+            border-radius: 5px;
+        }
+        
+        /* Single Spiral Styles */
+        #app6-container {
+            background: #e6e2d3;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        #app6-container canvas {
+            border: 2px solid #6b5b45;
+            border-radius: 5px;
+            background: #f0ede5;
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Indicator -->
+    <div id="loading" class="loading">
+        <div class="spinner"></div>
+    </div>
+
+    <!-- Menu Toggle Button -->
+    <button id="menu-toggle" class="menu-toggle" aria-label="Toggle menu">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
+    </button>
+
+    <!-- Menu Backdrop -->
+    <div id="menu-backdrop" class="menu-backdrop"></div>
+
+    <!-- Side Menu -->
+    <div id="side-menu" class="side-menu">
+        <div class="menu-header">
+            <div class="menu-title">Visual Canvas Collection</div>
+            <div class="menu-subtitle">Select a visual experience</div>
+        </div>
+        
+        <ul class="menu-items">
+            <!-- Zen Spiral Garden Menu Item -->
+            <li class="menu-item" data-app="app1">
+                <a href="#app1">
+                    <div class="menu-item-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="10"></circle>
+                            <path d="M12 12 C12,7 17,7 17,12 C17,17 7,17 7,12 C7,7 12,7 12,12 Z"></path>
+                        </svg>
+                    </div>
+                    <span class="menu-item-text">Zen Spiral Garden</span>
+                </a>
+            </li>
+            
+            <!-- Zen Pattern Garden Menu Item -->
+            <li class="menu-item" data-app="app2">
+                <a href="#app2">
+                    <div class="menu-item-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path>
+                            <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
+                    </div>
+                    <span class="menu-item-text">Zen Pattern Garden</span>
+                </a>
+            </li>
+            
+            <!-- Nature Flow Visualizer Menu Item -->
+            <li class="menu-item" data-app="app3">
+                <a href="#app3">
+                    <div class="menu-item-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 2a10 10 0 1 0 10 10"></path>
+                            <path d="M18 6 A4 4 0 0 1 14 10"></path>
+                            <path d="M14 10 A4 4 0 0 1 10 14"></path>
+                            <path d="M10 14 A4 4 0 0 1 6 18"></path>
+                        </svg>
+                    </div>
+                    <span class="menu-item-text">Nature Flow Visualizer</span>
+                </a>
+            </li>
+            
+            <!-- Animated Fractal Menu Item -->
+            <li class="menu-item" data-app="app4">
+                <a href="#app4">
+                    <div class="menu-item-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+                        </svg>
+                    </div>
+                    <span class="menu-item-text">Animated Fractal</span>
+                </a>
+            </li>
+            
+            <!-- Fractal Triangles Menu Item -->
+            <li class="menu-item" data-app="app5">
+                <a href="#app5">
+                    <div class="menu-item-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="3 20 12 4 21 20"></polygon>
+                        </svg>
+                    </div>
+                    <span class="menu-item-text">Fractal Triangles</span>
+                </a>
+            </li>
+            
+            <!-- Single Spiral Menu Item -->
+            <li class="menu-item" data-app="app6">
+                <a href="#app6">
+                    <div class="menu-item-icon">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M4 4 A16 16 0 0 0 20 20"></path>
+                            <path d="M8 8 A8 8 0 0 0 16 16"></path>
+                            <path d="M12 12 A4 4 0 0 0 12 20"></path>
+                        </svg>
+                    </div>
+                    <span class="menu-item-text">Single Spiral</span>
+                </a>
+            </li>
+        </ul>
+    </div>
+
+    <!-- App Containers -->
+    
+    <!-- Zen Spiral Garden Container -->
+    <div id="app1-container" class="app-container">
+        <canvas id="app1-canvas"></canvas>
+    </div>
+    
+    <!-- Zen Pattern Garden Container -->
+    <div id="app2-container" class="app-container">
+        <canvas id="app2-canvas"></canvas>
+    </div>
+    
+    <!-- Nature Flow Visualizer Container -->
+    <div id="app3-container" class="app-container">
+        <canvas id="app3-canvas"></canvas>
+        <div id="controls">
+            <select id="patternSelect">
+                <option value="forest">Forest Breeze</option>
+                <option value="stream">Mountain Stream</option>
+                <option value="fireflies">Fireflies</option>
+                <option value="petals">Floating Petals</option>
+                <option value="bubbles">Water Bubbles</option>
+                <option value="aurora">Northern Lights</option>
+                <option value="random">Random</option>
+            </select>
+            <div class="slider-container">
+                <label>🌿 Speed</label>
+                <input type="range" id="speed" min="1" max="10" value="3">
+            </div>
+        </div>
+    </div>
+    
+    <!-- Animated Fractal Container -->
+    <div id="app4-container" class="app-container">
+        <canvas id="app4-canvas"></canvas>
+        <div id="message">Click anywhere to start drawing</div>
+    </div>
+    
+    <!-- Fractal Triangles Container -->
+    <div id="app5-container" class="app-container">
+        <canvas id="app5-canvas"></canvas>
+    </div>
+    
+    <!-- Single Spiral Container -->
+    <div id="app6-container" class="app-container">
+        <canvas id="app6-canvas"></canvas>
+    </div>
+
+    <script>
+        // App launcher core functionality
+        (function() {
+            // DOM Elements
+            const menuToggle = document.getElementById('menu-toggle');
+            const sideMenu = document.getElementById('side-menu');
+            const menuBackdrop = document.getElementById('menu-backdrop');
+            const menuItems = document.querySelectorAll('.menu-item');
+            const loading = document.getElementById('loading');
+            
+            // Constants and utilities
+            const APP_IDS = ['app1', 'app2', 'app3', 'app4', 'app5', 'app6'];
+            
+            // Show/hide loading indicator
+            function showLoading() {
+                loading.classList.add('visible');
+            }
+            
+            function hideLoading() {
+                loading.classList.remove('visible');
+            }
+            
+            // Menu toggle functionality
+            function toggleMenu() {
+                sideMenu.classList.toggle('active');
+                menuBackdrop.classList.toggle('active');
+                
+                // Update ARIA attributes
+                const isExpanded = sideMenu.classList.contains('active');
+                menuToggle.setAttribute('aria-expanded', isExpanded);
+            }
+            
+            function closeMenu() {
+                sideMenu.classList.remove('active');
+                menuBackdrop.classList.remove('active');
+                menuToggle.setAttribute('aria-expanded', 'false');
+            }
+            
+            // App registry - will be populated by Python with actual app data
+            const appRegistry = {
+                // Zen Spiral Garden
+                'app1': {
+                    init: function() {
+                        const canvas = document.getElementById('app1-canvas');
+                        const ctx = canvas.getContext('2d');
+                        
+                        // Set canvas size
+                        function resizeCanvas() {
+                            canvas.width = Math.min(window.innerWidth - 20, 800);
+                            canvas.height = Math.min(window.innerHeight - 20, 600);
+                        }
+                        resizeCanvas();
+                        
+                        this.resizeListener = () => resizeCanvas();
+                        window.addEventListener('resize', this.resizeListener);
+                        
+                        // Spiral parameters
+                        const maxRadius = 200;
+                        const rotationSpeed = 0.02;
+                        const lineWidth = 2;
+                        let spirals = [];
+                        
+                        // Create a new spiral
+                        function createSpiral() {
+                            return {
+                                x: Math.random() * canvas.width,
+                                y: Math.random() * canvas.height,
+                                angle: 0,
+                                radius: 0,
+                                rotation: Math.random() * Math.PI * 2
+                            };
+                        }
+                        
+                        // Draw a single spiral segment
+                        function drawSpiral(spiral) {
+                            const points = [];
+                            for(let i = 0; i < 10; i++) {
+                                const currentRadius = spiral.radius + i * 0.1;
+                                const currentAngle = spiral.angle + spiral.rotation + i * 0.1;
+                                
+                                const x = spiral.x + Math.cos(currentAngle) * currentRadius;
+                                const y = spiral.y + Math.sin(currentAngle) * currentRadius;
+                                points.push({x, y});
+                            }
+                            
+                            ctx.beginPath();
+                            ctx.moveTo(points[0].x, points[0].y);
+                            
+                            for(let i = 1; i < points.length; i++) {
+                                const controlPoint1 = {
+                                    x: points[i-1].x + Math.cos(spiral.rotation + spiral.angle) * 5,
+                                    y: points[i-1].y + Math.sin(spiral.rotation + spiral.angle) * 5
+                                };
+                                const controlPoint2 = {
+                                    x: points[i].x - Math.cos(spiral.rotation + spiral.angle) * 5,
+                                    y: points[i].y - Math.sin(spiral.rotation + spiral.angle) * 5
+                                };
+                                
+                                ctx.bezierCurveTo(
+                                    controlPoint1.x, controlPoint1.y,
+                                    controlPoint2.x, controlPoint2.y,
+                                    points[i].x, points[i].y
+                                );
+                            }
+                            
+                            ctx.strokeStyle = '#6b5b45';
+                            ctx.lineWidth = lineWidth;
+                            ctx.lineCap = 'round';
+                            ctx.stroke();
+                        }
+                        
+                        // Update spiral state
+                        function updateSpiral(spiral) {
+                            spiral.angle += rotationSpeed;
+                            spiral.radius += 0.5;
+                            
+                            if(spiral.radius > maxRadius) {
+                                spiral.x = Math.random() * canvas.width;
+                                spiral.y = Math.random() * canvas.height;
+                                spiral.radius = 0;
+                                spiral.angle = 0;
+                                spiral.rotation = Math.random() * Math.PI * 2;
+                            }
+                        }
+                        
+                        // Animation loop
+                        const animate = () => {
+                            // Create new spirals if needed
+                            if(spirals.length < 5) {
+                                spirals.push(createSpiral());
+                            }
+                            
+                            // Clear with semi-transparent background for trail effect
+                            ctx.fillStyle = 'rgba(240, 237, 229, 0.05)';
+                            ctx.fillRect(0, 0, canvas.width, canvas.height);
+                            
+                            // Update and draw spirals
+                            spirals.forEach(spiral => {
+                                drawSpiral(spiral);
+                                updateSpiral(spiral);
+                            });
+                            
+                            this.animationFrame = requestAnimationFrame(animate);
+                        };
+                        
+                        // Initialize
+                        const init = () => {
+                            ctx.fillStyle = '#f0ede5';
+                            ctx.fillRect(0, 0, canvas.width, canvas.height);
+                            animate();
+                        };
+                        
+                        // Start immediately in this version
+                        init();
+                        
+                        // Store the canvas click handler for cleanup
+                        this.clickHandler = () => {
+                            ctx.fillStyle = '#f0ede5';
+                            ctx.fillRect(0, 0, canvas.width, canvas.height);
+                            spirals = [];
+                        };
+                        canvas.addEventListener('click', this.clickHandler);
+                    },
+                    
+                    cleanup: function() {
+                        if (this.animationFrame) {
+                            cancelAnimationFrame(this.animationFrame);
+                            this.animationFrame = null;
+                        }
+                        
+                        if (this.resizeListener) {
+                            window.removeEventListener('resize', this.resizeListener);
+                            this.resizeListener = null;
+                        }
+                        
+                        const canvas = document.getElementById('app1-canvas');
+                        if (canvas && this.clickHandler) {
+                            canvas.removeEventListener('click', this.clickHandler);
+                            this.clickHandler = null;
+                        }
+                    }
+                },
+                
+                // Zen Pattern Garden
+                'app2': {
+                    init: function() {
+                        const canvas = document.getElementById('app2-canvas');
+                        const ctx = canvas.getContext('2d');
+                        
+                        // Set canvas size
+                        function resizeCanvas() {
+                            canvas.width = Math.min(window.innerWidth - 20, 800);
+                            canvas.height = Math.min(window.innerHeight - 20, 600);
+                        }
+                        resizeCanvas();
+                        
+                        this.resizeListener = () => resizeCanvas();
+                        window.addEventListener('resize', this.resizeListener);
+                        
+                        // Pattern types
+                        const patternTypes = ['spiral', 'circle', 'wave', 'arc', 'leaf'];
+                        let patterns = [];
+                        let lastPatternTime = 0;
+                        
+                        // Pattern configuration
+                        function createPattern() {
+                            return {
+                                x: Math.random() * canvas.width,
+                                y: Math.random() * canvas.height,
+                                type: patternTypes[Math.floor(Math.random() * patternTypes.length)],
+                                angle: 0,
+                                radius: 0,
+                                rotation: Math.random() * Math.PI * 2,
+                                lineWidth: Math.random() * 2 + 1,
+                                color: `hsl(${Math.random() * 360}, 20%, 30%)`
+                            };
+                        }
+                        
+                        // Draw functions
+                        function drawSpiral(pattern) {
+                            ctx.beginPath();
+                            for(let i = 0; i < 100; i++) {
+                                const currentRadius = pattern.radius + i * 0.05;
+                                const currentAngle = pattern.angle + pattern.rotation + i * 0.02;
+                                
+                                const x = pattern.x + Math.cos(currentAngle) * currentRadius;
+                                const y = pattern.y + Math.sin(currentAngle + pattern.rotation) * currentRadius;
+                                
+                                if(i === 0) {
+                                    ctx.moveTo(x, y);
+                                } else {
+                                    ctx.lineTo(x, y);
+                                }
+                            }
+                            ctx.strokeStyle = pattern.color;
+                            ctx.lineWidth = pattern.lineWidth;
+                            ctx.lineCap = 'round';
+                            ctx.stroke();
+                        }
+                        
+                        // Update pattern state
+                        function updatePattern(pattern) {
+                            pattern.angle += 0.02;
+                            pattern.radius += 0.05;
+                            
+                            if(pattern.radius > 100) {
+                                return false; // Pattern completed
+                            }
+                            return true; // Pattern continues
+                        }
+                        
+                        // Animation loop
+                        const animate = () => {
+                            // Clear with semi-transparent background for trail effect
+                            ctx.fillStyle = 'rgba(240, 237, 229, 0.03)';
+                            ctx.fillRect(0, 0, canvas.width, canvas.height);
+                            
+                            // Random interval for new patterns
+                            const now = Date.now();
+                            const interval = 10000 + Math.random() * 12000; // 10-22 seconds
+                            
+                            if(now - lastPatternTime > interval) {
+                                patterns.push(createPattern());
+                                lastPatternTime = now;
+                            }
+                            
+                            // Draw and update patterns
+                            patterns = patterns.filter(pattern => {
+                                switch(pattern.type) {
+                                    case 'spiral': drawSpiral(pattern); break;
+                                    case 'circle': drawCircle(pattern); break;
+                                    case 'wave': drawWave(pattern); break;
+                                    case 'arc': drawArc(pattern); break;
+                                    case 'leaf': drawLeaf(pattern); break;
+                                }
+                                return updatePattern(pattern);
+                            });
+                            
+                            this.animationFrame = requestAnimationFrame(animate);
+                        };
+                        
+                        // Initialize
+                        const init = () => {
+                            ctx.fillStyle = '#f0ede5';
+                            ctx.fillRect(0, 0, canvas.width, canvas.height);
+                            animate();
+                        };
+                        
+                        // Start immediately in this version
+                        init();
+                        
+                        // Store the canvas click handler for cleanup
+                        this.clickHandler = () => {
+                            ctx.fillStyle = '#f0ede5';
+                            ctx.fillRect(0, 0, canvas.width, canvas.height);
+                            patterns = [];
+                            lastPatternTime = Date.now();
+                        };
+                        canvas.addEventListener('click', this.clickHandler);
+                    },
+                    
+                    cleanup: function() {
+                        if (this.animationFrame) {
+                            cancelAnimationFrame(this.animationFrame);
+                            this.animationFrame = null;
+                        }
+                        
+                        if (this.resizeListener) {
+                            window.removeEventListener('resize', this.resizeListener);
+                            this.resizeListener = null;
+                        }
+                        
+                        const canvas = document.getElementById('app2-canvas');
+                        if (canvas && this.clickHandler) {
+                            canvas.removeEventListener('click', this.clickHandler);
+                            this.clickHandler = null;
+                        }
+                    }
+                },
+                
+                // Nature Flow Visualizer
+                'app3': {
+                    init: function() {
+                        const canvas = document.getElementById('app3-canvas');
+                        const ctx = canvas.getContext('2d');
+                        let width, height, center, radius;
+                        let audioContext;
+                        let lastSoundTime = 0;
+                        let currentPattern;
+                        let speedValue = 3;
+                        let animationFrame;
+                        
+                        // Resize canvas
+                        const resize = () => {
+                            width = canvas.width = window.innerWidth;
+                            height = canvas.height = window.innerHeight;
+                            center = { x: width/2, y: height/2 };
+                            radius = Math.min(width, height) * 0.4;
+                            if (currentPattern) {
+                                currentPattern.init();
+                            }
+                        };
+                        
+                        this.resizeListener = resize;
+                        window.addEventListener('resize', this.resizeListener);
+                        
+                        // Gentle Sound Generator
+                        function createNatureSound() {
+                            if (!audioContext) return;
+                            
+                            const osc = audioContext.createOscillator();
+                            const gain = audioContext.createGain();
+                            osc.type = 'sine';
+                            osc.frequency.value = 220 + Math.random() * 88;
+                            
+                            const now = audioContext.currentTime;
+                            gain.gain.setValueAtTime(0, now);
+                            gain.gain.linearRampToValueAtTime(0.1, now + 1);
+                            gain.gain.exponentialRampToValueAtTime(0.001, now + 4);
+                            
+                            osc.connect(gain).connect(audioContext.destination);
+                            osc.start();
+                            osc.stop(now + 4);
+                        }
+                        
+                        // Nature Patterns
+                        const patterns = {
+                            forest: {
+                                particles: [],
+                                init() {
+                                    this.particles = Array.from({length: 200}, () => ({
+                                        x: center.x + (Math.random() - 0.5) * radius * 2,
+                                        y: center.y + (Math.random() - 0.5) * radius * 2,
+                                        vx: (Math.random() - 0.5) * 0.3,
+                                        vy: (Math.random() - 0.5) * 0.3,
+                                        size: Math.random() * 3 + 2
+                                    }));
+                                },
+                                update(speed) {
+                                    ctx.fillStyle = 'rgba(100, 255, 100, 0.15)';
+                                    this.particles.forEach(p => {
+                                        p.x += p.vx * speed;
+                                        p.y += p.vy * speed;
+                                        
+                                        // Keep within bounds
+                                        if(p.x < center.x - radius) p.x = center.x + radius;
+                                        if(p.x > center.x + radius) p.x = center.x - radius;
+                                        if(p.y < center.y - radius) p.y = center.y + radius;
+                                        if(p.y > center.y + radius) p.y = center.y - radius;
+                                        
+                                        ctx.beginPath();
+                                        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+                                        ctx.fill();
+                                    });
+                                }
+                            },
+                            
+                            stream: {
+                                lines: [],
+                                init() {
+                                    this.lines = Array.from({length: 30}, (_, i) => ({
+                                        y: center.y - radius + (i * 15),
+                                        phase: Math.random() * Math.PI * 2
+                                    }));
+                                },
+                                update(speed) {
+                                    ctx.strokeStyle = 'rgba(100, 200, 255, 0.3)';
+                                    ctx.lineWidth = 2;
+                                    this.lines.forEach(line => {
+                                        line.phase += 0.02 * speed;
+                                        ctx.beginPath();
+                                        for(let x = center.x - radius; x <= center.x + radius; x += 10) {
+                                            const y = line.y + Math.sin(line.phase + x * 0.05) * 10;
+                                            ctx.lineTo(x, y);
+                                        }
+                                        ctx.stroke();
+                                    });
+                                }
+                            },
+                            
+                            fireflies: {
+                                lights: [],
+                                init() {
+                                    this.lights = Array.from({length: 50}, () => ({
+                                        x: center.x + Math.random() * radius * 2 - radius,
+                                        y: center.y + Math.random() * radius * 2 - radius,
+                                        alpha: Math.random() * 0.8 + 0.2,
+                                        speed: Math.random() * 0.02 + 0.01
+                                    }));
+                                },
+                                update(speed) {
+                                    ctx.fillStyle = 'rgba(255, 255, 150, 0.7)';
+                                    this.lights.forEach(light => {
+                                        light.y -= light.speed * speed;
+                                        light.alpha = 0.5 + Math.sin(Date.now() * 0.002) * 0.3;
+                                        if(light.y < center.y - radius) light.y = center.y + radius;
+                                        ctx.beginPath();
+                                        ctx.arc(light.x, light.y, 3, 0, Math.PI * 2);
+                                        ctx.fill();
+                                    });
+                                }
+                            },
+                            
+                            petals: {
+                                leaves: [],
+                                init() {
+                                    this.leaves = Array.from({length: 30}, () => ({
+                                        x: center.x + (Math.random() - 0.5) * radius * 2,
+                                        y: center.y - radius,
+                                        speedY: Math.random() * 0.5 + 0.2,
+                                        speedX: (Math.random() - 0.5) * 0.3,
+                                        size: Math.random() * 8 + 4,
+                                        angle: Math.random() * Math.PI * 2
+                                    }));
+                                },
+                                update(speed) {
+                                    ctx.fillStyle = 'rgba(255, 150, 100, 0.6)';
+                                    this.leaves.forEach(leaf => {
+                                        leaf.y += leaf.speedY * speed;
+                                        leaf.x += leaf.speedX * speed;
+                                        leaf.angle += 0.02 * speed;
+                                        
+                                        if(leaf.y > center.y + radius) {
+                                            leaf.y = center.y - radius;
+                                            leaf.x = center.x + (Math.random() - 0.5) * radius * 2;
+                                        }
+                                        
+                                        ctx.save();
+                                        ctx.translate(leaf.x, leaf.y);
+                                        ctx.rotate(leaf.angle);
+                                        ctx.beginPath();
+                                        ctx.ellipse(0, 0, leaf.size/2, leaf.size, 0, 0, Math.PI * 2);
+                                        ctx.fill();
+                                        ctx.restore();
+                                    });
+                                }
+                            },
+                            
+                            bubbles: {
+                                bubbles: [],
+                                init() {
+                                    this.bubbles = Array.from({length: 40}, () => ({
+                                        x: center.x + (Math.random() - 0.5) * radius,
+                                        y: center.y + radius,
+                                        size: Math.random() * 6 + 3,
+                                        speed: Math.random() * 0.4 + 0.2
+                                    }));
+                                },
+                                update(speed) {
+                                    ctx.strokeStyle = 'rgba(150, 200, 255, 0.4)';
+                                    this.bubbles.forEach(bubble => {
+                                        bubble.y -= bubble.speed * speed;
+                                        bubble.x += Math.sin(bubble.y * 0.05) * 0.5;
+                                        
+                                        if(bubble.y < center.y - radius) {
+                                            bubble.y = center.y + radius;
+                                            bubble.size = Math.random() * 6 + 3;
+                                        }
+                                        
+                                        ctx.beginPath();
+                                        ctx.arc(bubble.x, bubble.y, bubble.size, 0, Math.PI * 2);
+                                        ctx.stroke();
+                                    });
+                                }
+                            },
+                            
+                            aurora: {
+                                bands: [],
+                                init() {
+                                    this.bands = Array.from({length: 15}, (_, i) => ({
+                                        phase: Math.random() * Math.PI * 2,
+                                        hue: 180 + i * 12,
+                                        offset: i * 20,
+                                        alpha: Math.random() * 0.2 + 0.1
+                                    }));
+                                },
+                                update(speed) {
+                                    this.bands.forEach(band => {
+                                        band.phase += 0.002 * speed;
+                                        ctx.strokeStyle = `hsla(${band.hue}, 60%, 50%, ${band.alpha})`;
+                                        ctx.lineWidth = 20;
+                                        
+                                        ctx.beginPath();
+                                        for(let x = center.x - radius; x <= center.x + radius; x += 5) {
+                                            const y = center.y - radius/2 + 
+                                                    Math.sin(band.phase + x * 0.02) * 40 +
+                                                    Math.sin(x * 0.05 + band.phase) * 20;
+                                            ctx.lineTo(x, y + band.offset);
+                                        }
+                                        ctx.stroke();
+                                    });
+                                }
+                            }
+                        };
+                        
+                        // Random pattern selector
+                        const patternKeys = Object.keys(patterns).filter(k => k !== 'random');
+                        let lastRandomIndex = -1;
+                        
+                        function selectRandomPattern() {
+                            let randomIndex;
+                            do {
+                                randomIndex = Math.floor(Math.random() * patternKeys.length);
+                            } while(randomIndex === lastRandomIndex);
+                            
+                            lastRandomIndex = randomIndex;
+                            return patterns[patternKeys[randomIndex]];
+                        }
+                        
+                        // Animation loop function
+                        const animate = (timestamp) => {
+                            ctx.fillStyle = '#0a1a0a';
+                            ctx.fillRect(0, 0, width, height);
+                            
+                            // Draw circular boundary
+                            ctx.strokeStyle = 'rgba(100, 200, 100, 0.1)';
+                            ctx.beginPath();
+                            ctx.arc(center.x, center.y, radius, 0, Math.PI * 2);
+                            ctx.stroke();
+                            
+                            currentPattern.update(speedValue);
+                            
+                            // Ambient sounds
+                            if(audioContext && timestamp - lastSoundTime > 8000) {
+                                createNatureSound();
+                                lastSoundTime = timestamp;
+                            }
+                            
+                            this.animationFrame = requestAnimationFrame(animate);
+                        };
+                        
+                        // Init handler
+                        function init() {
+                            resize();
+                            
+                            // Set current pattern
+                            currentPattern = patterns.forest;
+                            currentPattern.init();
+                            
+                            // Start animation
+                            animate(0);
+                            
+                            // Setup event listeners
+                            this.patternSelectListener = (e) => {
+                                if(e.target.value === 'random') {
+                                    currentPattern = selectRandomPattern();
+                                } else {
+                                    currentPattern = patterns[e.target.value];
+                                }
+                                currentPattern.init();
+                            };
+                            
+                            this.speedListener = (e) => {
+                                speedValue = e.target.value / 2;
+                            };
+                            
+                            this.canvasClickListener = () => {
+                                if(!audioContext) {
+                                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                                    createNatureSound();
+                                }
+                            };
+                            
+                            // Add event listeners
+                            document.getElementById('patternSelect').addEventListener('change', this.patternSelectListener);
+                            document.getElementById('speed').addEventListener('input', this.speedListener);
+                            canvas.addEventListener('click', this.canvasClickListener);
+                        }
+                        
+                        // Initialize
+                        init.call(this);
+                    },
+                    
+                    cleanup: function() {
+                        if (this.animationFrame) {
+                            cancelAnimationFrame(this.animationFrame);
+                            this.animationFrame = null;
+                        }
+                        
+                        if (this.resizeListener) {
+                            window.removeEventListener('resize', this.resizeListener);
+                            this.resizeListener = null;
+                        }
+                        
+                        // Remove all event listeners
+                        const canvas = document.getElementById('app3-canvas');
+                        if (canvas && this.canvasClickListener) {
+                            canvas.removeEventListener('click', this.canvasClickListener);
+                            this.canvasClickListener = null;
+                        }
+                        
+                        const patternSelect = document.getElementById('patternSelect');
+                        if (patternSelect && this.patternSelectListener) {
+                            patternSelect.removeEventListener('change', this.patternSelectListener);
+                            this.patternSelectListener = null;
+                        }
+                        
+                        const speedInput = document.getElementById('speed');
+                        if (speedInput && this.speedListener) {
+                            speedInput.removeEventListener('input', this.speedListener);
+                            this.speedListener = null;
+                        }
+                    }
+                },
+                
+                // Animated Fractal
+                'app4': {
+                    init: function() {
+                        const canvas = document.getElementById('app4-canvas');
+                        const ctx = canvas.getContext('2d');
+                        const messageDiv = document.getElementById('message');
+                        
+                        // Set canvas size
+                        function resizeCanvas() {
+                            canvas.width = 600; // Fixed width
+                            canvas.height = 400; // Fixed height
+                        }
+                        resizeCanvas();
+                        
+                        this.resizeListener = resizeCanvas;
+                        window.addEventListener('resize', this.resizeListener);
+                        
+                        // Animation control
+                        let hue = 0;
+                        let isDrawing = false;
+                        let currentTimeout = null;
+                        
+                        // Easing function for smoother animations
+                        function easeInOutQuad(t) {
+                            return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+                        }
+                        
+                        class LineQueue {
+                            constructor() {
+                                this.lines = [];
+                                this.currentIndex = 0;
+                            }
+                            
+                            addLine(x1, y1, x2, y2) {
+                                this.lines.push({ x1, y1, x2, y2 });
+                            }
+                            
+                            hasNext() {
+                                return this.currentIndex < this.lines.length;
+                            }
+                            
+                            next() {
+                                return this.lines[this.currentIndex++];
+                            }
+                        }
+                        
+                        function generateFractalLines(x, y, size, depth, maxDepth, queue) {
+                            if (depth > maxDepth) return;
+                            
+                            // Add triangle lines to queue
+                            queue.addLine(x, y, x + size, y);
+                            queue.addLine(x + size, y, x + size/2, y - size * Math.sqrt(3)/2);
+                            queue.addLine(x + size/2, y - size * Math.sqrt(3)/2, x, y);
+                            
+                            const newSize = size / 2;
+                            
+                            // Process each triangle sequentially
+                            if(depth < maxDepth) {
+                                queue.addLine(x, y, x, y); // Marker for recursion start
+                                generateFractalLines(x, y, newSize, depth + 1, maxDepth, queue);
+                                queue.addLine(x + newSize, y, x + newSize, y); // Marker for recursion start
+                                generateFractalLines(x + newSize, y, newSize, depth + 1, maxDepth, queue);
+                                queue.addLine(x + newSize/2, y - newSize * Math.sqrt(3)/2, x + newSize/2, y - newSize * Math.sqrt(3)/2); // Marker for recursion start
+                                generateFractalLines(x + newSize/2, y - newSize * Math.sqrt(3)/2, newSize, depth + 1, maxDepth, queue);
+                            }
+                        }
+                        
+                        const drawNextLine = (queue) => {
+                            if (!queue.hasNext()) {
+                                isDrawing = false;
+                                messageDiv.style.display = 'block';
+                                return;
+                            }
+                            
+                            const line = queue.next();
+                            
+                            // Check if this is a recursion marker
+                            if(line.x1 === line.x2 && line.y1 === line.y2) {
+                                // Start recursion after a short delay
+                                currentTimeout = setTimeout(() => drawNextLine(queue), 500);
+                                return;
+                            }
+                            
+                            // Animate line drawing with easing
+                            const startTime = Date.now();
+                            const duration = 600; // Slower animation
+                            const color = `hsl(${hue}, 40%, 60%)`;
+                            
+                            const animateLine = () => {
+                                const progress = (Date.now() - startTime) / duration;
+                                const easedProgress = easeInOutQuad(Math.min(progress, 1));
+                                const dx = line.x2 - line.x1;
+                                const dy = line.y2 - line.y1;
+                                
+                                ctx.beginPath();
+                                ctx.moveTo(line.x1, line.y1);
+                                ctx.lineTo(
+                                    line.x1 + dx * easedProgress,
+                                    line.y1 + dy * easedProgress
+                                );
+                                ctx.strokeStyle = color;
+                                ctx.lineWidth = 1 + (easedProgress * 0.2); // Variable line width
+                                ctx.globalAlpha = 0.8 + (easedProgress * 0.2); // Variable opacity
+                                ctx.stroke();
+                                ctx.globalAlpha = 1;
+                                
+                                // Draw pen tip dot
+                                ctx.beginPath();
+                                ctx.arc(
+                                    line.x1 + dx * easedProgress,
+                                    line.y1 + dy * easedProgress,
+                                    2,
+                                    0,
+                                    Math.PI * 2
+                                );
+                                ctx.fillStyle = color;
+                                ctx.fill();
+                                
+                                if (progress < 1) {
+                                    this.animationFrame = requestAnimationFrame(animateLine);
+                                } else {
+                                    hue = (hue + 0.3) % 360;
+                                    currentTimeout = setTimeout(() => drawNextLine(queue), 300); // Slower delay between lines
+                                }
+                            };
+                            
+                            this.animationFrame = requestAnimationFrame(animateLine);
+                        };
+                        
+                        const startDrawing = () => {
+                            if (isDrawing) {
+                                if (currentTimeout) {
+                                    clearTimeout(currentTimeout);
+                                    currentTimeout = null;
+                                }
+                                if (this.animationFrame) {
+                                    cancelAnimationFrame(this.animationFrame);
+                                    this.animationFrame = null;
+                                }
+                                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                            }
+                            
+                            isDrawing = true;
+                            messageDiv.style.display = 'none';
+                            const queue = new LineQueue();
+                            const centerX = canvas.width / 2;
+                            const centerY = canvas.height / 2;
+                            const size = Math.min(canvas.width, canvas.height) * 0.8;
+                            
+                            generateFractalLines(
+                                centerX - size/2,
+                                centerY + size * Math.sqrt(3)/4,
+                                size,
+                                0,
+                                4,
+                                queue
+                            );
+                            
+                            drawNextLine(queue);
+                        };
+                        
+                        // Initialize click handlers
+                        this.canvasClickHandler = startDrawing;
+                        this.messageClickHandler = startDrawing;
+                        
+                        canvas.addEventListener('click', this.canvasClickHandler);
+                        messageDiv.addEventListener('click', this.messageClickHandler);
+                        
+                        // Show initial message
+                        messageDiv.style.display = 'block';
+                    },
+                    
+                    cleanup: function() {
+                        if (this.animationFrame) {
+                            cancelAnimationFrame(this.animationFrame);
+                            this.animationFrame = null;
+                        }
+                        
+                        if (this.resizeListener) {
+                            window.removeEventListener('resize', this.resizeListener);
+                            this.resizeListener = null;
+                        }
+                        
+                        const canvas = document.getElementById('app4-canvas');
+                        if (canvas && this.canvasClickHandler) {
+                            canvas.removeEventListener('click', this.canvasClickHandler);
+                            this.canvasClickHandler = null;
+                        }
+                        
+                        const messageDiv = document.getElementById('message');
+                        if (messageDiv && this.messageClickHandler) {
+                            messageDiv.removeEventListener('click', this.messageClickHandler);
+                            this.messageClickHandler = null;
+                        }
+                    }
+                },
+                
+                // Fractal Triangles
+                'app5': {
+                    init: function() {
+                        const canvas = document.getElementById('app5-canvas');
+                        const ctx = canvas.getContext('2d');
+                        
+                        // Set canvas size
+                        function resizeCanvas() {
+                            canvas.width = window.innerWidth - 40;
+                            canvas.height = window.innerHeight - 40;
+                        }
+                        resizeCanvas();
+                        
+                        this.resizeListener = resizeCanvas;
+                        window.addEventListener('resize', this.resizeListener);
+                        
+                        // Configuration
+                        let hue = 0;
+                        let currentX = 20;
+                        let currentY = canvas.height - 20;
+                        let isAnimating = false;
+                        
+                        // Draw a single triangle
+                        function drawTriangle(x, y, size) {
+                            ctx.beginPath();
+                            ctx.moveTo(x, y);
+                            ctx.lineTo(x + size, y);
+                            ctx.lineTo(x + size/2, y - size * Math.sqrt(3)/2);
+                            ctx.closePath();
+                            ctx.strokeStyle = `hsl(${hue}, 40%, 60%)`;
+                            ctx.lineWidth = 1;
+                            ctx.lineCap = 'round';
+                            ctx.stroke();
+                        }
+                        
+                        // Recursive fractal pattern
+                        function drawFractal(x, y, size, depth = 4) {
+                            if (depth === 0) return;
+                            
+                            // Draw the current triangle
+                            drawTriangle(x, y, size);
+                            
+                            // Draw smaller triangles
+                            const newSize = size / 2;
+                            drawFractal(x, y, newSize, depth - 1);
+                            drawFractal(x + newSize, y, newSize, depth - 1);
+                            drawFractal(x + newSize/2, y - newSize * Math.sqrt(3)/2, newSize, depth - 1);
+                        }
+                        
+                        // Animate the drawing process
+                        const drawPattern = () => {
+                            if (isAnimating) return;
+                            
+                            isAnimating = true;
+                            
+                            // Start from the bottom left
+                            const size = 10;
+                            drawFractal(currentX, currentY, size, 2);
+                            
+                            // Move to the next position
+                            currentX += size * 2;
+                            if (currentX > canvas.width - 20) {
+                                currentX = 20;
+                                currentY -= size * 2;
+                            }
+                            
+                            // Update color
+                            hue = (hue + 0.5) % 360;
+                            
+                            // Request next frame with a delay for slow effect
+                            this.patternTimeout = setTimeout(() => {
+                                this.animationFrame = requestAnimationFrame(drawPattern);
+                                isAnimating = false;
+                            }, 100);
+                        };
+                        
+                        // Reset animation
+                        const resetAnimation = () => {
+                            if (this.patternTimeout) {
+                                clearTimeout(this.patternTimeout);
+                                this.patternTimeout = null;
+                            }
+                            
+                            if (this.animationFrame) {
+                                cancelAnimationFrame(this.animationFrame);
+                                this.animationFrame = null;
+                            }
+                            
+                            ctx.clearRect(0, 0, canvas.width, canvas.height);
+                            currentX = 20;
+                            currentY = canvas.height - 20;
+                            hue = 0;
+                            isAnimating = false;
+                            drawPattern();
+                        };
+                        
+                        // Initialize click handler
+                        this.canvasClickHandler = resetAnimation;
+                        canvas.addEventListener('click', this.canvasClickHandler);
+                        
+                        // Start the animation
+                        drawPattern();
+                    },
+                    
+                    cleanup: function() {
+                        if (this.animationFrame) {
+                            cancelAnimationFrame(this.animationFrame);
+                            this.animationFrame = null;
+                        }
+                        
+                        if (this.patternTimeout) {
+                            clearTimeout(this.patternTimeout);
+                            this.patternTimeout = null;
+                        }
+                        
+                        if (this.resizeListener) {
+                            window.removeEventListener('resize', this.resizeListener);
+                            this.resizeListener = null;
+                        }
+                        
+                        const canvas = document.getElementById('app5-canvas');
+                        if (canvas && this.canvasClickHandler) {
+                            canvas.removeEventListener('click', this.canvasClickHandler);
+                            this.canvasClickHandler = null;
+                        }
+                    }
+                },
+                
+                // Single Spiral
+                'app6': {
+                    init: function() {
+                        const canvas = document.getElementById('app6-canvas');
+                        const ctx = canvas.getContext('2d');
+                        
+                        // Set canvas size
+                        function resizeCanvas() {
+                            canvas.width = Math.min(window.innerWidth - 20, 800);
+                            canvas.height = Math.min(window.innerHeight - 20, 600);
+                        }
+                        resizeCanvas();
+                        
+                        this.resizeListener = resizeCanvas;
+                        window.addEventListener('resize', this.resizeListener);
+                        
+                        // Spiral parameters
+                        const maxRadius = 200;
+                        const rotationSpeed = 0.02;
+                        const lineWidth = 1;
+                        let spiral = {
+                            x: canvas.width / 2,
+                            y: canvas.height / 2,
+                            angle: 0,
+                            radius: 0,
+                            rotation: Math.random() * Math.PI * 2
+                        };
+                        
+                        // Draw a single spiral segment
+                        function drawSpiral() {
+                            ctx.beginPath();
+                            
+                            // Create a smooth spiral path
+                            for(let i = 0; i < 100; i++) {
+                                const currentRadius = spiral.radius + i * 0.05;
+                                const currentAngle = spiral.angle + spiral.rotation + i * 0.02;
+                                
+                                const x = spiral.x + Math.cos(currentAngle) * currentRadius;
+                                const y = spiral.y + Math.sin(currentAngle) * currentRadius;
+                                
+                                if(i === 0) {
+                                    ctx.moveTo(x, y);
+                                } else {
+                                    ctx.lineTo(x, y);
+                                }
+                            }
+                            
+                            // Draw with a flowing line
+                            ctx.strokeStyle = '#6b5b45';
+                            ctx.lineWidth = lineWidth;
+                            ctx.lineCap = 'round';
+                            ctx.stroke();
+                        }
+                        
+                        // Update spiral state
+                        function updateSpiral() {
+                            spiral.angle += rotationSpeed;
+                            spiral.radius += 0.05;
+                            
+                            if(spiral.radius > maxRadius) {
+                                // Reset spiral at new random location
+                                spiral.x = Math.random() * canvas.width;
+                                spiral.y = Math.random() * canvas.height;
+                                spiral.radius = 0;
+                                spiral.angle = 0;
+                                spiral.rotation = Math.random() * Math.PI * 2;
+                            }
+                        }
+                        
+                        // Animation loop
+                        const animate = () => {
+                            // Apply a fade effect with semi-transparent background
+                            ctx.fillStyle = 'rgba(240, 237, 229, 0.05)';
+                            ctx.fillRect(0, 0, canvas.width, canvas.height);
+                            
+                            drawSpiral();
+                            updateSpiral();
+                            this.animationFrame = requestAnimationFrame(animate);
+                        };
+                        
+                        // Initialize
+                        const init = () => {
+                            ctx.fillStyle = '#f0ede5';
+                            ctx.fillRect(0, 0, canvas.width, canvas.height);
+                            animate();
+                        };
+                        
+                        // Store the canvas click handler for cleanup
+                        this.clickHandler = () => {
+                            ctx.fillStyle = '#f0ede5';
+                            ctx.fillRect(0, 0, canvas.width, canvas.height);
+                            spiral.radius = 0;
+                            spiral.angle = 0;
+                            spiral.x = canvas.width / 2;
+                            spiral.y = canvas.height / 2;
+                        };
+                        
+                        // Start immediately
+                        init();
+                        canvas.addEventListener('click', this.clickHandler);
+                    },
+                    
+                    cleanup: function() {
+                        if (this.animationFrame) {
+                            cancelAnimationFrame(this.animationFrame);
+                            this.animationFrame = null;
+                        }
+                        
+                        if (this.resizeListener) {
+                            window.removeEventListener('resize', this.resizeListener);
+                            this.resizeListener = null;
+                        }
+                        
+                        const canvas = document.getElementById('app6-canvas');
+                        if (canvas && this.clickHandler) {
+                            canvas.removeEventListener('click', this.clickHandler);
+                            this.clickHandler = null;
+                        }
+                    }
+                }
+            };
+            
+            // Current state
+            let currentApp = null;
+            
+            // Update menu item active states
+            function updateMenuActiveState(appId) {
+                menuItems.forEach(item => {
+                    if (item.dataset.app === appId) {
+                        item.classList.add('active');
+                    } else {
+                        item.classList.remove('active');
+                    }
+                });
+            }
+            
+            // Navigate to app
+            function navigateToApp(appId) {
+                if (!appRegistry[appId]) {
+                    console.error(`App ${appId} not found in registry`);
+                    return;
+                }
+                
+                showLoading();
+                
+                // Clean up previous app if exists
+                if (currentApp && appRegistry[currentApp] && typeof appRegistry[currentApp].cleanup === 'function') {
+                    try {
+                        appRegistry[currentApp].cleanup();
+                    } catch (error) {
+                        console.error(`Error cleaning up ${currentApp}:`, error);
+                    }
+                }
+                
+                // Hide all app containers
+                APP_IDS.forEach(id => {
+                    const container = document.getElementById(`${id}-container`);
+                    if (container) {
+                        container.classList.remove('active');
+                        setTimeout(() => {
+                            if (id !== appId) {
+                                container.style.display = 'none';
+                            }
+                        }, 300); // Match transition duration
+                    }
+                });
+                
+                // Update menu active state
+                updateMenuActiveState(appId);
+                
+                // Show new app container
+                const appContainer = document.getElementById(`${appId}-container`);
+                if (appContainer) {
+                    appContainer.style.display = 'block';
+                    // Trigger reflow to ensure the transition applies
+                    appContainer.offsetHeight;
+                    appContainer.classList.add('active');
+                }
+                
+                // Close the menu
+                closeMenu();
+                
+                // Initialize the app
+                if (typeof appRegistry[appId].init === 'function') {
+                    try {
+                        appRegistry[appId].init();
+                    } catch (error) {
+                        console.error(`Error initializing ${appId}:`, error);
+                    }
+                }
+                
+                currentApp = appId;
+                
+                // Add to browser history
+                try {
+                    history.pushState({ app: appId }, '', `#${appId}`);
+                } catch (e) {
+                    console.warn('Could not update history:', e);
+                }
+                
+                // Hide loading after a slight delay
+                setTimeout(hideLoading, 500);
+            }
+            
+            // Set up event listeners
+            menuToggle.addEventListener('click', toggleMenu);
+            menuBackdrop.addEventListener('click', closeMenu);
+            
+            menuItems.forEach(item => {
+                const appId = item.dataset.app;
+                if (appId) {
+                    item.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        navigateToApp(appId);
+                    });
+                }
+            });
+            
+            // Handle browser back button
+            window.addEventListener('popstate', (event) => {
+                if (!event.state) {
+                    // If there's no state, toggle the menu
+                    toggleMenu();
+                    return;
+                }
+                
+                if (event.state.app) {
+                    navigateToApp(event.state.app);
+                } else {
+                    // No app specified, show menu
+                    toggleMenu();
+                }
+            });
+            
+            // Initialize by checking URL hash
+            document.addEventListener('DOMContentLoaded', () => {
+                const hash = window.location.hash.substring(1);
+                if (hash && APP_IDS.includes(hash)) {
+                    navigateToApp(hash);
+                } else {
+                    // Show menu on start if no hash
+                    toggleMenu();
+                    hideLoading();
+                }
+                
+                // Set initial ARIA state
+                menuToggle.setAttribute('aria-expanded', 'false');
+            });
+            
+            // Handle ESC key to open menu
+            window.addEventListener('keydown', (e) => {
+                if (e.key === 'Escape') {
+                    if (sideMenu.classList.contains('active')) {
+                        closeMenu();
+                    } else {
+                        toggleMenu();
+                    }
+                }
+            });
+            
+            // Utility functions that can be used by all apps
+            const utilities = {
+                // Audio utilities
+                createAudioContext: function() {
+                    return new (window.AudioContext || window.webkitAudioContext)();
+                },
+                
+                // Canvas utilities
+                resizeCanvas: function(canvas) {
+                    const parent = canvas.parentElement;
+                    canvas.width = parent.clientWidth;
+                    canvas.height = parent.clientHeight;
+                    return { width: canvas.width, height: canvas.height };
+                },
+                
+                // Math utilities
+                random: function(min, max) {
+                    return Math.random() * (max - min) + min;
+                }
+            };
+        })();
+    </script>
+</body>
+</html>gle) * currentRadius;
+                                
+                                if(i === 0) {
+                                    ctx.moveTo(x, y);
+                                } else {
+                                    ctx.lineTo(x, y);
+                                }
+                            }
+                            ctx.strokeStyle = pattern.color;
+                            ctx.lineWidth = pattern.lineWidth;
+                            ctx.lineCap = 'round';
+                            ctx.stroke();
+                        }
+                        
+                        function drawCircle(pattern) {
+                            ctx.beginPath();
+                            for(let i = 0; i < 50; i++) {
+                                const currentRadius = pattern.radius + i * 0.1;
+                                const currentAngle = pattern.angle + i * 0.1;
+                                
+                                const x = pattern.x + Math.cos(currentAngle + pattern.rotation) * currentRadius;
+                                const y = pattern.y + Math.sin(currentAngle + pattern.rotation) * currentRadius;
+                                
+                                if(i === 0) {
+                                    ctx.moveTo(x, y);
+                                } else {
+                                    ctx.lineTo(x, y);
+                                }
+                            }
+                            ctx.strokeStyle = pattern.color;
+                            ctx.lineWidth = pattern.lineWidth;
+                            ctx.lineCap = 'round';
+                            ctx.stroke();
+                        }
+                        
+                        function drawWave(pattern) {
+                            ctx.beginPath();
+                            for(let i = 0; i < 100; i++) {
+                                const currentX = pattern.x + i * 5;
+                                const currentY = pattern.y + Math.sin(i * 0.2 + pattern.angle) * pattern.radius;
+                                
+                                if(i === 0) {
+                                    ctx.moveTo(currentX, currentY);
+                                } else {
+                                    ctx.lineTo(currentX, currentY);
+                                }
+                            }
+                            ctx.strokeStyle = pattern.color;
+                            ctx.lineWidth = pattern.lineWidth;
+                            ctx.lineCap = 'round';
+                            ctx.stroke();
+                        }
+                        
+                        function drawArc(pattern) {
+                            ctx.beginPath();
+                            for(let i = 0; i < 50; i++) {
+                                const currentAngle = pattern.angle + i * 0.1;
+                                const currentRadius = pattern.radius + i * 0.1;
+                                
+                                const x = pattern.x + Math.cos(currentAngle + pattern.rotation) * currentRadius;
+                                const y = pattern.y + Math.sin(currentAngle + pattern.rotation) * currentRadius;
+                                
+                                if(i === 0) {
+                                    ctx.moveTo(x, y);
+                                } else {
+                                    ctx.lineTo(x, y);
+                                }
+                            }
+                            ctx.strokeStyle = pattern.color;
+                            ctx.lineWidth = pattern.lineWidth;
+                            ctx.lineCap = 'round';
+                            ctx.stroke();
+                        }
+                        
+                        function drawLeaf(pattern) {
+                            ctx.beginPath();
+                            for(let i = 0; i < 40; i++) {
+                                const currentAngle = pattern.angle + i * 0.2;
+                                const currentRadius = pattern.radius + i * 0.05;
+                                
+                                const x = pattern.x + Math.cos(currentAngle + pattern.rotation) * currentRadius;
+                                const y = pattern.y + Math.sin(currentAn

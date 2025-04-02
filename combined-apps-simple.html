@@ -1,0 +1,1560 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Combined Apps</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            overscroll-behavior: none;
+            background: #121212;
+            color: white;
+        }
+        
+        .navbar {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            background: rgba(30, 30, 30, 0.9);
+            backdrop-filter: blur(10px);
+            z-index: 10000;
+            padding: 10px;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        .navbar button {
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            color: white;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        .navbar button:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .navbar button.active {
+            background: rgba(255, 255, 255, 0.3);
+        }
+        
+        .app-container {
+            padding-top: 50px;
+            height: 100vh;
+            width: 100vw;
+            display: none;
+        }
+        
+        .app-container.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <div class="navbar">
+        <button id="btn-app1" class="active">4MySunshine</button>
+        <button id="btn-app2">Slow Fractal</button>
+        <button id="btn-app3">Melodic Flow</button>
+        <button id="btn-app4">YOGO</button>
+    </div>
+
+    <!-- App 1: 4MySunshine -->
+    <div id="app1" class="app-container active">
+        <style>
+            #app1 {
+                --safe-area-inset-top: env(safe-area-inset-top, 0px);
+                --safe-area-inset-bottom: env(safe-area-inset-bottom, 20px);
+                background: #000;
+                overflow: hidden;
+            }
+            
+            #app1-c {
+                display: block;
+                touch-action: none;
+                position: fixed;
+                top: 50px;
+                left: 0;
+                width: 100%;
+                height: calc(100% - 50px);
+            }
+            
+            #app1-controls {
+                position: fixed;
+                bottom: 20px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: rgba(255, 255, 255, 0.2);
+                backdrop-filter: blur(12px);
+                -webkit-backdrop-filter: blur(12px);
+                padding: 15px 25px;
+                border-radius: 18px;
+                color: white;
+                display: flex;
+                gap: 20px;
+                align-items: center;
+                box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+                z-index: 1000;
+            }
+            
+            #app1 .slider-container {
+                display: flex;
+                align-items: center;
+                gap: 10px;
+            }
+            
+            #app1 .slider-container label {
+                white-space: nowrap;
+                font-size: 14px;
+                font-weight: 500;
+                color: rgba(255, 255, 255, 0.9);
+            }
+            
+            #app1 input[type="range"] {
+                -webkit-appearance: none;
+                width: 100px;
+                height: 4px;
+                background: rgba(255, 255, 255, 0.3);
+                border-radius: 2px;
+                outline: none;
+            }
+            
+            #app1 input[type="range"]::-webkit-slider-thumb {
+                -webkit-appearance: none;
+                width: 18px;
+                height: 18px;
+                background: white;
+                border-radius: 50%;
+                cursor: pointer;
+                box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            }
+        </style>
+        <canvas id="app1-c"></canvas>
+        <div id="app1-controls">
+            <div class="slider-container">
+                <label>Volume</label>
+                <input type="range" id="app1-volumeSlider" min="1" max="10" value="2.5">
+            </div>
+            <div class="slider-container">
+                <label>Speed</label>
+                <input type="range" id="app1-speedSlider" min="1" max="10" value="2.5">
+            </div>
+            <div class="slider-container">
+                <label>Color</label>
+                <input type="range" id="app1-colorSlider" min="1" max="10" value="1">
+            </div>
+        </div>
+    </div>
+
+    <!-- App 2: Slow Animated Fractal -->
+    <div id="app2" class="app-container">
+        <style>
+            #app2 {
+                background: #f0ede5;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                height: 100vh;
+                font-family: Arial, sans-serif;
+            }
+            
+            #app2-garden {
+                border: 2px solid #6b5b45;
+                border-radius: 5px;
+                margin-bottom: 20px;
+            }
+            
+            #app2-message {
+                text-align: center;
+                color: #6b5b45;
+                font-size: 18px;
+                margin: 0;
+                padding: 10px;
+                display: none;
+            }
+        </style>
+        <canvas id="app2-garden"></canvas>
+        <div id="app2-message">Click anywhere to start drawing</div>
+    </div>
+
+    <!-- App 3: Melodic Flow -->
+    <div id="app3" class="app-container">
+        <style>
+            #app3 {
+                background: #000;
+                overflow: hidden;
+                font-family: "Monaco", monospace;
+            }
+            
+            #app3-c {
+                position: fixed;
+                top: 50px;
+                left: 0;
+                width: 100%;
+                height: calc(100% - 50px);
+            }
+            
+            #app3-volume-control {
+                position: fixed;
+                bottom: 20px;
+                right: 20px;
+                width: 100px;
+                opacity: 0.3;
+                transition: opacity 0.3s;
+                z-index: 10;
+            }
+            
+            #app3-volume-control:hover {
+                opacity: 1;
+            }
+            
+            #app3 .stats {
+                position: fixed;
+                top: 70px;
+                right: 20px;
+                font-family: "Monaco", monospace;
+                font-size: 12px;
+                color: rgba(180, 180, 180, 0.4);
+                display: flex;
+                gap: 15px;
+                background: rgba(20, 20, 20, 0.4);
+                padding: 8px 12px;
+                border-radius: 4px;
+                z-index: 100;
+            }
+            
+            #app3 .stat-block {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            #app3 .stat-label {
+                font-size: 8px;
+                opacity: 0.7;
+                margin-bottom: 2px;
+            }
+            
+            #app3 .flip-number {
+                position: relative;
+                height: 20px;
+                perspective: 400px;
+            }
+            
+            #app3 .flip-number span {
+                display: block;
+                position: absolute;
+                width: 100%;
+                height: 100%;
+                backface-visibility: hidden;
+                text-align: center;
+                transition: transform 0.6s;
+            }
+            
+            #app3 .flip-number .current {
+                transform: rotateX(0deg);
+            }
+            
+            #app3 .flip-number .next {
+                transform: rotateX(-180deg);
+            }
+            
+            #app3 .flip-number.flip .current {
+                transform: rotateX(180deg);
+            }
+            
+            #app3 .flip-number.flip .next {
+                transform: rotateX(0deg);
+            }
+            
+            #app3 .toast {
+                position: fixed;
+                top: 70px;
+                left: 50%;
+                transform: translateX(-50%);
+                background: rgba(255, 255, 255, 0.9);
+                color: #000;
+                padding: 10px 20px;
+                border-radius: 4px;
+                font-size: 14px;
+                opacity: 0;
+                transition: opacity 0.3s;
+                z-index: 1000;
+            }
+            
+            #app3 .toast.show {
+                opacity: 1;
+            }
+        </style>
+        <canvas id="app3-c"></canvas>
+        <div class="stats">
+            <div class="stat-block">
+                <div class="stat-label">TIME</div>
+                <div class="flip-number" id="app3-minutes">
+                    <span class="current">00</span>
+                    <span class="next">01</span>
+                </div>
+            </div>
+            <div class="stat-block">
+                <div class="stat-label">HITS</div>
+                <div class="flip-number" id="app3-hits">
+                    <span class="current">0</span>
+                    <span class="next">0</span>
+                </div>
+            </div>
+        </div>
+        <div id="app3-toast" class="toast"></div>
+        <input type="range" id="app3-volume-control" min="0" max="100" value="50">
+    </div>
+
+    <!-- App 4: YOGO -->
+    <div id="app4" class="app-container">
+        <style>
+            #app4 {
+                background: #000;
+                overflow: hidden;
+                font-family: "Monaco", monospace;
+            }
+            
+            #app4-c {
+                position: fixed;
+                top: 50px;
+                left: 0;
+                width: 100%;
+                height: calc(100% - 50px);
+            }
+            
+            #app4-volume-control {
+                position: fixed;
+                bottom: 20px;
+                right: 20px;
+                width: 100px;
+                opacity: 0.3;
+                transition: opacity 0.3s;
+                z-index: 10;
+            }
+            
+            #app4-volume-control:hover {
+                opacity: 1;
+            }
+            
+            #app4 .stats {
+                position: fixed;
+                top: 70px;
+                right: 20px;
+                font-family: "Monaco", monospace;
+                font-size: 12px;
+                color: rgba(180, 180, 180, 0.4);
+                display: flex;
+                gap: 15px;
+                background: rgba(20, 20, 20, 0.4);
+                padding: 8px 12px;
+                border-radius: 4px;
+                z-index: 100;
+            }
+            
+            #app4 .stat-block {
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+            }
+            
+            #app4 .stat-label {
+                font-size: 8px;
+                opacity: 0.7;
+                margin-bottom: 2px;
+            }
+            
+            #app4 .flip-number {
+                position: relative;
+                height: 20px;
+                perspective: 400px;
+            }
+            
+            #app4 .flip-number span {
+                display: block;
+                position: absolute;
+                width: 100%;
+                height: 100%;
+                backface-visibility: hidden;
+                text-align: center;
+                transition: transform 0.6s;
+            }
+            
+            #app4 .flip-number .current {
+                transform: rotateX(0deg);
+            }
+            
+            #app4 .flip-number .next {
+                transform: rotateX(-180deg);
+            }
+            
+            #app4 .flip-number.flip .current {
+                transform: rotateX(180deg);
+            }
+            
+            #app4 .flip-number.flip .next {
+                transform: rotateX(0deg);
+            }
+        </style>
+        <canvas id="app4-c"></canvas>
+        <div class="stats">
+            <div class="stat-block">
+                <div class="stat-label">TIME</div>
+                <div class="flip-number" id="app4-minutes">
+                    <span class="current">00</span>
+                    <span class="next">01</span>
+                </div>
+            </div>
+            <div class="stat-block">
+                <div class="stat-label">HITS</div>
+                <div class="flip-number" id="app4-hits">
+                    <span class="current">0</span>
+                    <span class="next">0</span>
+                </div>
+            </div>
+        </div>
+        <input type="range" id="app4-volume-control" min="0" max="100" value="50">
+    </div>
+
+    <script>
+        // Global app management
+        document.addEventListener('DOMContentLoaded', function() {
+            // Get all app containers and buttons
+            const apps = document.querySelectorAll('.app-container');
+            const buttons = document.querySelectorAll('.navbar button');
+            
+            // Setup event listeners for buttons
+            document.getElementById('btn-app1').addEventListener('click', function() {
+                showApp('app1');
+            });
+            
+            document.getElementById('btn-app2').addEventListener('click', function() {
+                showApp('app2');
+            });
+            
+            document.getElementById('btn-app3').addEventListener('click', function() {
+                showApp('app3');
+            });
+            
+            document.getElementById('btn-app4').addEventListener('click', function() {
+                showApp('app4');
+            });
+            
+            // Function to switch between apps
+            function showApp(appId) {
+                // Hide all apps
+                apps.forEach(app => {
+                    app.classList.remove('active');
+                });
+                
+                // Deactivate all buttons
+                buttons.forEach(button => {
+                    button.classList.remove('active');
+                });
+                
+                // Show selected app
+                document.getElementById(appId).classList.add('active');
+                
+                // Activate corresponding button
+                document.getElementById('btn-' + appId).classList.add('active');
+                
+                // Trigger resize for proper initialization
+                window.dispatchEvent(new Event('resize'));
+                
+                // Initialize specific app
+                if (appId === 'app1') initApp1();
+                if (appId === 'app2') initApp2();
+                if (appId === 'app3') initApp3();
+                if (appId === 'app4') initApp4();
+            }
+            
+            // Initialize the first app
+            initApp1();
+        });
+
+        //==========================
+        // App 1: 4MySunshine
+        //==========================
+        let app1Initialized = false;
+
+        function initApp1() {
+            if (app1Initialized) return;
+            app1Initialized = true;
+            
+            // Core variables
+            const f = [293.66, 329.63, 369.99, 440.00, 493.88];
+            const c = document.getElementById('app1-c');
+            const x = c.getContext('2d');
+            let w, h, r, g = 1, p = [], t = 0, n = 0, st, tl = [];
+            let dpr = window.devicePixelRatio || 1;
+
+            // State variables with higher initial volume
+            let volumeLevel = 0.75;
+            let speedLevel = 0.5;
+            let colorRate = 0;
+            let baseColor = 200;
+            let a, m, v, d, z;
+
+            // Ball object
+            const b = {
+                x: 0, y: 0, vx: 0, vy: 0, r: 5,
+                c: `hsl(${baseColor}, 70%, 85%)`,
+                a: 0,
+                brightness: 85
+            };
+
+            // Initialize audio context with iOS optimization
+            const initAudioContext = () => {
+                if (!a) {
+                    a = new (window.AudioContext || window.webkitAudioContext)();
+                    m = a.createGain();
+                    v = a.createConvolver();
+                    d = a.createDelay();
+                    z = a.createGain();
+                    m.connect(v); v.connect(d); d.connect(z); z.connect(a.destination);
+                    m.gain.value = 0.45;
+                    d.delayTime.value = 0.4;
+                    z.gain.value = 0.8;
+                    
+                    const buffer = a.createBuffer(2, a.sampleRate * 4, a.sampleRate);
+                    const data = buffer.getChannelData(0);
+                    for (let i = 0; i < buffer.length; i++) {
+                        data[i] = Math.exp(-i/buffer.length * 4) * (Math.random() * 2 - 1) * 0.7;
+                    }
+                    v.buffer = buffer;
+                }
+                if (a.state === 'suspended') {
+                    a.resume();
+                }
+            };
+
+            // Color generation
+            const gC = () => {
+                if (colorRate === 0) {
+                    b.brightness = 85 + Math.sin(t * 2) * 15;
+                    return [
+                        `hsl(${baseColor}, 70%, ${b.brightness}%)`,
+                        `hsl(${baseColor}, 70%, ${Math.max(50, b.brightness - 20)}%)`,
+                        `hsl(${baseColor}, 70%, ${Math.max(40, b.brightness - 30)}%)`
+                    ];
+                } else {
+                    const h = t * colorRate * 20 % 360;
+                    return [
+                        `hsl(${h}, 70%, 85%)`,
+                        `hsl(${(h+120)%360}, 70%, 85%)`,
+                        `hsl(${(h+240)%360}, 70%, 85%)`
+                    ];
+                }
+            };
+
+            // Trail particle class
+            class TrailParticle {
+                constructor(x, y, vx, vy, c) {
+                    this.x = x;
+                    this.y = y;
+                    this.vx = vx * 0.3 + (Math.random() - 0.5) * 0.5;
+                    this.vy = vy * 0.3 + (Math.random() - 0.5) * 0.5;
+                    this.life = 1;
+                    this.color = c;
+                    this.size = Math.random() * 4 + 2;
+                    this.decay = 0.01 + Math.random() * 0.01;
+                    this.angle = Math.atan2(vy, vx);
+                    this.speed = Math.sqrt(vx * vx + vy * vy);
+                }
+
+                update() {
+                    const curveStrength = 0.1;
+                    this.angle += curveStrength * this.life;
+                    this.x += Math.cos(this.angle) * this.speed * speedLevel;
+                    this.y += Math.sin(this.angle) * this.speed * speedLevel;
+                    this.life -= this.decay;
+                    this.size *= 0.98;
+                }
+
+                draw(ctx) {
+                    ctx.beginPath();
+                    ctx.arc(w/2 + this.x, h/2 + this.y, this.size, 0, Math.PI * 2);
+                    ctx.fillStyle = this.color.replace(')', `,${this.life})`).replace('hsl', 'hsla');
+                    ctx.fill();
+                }
+            }
+
+            // Particle generation
+            const gP = () => {
+                p = [];
+                const n = Math.floor(w*h*0.0002);
+                for(let i=0; i<n; i++) {
+                    const ang = Math.random()*Math.PI*2;
+                    const d = Math.random()*r*0.9;
+                    p.push({
+                        x: Math.cos(ang)*d,
+                        y: Math.sin(ang)*d,
+                        r: 1,
+                        c: gC()[Math.floor(Math.random()*3)]
+                    });
+                }
+            };
+
+            // Trail management
+            const aT = (x, y, vx, vy, c) => {
+                for(let i = 0; i < 3; i++) {
+                    tl.push(new TrailParticle(x, y, vx, vy, c));
+                }
+                if(tl.length > 200) tl.splice(0, 3);
+            };
+
+            const uT = () => {
+                tl.forEach(particle => particle.update());
+                tl = tl.filter(particle => particle.life > 0);
+            };
+
+            // Sound generation
+            const pN = (i, time) => {
+                if (!a) return;
+                
+                const o = a.createOscillator();
+                const g = a.createGain();
+                o.connect(g); g.connect(m);
+                o.frequency.value = f[i];
+                o.type = 'sine';
+                g.gain.setValueAtTime(0, time);
+                g.gain.linearRampToValueAtTime(0.6 * volumeLevel, time + 0.1);
+                g.gain.exponentialRampToValueAtTime(0.001, time + 2.5);
+                o.start(time); o.stop(time + 2.5);
+                
+                const h = a.createOscillator();
+                const j = a.createGain();
+                h.connect(j); j.connect(m);
+                h.frequency.value = f[i]*1.5;
+                h.type = 'sine';
+                j.gain.setValueAtTime(0, time);
+                j.gain.linearRampToValueAtTime(0.3 * volumeLevel, time + 0.1);
+                j.gain.exponentialRampToValueAtTime(0.001, time + 2);
+                h.start(time); h.stop(time + 2);
+                n++;
+            };
+
+            // Collision detection and response
+            const cC = () => {
+                const d = Math.sqrt(b.x*b.x + b.y*b.y);
+                if(d + b.r > r) {
+                    const ang = Math.atan2(b.y, b.x);
+                    b.x = Math.cos(ang)*(r-b.r);
+                    b.y = Math.sin(ang)*(r-b.r);
+                    const nx = Math.cos(ang), ny = Math.sin(ang);
+                    const dot = b.vx*nx + b.vy*ny;
+                    const angle = (Math.random() * 2 + 2) * Math.PI / 180 * (Math.random() < 0.5 ? 1 : -1);
+                    const cs = Math.cos(angle);
+                    const sn = Math.sin(angle);
+                    const vx = b.vx - 2*dot*nx;
+                    const vy = b.vy - 2*dot*ny;
+                    b.vx = vx*cs - vy*sn;
+                    b.vy = vx*sn + vy*cs;
+                    const noteIndex = Math.floor((ang + Math.PI) / (2 * Math.PI) * f.length);
+                    pN(noteIndex, a ? a.currentTime : 0);
+                    b.c = gC()[Math.floor(Math.random()*3)];
+                    aT(b.x, b.y, b.vx, b.vy, b.c);
+                }
+
+                p.forEach(q => {
+                    const dx = b.x-q.x, dy = b.y-q.y;
+                    const d = Math.sqrt(dx*dx + dy*dy);
+                    if(d < b.r+q.r) {
+                        const ang = Math.atan2(dy,dx);
+                        b.x = q.x + Math.cos(ang)*(b.r+q.r);
+                        b.y = q.y + Math.sin(ang)*(b.r+q.r);
+                        const nx = Math.cos(ang), ny = Math.sin(ang);
+                        const dot = b.vx*nx + b.vy*ny;
+                        const angle = (Math.random() * 2 + 2) * Math.PI / 180 * (Math.random() < 0.5 ? 1 : -1);
+                        const cs = Math.cos(angle);
+                        const sn = Math.sin(angle);
+                        const vx = b.vx - 2*dot*nx;
+                        const vy = b.vy - 2*dot*ny;
+                        b.vx = vx*cs - vy*sn;
+                        b.vy = vx*sn + vy*cs;
+                        const noteIndex = Math.floor(d / (r/f.length));
+                        pN(noteIndex % f.length, a ? a.currentTime : 0);
+                        b.c = q.c;
+                        aT(b.x, b.y, b.vx, b.vy, b.c);
+                    }
+                });
+            };
+
+            // Main update loop
+            const u = () => {
+                if(!g || !document.getElementById('app1').classList.contains('active')) {
+                    requestAnimationFrame(u);
+                    return;
+                }
+                t += 0.016;
+                
+                const cs = gC();
+                const gr = x.createRadialGradient(w/2,h/2,0,w/2,h/2,r);
+                gr.addColorStop(0,cs[0]);
+                gr.addColorStop(1,cs[1]);
+                x.fillStyle = gr;
+                x.fillRect(0,0,w,h);
+                
+                x.beginPath();
+                x.arc(w/2,h/2,r,0,Math.PI*2);
+                x.strokeStyle = cs[2];
+                x.lineWidth = 2;
+                x.stroke();
+                
+                uT();
+                
+                b.x += b.vx * speedLevel;
+                b.y += b.vy * speedLevel;
+                const s = Math.sqrt(b.vx*b.vx + b.vy*b.vy);
+                if(s < 3) {
+                    b.vx *= 1.005;
+                    b.vy *= 1.005;
+                } else if(s > 6) {
+                    b.vx *= 0.995;
+                    b.vy *= 0.995;
+                }
+                
+                cC();
+                
+                p.forEach(q => {
+                    x.beginPath();
+                    x.arc(w/2+q.x,h/2+q.y,q.r,0,Math.PI*2);
+                    x.fillStyle = q.c;
+                    x.fill();
+                });
+                
+                x.beginPath();
+                x.arc(w/2+b.x,h/2+b.y,b.r,0,Math.PI*2);
+                x.fillStyle = b.c;
+                x.fill();
+                
+                aT(b.x, b.y, b.vx, b.vy, b.c);
+                tl.forEach(particle => particle.draw(x));
+                
+                requestAnimationFrame(u);
+            };
+
+            // Window resize handling
+            const rS = () => {
+                if (!document.getElementById('app1').classList.contains('active')) return;
+                w = window.innerWidth;
+                h = window.innerHeight - 50; // Account for navbar
+                r = Math.min(w,h)*0.45;
+                c.width = w * dpr;
+                c.height = h * dpr;
+                c.style.width = w + 'px';
+                c.style.height = h + 'px';
+                x.scale(dpr, dpr);
+                gP();
+            };
+
+            // Start the app
+            rS();
+            window.addEventListener('resize', rS);
+            document.getElementById('app1').addEventListener('click', initAudioContext);
+            document.getElementById('app1').addEventListener('touchstart', initAudioContext);
+            
+            // Initial velocity
+            b.vx = (Math.random()-0.5)*10;
+            b.vy = (Math.random()-0.5)*10;
+            
+            // UI controls
+            document.getElementById('app1-volumeSlider').oninput = (e) => {
+                volumeLevel = e.target.value / 10;
+            };
+            
+            document.getElementById('app1-speedSlider').oninput = (e) => {
+                speedLevel = e.target.value / 10;
+            };
+            
+            document.getElementById('app1-colorSlider').oninput = (e) => {
+                colorRate = (e.target.value - 1) / 9;
+            };
+            
+            b.a = 1;  // Activate ball movement
+            b.vx = (Math.random() - 0.5) * 10;  // Initial velocity
+            b.vy = (Math.random() - 0.5) * 10;
+            u();  // Start animation
+        }
+
+        //==========================
+        // App 2: Slow Animated Fractal
+        //==========================
+        let app2Initialized = false;
+
+        function initApp2() {
+            if (app2Initialized) return;
+            app2Initialized = true;
+            
+            const canvas = document.getElementById('app2-garden');
+            const ctx = canvas.getContext('2d');
+            const messageDiv = document.getElementById('app2-message');
+
+            // Set canvas size
+            function resizeCanvas() {
+                if (!document.getElementById('app2').classList.contains('active')) return;
+                canvas.width = 600; // Fixed width
+                canvas.height = 400; // Fixed height
+            }
+            
+            // Animation control
+            let hue = 0;
+            let isDrawing = false;
+            let lineQueue = [];
+            let currentAnimation = null;
+
+            // Easing function for smoother animations
+            function easeInOutQuad(t) {
+                return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+            }
+
+            class LineQueue {
+                constructor() {
+                    this.lines = [];
+                    this.currentIndex = 0;
+                }
+
+                addLine(x1, y1, x2, y2) {
+                    this.lines.push({ x1, y1, x2, y2 });
+                }
+
+                hasNext() {
+                    return this.currentIndex < this.lines.length;
+                }
+
+                next() {
+                    return this.lines[this.currentIndex++];
+                }
+            }
+
+            function generateFractalLines(x, y, size, depth, maxDepth, queue) {
+                if (depth > maxDepth) return;
+
+                // Add triangle lines to queue
+                queue.addLine(x, y, x + size, y);
+                queue.addLine(x + size, y, x + size/2, y - size * Math.sqrt(3)/2);
+                queue.addLine(x + size/2, y - size * Math.sqrt(3)/2, x, y);
+
+                const newSize = size / 2;
+                
+                // Process each triangle sequentially
+                if(depth < maxDepth) {
+                    queue.addLine(x, y, x, y); // Marker for recursion start
+                    generateFractalLines(x, y, newSize, depth + 1, maxDepth, queue);
+                    queue.addLine(x + newSize, y, x + newSize, y); // Marker for recursion start
+                    generateFractalLines(x + newSize, y, newSize, depth + 1, maxDepth, queue);
+                    queue.addLine(x + newSize/2, y - newSize * Math.sqrt(3)/2, x + newSize/2, y - newSize * Math.sqrt(3)/2); // Marker for recursion start
+                    generateFractalLines(x + newSize/2, y - newSize * Math.sqrt(3)/2, newSize, depth + 1, maxDepth, queue);
+                }
+            }
+
+            function drawNextLine(queue) {
+                if (!document.getElementById('app2').classList.contains('active') || !queue.hasNext()) {
+                    isDrawing = false;
+                    messageDiv.style.display = 'block';
+                    return;
+                }
+
+                const line = queue.next();
+                
+                // Check if this is a recursion marker
+                if(line.x1 === line.x2 && line.y1 === line.y2) {
+                    // Start recursion after a short delay
+                    setTimeout(() => drawNextLine(queue), 500);
+                    return;
+                }
+
+                // Animate line drawing with easing
+                const startTime = Date.now();
+                const duration = 600; // Slower animation
+                const color = `hsl(${hue}, 40%, 60%)`;
+                
+                function animate() {
+                    if (!document.getElementById('app2').classList.contains('active')) {
+                        isDrawing = false;
+                        return;
+                    }
+                    
+                    const progress = (Date.now() - startTime) / duration;
+                    const easedProgress = easeInOutQuad(Math.min(progress, 1));
+                    const dx = line.x2 - line.x1;
+                    const dy = line.y2 - line.y1;
+
+                    ctx.beginPath();
+                    ctx.moveTo(line.x1, line.y1);
+                    ctx.lineTo(
+                        line.x1 + dx * easedProgress,
+                        line.y1 + dy * easedProgress
+                    );
+                    ctx.strokeStyle = color;
+                    ctx.lineWidth = 1 + (easedProgress * 0.2); // Variable line width
+                    ctx.globalAlpha = 0.8 + (easedProgress * 0.2); // Variable opacity
+                    ctx.stroke();
+                    ctx.globalAlpha = 1;
+
+                    // Draw pen tip dot
+                    ctx.beginPath();
+                    ctx.arc(
+                        line.x1 + dx * easedProgress,
+                        line.y1 + dy * easedProgress,
+                        2,
+                        0,
+                        Math.PI * 2
+                    );
+                    ctx.fillStyle = color;
+                    ctx.fill();
+
+                    if (progress < 1) {
+                        requestAnimationFrame(animate);
+                    } else {
+                        hue = (hue + 0.3) % 360;
+                        setTimeout(() => drawNextLine(queue), 300); // Slower delay between lines
+                    }
+                }
+                
+                requestAnimationFrame(animate);
+            }
+
+            function startDrawing() {
+                if (!document.getElementById('app2').classList.contains('active')) return;
+                
+                if (isDrawing) {
+                    clearTimeout(currentAnimation);
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                }
+
+                isDrawing = true;
+                messageDiv.style.display = 'none';
+                const queue = new LineQueue();
+                const centerX = canvas.width / 2;
+                const centerY = canvas.height / 2;
+                const size = Math.min(canvas.width, canvas.height) * 0.8;
+
+                generateFractalLines(
+                    centerX - size/2,
+                    centerY + size * Math.sqrt(3)/4,
+                    size,
+                    0,
+                    4,
+                    queue
+                );
+
+                drawNextLine(queue);
+            }
+
+            // Start the app
+            resizeCanvas();
+            window.addEventListener('resize', resizeCanvas);
+            canvas.addEventListener('click', startDrawing);
+            messageDiv.addEventListener('click', startDrawing);
+            messageDiv.style.display = 'block';
+        }
+
+        //==========================
+        // App 3: Melodic Flow
+        //==========================
+        let app3Initialized = false;
+
+        function initApp3() {
+            if (app3Initialized) return;
+            app3Initialized = true;
+            
+            let c = document.getElementById('app3-c'),
+                x = c.getContext('2d'),
+                w, h, t = 0,
+                particles = [],
+                audioCtx, masterGain, convolver, delay, harmonicGain,
+                hitCount = 0,
+                startTime = Date.now(),
+                audioInitialized = false,
+                spawnState = 'dormant',
+                lastSpawnStateChange = 0,
+                lastMinuteCheck = 0;
+
+            const spawnStates = {
+                dormant: { duration: [3000, 5000], particleCount: 25 },
+                mild: { duration: [3000, 5000], particleCount: 35 },
+                moderate: { duration: [3000, 5000], particleCount: 45 }
+            };
+
+            const frequencies = [
+                196.00, // G3
+                220.00, // A3
+                261.63, // C4
+                293.66, // D4
+                329.63  // E4
+            ];
+
+            const player = {
+                x: 0,
+                y: 0,
+                vx: 0,
+                vy: 0,
+                r: 5
+            };
+
+            class Particle {
+                constructor(x, y) {
+                    this.x = x;
+                    this.y = y;
+                    this.baseX = x;
+                    this.baseY = y;
+                    this.time = Math.random() * Math.PI * 2;
+                    this.speed = 0.002 + Math.random() * 0.002;
+                    this.range = 30 + Math.random() * 50;
+                    this.brightness = 0.5 + Math.random() * 0.5;
+                    this.frequency = frequencies[Math.floor(Math.random() * frequencies.length)];
+                    this.color = getColor(t, particles.length);
+                }
+
+                update() {
+                    this.time += this.speed;
+                    this.x = this.baseX + Math.cos(this.time) * this.range;
+                    this.y = this.baseY + Math.sin(this.time * 0.7) * this.range;
+                    this.brightness = 0.5 + Math.sin(this.time) * 0.3;
+                }
+
+                draw() {
+                    x.beginPath();
+                    x.arc(w/2 + this.x, h/2 + this.y, 3, 0, Math.PI * 2);
+                    x.fillStyle = this.color.replace('1)', `${this.brightness})`);
+                    x.fill();
+                }
+            }
+
+            function showToast(message) {
+                const toast = document.getElementById('app3-toast');
+                toast.textContent = message;
+                toast.classList.add('show');
+                setTimeout(() => {
+                    toast.classList.remove('show');
+                }, 3000);
+            }
+
+            function checkAchievements() {
+                if (hitCount > 0 && hitCount % 100 === 0) {
+                    showToast(`Congratulations! You've hit ${hitCount} particles! 🎉`);
+                }
+                
+                const currentMinutes = Math.floor((Date.now() - startTime) / 60000);
+                if (currentMinutes > 0 && currentMinutes % 5 === 0 && currentMinutes !== lastMinuteCheck) {
+                    showToast(`${currentMinutes} minutes of melodic flow! Keep going! 🎵`);
+                    lastMinuteCheck = currentMinutes;
+                }
+            }
+
+            function updateSpawnState() {
+                const now = Date.now();
+                if (now - lastSpawnStateChange > spawnStates[spawnState].duration[1] || 
+                    (now - lastSpawnStateChange > spawnStates[spawnState].duration[0] && Math.random() < 0.1)) {
+                    
+                    const states = ['dormant', 'mild', 'moderate'];
+                    const currentIndex = states.indexOf(spawnState);
+                    let newIndex;
+                    
+                    if (spawnState === 'dormant') {
+                        newIndex = Math.random() < 0.5 ? 1 : 2; // Move to mild or moderate
+                    } else {
+                        newIndex = 0; // Return to dormant
+                    }
+                    
+                    spawnState = states[newIndex];
+                    lastSpawnStateChange = now;
+                    
+                    const targetCount = spawnStates[spawnState].particleCount;
+                    while (particles.length > targetCount) {
+                        particles.pop();
+                    }
+                    while (particles.length < targetCount) {
+                        particles.push(createParticle());
+                    }
+                }
+            }
+
+            function initAudio() {
+                if (audioInitialized) return;
+                
+                audioCtx = new AudioContext();
+                masterGain = audioCtx.createGain();
+                convolver = audioCtx.createConvolver();
+                delay = audioCtx.createDelay();
+                harmonicGain = audioCtx.createGain();
+
+                masterGain.connect(convolver);
+                convolver.connect(delay);
+                delay.connect(harmonicGain);
+                harmonicGain.connect(audioCtx.destination);
+
+                masterGain.gain.value = 0.3;
+                delay.delayTime.value = 0.4;
+                harmonicGain.gain.value = 0.8;
+
+                const length = audioCtx.sampleRate * 4;
+                const buffer = audioCtx.createBuffer(2, length, audioCtx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for(let i = 0; i < length; i++) {
+                    data[i] = Math.exp(-i/length * 4) * (Math.random() * 2 - 1) * 0.7;
+                }
+                convolver.buffer = buffer;
+
+                const volumeControl = document.getElementById('app3-volume-control');
+                volumeControl.addEventListener('input', () => {
+                    masterGain.gain.value = volumeControl.value / 100;
+                });
+                
+                audioInitialized = true;
+            }
+
+            function generateNote(freq) {
+                if (!audioInitialized) {
+                    initAudio();
+                }
+                
+                const osc = audioCtx.createOscillator();
+                const noteGain = audioCtx.createGain();
+                const harmonicOsc = audioCtx.createOscillator();
+                const harmonicNoteGain = audioCtx.createGain();
+                
+                osc.frequency.value = freq;
+                harmonicOsc.frequency.value = freq * 1.5;
+                
+                osc.type = 'sine';
+                harmonicOsc.type = 'sine';
+                
+                osc.connect(noteGain);
+                harmonicOsc.connect(harmonicNoteGain);
+                noteGain.connect(masterGain);
+                harmonicNoteGain.connect(masterGain);
+                
+                const now = audioCtx.currentTime;
+                noteGain.gain.setValueAtTime(0, now);
+                harmonicNoteGain.gain.setValueAtTime(0, now);
+                
+                noteGain.gain.linearRampToValueAtTime(0.2, now + 0.1);
+                harmonicNoteGain.gain.linearRampToValueAtTime(0.1, now + 0.1);
+                
+                noteGain.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
+                harmonicNoteGain.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
+                
+                osc.start(now);
+                harmonicOsc.start(now);
+                osc.stop(now + 0.8);
+                harmonicOsc.stop(now + 0.8);
+                
+                updateHitCounter();
+            }
+
+            function random() {
+                return Math.random() * 2 - 1;
+            }
+
+            function updateHitCounter() {
+                hitCount++;
+                const hitsElement = document.getElementById('app3-hits');
+                const currentSpan = hitsElement.querySelector('.current');
+                const nextSpan = hitsElement.querySelector('.next');
+                
+                nextSpan.textContent = hitCount;
+                hitsElement.classList.add('flip');
+                
+                setTimeout(() => {
+                    currentSpan.textContent = hitCount;
+                    hitsElement.classList.remove('flip');
+                }, 600);
+            }
+
+            function updateTimer() {
+                const minutes = Math.floor((Date.now() - startTime) / 60000);
+                const minutesElement = document.getElementById('app3-minutes');
+                const currentSpan = minutesElement.querySelector('.current');
+                const nextSpan = minutesElement.querySelector('.next');
+                
+                if (currentSpan.textContent !== String(minutes).padStart(2, '0')) {
+                    nextSpan.textContent = String(minutes).padStart(2, '0');
+                    minutesElement.classList.add('flip');
+                    
+                    setTimeout(() => {
+                        currentSpan.textContent = String(minutes).padStart(2, '0');
+                        minutesElement.classList.remove('flip');
+                    }, 600);
+                }
+            }
+
+            function getColor(t, i) {
+                return `hsla(${(t * 15 + i * 30) % 360}, 70%, 60%, 1)`;
+            }
+
+            function createParticle() {
+                const angle = Math.random() * Math.PI * 2;
+                const distance = Math.random() * Math.min(w, h) * 0.3;
+                return new Particle(
+                    Math.cos(angle) * distance,
+                    Math.sin(angle) * distance
+                );
+            }
+
+            function initParticles() {
+                particles = [];
+                for (let i = spawnStates[spawnState].particleCount; i--;) {
+                    particles.push(createParticle());
+                }
+            }
+
+            function resize() {
+                if (!document.getElementById('app3').classList.contains('active')) return;
+                w = c.width = innerWidth;
+                h = c.height = innerHeight - 50; // Account for navbar
+                c.style.width = innerWidth + 'px';
+                c.style.height = (innerHeight - 50) + 'px';
+                initParticles();
+            }
+
+            function update() {
+                if (!document.getElementById('app3').classList.contains('active')) {
+                    requestAnimationFrame(update);
+                    return;
+                }
+                
+                t += 0.016;
+                updateTimer();
+                updateSpawnState();
+                checkAchievements();
+                
+                x.fillStyle = 'rgba(0,0,0,0.1)';
+                x.fillRect(0, 0, w, h);
+                
+                x.beginPath();
+                x.arc(w/2 + player.x, h/2 + player.y, player.r, 0, Math.PI * 2);
+                x.fillStyle = getColor(t, 0);
+                x.fill();
+                
+                particles = particles.filter((p, i) => {
+                    p.update();
+                    p.draw();
+                    
+                    if (Math.hypot(player.x - p.x, player.y - p.y) < 10) {
+                        generateNote(p.frequency);
+                        const newParticle = createParticle();
+                        particles.push(newParticle);
+                        return false;
+                    }
+                    return true;
+                });
+                
+                if (player.vx || player.vy) {
+                    player.x += player.vx *= 0.99;
+                    player.y += player.vy *= 0.99;
+                }
+                
+                requestAnimationFrame(update);
+            }
+
+            function handleMove(e) {
+                if (!document.getElementById('app3').classList.contains('active')) return;
+                
+                if (!audioInitialized) {
+                    initAudio();
+                }
+                const r = e.touches ? e.touches[0] : e;
+                player.vx = (r.clientX - w/2 - player.x) * 0.1;
+                player.vy = (r.clientY - h/2 - player.y) * 0.1;
+            }
+
+            // Start the app
+            resize();
+            window.addEventListener('resize', resize);
+            window.addEventListener('mousemove', handleMove);
+            window.addEventListener('touchmove', handleMove);
+            update();
+            
+            // Add click event to initialize audio
+            document.getElementById('app3').addEventListener('click', initAudio);
+        }
+
+        //==========================
+        // App 4: YOGO
+        //==========================
+        let app4Initialized = false;
+
+        function initApp4() {
+            if (app4Initialized) return;
+            app4Initialized = true;
+            
+            let c = document.getElementById('app4-c'),
+                x = c.getContext('2d'),
+                w, h, t = 0,
+                particles = [],
+                audioCtx, masterGain, convolver, delay, harmonicGain,
+                hitCount = 0,
+                startTime = Date.now(),
+                audioInitialized = false;
+
+            // Zen pentatonic scale
+            const frequencies = [
+                196.00, // G3
+                220.00, // A3
+                261.63, // C4
+                293.66, // D4
+                329.63  // E4
+            ];
+
+            const player = {
+                x: 0,
+                y: 0,
+                vx: 0,
+                vy: 0,
+                r: 8
+            };
+
+            function constrainAngle(angle) {
+                const minAngle = 12 * Math.PI / 180;
+                const maxAngle = 20 * Math.PI / 180;
+                return Math.max(minAngle, Math.min(maxAngle, Math.abs(angle))) * Math.sign(angle);
+            }
+
+            function initAudio() {
+                if (audioInitialized) return;
+                
+                audioCtx = new AudioContext();
+                masterGain = audioCtx.createGain();
+                convolver = audioCtx.createConvolver();
+                delay = audioCtx.createDelay();
+                harmonicGain = audioCtx.createGain();
+
+                masterGain.connect(convolver);
+                convolver.connect(delay);
+                delay.connect(harmonicGain);
+                harmonicGain.connect(audioCtx.destination);
+
+                masterGain.gain.value = 0.3;
+                delay.delayTime.value = 0.4;
+                harmonicGain.gain.value = 0.8;
+
+                const length = audioCtx.sampleRate * 4;
+                const buffer = audioCtx.createBuffer(2, length, audioCtx.sampleRate);
+                const data = buffer.getChannelData(0);
+                for(let i = 0; i < length; i++) {
+                    data[i] = Math.exp(-i/length * 4) * (Math.random() * 2 - 1) * 0.7;
+                }
+                convolver.buffer = buffer;
+
+                const volumeControl = document.getElementById('app4-volume-control');
+                volumeControl.addEventListener('input', () => {
+                    masterGain.gain.value = volumeControl.value / 100;
+                });
+                
+                audioInitialized = true;
+            }
+
+            function generateNote(freq) {
+                if (!audioInitialized) {
+                    initAudio();
+                }
+                
+                const osc = audioCtx.createOscillator();
+                const noteGain = audioCtx.createGain();
+                const harmonicOsc = audioCtx.createOscillator();
+                const harmonicNoteGain = audioCtx.createGain();
+                
+                osc.frequency.value = freq;
+                harmonicOsc.frequency.value = freq * 1.5;
+                
+                osc.type = 'sine';
+                harmonicOsc.type = 'sine';
+                
+                osc.connect(noteGain);
+                harmonicOsc.connect(harmonicNoteGain);
+                noteGain.connect(masterGain);
+                harmonicNoteGain.connect(masterGain);
+                
+                const now = audioCtx.currentTime;
+                noteGain.gain.setValueAtTime(0, now);
+                harmonicNoteGain.gain.setValueAtTime(0, now);
+                
+                noteGain.gain.linearRampToValueAtTime(0.15, now + 0.1);
+                harmonicNoteGain.gain.linearRampToValueAtTime(0.1, now + 0.1);
+                
+                noteGain.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
+                harmonicNoteGain.gain.exponentialRampToValueAtTime(0.001, now + 0.8);
+                
+                osc.start(now);
+                harmonicOsc.start(now);
+                osc.stop(now + 0.8);
+                harmonicOsc.stop(now + 0.8);
+                
+                updateHitCounter();
+            }
+
+            function random() {
+                return Math.random() * 2 - 1;
+            }
+
+            function getRandomDirection() {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = 0.3 + Math.random() * 0.5;
+                return {
+                    x: Math.cos(angle) * speed,
+                    y: Math.sin(angle) * speed
+                };
+            }
+
+            function updateHitCounter() {
+                hitCount++;
+                const hitsElement = document.getElementById('app4-hits');
+                const currentSpan = hitsElement.querySelector('.current');
+                const nextSpan = hitsElement.querySelector('.next');
+                
+                nextSpan.textContent = hitCount;
+                hitsElement.classList.add('flip');
+                
+                setTimeout(() => {
+                    currentSpan.textContent = hitCount;
+                    hitsElement.classList.remove('flip');
+                }, 600);
+            }
+
+            function updateTimer() {
+                const minutes = Math.floor((Date.now() - startTime) / 60000);
+                const minutesElement = document.getElementById('app4-minutes');
+                const currentSpan = minutesElement.querySelector('.current');
+                const nextSpan = minutesElement.querySelector('.next');
+                
+                if (currentSpan.textContent !== String(minutes).padStart(2, '0')) {
+                    nextSpan.textContent = String(minutes).padStart(2, '0');
+                    minutesElement.classList.add('flip');
+                    
+                    setTimeout(() => {
+                        currentSpan.textContent = String(minutes).padStart(2, '0');
+                        minutesElement.classList.remove('flip');
+                    }, 600);
+                }
+            }
+
+            function getColor(t, i) {
+                return `hsla(${(t * 15 + i * 25) % 360}, 60%, 65%, 0.7)`;
+            }
+
+            function initParticles() {
+                particles = [];
+                for (let i = 30; i--;) {
+                    const dir = getRandomDirection();
+                    particles.push({
+                        x: random() * w/2,
+                        y: random() * h/2,
+                        vx: dir.x,
+                        vy: dir.y,
+                        color: getColor(t, i)
+                    });
+                }
+            }
+
+            function resize() {
+                if (!document.getElementById('app4').classList.contains('active')) return;
+                w = c.width = innerWidth;
+                h = c.height = innerHeight - 50; // Account for navbar
+                c.style.width = innerWidth + 'px';
+                c.style.height = (innerHeight - 50) + 'px';
+                initParticles();
+            }
+
+            function update() {
+                if (!document.getElementById('app4').classList.contains('active')) {
+                    requestAnimationFrame(update);
+                    return;
+                }
+                
+                t += 0.016;
+                updateTimer();
+                
+                x.fillStyle = 'rgba(0,0,0,0.07)';
+                x.fillRect(0, 0, w, h);
+                
+                x.beginPath();
+                x.arc(w/2 + player.x, h/2 + player.y, player.r, 0, Math.PI * 2);
+                x.fillStyle = getColor(t, 0);
+                x.fill();
+                
+                particles.forEach((p, i) => {
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    
+                    p.vx *= 0.995;
+                    p.vy *= 0.995;
+                    
+                    const dx = player.x - p.x;
+                    const dy = player.y - p.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (dist < 15) {
+                        const angle = Math.atan2(dy, dx);
+                        const constrainedAngle = constrainAngle(angle);
+                        
+                        p.vx = -Math.cos(constrainedAngle) * 1.5;
+                        p.vy = -Math.sin(constrainedAngle) * 1.5;
+                        
+                        generateNote(frequencies[i % frequencies.length]);
+                    }
+                    
+                    if (Math.abs(p.x) > w/2 || Math.abs(p.y) > h/2) {
+                        if (Math.abs(p.x) > w/2) p.vx *= -1;
+                        if (Math.abs(p.y) > h/2) p.vy *= -1;
+                        generateNote(frequencies[i % frequencies.length]);
+                    }
+                    
+                    x.beginPath();
+                    x.arc(w/2 + p.x, h/2 + p.y, 5, 0, Math.PI * 2);
+                    x.fillStyle = p.color;
+                    x.fill();
+                });
+                
+                if (player.vx || player.vy) {
+                    player.x += player.vx *= 0.99;
+                    player.y += player.vy *= 0.99;
+                    
+                    if (Math.abs(player.x) > w/2 || Math.abs(player.y) > h/2) {
+                        if (Math.abs(player.x) > w/2) player.vx *= -1;
+                        if (Math.abs(player.y) > h/2) player.vy *= -1;
+                        generateNote(frequencies[0]);
+                    }
+                }
+                
+                requestAnimationFrame(update);
+            }
+
+            function handleMove(e) {
+                if (!document.getElementById('app4').classList.contains('active')) return;
+                
+                if (!audioInitialized) {
+                    initAudio();
+                }
+                const r = e.touches ? e.touches[0] : e;
+                player.vx = (r.clientX - w/2 - player.x) * 0.1;
+                player.vy = (r.clientY - h/2 - player.y) * 0.1;
+            }
+
+            // Start the app
+            resize();
+            window.addEventListener('resize', resize);
+            window.addEventListener('mousemove', handleMove);
+            window.addEventListener('touchmove', handleMove);
+            update();
+            
+            // Add click event to initialize audio
+            document.getElementById('app4').addEventListener('click', initAudio);
+        }
+    </script>
+</body>
+</html>

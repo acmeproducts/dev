@@ -1,0 +1,1962 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>App Launcher</title>
+    <style>
+        /* Global styles */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            background: #1e1e2e;
+            color: #fff;
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        
+        /* Landing page */
+        .landing-page {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        .landing-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+        
+        .landing-title {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            background: linear-gradient(to right, #9d4edd, #00b4d8);
+            -webkit-background-clip: text;
+            background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .landing-subtitle {
+            color: #adb5bd;
+            font-size: 1.1rem;
+        }
+        
+        .app-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+        
+        .app-card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            padding: 1.5rem;
+            transition: transform 0.3s, box-shadow 0.3s;
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+        
+        .app-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+        
+        .app-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(to right, #9d4edd, #00b4d8);
+        }
+        
+        .app-icon {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+        
+        .app-name {
+            font-size: 1.25rem;
+            margin-bottom: 0.5rem;
+        }
+        
+        .app-description {
+            color: #adb5bd;
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+        
+        .app-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+        
+        .app-tag {
+            background: rgba(157, 78, 221, 0.2);
+            color: #9d4edd;
+            padding: 0.25rem 0.75rem;
+            border-radius: 50px;
+            font-size: 0.75rem;
+        }
+        
+        /* App container */
+        .app-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            display: none;
+            z-index: 100;
+            overflow: hidden;
+        }
+        
+        /* Back button */
+        .back-btn {
+            position: fixed;
+            top: 1.5rem;
+            left: 1.5rem;
+            background: rgba(0, 0, 0, 0.5);
+            color: white;
+            border: none;
+            width: 3rem;
+            height: 3rem;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 200;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s;
+        }
+        
+        .back-btn.visible {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        
+        .back-btn:hover {
+            background: rgba(0, 0, 0, 0.7);
+        }
+        
+        /* Fractal Garden styles */
+        #app-fractal-garden {
+            background: #f0ede5;
+        }
+        
+        #app-fractal-garden canvas {
+            border: 2px solid #6b5b45;
+            border-radius: 5px;
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+        
+        #app-fractal-garden-message {
+            text-align: center;
+            color: #6b5b45;
+            font-size: 18px;
+            position: absolute;
+            bottom: 30px;
+            left: 0;
+            right: 0;
+            margin: 0 auto;
+            padding: 10px;
+            display: none;
+        }
+
+        /* 4mysunshine styles */
+        #app-4mysunshine {
+            background: #000;
+        }
+
+        #app-4mysunshine canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        #app-4mysunshine-controls {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.2);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            padding: 15px 25px;
+            border-radius: 18px;
+            color: white;
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            z-index: 101;
+        }
+
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .slider-container label {
+            white-space: nowrap;
+            font-size: 14px;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.9);
+        }
+
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 2px;
+            outline: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            background: white;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            background: white;
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        
+        /* Melodic Flow styles */
+        #app-melodic-flow {
+            background: #000;
+        }
+        
+        #app-melodic-flow canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            touch-action: none;
+        }
+        
+        #app-melodic-flow #melodic-flow-volume-control {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 100px;
+            opacity: 0.5;
+            transition: opacity 0.3s;
+            z-index: 101;
+        }
+        
+        #app-melodic-flow #melodic-flow-volume-control:hover {
+            opacity: 1;
+        }
+        
+        #app-melodic-flow .stats {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            font-family: "Monaco", monospace;
+            font-size: 12px;
+            color: rgba(180, 180, 180, 0.4);
+            display: flex;
+            gap: 15px;
+            background: rgba(20, 20, 20, 0.4);
+            padding: 8px 12px;
+            border-radius: 4px;
+            z-index: 101;
+        }
+        
+        #app-melodic-flow .stat-block {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        #app-melodic-flow .stat-label {
+            font-size: 8px;
+            opacity: 0.7;
+            margin-bottom: 2px;
+        }
+        
+        #app-melodic-flow .flip-number {
+            position: relative;
+            height: 20px;
+            perspective: 400px;
+        }
+        
+        #app-melodic-flow .flip-number span {
+            display: block;
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            text-align: center;
+            transition: transform 0.6s;
+        }
+        
+        #app-melodic-flow .flip-number .current {
+            transform: rotateX(0deg);
+        }
+        
+        #app-melodic-flow .flip-number .next {
+            transform: rotateX(-180deg);
+        }
+        
+        #app-melodic-flow .flip-number.flip .current {
+            transform: rotateX(180deg);
+        }
+        
+        #app-melodic-flow .flip-number.flip .next {
+            transform: rotateX(0deg);
+        }
+        
+        #app-melodic-flow .toast {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.9);
+            color: #000;
+            padding: 10px 20px;
+            border-radius: 4px;
+            font-size: 14px;
+            opacity: 0;
+            transition: opacity 0.3s;
+            z-index: 1000;
+        }
+        
+        #app-melodic-flow .toast.show {
+            opacity: 1;
+        }
+        
+        /* YOGO styles */
+        #app-yogo {
+            background: #000;
+        }
+        
+        #app-yogo canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            touch-action: none;
+        }
+        
+        #app-yogo #yogo-volume-control {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 100px;
+            opacity: 0.5;
+            transition: opacity 0.3s;
+            z-index: 101;
+        }
+        
+        #app-yogo #yogo-volume-control:hover {
+            opacity: 1;
+        }
+        
+        #app-yogo .stats {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            font-family: "Monaco", monospace;
+            font-size: 12px;
+            color: rgba(180, 180, 180, 0.4);
+            display: flex;
+            gap: 15px;
+            background: rgba(20, 20, 20, 0.4);
+            padding: 8px 12px;
+            border-radius: 4px;
+            z-index: 101;
+        }
+        
+        #app-yogo .stat-block {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        #app-yogo .stat-label {
+            font-size: 8px;
+            opacity: 0.7;
+            margin-bottom: 2px;
+        }
+        
+        #app-yogo .flip-number {
+            position: relative;
+            height: 20px;
+            perspective: 400px;
+        }
+        
+        #app-yogo .flip-number span {
+            display: block;
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            backface-visibility: hidden;
+            text-align: center;
+            transition: transform 0.6s;
+        }
+        
+        #app-yogo .flip-number .current {
+            transform: rotateX(0deg);
+        }
+        
+        #app-yogo .flip-number .next {
+            transform: rotateX(-180deg);
+        }
+        
+        #app-yogo .flip-number.flip .current {
+            transform: rotateX(180deg);
+        }
+        
+        #app-yogo .flip-number.flip .next {
+            transform: rotateX(0deg);
+        }
+    </style>
+</head>
+<body>
+    <!-- Back Button -->
+    <button id="back-btn" class="back-btn" aria-label="Back to menu">
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M19 12H5M12 19l-7-7 7-7"/>
+        </svg>
+    </button>
+
+    <!-- Landing Page -->
+    <div id="landing-page" class="landing-page">
+        <header class="landing-header">
+            <h1 class="landing-title">Interactive App Collection</h1>
+            <p class="landing-subtitle">A collection of creative web experiences</p>
+        </header>
+        
+        <div class="app-grid">
+            <!-- First app - Fractal Garden -->
+            <div class="app-card" data-app="fractal-garden">
+                <div class="app-icon">🔷</div>
+                <h2 class="app-name">Fractal Garden</h2>
+                <p class="app-description">Watch mesmerizing fractal patterns being drawn line by line in a beautiful animation.</p>
+                <div class="app-tags">
+                    <span class="app-tag">Animation</span>
+                    <span class="app-tag">Geometric</span>
+                </div>
+            </div>
+            
+            <!-- Second app - 4mysunshine -->
+            <div class="app-card" data-app="4mysunshine">
+                <div class="app-icon">🎵</div>
+                <h2 class="app-name">4mysunshine</h2>
+                <p class="app-description">A musical playground with bouncing balls that create soothing sounds when they collide.</p>
+                <div class="app-tags">
+                    <span class="app-tag">Audio</span>
+                    <span class="app-tag">Interactive</span>
+                </div>
+            </div>
+            
+            <!-- Third app - Melodic Flow -->
+            <div class="app-card" data-app="melodic-flow">
+                <div class="app-icon">🎹</div>
+                <h2 class="app-name">Melodic Flow</h2>
+                <p class="app-description">Create beautiful melodies by moving your cursor through a field of musical particles.</p>
+                <div class="app-tags">
+                    <span class="app-tag">Audio</span>
+                    <span class="app-tag">Interactive</span>
+                </div>
+            </div>
+            
+            <!-- Fourth app - YOGO -->
+            <div class="app-card" data-app="yogo">
+                <div class="app-icon">🎮</div>
+                <h2 class="app-name">YOGO</h2>
+                <p class="app-description">A zen-like experience with particles that create music as they interact.</p>
+                <div class="app-tags">
+                    <span class="app-tag">Audio</span>
+                    <span class="app-tag">Game</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Fractal Garden App Container -->
+    <div id="app-fractal-garden" class="app-container">
+        <canvas id="fractal-garden-canvas"></canvas>
+        <div id="app-fractal-garden-message">Click anywhere to start drawing</div>
+    </div>
+
+    <!-- 4mysunshine App Container -->
+    <div id="app-4mysunshine" class="app-container">
+        <canvas id="4mysunshine-canvas"></canvas>
+        <div id="app-4mysunshine-controls">
+            <div class="slider-container">
+                <label>Volume</label>
+                <input type="range" id="volumeSlider" min="1" max="10" value="7.5">
+            </div>
+            <div class="slider-container">
+                <label>Speed</label>
+                <input type="range" id="speedSlider" min="1" max="10" value="2.5">
+            </div>
+            <div class="slider-container">
+                <label>Color</label>
+                <input type="range" id="colorSlider" min="1" max="10" value="1">
+            </div>
+        </div>
+    </div>
+    
+    <!-- Melodic Flow App Container -->
+    <div id="app-melodic-flow" class="app-container">
+        <canvas id="melodic-flow-canvas"></canvas>
+        <div class="stats">
+            <div class="stat-block">
+                <div class="stat-label">TIME</div>
+                <div class="flip-number" id="melodic-flow-minutes">
+                    <span class="current">00</span>
+                    <span class="next">01</span>
+                </div>
+            </div>
+            <div class="stat-block">
+                <div class="stat-label">HITS</div>
+                <div class="flip-number" id="melodic-flow-hits">
+                    <span class="current">0</span>
+                    <span class="next">0</span>
+                </div>
+            </div>
+        </div>
+        <div id="melodic-flow-toast" class="toast"></div>
+        <input type="range" id="melodic-flow-volume-control" min="0" max="100" value="75">
+    </div>
+    
+    <!-- YOGO App Container -->
+    <div id="app-yogo" class="app-container">
+        <canvas id="yogo-canvas"></canvas>
+        <div class="stats">
+            <div class="stat-block">
+                <div class="stat-label">TIME</div>
+                <div class="flip-number" id="yogo-minutes">
+                    <span class="current">00</span>
+                    <span class="next">01</span>
+                </div>
+            </div>
+            <div class="stat-block">
+                <div class="stat-label">HITS</div>
+                <div class="flip-number" id="yogo-hits">
+                    <span class="current">0</span>
+                    <span class="next">0</span>
+                </div>
+            </div>
+        </div>
+        <input type="range" id="yogo-volume-control" min="0" max="100" value="75">
+    </div>
+
+    <script>
+        // App launcher with four apps
+        (function() {
+            // Elements
+            const landingPage = document.getElementById('landing-page');
+            const backBtn = document.getElementById('back-btn');
+            const appCards = document.querySelectorAll('.app-card');
+            
+            // Keep track of apps and their cleanup functions
+            const apps = {
+                'fractal-garden': {
+                    init: initFractalGarden,
+                    cleanup: cleanupFractalGarden
+                },
+                '4mysunshine': {
+                    init: init4mysunshine,
+                    cleanup: cleanup4mysunshine
+                },
+                'melodic-flow': {
+                    init: initMelodicFlow,
+                    cleanup: cleanupMelodicFlow
+                },
+                'yogo': {
+                    init: initYogo,
+                    cleanup: cleanupYogo
+                }
+            };
+            
+            // Current state
+            let currentApp = null;
+            
+            // Navigate to app
+            function navigateToApp(appId) {
+                // Hide landing page
+                landingPage.style.display = 'none';
+                
+                // Show back button
+                backBtn.classList.add('visible');
+                
+                // Show the app
+                document.getElementById(`app-${appId}`).style.display = 'block';
+                
+                // Initialize the app
+                if (apps[appId] && typeof apps[appId].init === 'function') {
+                    apps[appId].init();
+                }
+                
+                currentApp = appId;
+            }
+            
+            // Navigate back to landing
+            function navigateToLanding() {
+                // Cleanup current app if it exists
+                if (currentApp && apps[currentApp] && typeof apps[currentApp].cleanup === 'function') {
+                    apps[currentApp].cleanup();
+                }
+                
+                // Hide all apps
+                document.querySelectorAll('.app-container').forEach(container => {
+                    container.style.display = 'none';
+                });
+                
+                // Hide back button
+                backBtn.classList.remove('visible');
+                
+                // Show landing page
+                landingPage.style.display = 'block';
+                
+                currentApp = null;
+            }
+            
+            // Set up event listeners
+            appCards.forEach(card => {
+                if (card.dataset.app) { // Only cards with app data
+                    card.addEventListener('click', () => {
+                        navigateToApp(card.dataset.app);
+                    });
+                }
+            });
+            
+            backBtn.addEventListener('click', navigateToLanding);
+            
+            //=======================================
+            // Fractal Garden Implementation
+            //=======================================
+            const fractalCanvas = document.getElementById('fractal-garden-canvas');
+            const fractalCtx = fractalCanvas.getContext('2d');
+            const messageDiv = document.getElementById('app-fractal-garden-message');
+            
+            let isDrawing = false;
+            let fractalAnimationId = null;
+            let fractalTimeoutId = null;
+            let hue = 0;
+            
+            function initFractalGarden() {
+                // Set canvas size
+                fractalCanvas.width = window.innerWidth - 40;
+                fractalCanvas.height = window.innerHeight - 40;
+                
+                // Show message
+                messageDiv.style.display = 'block';
+                
+                // Draw initial message
+                fractalCtx.fillStyle = '#6b5b45';
+                fractalCtx.font = '18px Arial';
+                fractalCtx.textAlign = 'center';
+                fractalCtx.fillText('Click anywhere to start drawing', fractalCanvas.width/2, fractalCanvas.height/2);
+                
+                // Add event listeners
+                fractalCanvas.addEventListener('click', startDrawing);
+                messageDiv.addEventListener('click', startDrawing);
+            }
+            
+            function cleanupFractalGarden() {
+                // Remove event listeners
+                fractalCanvas.removeEventListener('click', startDrawing);
+                messageDiv.removeEventListener('click', startDrawing);
+                
+                // Cancel animation frame
+                if (fractalAnimationId) {
+                    cancelAnimationFrame(fractalAnimationId);
+                    fractalAnimationId = null;
+                }
+                
+                // Clear any timeouts
+                if (fractalTimeoutId) {
+                    clearTimeout(fractalTimeoutId);
+                    fractalTimeoutId = null;
+                }
+                
+                // Reset state
+                isDrawing = false;
+            }
+            
+            // Easing function for smoother animations
+            function easeInOutQuad(t) {
+                return t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t;
+            }
+            
+            class LineQueue {
+                constructor() {
+                    this.lines = [];
+                    this.currentIndex = 0;
+                }
+
+                addLine(x1, y1, x2, y2) {
+                    this.lines.push({ x1, y1, x2, y2 });
+                }
+
+                hasNext() {
+                    return this.currentIndex < this.lines.length;
+                }
+
+                next() {
+                    return this.lines[this.currentIndex++];
+                }
+            }
+            
+            function generateFractalLines(x, y, size, depth, maxDepth, queue) {
+                if (depth > maxDepth) return;
+
+                // Add triangle lines to queue
+                queue.addLine(x, y, x + size, y);
+                queue.addLine(x + size, y, x + size/2, y - size * Math.sqrt(3)/2);
+                queue.addLine(x + size/2, y - size * Math.sqrt(3)/2, x, y);
+
+                const newSize = size / 2;
+                generateFractalLines(x, y, newSize, depth + 1, maxDepth, queue);
+                generateFractalLines(x + newSize, y, newSize, depth + 1, maxDepth, queue);
+                generateFractalLines(x + newSize/2, y - newSize * Math.sqrt(3)/2, newSize, depth + 1, maxDepth, queue);
+            }
+            
+            function drawNextLine(queue) {
+                if (!queue.hasNext()) {
+                    isDrawing = false;
+                    messageDiv.style.display = 'block';
+                    return;
+                }
+
+                const line = queue.next();
+                
+                // Animate line drawing with easing
+                const startTime = Date.now();
+                const duration = 400; // Animation duration
+                const color = `hsl(${hue}, 40%, 60%)`;
+                
+                function animate() {
+                    const progress = (Date.now() - startTime) / duration;
+                    const easedProgress = easeInOutQuad(Math.min(progress, 1));
+                    const dx = line.x2 - line.x1;
+                    const dy = line.y2 - line.y1;
+
+                    fractalCtx.beginPath();
+                    fractalCtx.moveTo(line.x1, line.y1);
+                    fractalCtx.lineTo(
+                        line.x1 + dx * easedProgress,
+                        line.y1 + dy * easedProgress
+                    );
+                    fractalCtx.strokeStyle = color;
+                    fractalCtx.lineWidth = 1 + (easedProgress * 0.2); // Variable line width
+                    fractalCtx.globalAlpha = 0.8 + (easedProgress * 0.2); // Variable opacity
+                    fractalCtx.stroke();
+                    fractalCtx.globalAlpha = 1;
+
+                    // Draw pen tip dot
+                    fractalCtx.beginPath();
+                    fractalCtx.arc(
+                        line.x1 + dx * easedProgress,
+                        line.y1 + dy * easedProgress,
+                        2,
+                        0,
+                        Math.PI * 2
+                    );
+                    fractalCtx.fillStyle = color;
+                    fractalCtx.fill();
+
+                    if (progress < 1) {
+                        fractalAnimationId = requestAnimationFrame(animate);
+                    } else {
+                        hue = (hue + 0.3) % 360;
+                        fractalTimeoutId = setTimeout(() => drawNextLine(queue), 100); // Delay between lines
+                    }
+                }
+                
+                fractalAnimationId = requestAnimationFrame(animate);
+            }
+            
+            function startDrawing() {
+                if (isDrawing) {
+                    if (fractalTimeoutId) {
+                        clearTimeout(fractalTimeoutId);
+                    }
+                    if (fractalAnimationId) {
+                        cancelAnimationFrame(fractalAnimationId);
+                    }
+                    fractalCtx.clearRect(0, 0, fractalCanvas.width, fractalCanvas.height);
+                }
+
+                isDrawing = true;
+                messageDiv.style.display = 'none';
+                hue = Math.random() * 360; // Random starting hue
+                
+                const queue = new LineQueue();
+                const centerX = fractalCanvas.width / 2;
+                const centerY = fractalCanvas.height / 2;
+                const size = Math.min(fractalCanvas.width, fractalCanvas.height) * 0.8;
+
+                generateFractalLines(
+                    centerX - size/2,
+                    centerY + size * Math.sqrt(3)/4,
+                    size,
+                    0,
+                    5, // Increased max depth for more detail
+                    queue
+                );
+
+                drawNextLine(queue);
+            }
+            
+            //=======================================
+            // 4mysunshine Implementation
+            //=======================================
+            const sunshineCanvas = document.getElementById('4mysunshine-canvas');
+            const sunshineCtx = sunshineCanvas.getContext('2d');
+            const volumeSlider = document.getElementById('volumeSlider');
+            const speedSlider = document.getElementById('speedSlider');
+            const colorSlider = document.getElementById('colorSlider');
+            
+            let sunshineAnimationId = null;
+            let sunshineAudioContext = null;
+            let sunshineMasterGain = null;
+            let sunshineConvolver = null;
+            let sunshineDelay = null;
+            let sunshineHarmonicGain = null;
+            
+            // App state
+            let sunshineWidth, sunshineHeight, sunshineRadius;
+            let sunshineTime = 0;
+            let sunshineParticles = [];
+            let sunshineTrails = [];
+            
+            // Settings
+            let volumeLevel = 0.75;  // Increased from 0.5 to 0.75
+            let speedLevel = 0.5;
+            let colorRate = 0;
+            let baseColor = 200;
+            
+            // Frequencies for notes
+            const sunshineFrequencies = [293.66, 329.63, 369.99, 440.00, 493.88];
+            
+            // Ball object
+            const ball = {
+                x: 0, y: 0, vx: 0, vy: 0, r: 5,
+                c: `hsl(${baseColor}, 70%, 85%)`,
+                brightness: 85
+            };
+            
+            // Trail particle
+            class TrailParticle {
+                constructor(x, y, vx, vy, color) {
+                    this.x = x;
+                    this.y = y;
+                    this.vx = vx * 0.3 + (Math.random() - 0.5) * 0.5;
+                    this.vy = vy * 0.3 + (Math.random() - 0.5) * 0.5;
+                    this.life = 1;
+                    this.color = color;
+                    this.size = Math.random() * 4 + 2;
+                    this.decay = 0.01 + Math.random() * 0.01;
+                    this.angle = Math.atan2(vy, vx);
+                    this.speed = Math.sqrt(vx * vx + vy * vy);
+                }
+                
+                update() {
+                    const curveStrength = 0.1;
+                    this.angle += curveStrength * this.life;
+                    this.x += Math.cos(this.angle) * this.speed * speedLevel;
+                    this.y += Math.sin(this.angle) * this.speed * speedLevel;
+                    this.life -= this.decay;
+                    this.size *= 0.98;
+                }
+                
+                draw() {
+                    sunshineCtx.beginPath();
+                    sunshineCtx.arc(sunshineWidth/2 + this.x, sunshineHeight/2 + this.y, this.size, 0, Math.PI * 2);
+                    sunshineCtx.fillStyle = this.color.replace(')', `,${this.life})`).replace('hsl', 'hsla');
+                    sunshineCtx.fill();
+                }
+            }
+            
+            function initSunshineAudio() {
+                try {
+                    // Create audio context
+                    sunshineAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    
+                    // Create audio nodes
+                    sunshineMasterGain = sunshineAudioContext.createGain();
+                    sunshineConvolver = sunshineAudioContext.createConvolver();
+                    sunshineDelay = sunshineAudioContext.createDelay();
+                    sunshineHarmonicGain = sunshineAudioContext.createGain();
+                    
+                    // Connect audio nodes
+                    sunshineMasterGain.connect(sunshineConvolver);
+                    sunshineConvolver.connect(sunshineDelay);
+                    sunshineDelay.connect(sunshineHarmonicGain);
+                    sunshineHarmonicGain.connect(sunshineAudioContext.destination);
+                    
+                    // Set initial values - increased for better audibility
+                    sunshineMasterGain.gain.value = 0.75; // Increased from 0.45
+                    sunshineDelay.delayTime.value = 0.4;
+                    sunshineHarmonicGain.gain.value = 0.8;
+                    
+                    // Create reverb impulse response
+                    const impulseLength = sunshineAudioContext.sampleRate * 4;
+                    const impulse = sunshineAudioContext.createBuffer(2, impulseLength, sunshineAudioContext.sampleRate);
+                    const impulseL = impulse.getChannelData(0);
+                    
+                    for (let i = 0; i < impulseLength; i++) {
+                        impulseL[i] = Math.exp(-i/impulseLength * 4) * (Math.random() * 2 - 1) * 0.7;
+                    }
+                    
+                    sunshineConvolver.buffer = impulse;
+                    
+                    // Ensure audio context is running
+                    if (sunshineAudioContext.state === 'suspended') {
+                        sunshineAudioContext.resume();
+                    }
+                } catch (e) {
+                    console.error("Error initializing sunshine audio:", e);
+                }
+            }
+            
+            function getColors() {
+                if (colorRate === 0) {
+                    ball.brightness = 85 + Math.sin(sunshineTime * 2) * 15;
+                    return [
+                        `hsl(${baseColor}, 70%, ${ball.brightness}%)`,
+                        `hsl(${baseColor}, 70%, ${Math.max(50, ball.brightness - 20)}%)`,
+                        `hsl(${baseColor}, 70%, ${Math.max(40, ball.brightness - 30)}%)`
+                    ];
+                } else {
+                    const h = sunshineTime * colorRate * 20 % 360;
+                    return [
+                        `hsl(${h}, 70%, 85%)`,
+                        `hsl(${(h+120)%360}, 70%, 85%)`,
+                        `hsl(${(h+240)%360}, 70%, 85%)`
+                    ];
+                }
+            }
+            
+            function createParticles() {
+                sunshineParticles = [];
+                const count = Math.floor(sunshineWidth * sunshineHeight * 0.0002);
+                
+                for (let i = 0; i < count; i++) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const distance = Math.random() * sunshineRadius * 0.9;
+                    sunshineParticles.push({
+                        x: Math.cos(angle) * distance,
+                        y: Math.sin(angle) * distance,
+                        r: 1,
+                        c: getColors()[Math.floor(Math.random() * 3)]
+                    });
+                }
+            }
+            
+            function addTrail(x, y, vx, vy, color) {
+                for (let i = 0; i < 3; i++) {
+                    sunshineTrails.push(new TrailParticle(x, y, vx, vy, color));
+                }
+                
+                if (sunshineTrails.length > 200) {
+                    sunshineTrails.splice(0, 3);
+                }
+            }
+            
+            function updateTrails() {
+                for (let i = sunshineTrails.length - 1; i >= 0; i--) {
+                    sunshineTrails[i].update();
+                    
+                    if (sunshineTrails[i].life <= 0) {
+                        sunshineTrails.splice(i, 1);
+                    }
+                }
+            }
+            
+            function playNote(noteIndex) {
+                if (!sunshineAudioContext) return;
+                
+                try {
+                    const now = sunshineAudioContext.currentTime;
+                    
+                    // Create oscillator and gain node for the main note
+                    const osc = sunshineAudioContext.createOscillator();
+                    const gainNode = sunshineAudioContext.createGain();
+                    
+                    osc.connect(gainNode);
+                    gainNode.connect(sunshineMasterGain);
+                    
+                    osc.frequency.value = sunshineFrequencies[noteIndex % sunshineFrequencies.length];
+                    osc.type = 'sine';
+                    
+                    gainNode.gain.setValueAtTime(0, now);
+                    gainNode.gain.linearRampToValueAtTime(0.6 * volumeLevel, now + 0.1);
+                    gainNode.gain.exponentialRampToValueAtTime(0.001, now + 2.5);
+                    
+                    osc.start(now);
+                    osc.stop(now + 2.5);
+                    
+                    // Create oscillator and gain node for the harmonic
+                    const harmonic = sunshineAudioContext.createOscillator();
+                    const harmonicGain = sunshineAudioContext.createGain();
+                    
+                    harmonic.connect(harmonicGain);
+                    harmonicGain.connect(sunshineMasterGain);
+                    
+                    harmonic.frequency.value = sunshineFrequencies[noteIndex % sunshineFrequencies.length] * 1.5;
+                    harmonic.type = 'sine';
+                    
+                    harmonicGain.gain.setValueAtTime(0, now);
+                    harmonicGain.gain.linearRampToValueAtTime(0.3 * volumeLevel, now + 0.1);
+                    harmonicGain.gain.exponentialRampToValueAtTime(0.001, now + 2);
+                    
+                    harmonic.start(now);
+                    harmonic.stop(now + 2);
+                } catch (e) {
+                    console.error("Error playing sunshine note:", e);
+                }
+            }
+            
+            function checkCollisions() {
+                // Check collision with the boundary
+                const distance = Math.sqrt(ball.x * ball.x + ball.y * ball.y);
+                
+                if (distance + ball.r > sunshineRadius) {
+                    // Calculate collision response
+                    const angle = Math.atan2(ball.y, ball.x);
+                    
+                    // Position the ball at the boundary
+                    ball.x = Math.cos(angle) * (sunshineRadius - ball.r);
+                    ball.y = Math.sin(angle) * (sunshineRadius - ball.r);
+                    
+                    // Calculate reflection vector
+                    const nx = Math.cos(angle);
+                    const ny = Math.sin(angle);
+                    const dot = ball.vx * nx + ball.vy * ny;
+                    
+                    // Add a small random angle for variation
+                    const randomAngle = (Math.random() * 2 + 2) * Math.PI / 180 * (Math.random() < 0.5 ? 1 : -1);
+                    const cs = Math.cos(randomAngle);
+                    const sn = Math.sin(randomAngle);
+                    
+                    // Calculate new velocity
+                    const vx = ball.vx - 2 * dot * nx;
+                    const vy = ball.vy - 2 * dot * ny;
+                    
+                    // Apply the randomized reflection
+                    ball.vx = vx * cs - vy * sn;
+                    ball.vy = vx * sn + vy * cs;
+                    
+                    // Map the angle to a note index
+                    const noteIndex = Math.floor((angle + Math.PI) / (2 * Math.PI) * sunshineFrequencies.length);
+                    playNote(noteIndex);
+                    
+                    // Update ball color and add trail
+                    ball.c = getColors()[Math.floor(Math.random() * 3)];
+                    addTrail(ball.x, ball.y, ball.vx, ball.vy, ball.c);
+                }
+                
+                // Check collision with particles
+                for (let i = 0; i < sunshineParticles.length; i++) {
+                    const p = sunshineParticles[i];
+                    const dx = ball.x - p.x;
+                    const dy = ball.y - p.y;
+                    const d = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (d < ball.r + p.r) {
+                        // Position the ball at the point of contact
+                        const angle = Math.atan2(dy, dx);
+                        ball.x = p.x + Math.cos(angle) * (ball.r + p.r);
+                        ball.y = p.y + Math.sin(angle) * (ball.r + p.r);
+                        
+                        // Calculate reflection vector
+                        const nx = Math.cos(angle);
+                        const ny = Math.sin(angle);
+                        const dot = ball.vx * nx + ball.vy * ny;
+                        
+                        // Add a small random angle for variation
+                        const randomAngle = (Math.random() * 2 + 2) * Math.PI / 180 * (Math.random() < 0.5 ? 1 : -1);
+                        const cs = Math.cos(randomAngle);
+                        const sn = Math.sin(randomAngle);
+                        
+                        // Calculate new velocity
+                        const vx = ball.vx - 2 * dot * nx;
+                        const vy = ball.vy - 2 * dot * ny;
+                        
+                        // Apply the randomized reflection
+                        ball.vx = vx * cs - vy * sn;
+                        ball.vy = vx * sn + vy * cs;
+                        
+                        // Map the distance to a note index
+                        const noteIndex = Math.floor(d / (sunshineRadius / sunshineFrequencies.length));
+                        playNote(noteIndex % sunshineFrequencies.length);
+                        
+                        // Update ball color and add trail
+                        ball.c = p.c;
+                        addTrail(ball.x, ball.y, ball.vx, ball.vy, ball.c);
+                    }
+                }
+            }
+            
+            function updateSunshine() {
+                sunshineTime += 0.016;
+                
+                // Get colors based on current settings
+                const colors = getColors();
+                
+                // Create radial gradient background
+                const gradient = sunshineCtx.createRadialGradient(sunshineWidth/2, sunshineHeight/2, 0, sunshineWidth/2, sunshineHeight/2, sunshineRadius);
+                gradient.addColorStop(0, colors[0]);
+                gradient.addColorStop(1, colors[1]);
+                sunshineCtx.fillStyle = gradient;
+                sunshineCtx.fillRect(0, 0, sunshineWidth, sunshineHeight);
+                
+                // Draw boundary circle
+                sunshineCtx.beginPath();
+                sunshineCtx.arc(sunshineWidth/2, sunshineHeight/2, sunshineRadius, 0, Math.PI * 2);
+                sunshineCtx.strokeStyle = colors[2];
+                sunshineCtx.lineWidth = 2;
+                sunshineCtx.stroke();
+                
+                // Update and draw trails
+                updateTrails();
+                sunshineTrails.forEach(trail => trail.draw());
+                
+                // Update ball position
+                ball.x += ball.vx * speedLevel;
+                ball.y += ball.vy * speedLevel;
+                
+                // Adjust ball speed if needed
+                const speed = Math.sqrt(ball.vx * ball.vx + ball.vy * ball.vy);
+                if (speed < 3) {
+                    ball.vx *= 1.005;
+                    ball.vy *= 1.005;
+                } else if (speed > 6) {
+                    ball.vx *= 0.995;
+                    ball.vy *= 0.995;
+                }
+                
+                // Check for collisions
+                checkCollisions();
+                
+                // Draw particles
+                sunshineParticles.forEach(p => {
+                    sunshineCtx.beginPath();
+                    sunshineCtx.arc(sunshineWidth/2 + p.x, sunshineHeight/2 + p.y, p.r, 0, Math.PI * 2);
+                    sunshineCtx.fillStyle = p.c;
+                    sunshineCtx.fill();
+                });
+                
+                // Draw ball
+                sunshineCtx.beginPath();
+                sunshineCtx.arc(sunshineWidth/2 + ball.x, sunshineHeight/2 + ball.y, ball.r, 0, Math.PI * 2);
+                sunshineCtx.fillStyle = ball.c;
+                sunshineCtx.fill();
+                
+                // Add trails at current position
+                addTrail(ball.x, ball.y, ball.vx, ball.vy, ball.c);
+                
+                // Request next frame
+                sunshineAnimationId = requestAnimationFrame(updateSunshine);
+            }
+            
+            function handleSunshineResize() {
+                sunshineWidth = window.innerWidth;
+                sunshineHeight = window.innerHeight;
+                sunshineRadius = Math.min(sunshineWidth, sunshineHeight) * 0.45;
+                
+                sunshineCanvas.width = sunshineWidth;
+                sunshineCanvas.height = sunshineHeight;
+                
+                createParticles();
+            }
+            
+            function init4mysunshine() {
+                // Initialize audio (will wait for user interaction)
+                const initAudioOnInteraction = () => {
+                    initSunshineAudio();
+                    sunshineCanvas.removeEventListener('click', initAudioOnInteraction);
+                    sunshineCanvas.removeEventListener('touchstart', initAudioOnInteraction);
+                };
+                
+                sunshineCanvas.addEventListener('click', initAudioOnInteraction);
+                sunshineCanvas.addEventListener('touchstart', initAudioOnInteraction);
+                
+                // Set up sliders
+                volumeSlider.addEventListener('input', e => {
+                    volumeLevel = e.target.value / 10 * 1.5; // Increased volume range
+                    if (sunshineMasterGain) {
+                        sunshineMasterGain.gain.value = volumeLevel;
+                    }
+                });
+                
+                speedSlider.addEventListener('input', e => {
+                    speedLevel = e.target.value / 10;
+                });
+                
+                colorSlider.addEventListener('input', e => {
+                    colorRate = (e.target.value - 1) / 9;
+                });
+                
+                // Initialize dimensions
+                handleSunshineResize();
+                window.addEventListener('resize', handleSunshineResize);
+                
+                // Initialize ball position and velocity
+                ball.vx = (Math.random() - 0.5) * 10;
+                ball.vy = (Math.random() - 0.5) * 10;
+                
+                // Start animation
+                sunshineTime = 0;
+                updateSunshine();
+            }
+            
+            function cleanup4mysunshine() {
+                // Cancel animation
+                if (sunshineAnimationId) {
+                    cancelAnimationFrame(sunshineAnimationId);
+                    sunshineAnimationId = null;
+                }
+                
+                // Suspend audio context
+                if (sunshineAudioContext && sunshineAudioContext.state === 'running') {
+                    sunshineAudioContext.suspend();
+                }
+                
+                // Remove event listeners
+                window.removeEventListener('resize', handleSunshineResize);
+                
+                // Clear variables
+                sunshineParticles = [];
+                sunshineTrails = [];
+            }
+            
+            //=======================================
+            // Melodic Flow Implementation
+            //=======================================
+            const melodicCanvas = document.getElementById('melodic-flow-canvas');
+            const melodicCtx = melodicCanvas.getContext('2d');
+            const melodicVolumeControl = document.getElementById('melodic-flow-volume-control');
+            const hitsCounter = document.getElementById('melodic-flow-hits');
+            const minutesCounter = document.getElementById('melodic-flow-minutes');
+            const toastElement = document.getElementById('melodic-flow-toast');
+            
+            let melodicAnimationId = null;
+            let melodicAudioContext = null;
+            let melodicMasterGain = null;
+            let melodicConvolver = null;
+            let melodicDelay = null;
+            let melodicHarmonicGain = null;
+            
+            // App state
+            let melodicWidth, melodicHeight;
+            let melodicTime = 0;
+            let melodicParticles = [];
+            let hitCount = 0;
+            let startTime = 0;
+            let lastMinuteCheck = 0;
+            let spawnState = 'dormant';
+            let lastSpawnStateChange = 0;
+            
+            const spawnStates = {
+                dormant: { duration: [3000, 5000], particleCount: 25 },
+                mild: { duration: [3000, 5000], particleCount: 35 },
+                moderate: { duration: [3000, 5000], particleCount: 45 }
+            };
+            
+            // Notes for Melodic Flow
+            const melodicFrequencies = [
+                196.00, // G3
+                220.00, // A3
+                261.63, // C4
+                293.66, // D4
+                329.63  // E4
+            ];
+            
+            // Player cursor (increased by 150%)
+            const player = {
+                x: 0,
+                y: 0,
+                vx: 0,
+                vy: 0,
+                r: 7.5  // Increased from 5
+            };
+            
+            class MelodicParticle {
+                constructor(x, y) {
+                    this.x = x;
+                    this.y = y;
+                    this.baseX = x;
+                    this.baseY = y;
+                    this.time = Math.random() * Math.PI * 2;
+                    this.speed = 0.002 + Math.random() * 0.002;
+                    this.range = (30 + Math.random() * 50) * 1.5;  // Increased by 150%
+                    this.brightness = 0.5 + Math.random() * 0.5;
+                    this.frequency = melodicFrequencies[Math.floor(Math.random() * melodicFrequencies.length)];
+                    this.color = getMelodicColor(melodicTime, melodicParticles.length);
+                    this.life = 1.0;
+                    this.decay = 0.0005 + Math.random() * 0.0003;  // Slower decay to last twice as long
+                }
+                
+                update() {
+                    this.time += this.speed;
+                    this.x = this.baseX + Math.cos(this.time) * this.range;
+                    this.y = this.baseY + Math.sin(this.time * 0.7) * this.range;
+                    this.brightness = 0.5 + Math.sin(this.time) * 0.3;
+                    this.life -= this.decay;
+                    return this.life > 0;
+                }
+                
+                draw() {
+                    const opacity = Math.min(1, this.life * 1.5);
+                    melodicCtx.beginPath();
+                    melodicCtx.arc(melodicWidth/2 + this.x, melodicHeight/2 + this.y, 4.5, 0, Math.PI * 2);  // Size increased by 150%
+                    melodicCtx.fillStyle = this.color.replace('1)', `${this.brightness * opacity})`);
+                    melodicCtx.fill();
+                }
+            }
+            
+            function initMelodicAudio() {
+                try {
+                    melodicAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    melodicMasterGain = melodicAudioContext.createGain();
+                    melodicConvolver = melodicAudioContext.createConvolver();
+                    melodicDelay = melodicAudioContext.createDelay();
+                    melodicHarmonicGain = melodicAudioContext.createGain();
+                    
+                    melodicMasterGain.connect(melodicConvolver);
+                    melodicConvolver.connect(melodicDelay);
+                    melodicDelay.connect(melodicHarmonicGain);
+                    melodicHarmonicGain.connect(melodicAudioContext.destination);
+                    
+                    // Increased default volume for better audibility
+                    melodicMasterGain.gain.value = 0.75;  // Up from 0.3
+                    melodicDelay.delayTime.value = 0.4;
+                    melodicHarmonicGain.gain.value = 0.8;
+                    
+                    const length = melodicAudioContext.sampleRate * 4;
+                    const buffer = melodicAudioContext.createBuffer(2, length, melodicAudioContext.sampleRate);
+                    const data = buffer.getChannelData(0);
+                    
+                    for (let i = 0; i < length; i++) {
+                        data[i] = Math.exp(-i/length * 4) * (Math.random() * 2 - 1) * 0.7;
+                    }
+                    
+                    melodicConvolver.buffer = buffer;
+                    
+                    if (melodicAudioContext.state === 'suspended') {
+                        melodicAudioContext.resume();
+                    }
+                    
+                    // Set volume control with exponential scaling
+                    melodicVolumeControl.addEventListener('input', () => {
+                        const volumeValue = melodicVolumeControl.value / 100;
+                        melodicMasterGain.gain.value = volumeValue * volumeValue * 2.0;
+                    });
+                    
+                    // Set initial volume
+                    const initialVolume = melodicVolumeControl.value / 100;
+                    melodicMasterGain.gain.value = initialVolume * initialVolume * 2.0;
+                } catch (e) {
+                    console.error("Error initializing melodic audio:", e);
+                }
+            }
+            
+            function showToast(message) {
+                toastElement.textContent = message;
+                toastElement.classList.add('show');
+                setTimeout(() => {
+                    toastElement.classList.remove('show');
+                }, 3000);
+            }
+            
+            function checkAchievements() {
+                if (hitCount > 0 && hitCount % 100 === 0) {
+                    showToast(`Congratulations! You've hit ${hitCount} particles! 🎉`);
+                }
+                
+                const currentMinutes = Math.floor((Date.now() - startTime) / 60000);
+                if (currentMinutes > 0 && currentMinutes % 5 === 0 && currentMinutes !== lastMinuteCheck) {
+                    showToast(`${currentMinutes} minutes of melodic flow! Keep going! 🎵`);
+                    lastMinuteCheck = currentMinutes;
+                }
+            }
+            
+            function updateSpawnState() {
+                const now = Date.now();
+                if (now - lastSpawnStateChange > spawnStates[spawnState].duration[1] || 
+                    (now - lastSpawnStateChange > spawnStates[spawnState].duration[0] && Math.random() < 0.1)) {
+                    
+                    const states = ['dormant', 'mild', 'moderate'];
+                    const currentIndex = states.indexOf(spawnState);
+                    let newIndex;
+                    
+                    if (spawnState === 'dormant') {
+                        newIndex = Math.random() < 0.5 ? 1 : 2; // Move to mild or moderate
+                    } else {
+                        newIndex = 0; // Return to dormant
+                    }
+                    
+                    spawnState = states[newIndex];
+                    lastSpawnStateChange = now;
+                    
+                    // Gradually transition to new particle count
+                    const targetCount = spawnStates[spawnState].particleCount;
+                    // Remove excess particles gradually
+                    if (melodicParticles.length > targetCount) {
+                        melodicParticles.sort((a, b) => a.life - b.life);
+                        melodicParticles.splice(0, Math.min(5, melodicParticles.length - targetCount));
+                    }
+                    // New particles will be added gradually in the update loop
+                }
+            }
+            
+            function generateMelodicNote(freq) {
+                if (!melodicAudioContext) return;
+                
+                try {
+                    const osc = melodicAudioContext.createOscillator();
+                    const noteGain = melodicAudioContext.createGain();
+                    const harmonicOsc = melodicAudioContext.createOscillator();
+                    const harmonicNoteGain = melodicAudioContext.createGain();
+                    
+                    osc.frequency.value = freq;
+                    harmonicOsc.frequency.value = freq * 1.5;
+                    
+                    osc.type = 'sine';
+                    harmonicOsc.type = 'sine';
+                    
+                    osc.connect(noteGain);
+                    harmonicOsc.connect(harmonicNoteGain);
+                    noteGain.connect(melodicMasterGain);
+                    harmonicNoteGain.connect(melodicMasterGain);
+                    
+                    const now = melodicAudioContext.currentTime;
+                    noteGain.gain.setValueAtTime(0, now);
+                    harmonicNoteGain.gain.setValueAtTime(0, now);
+                    
+                    // Increased initial volume for better audibility
+                    noteGain.gain.linearRampToValueAtTime(0.4, now + 0.1);
+                    harmonicNoteGain.gain.linearRampToValueAtTime(0.2, now + 0.1);
+                    
+                    // Longer note duration for more pleasant sound
+                    noteGain.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
+                    harmonicNoteGain.gain.exponentialRampToValueAtTime(0.001, now + 1.2);
+                    
+                    osc.start(now);
+                    harmonicOsc.start(now);
+                    osc.stop(now + 1.2);
+                    harmonicOsc.stop(now + 1.2);
+                    
+                    updateHitCounter();
+                } catch (e) {
+                    console.error("Error generating melodic note:", e);
+                }
+            }
+            
+            function updateHitCounter() {
+                hitCount++;
+                const currentSpan = hitsCounter.querySelector('.current');
+                const nextSpan = hitsCounter.querySelector('.next');
+                
+                nextSpan.textContent = hitCount;
+                hitsCounter.classList.add('flip');
+                
+                setTimeout(() => {
+                    currentSpan.textContent = hitCount;
+                    hitsCounter.classList.remove('flip');
+                }, 600);
+            }
+            
+            function updateTimer() {
+                const minutes = Math.floor((Date.now() - startTime) / 60000);
+                const currentSpan = minutesCounter.querySelector('.current');
+                const nextSpan = minutesCounter.querySelector('.next');
+                
+                if (currentSpan.textContent !== String(minutes).padStart(2, '0')) {
+                    nextSpan.textContent = String(minutes).padStart(2, '0');
+                    minutesCounter.classList.add('flip');
+                    
+                    setTimeout(() => {
+                        currentSpan.textContent = String(minutes).padStart(2, '0');
+                        minutesCounter.classList.remove('flip');
+                    }, 600);
+                }
+            }
+            
+            function getMelodicColor(time, index) {
+                return `hsla(${(time * 15 + index * 30) % 360}, 70%, 60%, 1)`;
+            }
+            
+            function createMelodicParticle() {
+                const angle = Math.random() * Math.PI * 2;
+                const distance = Math.random() * Math.min(melodicWidth, melodicHeight) * 0.3;
+                return new MelodicParticle(
+                    Math.cos(angle) * distance,
+                    Math.sin(angle) * distance
+                );
+            }
+            
+            let particleIntroTimer = 0;
+            
+            function updateMelodicFlow() {
+                melodicTime += 0.016;
+                updateTimer();
+                updateSpawnState();
+                checkAchievements();
+                
+                melodicCtx.fillStyle = 'rgba(0,0,0,0.1)';
+                melodicCtx.fillRect(0, 0, melodicWidth, melodicHeight);
+                
+                // Draw player cursor with increased size
+                melodicCtx.beginPath();
+                melodicCtx.arc(melodicWidth/2 + player.x, melodicHeight/2 + player.y, player.r, 0, Math.PI * 2);
+                melodicCtx.fillStyle = getMelodicColor(melodicTime, 0);
+                melodicCtx.fill();
+                
+                // Update particles with life cycle
+                melodicParticles = melodicParticles.filter((p, i) => {
+                    const alive = p.update();
+                    if (alive) {
+                        p.draw();
+                        
+                        // Increased interaction radius
+                        if (Math.hypot(player.x - p.x, player.y - p.y) < 15) {
+                            generateMelodicNote(p.frequency);
+                            const newParticle = createMelodicParticle();
+                            melodicParticles.push(newParticle);
+                            return false;
+                        }
+                        return true;
+                    }
+                    return false;
+                });
+                
+                // Gradually add new particles
+                particleIntroTimer += 16;
+                if (particleIntroTimer > 200 && melodicParticles.length < spawnStates[spawnState].particleCount) {
+                    melodicParticles.push(createMelodicParticle());
+                    particleIntroTimer = 0;
+                }
+                
+                if (player.vx || player.vy) {
+                    player.x += player.vx *= 0.99;
+                    player.y += player.vy *= 0.99;
+                }
+                
+                melodicAnimationId = requestAnimationFrame(updateMelodicFlow);
+            }
+            
+            function handleMelodicResize() {
+                melodicWidth = window.innerWidth;
+                melodicHeight = window.innerHeight;
+                
+                melodicCanvas.width = melodicWidth;
+                melodicCanvas.height = melodicHeight;
+                
+                initMelodicParticles();
+            }
+            
+            function initMelodicParticles() {
+                melodicParticles = [];
+                // Start with fewer particles and let them grow gradually
+                const startCount = Math.min(5, spawnStates[spawnState].particleCount);
+                for (let i = 0; i < startCount; i++) {
+                    melodicParticles.push(createMelodicParticle());
+                }
+            }
+            
+            function handleMelodicMove(e) {
+                // Prevent scroll/touch default behavior
+                if (e.cancelable) {
+                    e.preventDefault();
+                }
+                
+                if (!melodicAudioContext) {
+                    initMelodicAudio();
+                }
+                
+                const r = e.touches ? e.touches[0] : e;
+                player.vx = (r.clientX - melodicWidth/2 - player.x) * 0.1;
+                player.vy = (r.clientY - melodicHeight/2 - player.y) * 0.1;
+            }
+            
+            function initMelodicFlow() {
+                startTime = Date.now();
+                lastSpawnStateChange = Date.now();
+                particleIntroTimer = 0;
+                
+                handleMelodicResize();
+                
+                window.addEventListener('resize', handleMelodicResize);
+                melodicCanvas.addEventListener('mousemove', handleMelodicMove, { passive: false });
+                melodicCanvas.addEventListener('touchmove', handleMelodicMove, { passive: false });
+                
+                melodicAnimationId = requestAnimationFrame(updateMelodicFlow);
+            }
+            
+            function cleanupMelodicFlow() {
+                if (melodicAnimationId) {
+                    cancelAnimationFrame(melodicAnimationId);
+                    melodicAnimationId = null;
+                }
+                
+                if (melodicAudioContext && melodicAudioContext.state === 'running') {
+                    melodicAudioContext.suspend();
+                }
+                
+                window.removeEventListener('resize', handleMelodicResize);
+                melodicCanvas.removeEventListener('mousemove', handleMelodicMove);
+                melodicCanvas.removeEventListener('touchmove', handleMelodicMove);
+                
+                melodicParticles = [];
+            }
+            
+            //=======================================
+            // YOGO Implementation
+            //=======================================
+            const yogoCanvas = document.getElementById('yogo-canvas');
+            const yogoCtx = yogoCanvas.getContext('2d');
+            const yogoVolumeControl = document.getElementById('yogo-volume-control');
+            const yogoHitsCounter = document.getElementById('yogo-hits');
+            const yogoMinutesCounter = document.getElementById('yogo-minutes');
+            
+            let yogoAnimationId = null;
+            let yogoAudioContext = null;
+            let yogoMasterGain = null;
+            let yogoConvolver = null;
+            let yogoDelay = null;
+            let yogoHarmonicGain = null;
+            
+            // App state
+            let yogoWidth, yogoHeight;
+            let yogoTime = 0;
+            let yogoParticles = [];
+            let yogoHitCount = 0;
+            let yogoStartTime = 0;
+            
+            // Notes for YOGO
+            const yogoFrequencies = [
+                196.00, // G3
+                220.00, // A3
+                261.63, // C4
+                293.66, // D4
+                329.63  // E4
+            ];
+            
+            // Player cursor
+            const yogoPlayer = {
+                x: 0,
+                y: 0,
+                vx: 0,
+                vy: 0,
+                r: 8
+            };
+            
+            function constrainAngle(angle) {
+                const minAngle = 12 * Math.PI / 180;
+                const maxAngle = 20 * Math.PI / 180;
+                return Math.max(minAngle, Math.min(maxAngle, Math.abs(angle))) * Math.sign(angle);
+            }
+            
+            function initYogoAudio() {
+                try {
+                    yogoAudioContext = new (window.AudioContext || window.webkitAudioContext)();
+                    yogoMasterGain = yogoAudioContext.createGain();
+                    yogoConvolver = yogoAudioContext.createConvolver();
+                    yogoDelay = yogoAudioContext.createDelay();
+                    yogoHarmonicGain = yogoAudioContext.createGain();
+                    
+                    yogoMasterGain.connect(yogoConvolver);
+                    yogoConvolver.connect(yogoDelay);
+                    yogoDelay.connect(yogoHarmonicGain);
+                    yogoHarmonicGain.connect(yogoAudioContext.destination);
+                    
+                    // Increased default volume for better audibility
+                    yogoMasterGain.gain.value = 0.75;  // Up from 0.3
+                    yogoDelay.delayTime.value = 0.4;
+                    yogoHarmonicGain.gain.value = 0.8;
+                    
+                    const length = yogoAudioContext.sampleRate * 4;
+                    const buffer = yogoAudioContext.createBuffer(2, length, yogoAudioContext.sampleRate);
+                    const data = buffer.getChannelData(0);
+                    
+                    for (let i = 0; i < length; i++) {
+                        data[i] = Math.exp(-i/length * 4) * (Math.random() * 2 - 1) * 0.7;
+                    }
+                    
+                    yogoConvolver.buffer = buffer;
+                    
+                    if (yogoAudioContext.state === 'suspended') {
+                        yogoAudioContext.resume();
+                    }
+                    
+                    // Improved volume control with exponential scaling
+                    yogoVolumeControl.addEventListener('input', () => {
+                        const volumeValue = yogoVolumeControl.value / 100;
+                        yogoMasterGain.gain.value = volumeValue * volumeValue * 2.0;
+                    });
+                    
+                    // Set initial volume
+                    const initialVolume = yogoVolumeControl.value / 100;
+                    yogoMasterGain.gain.value = initialVolume * initialVolume * 2.0;
+                } catch (e) {
+                    console.error("Error initializing YOGO audio:", e);
+                }
+            }
+            
+            function generateYogoNote(freq) {
+                if (!yogoAudioContext) return;
+                
+                try {
+                    const osc = yogoAudioContext.createOscillator();
+                    const noteGain = yogoAudioContext.createGain();
+                    const harmonicOsc = yogoAudioContext.createOscillator();
+                    const harmonicNoteGain = yogoAudioContext.createGain();
+                    
+                    osc.frequency.value = freq;
+                    harmonicOsc.frequency.value = freq * 1.5;
+                    
+                    osc.type = 'sine';
+                    harmonicOsc.type = 'sine';
+                    
+                    osc.connect(noteGain);
+                    harmonicOsc.connect(harmonicNoteGain);
+                    noteGain.connect(yogoMasterGain);
+                    harmonicNoteGain.connect(yogoMasterGain);
+                    
+                    const now = yogoAudioContext.currentTime;
+                    noteGain.gain.setValueAtTime(0, now);
+                    harmonicNoteGain.gain.setValueAtTime(0, now);
+                    
+                    // Increased initial volume for better audibility
+                    noteGain.gain.linearRampToValueAtTime(0.3, now + 0.1);
+                    harmonicNoteGain.gain.linearRampToValueAtTime(0.2, now + 0.1);
+                    
+                    // Longer note duration for more pleasant sound
+                    noteGain.gain.exponentialRampToValueAtTime(0.001, now + 1.0);
+                    harmonicNoteGain.gain.exponentialRampToValueAtTime(0.001, now + 1.0);
+                    
+                    osc.start(now);
+                    harmonicOsc.start(now);
+                    osc.stop(now + 1.0);
+                    harmonicOsc.stop(now + 1.0);
+                    
+                    updateYogoHitCounter();
+                } catch (e) {
+                    console.error("Error generating YOGO note:", e);
+                }
+            }
+            
+            function updateYogoHitCounter() {
+                yogoHitCount++;
+                const currentSpan = yogoHitsCounter.querySelector('.current');
+                const nextSpan = yogoHitsCounter.querySelector('.next');
+                
+                nextSpan.textContent = yogoHitCount;
+                yogoHitsCounter.classList.add('flip');
+                
+                setTimeout(() => {
+                    currentSpan.textContent = yogoHitCount;
+                    yogoHitsCounter.classList.remove('flip');
+                }, 600);
+            }
+            
+            function updateYogoTimer() {
+                const minutes = Math.floor((Date.now() - yogoStartTime) / 60000);
+                const currentSpan = yogoMinutesCounter.querySelector('.current');
+                const nextSpan = yogoMinutesCounter.querySelector('.next');
+                
+                if (currentSpan.textContent !== String(minutes).padStart(2, '0')) {
+                    nextSpan.textContent = String(minutes).padStart(2, '0');
+                    yogoMinutesCounter.classList.add('flip');
+                    
+                    setTimeout(() => {
+                        currentSpan.textContent = String(minutes).padStart(2, '0');
+                        yogoMinutesCounter.classList.remove('flip');
+                    }, 600);
+                }
+            }
+            
+            function getYogoColor(time, index) {
+                return `hsla(${(time * 15 + index * 25) % 360}, 60%, 65%, 0.7)`;
+            }
+            
+            function getRandomDirection() {
+                const angle = Math.random() * Math.PI * 2;
+                const speed = 0.3 + Math.random() * 0.5;
+                return {
+                    x: Math.cos(angle) * speed,
+                    y: Math.sin(angle) * speed
+                };
+            }
+            
+            function initYogoParticles() {
+                yogoParticles = [];
+                for (let i = 0; i < 30; i++) {
+                    const dir = getRandomDirection();
+                    yogoParticles.push({
+                        x: (Math.random() * 2 - 1) * yogoWidth/2,
+                        y: (Math.random() * 2 - 1) * yogoHeight/2,
+                        vx: dir.x,
+                        vy: dir.y,
+                        color: getYogoColor(yogoTime, i)
+                    });
+                }
+            }
+            
+            function updateYogo() {
+                yogoTime += 0.016;
+                updateYogoTimer();
+                
+                yogoCtx.fillStyle = 'rgba(0,0,0,0.07)';
+                yogoCtx.fillRect(0, 0, yogoWidth, yogoHeight);
+                
+                yogoCtx.beginPath();
+                yogoCtx.arc(yogoWidth/2 + yogoPlayer.x, yogoHeight/2 + yogoPlayer.y, yogoPlayer.r, 0, Math.PI * 2);
+                yogoCtx.fillStyle = getYogoColor(yogoTime, 0);
+                yogoCtx.fill();
+                
+                yogoParticles.forEach((p, i) => {
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    
+                    p.vx *= 0.995;
+                    p.vy *= 0.995;
+                    
+                    const dx = yogoPlayer.x - p.x;
+                    const dy = yogoPlayer.y - p.y;
+                    const dist = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (dist < 15) {
+                        const angle = Math.atan2(dy, dx);
+                        const constrainedAngle = constrainAngle(angle);
+                        
+                        p.vx = -Math.cos(constrainedAngle) * 1.5;
+                        p.vy = -Math.sin(constrainedAngle) * 1.5;
+                        
+                        generateYogoNote(yogoFrequencies[i % yogoFrequencies.length]);
+                    }
+                    
+                    if (Math.abs(p.x) > yogoWidth/2 || Math.abs(p.y) > yogoHeight/2) {
+                        if (Math.abs(p.x) > yogoWidth/2) p.vx *= -1;
+                        if (Math.abs(p.y) > yogoHeight/2) p.vy *= -1;
+                        generateYogoNote(yogoFrequencies[i % yogoFrequencies.length]);
+                    }
+                    
+                    yogoCtx.beginPath();
+                    yogoCtx.arc(yogoWidth/2 + p.x, yogoHeight/2 + p.y, 5, 0, Math.PI * 2);
+                    yogoCtx.fillStyle = p.color;
+                    yogoCtx.fill();
+                });
+                
+                if (yogoPlayer.vx || yogoPlayer.vy) {
+                    yogoPlayer.x += yogoPlayer.vx *= 0.99;
+                    yogoPlayer.y += yogoPlayer.vy *= 0.99;
+                    
+                    if (Math.abs(yogoPlayer.x) > yogoWidth/2 || Math.abs(yogoPlayer.y) > yogoHeight/2) {
+                        if (Math.abs(yogoPlayer.x) > yogoWidth/2) yogoPlayer.vx *= -1;
+                        if (Math.abs(yogoPlayer.y) > yogoHeight/2) yogoPlayer.vy *= -1;
+                        generateYogoNote(yogoFrequencies[0]);
+                    }
+                }
+                
+                yogoAnimationId = requestAnimationFrame(updateYogo);
+            }
+            
+            function handleYogoResize() {
+                yogoWidth = window.innerWidth;
+                yogoHeight = window.innerHeight;
+                
+                yogoCanvas.width = yogoWidth;
+                yogoCanvas.height = yogoHeight;
+                
+                initYogoParticles();
+            }
+            
+            function handleYogoMove(e) {
+                // Prevent scroll/touch default behavior
+                if (e.cancelable) {
+                    e.preventDefault();
+                }
+                
+                if (!yogoAudioContext) {
+                    initYogoAudio();
+                }
+                
+                const r = e.touches ? e.touches[0] : e;
+                yogoPlayer.vx = (r.clientX - yogoWidth/2 - yogoPlayer.x) * 0.1;
+                yogoPlayer.vy = (r.clientY - yogoHeight/2 - yogoPlayer.y) * 0.1;
+            }
+            
+            function initYogo() {
+                yogoStartTime = Date.now();
+                
+                handleYogoResize();
+                
+                window.addEventListener('resize', handleYogoResize);
+                yogoCanvas.addEventListener('mousemove', handleYogoMove, { passive: false });
+                yogoCanvas.addEventListener('touchmove', handleYogoMove, { passive: false });
+                
+                yogoAnimationId = requestAnimationFrame(updateYogo);
+            }
+            
+            function cleanupYogo() {
+                if (yogoAnimationId) {
+                    cancelAnimationFrame(yogoAnimationId);
+                    yogoAnimationId = null;
+                }
+                
+                if (yogoAudioContext && yogoAudioContext.state === 'running') {
+                    yogoAudioContext.suspend();
+                }
+                
+                window.removeEventListener('resize', handleYogoResize);
+                yogoCanvas.removeEventListener('mousemove', handleYogoMove);
+                yogoCanvas.removeEventListener('touchmove', handleYogoMove);
+                
+                yogoParticles = [];
+            }
+            
+            // Initialize the app on page load
+            document.addEventListener('DOMContentLoaded', () => {
+                // Check for hash in URL
+                const hash = window.location.hash.substring(1);
+                if (hash && apps[hash]) {
+                    navigateToApp(hash);
+                }
+            });
+        })();
+    </script>
+</body>
+</html>

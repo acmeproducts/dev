@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        * { margin: 0; overflow: hidden }
+        canvas { background: #000 }
+    </style>
+</head>
+<body>
+    <canvas id="c"></canvas>
+    <script>
+        const canvas = document.getElementById('c');
+        const ctx = canvas.getContext('2d');
+        
+        // Setup canvas
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            ctx.translate(canvas.width/2, canvas.height/2);
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+        }
+        window.onresize = resize;
+        resize();
+
+        // Configuration
+        const BOUNDARY_RADIUS = 250;
+        const BALL_SPEED = 3.8;
+        let hue = Math.random() * 360;
+
+        // Ball state
+        const ball = {
+            x: 0,
+            y: 0,
+            vx: Math.random() * BALL_SPEED * 2 - BALL_SPEED,
+            vy: Math.random() * BALL_SPEED * 2 - BALL_SPEED,
+            trail: [],
+            segments: [{ start: 0, color: `hsl(${hue}, 70%, 50%)` }]
+        };
+
+        // Physics functions
+        function rotateVector(v, angle) {
+            const cos = Math.cos(angle);
+            const sin = Math.sin(angle);
+            return {
+                x: v.x * cos - v.y * sin,
+                y: v.x * sin + v.y * cos
+            };
+        }
+
+        function handleBoundaryCollision() {
+            // Calculate collision normal
+            const normal = { 
+                x: ball.x / BOUNDARY_RADIUS, 
+                y: ball.y / BOUNDARY_RADIUS 
+            };
+            
+            // Base reflection
+            const dot = ball.vx * normal.x + ball.vy * normal.y;
+            let reflected = {
+                x: ball.vx - 2 * dot * normal.x,
+                y: ball.vy - 2 * dot * normal.y
+            };
+            
+            // Add random angle variation (-35° to +35°)
+            const angleVariation = (Math.random() - 0.5) * Math.PI/2.6;
+            reflected = rotateVector(reflected, angleVariation);
+            
+            // Maintain speed while applying variation
+            const speed = Math.sqrt(reflected.x**2 + reflected.y**2);
+            ball.vx = (reflected.x / speed) * BALL_SPEED;
+            ball.vy = (reflected.y / speed) * BALL_SPEED;
+            
+            // Update color
+            hue = (hue + 65 + Math.random() * 50) % 360;
+            ball.segments.push({
+                start: ball.trail.length,
+                color: `hsl(${hue}, 70%, 50%)`
+            });
+        }
+
+        // Animation loop
+        function update(delta) {
+            ball.x += ball.vx * delta;
+            ball.y += ball.vy * delta;
+
+            const dist = Math.sqrt(ball.x**2 + ball.y**2);
+            if (dist > BOUNDARY_RADIUS) {
+                const angle = Math.atan2(ball.y, ball.x);
+                ball.x = Math.cos(angle) * BOUNDARY_RADIUS * 0.98;
+                ball.y = Math.sin(angle) * BOUNDARY_RADIUS * 0.98;
+                handleBoundaryCollision();
+            }
+
+            // Add new position to trail (limit to 2000 points)
+            ball.trail.push({ x: ball.x, y: ball.y });
+            if (ball.trail.length > 2000) ball.trail.shift();
+        }
+
+        function draw() {
+            ctx.clearRect(-canvas.width/2, -canvas.height/2, canvas.width, canvas.height);
+            
+            // Draw all trail segments
+            for (let i = 0; i < ball.segments.length; i++) {
+                const start = ball.segments[i].start;
+                const end = i < ball.segments.length - 1 
+                    ? ball.segments[i + 1].start 
+                    : ball.trail.length;
+                
+                if (end - start < 2) continue;
+                
+                ctx.beginPath();
+                ctx.moveTo(ball.trail[start].x, ball.trail[start].y);
+                for (let j = start + 1; j < end; j++) {
+                    ctx.lineTo(ball.trail[j].x, ball.trail[j].y);
+                }
+                ctx.strokeStyle = ball.segments[i].color;
+                ctx.lineWidth = 4;
+                ctx.stroke();
+            }
+
+            // Draw boundary
+            ctx.beginPath();
+            ctx.arc(0, 0, BOUNDARY_RADIUS, 0, Math.PI * 2);
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.15)';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // Draw ball
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, 5, 0, Math.PI * 2);
+            ctx.fillStyle = '#fff';
+            ctx.fill();
+        }
+
+        // Animation timing
+        let lastTime = 0;
+        function animate(timestamp) {
+            const delta = (timestamp - lastTime) / 16;
+            lastTime = timestamp;
+            
+            update(delta);
+            draw();
+            requestAnimationFrame(animate);
+        }
+
+        // Start animation
+        requestAnimationFrame(animate);
+    </script>
+</body>
+</html>

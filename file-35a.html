@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        * { margin: 0; overflow: hidden }
+        canvas { background: #000 }
+    </style>
+</head>
+<body>
+    <canvas id="c"></canvas>
+    <script>
+        const canvas = document.getElementById('c');
+        const ctx = canvas.getContext('2d');
+        
+        // Setup canvas
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            ctx.translate(canvas.width/2, canvas.height/2);
+        }
+        window.onresize = resize;
+        resize();
+
+        // Configuration
+        const BOUNDARY_RADIUS = 250;
+        const BALL_SPEED = 3.5;
+        let hue = 0;
+
+        // Ball state
+        const ball = {
+            x: 0,
+            y: 0,
+            vx: Math.random() * BALL_SPEED * 2 - BALL_SPEED,
+            vy: Math.random() * BALL_SPEED * 2 - BALL_SPEED,
+            trail: []
+        };
+
+        // Physics functions
+        function rotateVector(v, angle) {
+            const cos = Math.cos(angle);
+            const sin = Math.sin(angle);
+            return {
+                x: v.x * cos - v.y * sin,
+                y: v.x * sin + v.y * cos
+            };
+        }
+
+        function handleBoundaryCollision() {
+            // Get collision normal
+            const normal = { 
+                x: ball.x / BOUNDARY_RADIUS, 
+                y: ball.y / BOUNDARY_RADIUS 
+            };
+            
+            // Reflect vector with random angle variation
+            const dot = ball.vx * normal.x + ball.vy * normal.y;
+            let reflected = {
+                x: ball.vx - 2 * dot * normal.x,
+                y: ball.vy - 2 * dot * normal.y
+            };
+            
+            // Add random rotation (-30° to +30°)
+            const angleVariation = (Math.random() - 0.5) * Math.PI/3;
+            reflected = rotateVector(reflected, angleVariation);
+            
+            // Maintain speed
+            const speed = Math.sqrt(reflected.x**2 + reflected.y**2);
+            ball.vx = (reflected.x / speed) * BALL_SPEED;
+            ball.vy = (reflected.y / speed) * BALL_SPEED;
+            
+            // Update color
+            hue = (hue + 60 + Math.random() * 30) % 360;
+            
+            // Add collision point
+            ball.trail.push({
+                x: ball.x,
+                y: ball.y,
+                color: `hsl(${hue}, 70%, 50%)`
+            });
+        }
+
+        // Animation loop
+        function update(delta) {
+            ball.x += ball.vx * delta;
+            ball.y += ball.vy * delta;
+
+            const dist = Math.sqrt(ball.x**2 + ball.y**2);
+            if (dist > BOUNDARY_RADIUS) {
+                const angle = Math.atan2(ball.y, ball.x);
+                ball.x = Math.cos(angle) * BOUNDARY_RADIUS * 0.99;
+                ball.y = Math.sin(angle) * BOUNDARY_RADIUS * 0.99;
+                handleBoundaryCollision();
+            }
+
+            ball.trail.push({
+                x: ball.x,
+                y: ball.y,
+                color: `hsl(${hue}, 70%, 50%)`
+            });
+        }
+
+        function draw() {
+            ctx.clearRect(-canvas.width/2, -canvas.height/2, canvas.width, canvas.height);
+            
+            // Draw trail
+            if (ball.trail.length > 2) {
+                ctx.beginPath();
+                ctx.moveTo(ball.trail[0].x, ball.trail[0].y);
+                for (let i = 1; i < ball.trail.length; i++) {
+                    ctx.strokeStyle = ball.trail[i].color;
+                    ctx.lineTo(ball.trail[i].x, ball.trail[i].y);
+                    ctx.stroke();
+                }
+            }
+
+            // Draw boundary
+            ctx.beginPath();
+            ctx.arc(0, 0, BOUNDARY_RADIUS, 0, Math.PI * 2);
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
+            ctx.stroke();
+
+            // Draw ball
+            ctx.beginPath();
+            ctx.arc(ball.x, ball.y, 4, 0, Math.PI * 2);
+            ctx.fillStyle = '#fff';
+            ctx.fill();
+        }
+
+        // Animation timing
+        let lastTime = 0;
+        function animate(timestamp) {
+            const delta = (timestamp - lastTime) / 16;
+            lastTime = timestamp;
+            
+            update(delta);
+            draw();
+            requestAnimationFrame(animate);
+        }
+
+        // Start animation
+        requestAnimationFrame(animate);
+    </script>
+</body>
+</html>

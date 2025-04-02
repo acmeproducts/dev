@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Meditative Mosaic</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #f0f0f5;
+            font-family: Arial, sans-serif;
+            transition: background-color 20s ease;
+        }
+        canvas {
+            display: block;
+        }
+        .controls {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(255, 255, 255, 0.7);
+            padding: 10px 20px;
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        .controls label {
+            margin-right: 5px;
+            color: #555;
+        }
+        .controls input[type="range"] {
+            width: 180px;
+        }
+        .controls select {
+            padding: 5px;
+            border-radius: 4px;
+            border: 1px solid #ccc;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="mosaicCanvas"></canvas>
+    <div class="controls">
+        <div>
+            <label for="flowSpeed">Flow Speed:</label>
+            <input type="range" id="flowSpeed" min="1" max="100" value="50">
+        </div>
+        <div>
+            <label for="colorTheme">Color Theme:</label>
+            <select id="colorTheme">
+                <option value="ocean">Ocean</option>
+                <option value="forest">Forest</option>
+                <option value="sunset" selected>Sunset</option>
+                <option value="pastel">Pastel</option>
+                <option value="monochrome">Monochrome</option>
+                <option value="lavender">Lavender</option>
+                <option value="emerald">Emerald</option>
+                <option value="desert">Desert</option>
+                <option value="midnight">Midnight</option>
+                <option value="cherry">Cherry Blossom</option>
+                <option value="arctic">Arctic</option>
+                <option value="campfire">Campfire</option>
+            </select>
+        </div>
+    </div>
+
+    <script>
+        window.onload = function() {
+            const canvas = document.getElementById('mosaicCanvas');
+            const ctx = canvas.getContext('2d');
+            const flowSpeedControl = document.getElementById('flowSpeed');
+            const colorTheme = document.getElementById('colorTheme');
+
+            // Color themes with background colors
+            const themes = {
+                ocean: {
+                    palette: [
+                        { r: 100, g: 180, b: 220 },
+                        { r: 70, g: 150, b: 200 },
+                        { r: 50, g: 120, b: 180 },
+                        { r: 30, g: 100, b: 160 },
+                        { r: 20, g: 80, b: 140 },
+                        { r: 15, g: 60, b: 120 }
+                    ],
+                    background: { r: 240, g: 245, b: 255 }
+                },
+                forest: {
+                    palette: [
+                        { r: 150, g: 200, b: 150 },
+                        { r: 120, g: 180, b: 120 },
+                        { r: 100, g: 160, b: 100 },
+                        { r: 80, g: 140, b: 80 },
+                        { r: 60, g: 120, b: 60 },
+                        { r: 40, g: 100, b: 40 }
+                    ],
+                    background: { r: 240, g: 250, b: 240 }
+                },
+                sunset: {
+                    palette: [
+                        { r: 255, g: 200, b: 150 },
+                        { r: 255, g: 180, b: 130 },
+                        { r: 250, g: 160, b: 120 },
+                        { r: 240, g: 140, b: 110 },
+                        { r: 230, g: 120, b: 100 },
+                        { r: 220, g: 100, b: 90 }
+                    ],
+                    background: { r: 255, g: 245, b: 240 }
+                },
+                pastel: {
+                    palette: [
+                        { r: 230, g: 230, b: 250 },
+                        { r: 250, g: 230, b: 230 },
+                        { r: 230, g: 250, b: 230 },
+                        { r: 250, g: 250, b: 230 },
+                        { r: 230, g: 230, b: 250 },
+                        { r: 250, g: 230, b: 250 }
+                    ],
+                    background: { r: 250, g: 250, b: 255 }
+                },
+                monochrome: {
+                    palette: [
+                        { r: 240, g: 240, b: 240 },
+                        { r: 220, g: 220, b: 220 },
+                        { r: 200, g: 200, b: 200 },
+                        { r: 180, g: 180, b: 180 },
+                        { r: 160, g: 160, b: 160 },
+                        { r: 140, g: 140, b: 140 }
+                    ],
+                    background: { r: 245, g: 245, b: 245 }
+                },
+                lavender: {
+                    palette: [
+                        { r: 230, g: 230, b: 250 },
+                        { r: 220, g: 210, b: 240 },
+                        { r: 210, g: 190, b: 230 },
+                        { r: 200, g: 170, b: 220 },
+                        { r: 190, g: 150, b: 210 },
+                        { r: 180, g: 130, b: 200 }
+                    ],
+                    background: { r: 248, g: 248, b: 255 }
+                },
+                emerald: {
+                    palette: [
+                        { r: 80, g: 200, b: 120 },
+                        { r: 70, g: 180, b: 110 },
+                        { r: 60, g: 160, b: 100 },
+                        { r: 50, g: 140, b: 90 },
+                        { r: 40, g: 120, b: 80 },
+                        { r: 30, g: 100, b: 70 }
+                    ],
+                    background: { r: 240, g: 255, b: 240 }
+                },
+                desert: {
+                    palette: [
+                        { r: 238, g: 214, b: 175 },
+                        { r: 229, g: 204, b: 194 },
+                        { r: 220, g: 194, b: 174 },
+                        { r: 211, g: 184, b: 154 },
+                        { r: 202, g: 174, b: 134 },
+                        { r: 193, g: 164, b: 114 }
+                    ],
+                    background: { r: 255, g: 248, b: 220 }
+                },
+                midnight: {
+                    palette: [
+                        { r: 70, g: 70, b: 110 },
+                        { r: 60, g: 60, b: 100 },
+                        { r: 50, g: 50, b: 90 },
+                        { r: 40, g: 40, b: 80 },
+                        { r: 30, g: 30, b: 70 },
+                        { r: 20, g: 20, b: 60 }
+                    ],
+                    background: { r: 230, g: 230, b: 250 }
+                },
+                cherry: {
+                    palette: [
+                        { r: 255, g: 182, b: 193 },
+                        { r: 255, g: 162, b: 173 },
+                        { r: 245, g: 142, b: 153 },
+                        { r: 235, g: 122, b: 133 },
+                        { r: 225, g: 102, b: 113 },
+                        { r: 215, g: 82, b: 93 }
+                    ],
+                    background: { r: 255, g: 240, b: 245 }
+                },
+                arctic: {
+                    palette: [
+                        { r: 176, g: 224, b: 230 },
+                        { r: 166, g: 214, b: 220 },
+                        { r: 156, g: 204, b: 210 },
+                        { r: 146, g: 194, b: 200 },
+                        { r: 136, g: 184, b: 190 },
+                        { r: 126, g: 174, b: 180 }
+                    ],
+                    background: { r: 240, g: 255, b: 255 }
+                },
+                campfire: {
+                    palette: [
+                        { r: 255, g: 140, b: 0 },
+                        { r: 240, g: 128, b: 0 },
+                        { r: 225, g: 116, b: 0 },
+                        { r: 210, g: 104, b: 0 },
+                        { r: 195, g: 92, b: 0 },
+                        { r: 180, g: 80, b: 0 }
+                    ],
+                    background: { r: 255, g: 248, b: 220 }
+                }
+            };
+
+            // Mosaic configuration
+            const config = {
+                gridSize: 20,  // Squares per row/column
+                squareSize: 0,
+                squares: [],
+                currentWave: 0,
+                flowSpeed: 50,
+                currentTheme: 'sunset'
+            };
+
+            // Resize and initialize canvas
+            function resizeCanvas() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+                
+                // Calculate square size to fit grid
+                config.squareSize = Math.min(
+                    canvas.width / config.gridSize, 
+                    canvas.height / config.gridSize
+                );
+                
+                // Reset the mosaic
+                initializeMosaic();
+            }
+
+            // Create initial mosaic grid
+            function initializeMosaic() {
+                config.squares = [];
+                config.currentWave = 0;
+
+                // Create grid
+                for (let row = 0; row < config.gridSize; row++) {
+                    config.squares[row] = [];
+                    for (let col = 0; col < config.gridSize; col++) {
+                        config.squares[row][col] = {
+                            x: col * config.squareSize,
+                            y: row * config.squareSize,
+                            size: config.squareSize,
+                            targetColorIndex: Math.floor(Math.random() * themes[config.currentTheme].palette.length),
+                            currentColorIndex: null,
+                            progress: 0,
+                            waveDelay: (row + col) * 0.5  // Create wave-like progression
+                        };
+                    }
+                }
+            }
+
+            // Gradually update background color
+            function updateBackgroundColor() {
+                const currentTheme = themes[config.currentTheme];
+                const targetBg = currentTheme.background;
+                
+                // Smoothly transition background
+                const currentBg = ctx.canvas.style.backgroundColor 
+                    ? ctx.canvas.style.backgroundColor.match(/\d+/g).map(Number) 
+                    : [240, 240, 240];
+                
+                const newBg = currentBg.map((val, i) => 
+                    val + (targetBg[['r','g','b'][i]] - val) * 0.05
+                );
+                
+                document.body.style.backgroundColor = `rgb(${newBg[0]}, ${newBg[1]}, ${newBg[2]})`;
+            }
+
+            // Animate mosaic progression
+            function animateMosaic(currentTime) {
+                // Clear canvas
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                // Update flow speed
+                config.flowSpeed = parseInt(flowSpeedControl.value);
+                
+                // Update background color
+                updateBackgroundColor();
+
+                // Increment wave progress
+                config.currentWave += config.flowSpeed / 500;
+
+                // Draw squares
+                const currentTheme = themes[config.currentTheme];
+                for (let row = 0; row < config.gridSize; row++) {
+                    for (let col = 0; col < config.gridSize; col++) {
+                        const square = config.squares[row][col];
+                        
+                        // Determine if this square should be active in current wave
+                        const waveThreshold = config.currentWave - square.waveDelay;
+                        
+                        if (waveThreshold > 0) {
+                            // Smooth progress
+                            square.progress = Math.min(1, waveThreshold);
+                            
+                            // Color interpolation
+                            if (square.currentColorIndex === null) {
+                                square.currentColorIndex = square.targetColorIndex;
+                            }
+                            
+                            // Get base color
+                            const baseColor = currentTheme.palette[square.currentColorIndex];
+                            
+                            // Add subtle variation
+                            const variation = 10;
+                            const r = baseColor.r + Math.floor(Math.random() * variation - variation/2);
+                            const g = baseColor.g + Math.floor(Math.random() * variation - variation/2);
+                            const b = baseColor.b + Math.floor(Math.random() * variation - variation/2);
+                            
+                            // Draw square with wave-like progression
+                            ctx.fillStyle = `rgba(${r}, ${g}, ${b}, ${square.progress})`;
+                            ctx.fillRect(
+                                square.x, 
+                                square.y, 
+                                square.size * square.progress, 
+                                square.size * square.progress
+                            );
+                            
+                            // Subtle border
+                            ctx.strokeStyle = `rgba(${r-20}, ${g-20}, ${b-20}, ${square.progress * 0.5})`;
+                            ctx.lineWidth = 1;
+                            ctx.strokeRect(
+                                square.x, 
+                                square.y, 
+                                square.size * square.progress, 
+                                square.size * square.progress
+                            );
+                        }
+                    }
+                }
+
+                // Continue animation
+                requestAnimationFrame(animateMosaic);
+            }
+
+            // Color theme change listener
+            colorTheme.addEventListener('change', () => {
+                config.currentTheme = colorTheme.value;
+                
+                // Reassign color indices for existing squares
+                for (let row = 0; row < config.gridSize; row++) {
+                    for (let col = 0; col < config.gridSize; col++) {
+                        config.squares[row][col].targetColorIndex = 
+                            Math.floor(Math.random() * themes[config.currentTheme].palette.length);
+                        config.squares[row][col].currentColorIndex = null;
+                    }
+                }
+                
+                // Reset wave progression
+                config.currentWave = 0;
+            });
+
+            // Resize and start
+            window.addEventListener('resize', resizeCanvas);
+            resizeCanvas();
+            requestAnimationFrame(animateMosaic);
+        };
+    </script>
+</body>
+</html>
