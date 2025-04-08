@@ -1,0 +1,1078 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+   <meta charset="UTF-8">
+   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+   <title>Code Section Manager (Simplified)</title>
+   <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 1rem;
+            background-color: #f8f9fa;
+        }
+        
+        h1, h2, h3 {
+            margin-bottom: 1rem;
+            color: #2c3e50;
+        }
+        
+        .container {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+        }
+        
+        textarea, input, select, button {
+            padding: 0.75rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 1rem;
+            font-family: inherit;
+            margin-bottom: 1rem;
+            width: 100%;
+        }
+        
+        textarea {
+            min-height: 200px;
+            resize: vertical;
+            font-family: monospace;
+        }
+        
+        button {
+            background-color: #4299e1;
+            color: white;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: background-color 0.3s;
+        }
+        
+        button:hover {
+            background-color: #3182ce;
+        }
+        
+        .section-list {
+            list-style: none;
+            margin-top: 1rem;
+        }
+        
+        .section-item {
+            padding: 0.75rem;
+            background-color: #f1f5f9;
+            border-radius: 4px;
+            margin-bottom: 0.5rem;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .section-item:hover {
+            background-color: #e2e8f0;
+        }
+        
+        .section-name {
+            font-weight: 500;
+            display: flex;
+            align-items: center;
+        }
+        
+        .section-number {
+            display: inline-block;
+            min-width: 30px;
+            margin-right: 10px;
+            font-weight: bold;
+            color: #4a5568;
+        }
+        
+        .section-type {
+            font-size: 0.8rem;
+            color: #666;
+            padding: 0.2rem 0.5rem;
+            background: #edf2f7;
+            border-radius: 0.25rem;
+        }
+        
+        .notification {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background-color: #4299e1;
+            color: white;
+            padding: 1rem;
+            border-radius: 4px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+            max-width: 300px;
+            opacity: 0;
+            transform: translateY(10px);
+            transition: opacity 0.3s, transform 0.3s;
+        }
+        
+        .notification.show {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        .notification.success {
+            background-color: #48bb78;
+        }
+        
+        .notification.error {
+            background-color: #f56565;
+        }
+        
+        .btn-group {
+            display: flex;
+            gap: 0.5rem;
+        }
+        
+        .btn-group button {
+            flex: 1;
+        }
+        
+        .secondary {
+            background-color: #e2e8f0;
+            color: #4a5568;
+        }
+        
+        .secondary:hover {
+            background-color: #cbd5e0;
+        }
+
+        .subsection-list {
+            margin-top: 1rem;
+            margin-left: 1.5rem;
+        }
+
+        .collapsed .subsection-list {
+            display: none;
+        }
+        
+        .collapsed .section-editor {
+            display: none;
+        }
+
+        .expandable-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+        }
+
+        .expandable-header .toggle-icon {
+            transition: transform 0.3s;
+        }
+
+        .collapsed .expandable-header .toggle-icon {
+            transform: rotate(-90deg);
+        }
+
+        .subsection-item {
+            padding: 0.5rem 0.75rem;
+            background-color: #edf2f7;
+            border-radius: 4px;
+            margin-bottom: 0.5rem;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .subsection-item:hover {
+            background-color: #e2e8f0;
+        }
+        
+        .section-editor {
+            margin-top: 1rem;
+            padding: 1rem;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            border-left: 4px solid #4299e1;
+            display: none;
+        }
+        
+        .section-editor.active {
+            display: block;
+        }
+        
+        .section-editor-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.5rem;
+        }
+        
+        .section-editor-title {
+            font-weight: 600;
+            color: #2d3748;
+        }
+
+        .outline-container {
+            margin-top: 1rem;
+            margin-bottom: 1rem;
+            padding: 1rem;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+            border-left: 4px solid #48bb78;
+        }
+        
+        .outline-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        
+        .outline-title {
+            font-weight: 600;
+            color: #2d3748;
+        }
+        
+        .copy-btn {
+            padding: 0.5rem 1rem;
+            margin-left: 1rem;
+            width: auto;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+    </style>
+</head>
+<body>
+   <div class="container">
+        <h2>Import HTML Code</h2>
+        <p>Paste your HTML code below or upload an HTML file to begin.</p>
+        
+        <textarea id="import-code" placeholder="Paste your HTML code here..."></textarea>
+        
+        <div class="btn-group">
+            <button id="upload-file-btn">Upload HTML File</button>
+            <button id="parse-btn">Parse Code</button>
+        </div>
+        <input type="file" id="file-input" accept=".html,.htm,.js,.css" style="display: none;">
+    </div>
+    
+    <div class="container" id="outline-container" style="display: none;">
+        <div class="outline-header">
+            <h2 class="outline-title">Code Outline</h2>
+            <button id="copy-outline-btn" class="copy-btn">Copy Outline</button>
+        </div>
+        <div id="outline-content"></div>
+    </div>
+    
+    <div class="container" id="sections-container" style="display: none;">
+        <h2>Code Sections</h2>
+        <div id="section-count"></div>
+        <div class="section-list" id="section-list"></div>
+    </div>
+    
+    <div class="container" id="export-container" style="display: none;">
+        <h2>Export Complete HTML</h2>
+        <button id="build-btn">Build Complete HTML</button>
+        <div id="download-area" style="display: none; margin-top: 1rem;">
+            <p>Your HTML is ready!</p>
+            <div class="btn-group" style="margin-top: 0.5rem;">
+                <button id="download-btn">Download HTML File</button>
+                <button id="preview-btn">Preview</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="preview-container" class="container" style="display: none;">
+        <h2>Preview</h2>
+        <iframe id="preview-frame" style="width: 100%; height: 500px; border: 1px solid #ddd; border-radius: 4px;"></iframe>
+    </div>
+    
+    <div id="notification" class="notification"></div>
+    
+   <script>
+       document.addEventListener('DOMContentLoaded', function() {
+    // State
+    const state = {
+        sections: {},
+        sectionNumbers: {},
+        currentSectionId: null,
+        currentSubsectionId: null,
+        originalHtml: '',
+        parsedHtml: null,
+        builtHTML: null,
+        outline: ''
+    };
+    
+    // DOM Elements
+    const elements = {
+        importCode: document.getElementById('import-code'),
+        uploadFileBtn: document.getElementById('upload-file-btn'),
+        fileInput: document.getElementById('file-input'),
+        parseBtn: document.getElementById('parse-btn'),
+        sectionsContainer: document.getElementById('sections-container'),
+        sectionCount: document.getElementById('section-count'),
+        sectionList: document.getElementById('section-list'),
+        exportContainer: document.getElementById('export-container'),
+        buildBtn: document.getElementById('build-btn'),
+        downloadArea: document.getElementById('download-area'),
+        downloadBtn: document.getElementById('download-btn'),
+        previewBtn: document.getElementById('preview-btn'),
+        previewContainer: document.getElementById('preview-container'),
+        previewFrame: document.getElementById('preview-frame'),
+        notification: document.getElementById('notification'),
+        outlineContainer: document.getElementById('outline-container'),
+        outlineContent: document.getElementById('outline-content'),
+        copyOutlineBtn: document.getElementById('copy-outline-btn')
+    };
+    
+    // Show notification
+    function showNotification(message, type = 'info') {
+        elements.notification.textContent = message;
+        elements.notification.className = 'notification ' + type;
+        elements.notification.classList.add('show');
+        
+        setTimeout(() => {
+            elements.notification.classList.remove('show');
+        }, 3000);
+    }
+    
+    // Copy text to clipboard
+    function copyToClipboard(text) {
+        const el = document.createElement('textarea');
+        el.value = text;
+        el.setAttribute('readonly', '');
+        el.style.position = 'absolute';
+        el.style.left = '-9999px';
+        document.body.appendChild(el);
+        
+        el.select();
+        document.execCommand('copy');
+        
+        document.body.removeChild(el);
+        
+        showNotification('Copied to clipboard!', 'success');
+    }
+    
+    // Generate outline from sections
+    function generateOutline() {
+       let outline = '';
+       const groups = [
+           { key: 'structure', label: 'Document Structure' },
+           { key: 'meta', label: 'Metadata' },
+           { key: 'title', label: 'Title' },
+           { key: 'css', label: 'CSS Styles' },
+           { key: 'html', label: 'HTML Content' },
+           { key: 'script', label: 'JavaScript' },
+           { key: 'script_src', label: 'External Scripts' },
+           { key: 'other', label: 'Other' }
+       ];
+       
+       groups.forEach(group => {
+           const sectionsOfType = Object.entries(state.sections)
+               .filter(([id, section]) => section.type === group.key);
+           
+           if (sectionsOfType.length === 0) return;
+           
+           outline += `=== ${group.label} ===\n`;
+           
+           sectionsOfType.forEach(([id, section]) => {
+               const sectionNumber = state.sectionNumbers[id];
+               outline += `${sectionNumber}. ${section.description} (${section.type})\n`;
+               
+               if (section.subsections) {
+                   let subsectionCounter = 1;
+                   Object.entries(section.subsections).forEach(([subId, subsection]) => {
+                       outline += `   ${sectionNumber}.${subsectionCounter} ${subsection.description} (${subsection.type})\n`;
+                       subsectionCounter++;
+                   });
+               }
+           });
+           
+           outline += '\n';
+       });
+       
+       state.outline = outline;
+       elements.outlineContent.innerHTML = `<pre>${outline}</pre>`;
+       elements.outlineContainer.style.display = 'block';
+       
+       copyToClipboard(outline);
+       
+       return outline;
+    }
+    
+    // Create section editor
+    function createSectionEditor(sectionId, subsectionId = null) {
+        const section = state.sections[sectionId];
+        if (!section) return null;
+        
+        const content = subsectionId ? section.subsections[subsectionId].content : section.content;
+        const description = subsectionId ? section.subsections[subsectionId].description : section.description;
+        
+        // Create editor container
+        const editorContainer = document.createElement('div');
+        editorContainer.className = 'section-editor active';
+        editorContainer.dataset.sectionId = sectionId;
+        if (subsectionId) editorContainer.dataset.subsectionId = subsectionId;
+        
+        // Create editor header
+        const editorHeader = document.createElement('div');
+        editorHeader.className = 'section-editor-header';
+        
+        const editorTitle = document.createElement('div');
+        editorTitle.className = 'section-editor-title';
+        editorTitle.textContent = `Editing: ${description}`;
+        
+        const actionButtons = document.createElement('div');
+        actionButtons.className = 'editor-actions';
+        
+        // Save button
+        const saveBtn = document.createElement('button');
+        saveBtn.textContent = 'Save Changes';
+        saveBtn.className = 'save-btn';
+        saveBtn.addEventListener('click', () => {
+            saveInlineSection(editorContainer);
+        });
+        
+        // Cancel button
+        const cancelBtn = document.createElement('button');
+        cancelBtn.textContent = 'Cancel';
+        cancelBtn.className = 'secondary';
+        cancelBtn.addEventListener('click', () => {
+            editorContainer.remove();
+        });
+        
+        actionButtons.appendChild(saveBtn);
+        actionButtons.appendChild(cancelBtn);
+        
+        editorHeader.appendChild(editorTitle);
+        editorHeader.appendChild(actionButtons);
+        
+        // Create textarea for editing
+        const textarea = document.createElement('textarea');
+        textarea.value = content;
+        
+        // Focus and select the content when the editor opens
+        setTimeout(() => {
+            textarea.focus();
+            textarea.select();
+        }, 50);
+        
+        editorContainer.appendChild(editorHeader);
+        editorContainer.appendChild(textarea);
+        
+        return editorContainer;
+    }
+    
+    // Save inline section changes
+    function saveInlineSection(editorContainer) {
+        const sectionId = editorContainer.dataset.sectionId;
+        const subsectionId = editorContainer.dataset.subsectionId;
+        const textarea = editorContainer.querySelector('textarea');
+        
+        if (!sectionId || !textarea) return;
+        
+        const section = state.sections[sectionId];
+        if (!section) return;
+        
+        if (subsectionId) {
+            // Saving a subsection
+            const subsection = section.subsections[subsectionId];
+            if (!subsection) return;
+            subsection.content = textarea.value;
+            
+            // If this is a function subsection within a script, update parent script too
+            if (subsection.type === 'function' && section.type === 'script') {
+                // Get the original script content
+                const scriptContent = section.content;
+                
+                // Extract just the script part from the outerHTML
+                const scriptTagRegex = /<script[^>]*>([\s\S]*)<\/script>/i;
+                const scriptMatch = scriptContent.match(scriptTagRegex);
+                
+                if (scriptMatch) {
+                    const originalJsContent = scriptMatch[1];
+                    
+                    // Split the content into lines
+                    const lines = originalJsContent.split('\n');
+                    
+                    // Replace the lines for this function
+                    const startLine = subsection.startLine;
+                    const endLine = subsection.endLine;
+                    
+                    // Get the new function content
+                    const newFunctionLines = subsection.content.split('\n');
+                    
+                    // Splice the new function content into the original script
+                    const newLines = [
+                        ...lines.slice(0, startLine - 1),
+                        ...newFunctionLines,
+                        ...lines.slice(endLine)
+                    ];
+                    
+                    // Join back into a string
+                    const newJsContent = newLines.join('\n');
+                    
+                    // Replace in the script tag
+                    const newScriptContent = scriptContent.replace(scriptTagRegex, (match, p1) => {
+                        return match.replace(p1, newJsContent);
+                    });
+                    
+                    // Update the parent section
+                    section.content = newScriptContent;
+                }
+            }
+            
+            showNotification('Subsection updated successfully', 'success');
+        } else {
+            // Saving a main section
+            section.content = textarea.value;
+            showNotification('Section updated successfully', 'success');
+        }
+        
+        // Remove the editor
+        editorContainer.remove();
+        
+        // Re-render the section list to update any changes
+        renderSectionList();
+    }
+    
+    // Create a section element
+    function createSectionElement(id, section, globalSectionNumber = null) {
+        const container = document.createElement('div');
+        container.className = 'section-parent collapsed';
+        container.dataset.id = id;
+        
+        // Create the main section item
+        const item = document.createElement('div');
+        item.className = 'section-item';
+        
+        // Create expandable header
+        const header = document.createElement('div');
+        header.className = 'expandable-header';
+        
+        // Add section number
+        const sectionNumber = document.createElement('div');
+        sectionNumber.className = 'section-number';
+        sectionNumber.textContent = globalSectionNumber ? `${globalSectionNumber}. ` : '';
+        
+        const nameDiv = document.createElement('div');
+        nameDiv.className = 'section-name';
+        nameDiv.textContent = section.description;
+        
+        // Prepend section number to name
+        nameDiv.prepend(sectionNumber);
+        
+        const typeDiv = document.createElement('div');
+        typeDiv.className = 'section-type';
+        typeDiv.textContent = section.type;
+        
+        header.appendChild(nameDiv);
+        header.appendChild(typeDiv);
+        
+        // Add toggle icon
+        const toggleIcon = document.createElement('span');
+        toggleIcon.className = 'toggle-icon';
+        toggleIcon.innerHTML = '▼';
+        toggleIcon.style.fontSize = '0.8rem';
+        toggleIcon.style.marginLeft = '0.5rem';
+        toggleIcon.style.transform = 'rotate(-90deg)';
+        nameDiv.appendChild(toggleIcon);
+        
+        // Add click handler for toggling expand/collapse
+        header.addEventListener('click', (e) => {
+            toggleSection(container);
+            
+            // Create editor if clicked (but not just toggled)
+            if (!container.classList.contains('collapsed')) {
+                const existingEditor = container.querySelector('.section-editor');
+                if (!existingEditor) {
+                    const sectionId = container.dataset.id;
+                    const editor = createSectionEditor(sectionId);
+                    if (editor) {
+                        container.appendChild(editor);
+                    }
+                }
+            }
+        });
+        
+        item.appendChild(header);
+        container.appendChild(item);
+        
+        // Add subsections if any
+        if (section.subsections && Object.keys(section.subsections).length > 0) {
+            const subsectionList = document.createElement('div');
+            subsectionList.className = 'subsection-list';
+            
+            // Keep track of subsection numbering
+            let subsectionCounter = 1;
+            
+            Object.entries(section.subsections).forEach(([subId, subsection]) => {
+                const subsectionItem = document.createElement('div');
+                subsectionItem.className = 'subsection-item';
+                subsectionItem.dataset.parentId = id;
+                subsectionItem.dataset.id = subId;
+                
+                // Add subsection number
+                const subsectionNumber = document.createElement('span');
+                subsectionNumber.className = 'section-number';
+                subsectionNumber.textContent = `${globalSectionNumber}.${subsectionCounter} `;
+                
+                const nameDiv = document.createElement('div');
+                nameDiv.className = 'section-name';
+                nameDiv.prepend(subsectionNumber);
+                nameDiv.innerHTML += subsection.description;
+                
+                const typeDiv = document.createElement('div');
+                typeDiv.className = 'section-type';
+                typeDiv.textContent = subsection.type;
+                
+                subsectionItem.appendChild(nameDiv);
+                subsectionItem.appendChild(typeDiv);
+                
+                // Add click handler for editing subsection
+                subsectionItem.addEventListener('click', () => {
+                    // Remove any existing editors
+                    const existingEditors = subsectionList.querySelectorAll('.section-editor');
+                    existingEditors.forEach(editor => editor.remove());
+                    
+                    // Create and add the editor for this subsection
+                    const editor = createSectionEditor(id, subId);
+                    if (editor) {
+                        subsectionItem.insertAdjacentElement('afterend', editor);
+                    }
+                });
+                
+                subsectionList.appendChild(subsectionItem);
+                subsectionCounter++;
+            });
+            
+            container.appendChild(subsectionList);
+        }
+        
+        return container;
+    }
+   
+    // Toggle section expanded/collapsed state
+    function toggleSection(container) {
+        // Toggle the collapsed state
+        container.classList.toggle('collapsed');
+        
+        // Update toggle icon
+        const toggleIcon = container.querySelector('.toggle-icon');
+        if (toggleIcon) {
+            toggleIcon.style.transform = container.classList.contains('collapsed') 
+                ? 'rotate(-90deg)' 
+                : 'rotate(0)';
+        }
+    }
+   
+    // Render section list
+    function renderSectionList() {
+        elements.sectionList.innerHTML = '';
+        
+        elements.sectionCount.textContent = `Found ${Object.keys(state.sections).length} code sections`;
+        
+        const groupedSections = {
+            structure: [],
+            meta: [],
+            title: [],
+            css: [],
+            html: [],
+            script: [],
+            script_src: [],
+            other: []
+        };
+        
+        state.sectionNumbers = {};
+        let globalSectionNumber = 1;
+        
+        // Group sections by type
+        Object.entries(state.sections).forEach(([id, section]) => {
+            if (groupedSections[section.type]) {
+                groupedSections[section.type].push([id, section]);
+            } else {
+                groupedSections.other.push([id, section]);
+            }
+        });
+        
+        const groups = [
+            { key: 'structure', label: 'Document Structure' },
+            { key: 'meta', label: 'Metadata' },
+            { key: 'title', label: 'Title' },
+            { key: 'css', label: 'CSS Styles' },
+            { key: 'html', label: 'HTML Content' },
+            { key: 'script', label: 'JavaScript' },
+            { key: 'script_src', label: 'External Scripts' },
+            { key: 'other', label: 'Other' }
+        ];
+        
+        groups.forEach(group => {
+            const sections = groupedSections[group.key];
+            if (sections.length === 0) return;
+            
+            const groupHeader = document.createElement('h3');
+            groupHeader.textContent = group.label;
+            groupHeader.style.marginTop = '1rem';
+            groupHeader.style.paddingTop = '0.5rem';
+            groupHeader.style.borderTop = '1px solid #e2e8f0';
+            elements.sectionList.appendChild(groupHeader);
+            
+            const groupContainer = document.createElement('div');
+            groupContainer.className = 'section-group';
+            
+            sections.forEach(([id, section]) => {
+                state.sectionNumbers[id] = globalSectionNumber;
+                
+                const sectionElement = createSectionElement(id, section, globalSectionNumber);
+                groupContainer.appendChild(sectionElement);
+                
+                globalSectionNumber++;
+            });
+            
+            elements.sectionList.appendChild(groupContainer);
+        });
+        
+        generateOutline();
+        
+        elements.sectionsContainer.style.display = 'block';
+        elements.exportContainer.style.display = 'block';
+    }
+    
+    // Parse HTML into sections
+    function parseHTML(html) {
+        const sections = {};
+        state.originalHtml = html;
+        
+        try {
+            // Create a DOM parser
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            state.parsedHtml = doc;
+            
+            // Extract DOCTYPE
+            const doctypeRegex = /<!DOCTYPE[^>]*>/i;
+            const doctypeMatch = html.match(doctypeRegex);
+            if (doctypeMatch) {
+                sections['doctype'] = {
+                    type: 'doctype',
+                    content: doctypeMatch[0],
+                    description: 'DOCTYPE Declaration'
+                };
+            }
+            
+            // Extract head elements
+            
+            // Meta tags
+            const metaTags = Array.from(doc.head.querySelectorAll('meta'));
+            if (metaTags.length > 0) {
+                const metaContent = metaTags.map(tag => tag.outerHTML).join('\n    ');
+                sections['meta_tags'] = {
+                    type: 'meta',
+                    content: metaContent,
+                    description: 'Meta Tags'
+                };
+            }
+            
+            // Title
+            const title = doc.head.querySelector('title');
+            if (title) {
+                sections['title'] = {
+                    type: 'title',
+                    content: title.outerHTML,
+                    description: 'Page Title'
+                };
+            }
+            
+            // CSS in style tags
+            const styles = Array.from(doc.head.querySelectorAll('style'));
+            styles.forEach((style, index) => {
+                sections[`style_${index}`] = {
+                    type: 'css',
+                    content: style.outerHTML,
+                    description: `CSS Style Block ${index + 1}`
+                };
+            });
+            
+            // Link tags (external CSS)
+            const linkTags = Array.from(doc.head.querySelectorAll('link[rel="stylesheet"]'));
+            if (linkTags.length > 0) {
+                const linkContent = linkTags.map(tag => tag.outerHTML).join('\n    ');
+                sections['external_css'] = {
+                    type: 'link',
+                    content: linkContent,
+                    description: 'External Stylesheets'
+                };
+            }
+            
+            // HTML Structure
+            sections['html_structure'] = {
+                type: 'structure',
+                content: `<!DOCTYPE html>
+<html lang="${doc.documentElement.lang || 'en'}">
+<head>
+   <!-- Meta Tags -->
+   <!-- Title -->
+   <!-- CSS -->
+   <!-- Other Head Elements -->
+</head>
+<body>
+   <!-- Body Content -->
+   <!-- Scripts -->
+</body>
+</html>`,
+                description: 'HTML Document Structure'
+            };
+            
+            // Extract major sections from body
+            const mainContainers = Array.from(doc.body.querySelectorAll('body > div[id], body > div[class], body > header, body > main, body > section, body > nav, body > footer'));
+            
+            if (mainContainers.length > 0) {
+                mainContainers.forEach((container, index) => {
+                    let id = container.id || (container.className && typeof container.className === 'string' ? container.className.split(' ')[0] : null) || container.tagName.toLowerCase();
+                    sections[`container_${id}_${index}`] = {
+                        type: 'html',
+                        content: container.outerHTML,
+                        description: `HTML Container: ${id}`
+                    };
+                });
+            } else {
+                // If no major containers, use the whole body content
+                sections['body_content'] = {
+                    type: 'html',
+                    content: doc.body.innerHTML,
+                    description: 'Body Content'
+                };
+            }
+            
+            // Extract scripts
+            const scripts = Array.from(doc.querySelectorAll('script'));
+            scripts.forEach((script, index) => {
+                // Skip empty scripts
+                if (script.src) {
+                    sections[`script_src_${index}`] = {
+                        type: 'script_src',
+                        content: script.outerHTML,
+                        description: `External Script ${index + 1}`
+                    };
+                    return;
+                }
+                
+                const content = script.textContent;
+                if (!content.trim()) return;
+                
+                // Try to identify script functionality based on content
+                let description = `Script Block ${index + 1}`;
+                
+                if (content.includes('function')) {
+                    description = 'JavaScript Functions';
+                } else if (content.includes('addEventListener')) {
+                    description = 'Event Listeners';
+                }
+                
+                sections[`script_${index}`] = {
+                    type: 'script',
+                    content: script.outerHTML,
+                    description: description
+                };
+                
+                // Extract main functions for subsections (simplified)
+                const functionMatches = content.match(/function\s+([a-zA-Z0-9_$]+)\s*\([^)]*\)\s*{/g);
+                if (functionMatches && functionMatches.length > 0) {
+                    sections[`script_${index}`].subsections = {};
+                    
+                    functionMatches.forEach((match, funcIndex) => {
+                        const functionName = match.replace(/function\s+/, '').replace(/\s*\([^)]*\)\s*{/, '');
+                        
+                        // Simple way to extract the function body
+                        // This is simplified and not perfect for nested functions
+                        const startIdx = content.indexOf(match);
+                        let braceCount = 1;
+                        let endIdx = startIdx + match.length;
+                        
+                        // Find the end of the function by counting braces
+                        while (braceCount > 0 && endIdx < content.length) {
+                            if (content[endIdx] === '{') braceCount++;
+                            if (content[endIdx] === '}') braceCount--;
+                            endIdx++;
+                        }
+                        
+                        const functionBody = content.substring(startIdx, endIdx);
+                        
+                        sections[`script_${index}`].subsections[`function_${funcIndex}`] = {
+                            type: 'function',
+                            content: functionBody,
+                            description: `Function: ${functionName}`
+                        };
+                    });
+                }
+            });
+            
+            return sections;
+        } catch (error) {
+            console.error('Error parsing HTML:', error);
+            
+            // Fallback - if parsing fails, just store as a single section
+            sections['full_code'] = {
+                type: 'full',
+                content: html,
+                description: 'Complete HTML (Parsing Failed)'
+            };
+            
+            return sections;
+        }
+    }
+    
+    // Build complete HTML
+    function buildHTML() {
+        // Start with the HTML structure
+        let html = state.sections['html_structure']?.content || '';
+        
+        // Replace placeholders with content
+        
+        // Meta tags
+        const metaTags = state.sections['meta_tags']?.content || '';
+        html = html.replace('<!-- Meta Tags -->', metaTags);
+        
+        // Title
+        const title = state.sections['title']?.content || '';
+        html = html.replace('<!-- Title -->', title);
+        
+        // CSS
+        let css = '';
+        for (const [id, section] of Object.entries(state.sections)) {
+            if (section.type === 'css') {
+                css += section.content + '\n    ';
+            }
+        }
+        html = html.replace('<!-- CSS -->', css);
+        
+        // External CSS
+        const externalCSS = state.sections['external_css']?.content || '';
+        html = html.replace('<!-- Other Head Elements -->', externalCSS);
+        
+        // Body Content
+        let bodyContent = '';
+        for (const [id, section] of Object.entries(state.sections)) {
+            if (section.type === 'html') {
+                bodyContent += section.content + '\n    ';
+            }
+        }
+        html = html.replace('<!-- Body Content -->', bodyContent);
+        
+        // Scripts
+        let scripts = '';
+        for (const [id, section] of Object.entries(state.sections)) {
+            if (section.type === 'script' || section.type === 'script_src') {
+                scripts += section.content + '\n    ';
+            }
+        }
+        html = html.replace('<!-- Scripts -->', scripts);
+        
+        return html;
+    }
+    
+    // Event Handlers
+    
+    // Upload file button
+    elements.uploadFileBtn.addEventListener('click', () => {
+        elements.fileInput.click();
+    });
+    
+    // File input change
+    elements.fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length === 0) return;
+        
+        const file = e.target.files[0];
+        const reader = new FileReader();
+        
+        reader.onload = (event) => {
+            elements.importCode.value = event.target.result;
+            showNotification(`File '${file.name}' loaded successfully`, 'success');
+        };
+        
+        reader.onerror = () => {
+            showNotification('Error reading file', 'error');
+        };
+        
+        reader.readAsText(file);
+    });
+    
+    // Parse button
+    elements.parseBtn.addEventListener('click', () => {
+        const html = elements.importCode.value;
+        
+        if (!html) {
+            showNotification('Please enter HTML code or upload a file', 'error');
+            return;
+        }
+        
+        state.sections = parseHTML(html);
+        renderSectionList();
+        showNotification('HTML parsed into sections and outline copied to clipboard', 'success');
+    });
+    
+    // Copy outline button
+    elements.copyOutlineBtn.addEventListener('click', () => {
+        copyToClipboard(state.outline);
+    });
+    
+    // Build button
+    elements.buildBtn.addEventListener('click', () => {
+        state.builtHTML = buildHTML();
+        
+        if (state.builtHTML) {
+            elements.downloadArea.style.display = 'block';
+            showNotification('HTML built successfully', 'success');
+        } else {
+            showNotification('Error building HTML', 'error');
+        }
+    });
+    
+    // Download button
+    elements.downloadBtn.addEventListener('click', () => {
+        if (!state.builtHTML) return;
+        
+        const blob = new Blob([state.builtHTML], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'modified.html';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        
+        URL.revokeObjectURL(url);
+        showNotification('Download started', 'success');
+    });
+    
+    // Preview button
+    elements.previewBtn.addEventListener('click', () => {
+        if (!state.builtHTML) return;
+        
+        const blob = new Blob([state.builtHTML], { type: 'text/html' });
+        const url = URL.createObjectURL(blob);
+        
+        elements.previewFrame.src = url;
+        elements.previewContainer.style.display = 'block';
+        elements.previewContainer.scrollIntoView({ behavior: 'smooth' });
+        
+        // Clean up URL object after iframe loads
+        elements.previewFrame.onload = () => {
+            URL.revokeObjectURL(url);
+        };
+    });
+});
+    </script>
+    
+</body>
+</html>

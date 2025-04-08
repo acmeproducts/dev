@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Meditation App</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      overflow: hidden;
+      background: linear-gradient(to bottom, #a2d4f7, #6bb3d2);
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+    #modeToggle {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      z-index: 1000;
+      background: rgba(0,0,0,0.5);
+      color: white;
+      padding: 8px 12px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <button id="modeToggle">Mode: Ripple</button>
+  <canvas id="rippleCanvas"></canvas>
+  <script>
+    const canvas = document.getElementById("rippleCanvas");
+    const ctx = canvas.getContext("2d");
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    const modeToggle = document.getElementById("modeToggle");
+    let currentMode = 0;
+    modeToggle.onclick = () => {
+      currentMode = (currentMode + 1) % 2;
+      modeToggle.textContent = currentMode === 0 ? "Mode: Ripple" : "Mode: Breath";
+    };
+
+    // Ripple Mode
+    const ripples = [];
+    canvas.addEventListener("pointerdown", (e) => {
+      if (currentMode !== 0) return;
+      const rect = canvas.getBoundingClientRect();
+      ripples.push({
+        x: e.clientX - rect.left,
+        y: e.clientY - rect.top,
+        radius: 0,
+        maxRadius: Math.max(canvas.width, canvas.height),
+        opacity: 1
+      });
+    });
+
+    // Breath Mode: synced to 16s
+    let orbRadius = 100;
+    let orbTargetRadius = 100;
+    let breathCycleTime = 16000;
+    let startTime = null;
+
+    function getBreathPhaseIntensity(t) {
+      const phaseDurations = {
+        prePause: 500,
+        inhale: 5000,
+        hold: 5000,
+        exhale: 5000,
+        postPause: 500
+      };
+
+      const total = Object.values(phaseDurations).reduce((a, b) => a + b);
+      t = t % total;
+
+      if (t < phaseDurations.prePause) return 0.0;
+      t -= phaseDurations.prePause;
+
+      if (t < phaseDurations.inhale) return t / phaseDurations.inhale;
+      t -= phaseDurations.inhale;
+
+      if (t < phaseDurations.hold) return 1.0;
+      t -= phaseDurations.hold;
+
+      if (t < phaseDurations.exhale) return 1.0 - (t / phaseDurations.exhale);
+      return 0.0;
+    }
+
+    function animate(time) {
+      if (!startTime) startTime = time;
+      const elapsed = time - startTime;
+      const intensity = getBreathPhaseIntensity(elapsed);
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      if (currentMode === 0) {
+        for (let i = 0; i < ripples.length; i++) {
+          const r = ripples[i];
+          ctx.beginPath();
+          ctx.arc(r.x, r.y, r.radius, 0, 2 * Math.PI);
+          ctx.strokeStyle = `rgba(255,255,255,${r.opacity})`;
+          ctx.lineWidth = 2;
+          ctx.shadowColor = `rgba(255,255,255,${r.opacity})`;
+          ctx.shadowBlur = 8;
+          ctx.stroke();
+          ctx.shadowBlur = 0;
+          r.radius += 1.2;
+          r.opacity = 1 - r.radius / r.maxRadius;
+          if (r.radius >= r.maxRadius) {
+            ripples.splice(i, 1);
+            i--;
+          }
+        }
+      } else {
+        orbTargetRadius = 100 + intensity * 60;
+        orbRadius += (orbTargetRadius - orbRadius) * 0.05;
+
+        const auraIntensity = intensity;
+        const auraThickness = 80 * intensity;
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+        const radiusStart = orbRadius;
+        const radiusEnd = orbRadius + auraThickness;
+
+        const gradient = ctx.createRadialGradient(centerX, centerY, radiusStart, centerX, centerY, radiusEnd);
+        gradient.addColorStop(0.0, `rgba(255, 255, 200, ${0.1 * auraIntensity})`);
+        gradient.addColorStop(0.4, `rgba(255, 165, 0, ${0.06 * auraIntensity})`);
+        gradient.addColorStop(0.8, `rgba(255, 0, 0, ${0.04 * auraIntensity})`);
+        gradient.addColorStop(1.0, `rgba(255, 0, 0, 0)`);
+
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radiusEnd, 0, 2 * Math.PI);
+        ctx.fillStyle = gradient;
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, orbRadius, 0, 2 * Math.PI);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+        ctx.fill();
+      }
+
+      requestAnimationFrame(animate);
+    }
+
+    animate();
+  </script>
+</body>
+</html>

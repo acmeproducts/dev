@@ -1,0 +1,1227 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Harmonic Flow - A Meditative Pattern Game</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #e86657;
+            overflow: hidden;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            color: #fff;
+        }
+        canvas {
+            display: block;
+            margin: 0 auto;
+            cursor: pointer;
+            border-radius: 4px;
+            touch-action: none;
+        }
+        .controls {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(35, 53, 83, 0.6);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            padding: 15px 25px;
+            border-radius: 18px;
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            flex-wrap: wrap;
+            justify-content: center;
+            transition: opacity 0.8s ease;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            z-index: 1000;
+        }
+        button {
+            background-color: #233553;
+            color: #f5e6cf;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: all 0.3s ease;
+        }
+        button:hover {
+            background-color: #f5e6cf;
+            color: #233553;
+        }
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .slider-container span {
+            white-space: nowrap;
+            font-size: 14px;
+            font-weight: 500;
+            color: rgba(255, 255, 255, 0.9);
+        }
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100px;
+            height: 4px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 2px;
+            outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            background: white;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        input[type="range"]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            background: white;
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+        }
+        select {
+            background-color: #233553;
+            color: #f5e6cf;
+            border: none;
+            padding: 7px 12px;
+            border-radius: 15px;
+            cursor: pointer;
+            font-size: 14px;
+            outline: none;
+        }
+        select:hover {
+            background-color: #2c4169;
+        }
+        .mode-select {
+            margin-top: 10px;
+            transition: opacity 0.8s ease;
+            display: flex;
+            gap: 10px;
+        }
+        .footer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 5px;
+            font-size: 0.8em;
+            opacity: 0.5;
+            text-align: center;
+            transition: opacity 0.8s ease;
+        }
+        .footer:hover {
+            opacity: 0.9;
+        }
+        .zen-toggle {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            background-color: rgba(35, 53, 83, 0.5);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 10;
+            opacity: 0.5;
+            transition: opacity 0.3s ease;
+        }
+        .zen-toggle:hover {
+            opacity: 1;
+        }
+        .zen-toggle-icon {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #f5e6cf;
+            border-radius: 50%;
+        }
+        .hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        .show-ui {
+            position: fixed;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(35, 53, 83, 0.5);
+            color: #f5e6cf;
+            padding: 5px 15px;
+            border-radius: 20px;
+            cursor: pointer;
+            z-index: 10;
+            opacity: 0;
+            transition: opacity 0.5s ease;
+            pointer-events: none;
+        }
+        .show-ui.visible {
+            opacity: 0.7;
+            pointer-events: auto;
+        }
+        .show-ui:hover {
+            opacity: 1;
+        }
+        canvas:fullscreen {
+            width: 100vw;
+            height: 100vh;
+        }
+        .fullscreen-btn {
+            position: fixed;
+            bottom: 10px;
+            left: 10px;
+            background-color: rgba(35, 53, 83, 0.5);
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            z-index: 10;
+            opacity: 0.5;
+            transition: opacity 0.3s ease;
+        }
+        .fullscreen-btn:hover {
+            opacity: 1;
+        }
+        .fullscreen-icon {
+            width: 15px;
+            height: 15px;
+            border: 2px solid #f5e6cf;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    <div class="controls" id="controls">
+        <button id="resetBtn">Reset</button>
+        <button id="shuffleBtn">Shuffle</button>
+        <div class="slider-container">
+            <span>Flow Speed:</span>
+            <input type="range" min="1" max="30" value="10" class="slider" id="speedSlider">
+        </div>
+        <div class="slider-container">
+            <span>Volume:</span>
+            <input type="range" min="0" max="100" value="80" class="slider" id="volumeSlider">
+        </div>
+        <div class="slider-container">
+            <span>Sensitivity:</span>
+            <input type="range" min="1" max="10" value="5" class="slider" id="sensitivitySlider">
+        </div>
+        <div class="slider-container">
+            <span>Sound:</span>
+            <select id="schemeSelect">
+                <option value="pentatonic">Pentatonic</option>
+                <option value="singing_bowl">Singing Bowl</option>
+                <option value="gentle_major">Gentle Major</option>
+            </select>
+        </div>
+    </div>
+    <div class="mode-select" id="modeSelect">
+        <button id="patternMode">Pattern Mode</button>
+        <button id="freeMode">Free Mode</button>
+    </div>
+    
+    <!-- Zen Mode Toggle -->
+    <div class="zen-toggle" id="zenToggle">
+        <div class="zen-toggle-icon"></div>
+    </div>
+    
+    <!-- Show UI Button (visible in Zen Mode) -->
+    <div class="show-ui" id="showUI">Show UI</div>
+    
+    <!-- Fullscreen Button -->
+    <div class="fullscreen-btn" id="fullscreenBtn">
+        <div class="fullscreen-icon"></div>
+    </div>
+    
+    <!-- Footer with instructions -->
+    <div class="footer" id="footer">
+        Touch the pattern to gently disturb its rhythm. Restore order with the controls above.
+        Breathe deeply and find peace in both order and chaos. For best experience, use headphones 🎧
+    </div>
+
+    <script>
+        // Initialize canvas
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const resetBtn = document.getElementById('resetBtn');
+        const shuffleBtn = document.getElementById('shuffleBtn');
+        const speedSlider = document.getElementById('speedSlider');
+        const volumeSlider = document.getElementById('volumeSlider');
+        const sensitivitySlider = document.getElementById('sensitivitySlider');
+        const schemeSelect = document.getElementById('schemeSelect');
+        const patternModeBtn = document.getElementById('patternMode');
+        const freeModeBtn = document.getElementById('freeMode');
+        const zenToggle = document.getElementById('zenToggle');
+        const showUI = document.getElementById('showUI');
+        const fullscreenBtn = document.getElementById('fullscreenBtn');
+        const footer = document.getElementById('footer');
+        
+        // UI Elements for Zen Mode
+        const uiElements = [
+            document.getElementById('controls'),
+            document.getElementById('modeSelect'),
+            document.getElementById('footer')
+        ];
+        
+        // Set canvas size
+        canvas.width = Math.min(window.innerWidth * 0.8, 600);
+        canvas.height = Math.min(window.innerHeight * 0.6, 400);
+        
+        // Colors
+        const bgColor = '#e86657';
+        const darkColor = '#233553';
+        const lightColor = '#f5e6cf';
+        
+        // Game variables
+        let elements = [];
+        let isInteracting = false;
+        let wasInteracting = false; // Track state change
+        let interactionTime = 0; // Interaction time in seconds
+        let interactionTimer = null;
+        let cursorX = 0;
+        let cursorY = 0;
+        let speed = 10;
+        let baseVolume = 0.8; // 80% starting volume
+        let sensitivity = 5; // Default sensitivity (range 1-10, each step is 2%)
+        let interactionVolumeBoost = 0;
+        let isPatternMode = true;
+        let globalBreathPhase = 0;
+        let globalBreathSpeed = 0.0005 * speed; // More sensitive speed control
+        let isZenMode = false;
+        let inactivityTimer = null;
+        let currentSeed = Math.random(); // Random seed for pattern generation
+        
+        // Sunshine-inspired Sound Engine
+        const SoundEngine = {
+            audioCtx: null,
+            activeOscillators: [],
+            masterGain: null,
+            reverbNode: null,
+            delayNode: null,
+            outputGain: null,
+            pannerLeft: null,
+            pannerRight: null,
+            baseVolume: 0.8,
+            interactionVolumeBoost: 0,
+            ambientInterval: null,
+            currentScheme: 'pentatonic',
+            
+            // Sound schemes with different frequency scales
+            schemes: {
+                pentatonic: {
+                    name: 'Pentatonic',
+                    frequencies: [293.66, 329.63, 369.99, 440.00, 493.88],
+                    description: 'Peaceful pentatonic scale (the Sunshine scale)'
+                },
+                singing_bowl: {
+                    name: 'Singing Bowl',
+                    frequencies: [136.1, 174.6, 261.6, 294.3, 326.6, 349.2, 392.0, 436.1],
+                    description: 'Based on Tibetan singing bowl frequencies'
+                },
+                gentle_major: {
+                    name: 'Gentle Major',
+                    frequencies: [261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88],
+                    description: 'Calming C major scale'
+                }
+            },
+            
+            // Initialize audio context and processing chain
+            init: function() {
+                if (this.audioCtx) return;
+                
+                // Create audio context
+                this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                
+                // Create processing chain
+                this.masterGain = this.audioCtx.createGain();
+                this.reverbNode = this.audioCtx.createConvolver();
+                this.delayNode = this.audioCtx.createDelay();
+                this.outputGain = this.audioCtx.createGain();
+                
+                // Create stereo panners
+                this.pannerLeft = this.audioCtx.createStereoPanner();
+                this.pannerRight = this.audioCtx.createStereoPanner();
+                
+                // Configure nodes
+                this.pannerLeft.pan.value = -0.7;
+                this.pannerRight.pan.value = 0.7;
+                this.masterGain.gain.value = 0.45;
+                this.delayNode.delayTime.value = 0.4;
+                this.outputGain.gain.value = 0.8;
+                
+                // Connect the processing chain
+                this.masterGain.connect(this.reverbNode);
+                this.reverbNode.connect(this.delayNode);
+                
+                // Create stereo split
+                this.delayNode.connect(this.pannerLeft);
+                this.delayNode.connect(this.pannerRight);
+                
+                // Connect to final output
+                this.pannerLeft.connect(this.outputGain);
+                this.pannerRight.connect(this.outputGain);
+                this.outputGain.connect(this.audioCtx.destination);
+                
+                // Create reverb buffer
+                this.createReverbBuffer();
+                
+                // Resume audio context if suspended
+                if (this.audioCtx.state === 'suspended') {
+                    this.audioCtx.resume();
+                }
+                
+                // Start ambient sounds
+                this.startAmbientSounds();
+            },
+            
+            // Create stereo reverb buffer
+            createReverbBuffer: function() {
+                const bufferLength = this.audioCtx.sampleRate * 4; // 4 seconds reverb
+                const buffer = this.audioCtx.createBuffer(2, bufferLength, this.audioCtx.sampleRate);
+                
+                // Fill left channel
+                const leftChannel = buffer.getChannelData(0);
+                for (let i = 0; i < bufferLength; i++) {
+                    leftChannel[i] = Math.exp(-i / bufferLength * 4) * (Math.random() * 2 - 1) * 0.7;
+                }
+                
+                // Fill right channel (slightly different for true stereo)
+                const rightChannel = buffer.getChannelData(1);
+                for (let i = 0; i < bufferLength; i++) {
+                    rightChannel[i] = Math.exp(-i / bufferLength * 4) * (Math.random() * 2 - 1) * 0.7;
+                }
+                
+                this.reverbNode.buffer = buffer;
+            },
+            
+            // Start ambient sounds
+            startAmbientSounds: function() {
+                if (this.ambientInterval) clearInterval(this.ambientInterval);
+                
+                // Play an initial note
+                this.playAmbientNote(0.4);
+                
+                // Set up recurring ambient sounds with variable timing
+                this.ambientInterval = setInterval(() => {
+                    if (!this.audioCtx) return;
+                    
+                    // Random panning for stereo effect
+                    const panPosition = Math.random() * 1.6 - 0.8; // Range from -0.8 to 0.8
+                    this.playAmbientNote(panPosition);
+                }, 10000 + Math.random() * 8000); // Variable timing 10-18 seconds
+            },
+            
+            // Play a gentle ambient note
+            playAmbientNote: function(panPosition = 0) {
+                if (!this.audioCtx) return;
+                
+                const now = this.audioCtx.currentTime;
+                const actualVolume = this.baseVolume + this.interactionVolumeBoost;
+                
+                // Get frequencies from current scheme
+                const frequencies = this.schemes[this.currentScheme].frequencies;
+                
+                // Randomly select a note from the scale
+                const freqIndex = Math.floor(Math.random() * frequencies.length);
+                const frequency = frequencies[freqIndex];
+                
+                // Create position-specific panner for this note
+                const notePanner = this.audioCtx.createStereoPanner();
+                notePanner.pan.value = Math.max(-1, Math.min(1, panPosition));
+                
+                // Create and configure oscillator
+                const oscillator = this.audioCtx.createOscillator();
+                const gainNode = this.audioCtx.createGain();
+                
+                // Sine wave for gentle tone
+                oscillator.type = 'sine';
+                oscillator.frequency.value = frequency;
+                
+                // Configure gain envelope
+                gainNode.gain.setValueAtTime(0, now);
+                gainNode.gain.linearRampToValueAtTime(0.6 * actualVolume, now + 0.1);
+                gainNode.gain.exponentialRampToValueAtTime(0.001, now + 5);
+                
+                // Connect through position panner to main chain
+                oscillator.connect(gainNode);
+                gainNode.connect(notePanner);
+                notePanner.connect(this.masterGain);
+                
+                // Start and schedule stop
+                oscillator.start(now);
+                oscillator.stop(now + 5);
+                
+                // Add harmonic with separate panning
+                const harmonicOsc = this.audioCtx.createOscillator();
+                const harmonicGain = this.audioCtx.createGain();
+                
+                // Create slightly offset panner for harmonic
+                const harmonicPanner = this.audioCtx.createStereoPanner();
+                harmonicPanner.pan.value = Math.max(-1, Math.min(1, panPosition * 0.8)); // Slightly different pan
+                
+                // Configure harmonic oscillator
+                harmonicOsc.type = 'sine';
+                harmonicOsc.frequency.value = frequency * 1.5; // Harmonic at 1.5x frequency
+                
+                // Configure harmonic gain envelope
+                harmonicGain.gain.setValueAtTime(0, now);
+                harmonicGain.gain.linearRampToValueAtTime(0.3 * actualVolume, now + 0.1);
+                harmonicGain.gain.exponentialRampToValueAtTime(0.001, now + 4);
+                
+                // Connect harmonic through its own panner
+                harmonicOsc.connect(harmonicGain);
+                harmonicGain.connect(harmonicPanner);
+                harmonicPanner.connect(this.masterGain);
+                
+                // Start and schedule stop
+                harmonicOsc.start(now);
+                harmonicOsc.stop(now + 4);
+                
+                // Track oscillators for cleanup
+                this.activeOscillators.push(oscillator, harmonicOsc);
+                this.cleanupOscillators();
+            },
+            
+            // Play an interaction-triggered note with position-based panning
+            playInteractionNote: function(x, y, areaRadius) {
+                if (!this.audioCtx) return;
+                
+                const now = this.audioCtx.currentTime;
+                const actualVolume = this.baseVolume + this.interactionVolumeBoost;
+                
+                // Calculate angle and normalized position
+                const angle = Math.atan2(y, x);
+                const normalizedAngle = (angle + Math.PI) / (2 * Math.PI); // 0 to 1
+                
+                // Get frequencies from current scheme
+                const frequencies = this.schemes[this.currentScheme].frequencies;
+                
+                // Map position to note index
+                const noteIndex = Math.floor(normalizedAngle * frequencies.length);
+                const frequency = frequencies[noteIndex];
+                
+                // Calculate stereo position based on x position
+                const panPosition = x / (areaRadius * 0.9); // Normalized to roughly -1 to 1
+                
+                // Create position-specific panner for this note
+                const notePanner = this.audioCtx.createStereoPanner();
+                notePanner.pan.value = Math.max(-1, Math.min(1, panPosition));
+                
+                // Create and configure oscillator
+                const oscillator = this.audioCtx.createOscillator();
+                const gainNode = this.audioCtx.createGain();
+                
+                oscillator.type = 'sine';
+                oscillator.frequency.value = frequency;
+                
+                // Clean envelope with anti-pop measures
+                gainNode.gain.setValueAtTime(0, now);
+                gainNode.gain.linearRampToValueAtTime(0.6 * actualVolume, now + 0.1);
+                gainNode.gain.exponentialRampToValueAtTime(0.001, now + 4);
+                
+                // Connect through position panner to main chain
+                oscillator.connect(gainNode);
+                gainNode.connect(notePanner);
+                notePanner.connect(this.masterGain);
+                
+                oscillator.start(now);
+                oscillator.stop(now + 4);
+                
+                // Add harmonic with separate panning
+                const harmonicOsc = this.audioCtx.createOscillator();
+                const harmonicGain = this.audioCtx.createGain();
+                
+                // Create slightly offset panner for harmonic
+                const harmonicPanner = this.audioCtx.createStereoPanner();
+                harmonicPanner.pan.value = Math.max(-1, Math.min(1, panPosition * 0.8));
+                
+                harmonicOsc.type = 'sine';
+                harmonicOsc.frequency.value = frequency * 1.5;
+                
+                harmonicGain.gain.setValueAtTime(0, now);
+                harmonicGain.gain.linearRampToValueAtTime(0.3 * actualVolume, now + 0.1);
+                harmonicGain.gain.exponentialRampToValueAtTime(0.001, now + 3);
+                
+                harmonicOsc.connect(harmonicGain);
+                harmonicGain.connect(harmonicPanner);
+                harmonicPanner.connect(this.masterGain);
+                
+                harmonicOsc.start(now);
+                harmonicOsc.stop(now + 3);
+                
+                // Track oscillators for cleanup
+                this.activeOscillators.push(oscillator, harmonicOsc);
+                this.cleanupOscillators();
+            },
+            
+            // Update volume levels
+            updateVolume: function(baseVolume, interactionBoost) {
+                this.baseVolume = baseVolume;
+                this.interactionVolumeBoost = interactionBoost;
+            },
+            
+            // Change sound scheme
+            setScheme: function(schemeName) {
+                if (this.schemes[schemeName]) {
+                    this.currentScheme = schemeName;
+                }
+            },
+            
+            // Clean up old oscillators
+            cleanupOscillators: function() {
+                if (this.activeOscillators.length > 20) {
+                    this.activeOscillators = this.activeOscillators.slice(-20);
+                }
+            },
+            
+            // Stop all sounds
+            stopAll: function() {
+                if (this.ambientInterval) {
+                    clearInterval(this.ambientInterval);
+                }
+                
+                this.activeOscillators.forEach(osc => {
+                    try {
+                        osc.stop();
+                    } catch (e) {
+                        // Already stopped
+                    }
+                });
+                
+                this.activeOscillators = [];
+            }
+        };
+        
+        // Add seedrandom function
+        Math.seedrandom = function(seed) {
+            let mw = seed || Date.now();
+            let mz = 987654321;
+            
+            // Return a float between 0 and 1 (not including 1)
+            const orig = Math.random;
+            Math.random = function() {
+                mz = (36969 * (mz & 65535) + (mz >> 16)) & 0xFFFFFFFF;
+                mw = (18000 * (mw & 65535) + (mw >> 16)) & 0xFFFFFFFF;
+                let result = ((mz << 16) + mw) & 0xFFFFFFFF;
+                result /= 4294967296;
+                return result;
+            };
+            
+            // Save the original function so we can restore it
+            Math.random.orig = orig;
+        };
+        
+        // Restore original random function
+        function restoreRandom() {
+            if (Math.random.orig) {
+                Math.random = Math.random.orig;
+            }
+        }
+        
+        // Function to get a pattern that closely mimics the GIF with variations
+        function generateGifPattern(seed) {
+            // Set the random seed
+            Math.seedrandom(seed);
+            
+            const patternData = [];
+            const rows = 12;
+            const cols = 15;
+            
+            // Define dash lengths - short, medium, long
+            const dashLengths = [10, 16, 22];
+            
+            // Create pattern with 3 different line lengths and proper offset
+            for (let r = 0; r < rows; r++) {
+                // Calculate row offset (slight curve at top and bottom)
+                let rowOffset = 0;
+                if (r < 2 || r > rows - 3) {
+                    rowOffset = Math.sin((r / rows) * Math.PI) * 5;
+                }
+                
+                // Slight upward trend
+                let upwardTrend = (r / rows) * 8;
+                
+                for (let c = 0; c < cols; c++) {
+                    // Determine element type (dash or dot)
+                    let type = (c % 2 === 0) ? 'dash' : 'dot';
+                    
+                    // Assign dash length based on position - create rhythm
+                    let lengthIndex = ((c + r) % 3);
+                    let width = (type === 'dash') ? dashLengths[lengthIndex] : 6;
+                    let height = 6;
+                    
+                    // Determine color with alternating pattern
+                    let isLight;
+                    if (r % 2 === 0) {
+                        isLight = (c % 4 < 2);
+                        // Occasional variations
+                        if ((r + c) % 9 === 0) isLight = !isLight;
+                    } else {
+                        isLight = (c % 4 >= 2);
+                        // Occasional variations
+                        if ((r + c) % 11 === 0) isLight = !isLight;
+                    }
+                    
+                    // Add horizontal offset for more organic look
+                    let xOffset = 0;
+                    
+                    // Add offset to create rhythm in columns
+                    if (c % 3 === 0) xOffset += 2;
+                    if (c % 5 === 0) xOffset -= 3;
+                    
+                    // Add offset based on row position
+                    if (r < rows/3) {
+                        // Top rows lean slightly right
+                        xOffset += 3;
+                    } else if (r > 2*rows/3) {
+                        // Bottom rows lean slightly left
+                        xOffset -= 3;
+                    }
+                    
+                    // Add pattern-specific variations based on seed
+                    xOffset += (Math.random() - 0.5) * 5;
+                    
+                    // Add element with calculated offsets
+                    patternData.push({
+                        row: r,
+                        col: c,
+                        type: type,
+                        isLight: isLight,
+                        xOffset: xOffset + rowOffset + upwardTrend + (Math.random() - 0.5) * 3,
+                        yOffset: (Math.random() - 0.5) * 3,
+                        width: width,
+                        height: height
+                    });
+                }
+            }
+            
+            return patternData;
+        }
+        
+        // Initialize audio using the Sunshine-inspired sound engine
+        function initAudio() {
+            SoundEngine.init();
+        }
+        
+        // Play position-based sound
+        function playInteractionSound(x, y) {
+            // Convert to normalized coordinates where 0,0 is the center
+            const canvasRadius = Math.min(canvas.width, canvas.height) / 2;
+            const normalizedX = x - canvas.width/2;
+            const normalizedY = y - canvas.height/2;
+            
+            // Play sound with position-based panning
+            SoundEngine.playInteractionNote(normalizedX, normalizedY, canvasRadius);
+        }
+        
+        // Update sound volume
+        function updateSoundVolume() {
+            SoundEngine.updateVolume(baseVolume, interactionVolumeBoost);
+        }
+        
+        // Increase volume during interaction with sensitivity control
+        function startInteractionTimer() {
+            if (interactionTimer) clearInterval(interactionTimer);
+            
+            interactionTimer = setInterval(() => {
+                // Get current sensitivity value (1-10, each step is 2%)
+                sensitivity = parseInt(sensitivitySlider.value);
+                
+                // Check if interaction just started
+                if (isInteracting && !wasInteracting) {
+                    // Add initial boost based on sensitivity setting (2% per sensitivity point)
+                    const initialBoost = (sensitivity * 2 / 100) * baseVolume;
+                    interactionVolumeBoost = Math.min(initialBoost, baseVolume * 0.5); // Cap at 50% of base volume
+                    wasInteracting = true;
+                    
+                    // Update sound volume immediately
+                    updateSoundVolume();
+                }
+                
+                if (isInteracting) {
+                    interactionTime += 1; // +1 second
+                    
+                    // Every 10 seconds, increase volume based on sensitivity (2% per point)
+                    if (interactionTime % 10 === 0) {
+                        // Increase by sensitivity*2% of base volume
+                        const increase = (sensitivity * 2 / 100) * baseVolume;
+                        // Limit maximum boost to 50% of base volume
+                        interactionVolumeBoost = Math.min(interactionVolumeBoost + increase, baseVolume * 0.5);
+                        
+                        // Update sound volume
+                        updateSoundVolume();
+                    }
+                } else {
+                    // Reset the wasInteracting flag when not interacting
+                    wasInteracting = false;
+                }
+            }, 1000); // Check every second
+        }
+        
+        // Reset interaction time and volume boost
+        function resetInteraction() {
+            interactionTime = 0;
+            interactionVolumeBoost = 0;
+            wasInteracting = false;
+            
+            // Update sound volume
+            updateSoundVolume();
+        }
+        
+        // Decrease volume gradually when not interacting
+        function decreaseVolumeGradually() {
+            if (!isInteracting && interactionVolumeBoost > 0) {
+                // Decrease by 0.5% of base volume every second
+                interactionVolumeBoost = Math.max(0, interactionVolumeBoost - (baseVolume * 0.005));
+                
+                // Update sound volume
+                updateSoundVolume();
+            }
+        }
+        
+        // Reset inactivity timer
+        function resetInactivityTimer() {
+            if (inactivityTimer) clearTimeout(inactivityTimer);
+            
+            // Auto-enter zen mode after 30 seconds of inactivity
+            inactivityTimer = setTimeout(() => {
+                if (!isZenMode) toggleZenMode();
+            }, 30000);
+        }
+        
+        // Element object
+        class Element {
+            constructor(data) {
+                const elementWidth = canvas.width / 15;
+                const elementHeight = canvas.height / 12;
+                
+                this.gridX = data.col;
+                this.gridY = data.row;
+                
+                // Initial position with organic offsets
+                this.initialX = data.col * elementWidth + elementWidth / 2 + data.xOffset;
+                this.initialY = data.row * elementHeight + elementHeight / 2 + data.yOffset;
+                
+                this.x = this.initialX;
+                this.y = this.initialY;
+                this.targetX = this.x;
+                this.targetY = this.y;
+                
+                this.isLight = data.isLight;
+                this.type = data.type; // 'dash' or 'dot'
+                
+                // Size based on data
+                this.width = data.width;
+                this.height = data.height;
+                
+                this.vx = 0;
+                this.vy = 0;
+                this.friction = 0.98;
+                this.rotation = (Math.random() - 0.5) * 0.2; // Slight initial rotation
+                this.rotationSpeed = 0;
+                this.isInMotion = false;
+                this.mass = 1 + Math.random() * 0.5;
+                
+                // Breathing properties
+                this.breathPhase = Math.random() * Math.PI * 2; // Random starting phase
+                this.breathAmplitude = 0.05 + Math.random() * 0.1; // Random amplitude
+            }
+            
+            update() {
+                // Update global breath phase
+                globalBreathPhase += globalBreathSpeed;
+                if (globalBreathPhase > Math.PI * 2) globalBreathPhase -= Math.PI * 2;
+                
+                if (isPatternMode) {
+                    if (this.isInMotion) {
+                        // Apply physics while in motion
+                        this.x += this.vx;
+                        this.y += this.vy;
+                        this.vx *= this.friction;
+                        this.vy *= this.friction;
+                        this.rotation += this.rotationSpeed;
+                        this.rotationSpeed *= 0.98;
+                    } else {
+                        // Return to initial position with breathing effect
+                        const breathX = Math.sin(globalBreathPhase + this.breathPhase) * this.width * this.breathAmplitude;
+                        const breathY = Math.cos(globalBreathPhase + this.breathPhase) * this.height * this.breathAmplitude;
+                        
+                        const targetX = this.initialX + breathX;
+                        const targetY = this.initialY + breathY;
+                        
+                        this.x += (targetX - this.x) * 0.05 * speed / 10; // Adjusted for wider speed range
+                        this.y += (targetY - this.y) * 0.05 * speed / 10;
+                        
+                        // Gentle rotation breathing
+                        const targetRotation = Math.sin(globalBreathPhase + this.breathPhase) * 0.05;
+                        this.rotation += (targetRotation - this.rotation) * 0.02 * speed / 10;
+                    }
+                } else {
+                    // Free mode physics
+                    this.x += this.vx;
+                    this.y += this.vy;
+                    this.vx *= this.friction;
+                    this.vy *= this.friction;
+                    this.rotation += this.rotationSpeed;
+                    this.rotationSpeed *= 0.98;
+                    
+                    // Bounce off canvas edges with momentum
+                    const halfWidth = this.width / 2;
+                    const halfHeight = this.height / 2;
+                    
+                    if (this.x < halfWidth) {
+                        this.x = halfWidth;
+                        this.vx = Math.abs(this.vx) * 0.8;
+                    } else if (this.x > canvas.width - halfWidth) {
+                        this.x = canvas.width - halfWidth;
+                        this.vx = -Math.abs(this.vx) * 0.8;
+                    }
+                    
+                    if (this.y < halfHeight) {
+                        this.y = halfHeight;
+                        this.vy = Math.abs(this.vy) * 0.8;
+                    } else if (this.y > canvas.height - halfHeight) {
+                        this.y = canvas.height - halfHeight;
+                        this.vy = -Math.abs(this.vy) * 0.8;
+                    }
+                }
+            }
+            
+            draw() {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                ctx.rotate(this.rotation);
+                
+                ctx.fillStyle = this.isLight ? lightColor : darkColor;
+                
+                if (this.type === 'dash') {
+                    // Draw oval/dash
+                    ctx.beginPath();
+                    ctx.ellipse(0, 0, this.width/2, this.height/2, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                } else {
+                    // Draw circle/dot
+                    ctx.beginPath();
+                    ctx.arc(0, 0, this.width/2, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+                
+                ctx.restore();
+            }
+            
+            // Apply force to element
+            applyForce(forceX, forceY) {
+                this.vx += forceX / this.mass;
+                this.vy += forceY / this.mass;
+                this.isInMotion = true;
+                
+                // Set timeout to stop marking as in motion
+                setTimeout(() => {
+                    this.isInMotion = false;
+                }, 2000 + Math.random() * 2000);
+            }
+            
+            // Disturb element on interaction
+            disturb(cursorX, cursorY, strength = 1) {
+                // Direction away from cursor
+                const dx = this.x - cursorX;
+                const dy = this.y - cursorY;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                // Only affect nearby elements
+                if (distance < 100) {
+                    // Force decreases with distance
+                    const force = (100 - distance) / 100 * strength;
+                    
+                    // Apply force and rotation
+                    this.applyForce((dx / distance) * force * 2, (dy / distance) * force * 2);
+                    this.rotationSpeed += (Math.random() - 0.5) * 0.2 * force;
+                }
+            }
+        }
+        
+        // Create pattern based on organic pattern data
+        function createPattern() {
+            // Generate a new pattern with current seed
+            const patternData = generateGifPattern(currentSeed);
+            
+            elements = [];
+            
+            // Create elements based on pattern data
+            patternData.forEach(data => {
+                elements.push(new Element(data));
+            });
+            
+            // Restore random function
+            restoreRandom();
+        }
+        
+        // Create a new pattern with a new seed
+        function resetPattern() {
+            // Generate a new seed for variation
+            currentSeed = Math.random() * 10000;
+            createPattern();
+        }
+        
+        // Shuffle elements randomly
+        function shuffleElements() {
+            elements.forEach(element => {
+                // Apply random forces
+                element.applyForce((Math.random() - 0.5) * 10, (Math.random() - 0.5) * 10);
+                element.rotationSpeed = (Math.random() - 0.5) * 0.2;
+            });
+            
+            // Play a subtle shuffle sound
+            const radius = Math.min(canvas.width, canvas.height) / 2;
+            playInteractionSound(Math.random() * 20 - 10, Math.random() * 20 - 10);
+        }
+        
+        // Set up Zen Mode
+        function toggleZenMode() {
+            isZenMode = !isZenMode;
+            
+            if (isZenMode) {
+                // Hide UI
+                uiElements.forEach(el => {
+                    el.classList.add('hidden');
+                });
+                
+                // Show the "Show UI" button
+                showUI.classList.add('visible');
+            } else {
+                // Show UI
+                uiElements.forEach(el => {
+                    el.classList.remove('hidden');
+                });
+                
+                // Hide the "Show UI" button
+                showUI.classList.remove('visible');
+            }
+        }
+        
+        // Toggle fullscreen
+        function toggleFullscreen() {
+            if (!document.fullscreenElement) {
+                canvas.requestFullscreen().catch(err => {
+                    console.log(`Error attempting to enable fullscreen: ${err.message}`);
+                });
+            } else {
+                document.exitFullscreen();
+            }
+        }
+        
+        // Handle mouse/touch events
+        canvas.addEventListener('mousedown', (e) => {
+            isInteracting = true;
+            resetInactivityTimer();
+            
+            if (!SoundEngine.audioCtx) initAudio();
+            const rect = canvas.getBoundingClientRect();
+            cursorX = e.clientX - rect.left;
+            cursorY = e.clientY - rect.top;
+            
+            // Disturb nearby elements with strong force
+            elements.forEach(element => {
+                element.disturb(cursorX, cursorY, 1.5);
+            });
+            
+            // Play position-based sound
+            playInteractionSound(cursorX, cursorY);
+        });
+        
+        canvas.addEventListener('mousemove', (e) => {
+            resetInactivityTimer();
+            
+            if (!isInteracting) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            cursorX = e.clientX - rect.left;
+            cursorY = e.clientY - rect.top;
+            
+            // Disturb elements occasionally with softer effect
+            if (Math.random() < 0.2) {
+                elements.forEach(element => {
+                    element.disturb(cursorX, cursorY, 0.8);
+                });
+                
+                // Occasional sound during movement
+                if (Math.random() < 0.3) {
+                    playInteractionSound(cursorX, cursorY);
+                }
+            }
+        });
+        
+        canvas.addEventListener('mouseup', () => {
+            isInteracting = false;
+        });
+        
+        canvas.addEventListener('mouseleave', () => {
+            isInteracting = false;
+        });
+        
+        // Touch events for mobile
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            isInteracting = true;
+            resetInactivityTimer();
+            
+            if (!SoundEngine.audioCtx) initAudio();
+            
+            const rect = canvas.getBoundingClientRect();
+            cursorX = e.touches[0].clientX - rect.left;
+            cursorY = e.touches[0].clientY - rect.top;
+            
+            elements.forEach(element => {
+                element.disturb(cursorX, cursorY, 1.5);
+            });
+            
+            // Play position-based sound
+            playInteractionSound(cursorX, cursorY);
+        });
+        
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            resetInactivityTimer();
+            
+            if (!isInteracting) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            cursorX = e.touches[0].clientX - rect.left;
+            cursorY = e.touches[0].clientY - rect.top;
+            
+            if (Math.random() < 0.2) {
+                elements.forEach(element => {
+                    element.disturb(cursorX, cursorY, 0.8);
+                });
+                
+                // Occasional sound during movement
+                if (Math.random() < 0.3) {
+                    playInteractionSound(cursorX, cursorY);
+                }
+            }
+        });
+        
+        canvas.addEventListener('touchend', () => {
+            isInteracting = false;
+        });
+        
+        // Button event listeners
+        resetBtn.addEventListener('click', () => {
+            resetPattern();
+            resetInteraction();
+        });
+        
+        shuffleBtn.addEventListener('click', () => {
+            shuffleElements();
+        });
+        
+        patternModeBtn.addEventListener('click', () => {
+            isPatternMode = true;
+            patternModeBtn.style.backgroundColor = '#f5e6cf';
+            patternModeBtn.style.color = '#233553';
+            freeModeBtn.style.backgroundColor = '#233553';
+            freeModeBtn.style.color = '#f5e6cf';
+        });
+        
+        freeModeBtn.addEventListener('click', () => {
+            isPatternMode = false;
+            freeModeBtn.style.backgroundColor = '#f5e6cf';
+            freeModeBtn.style.color = '#233553';
+            patternModeBtn.style.backgroundColor = '#233553';
+            patternModeBtn.style.color = '#f5e6cf';
+        });
+        
+        // Zen mode toggle
+        zenToggle.addEventListener('click', toggleZenMode);
+        showUI.addEventListener('click', toggleZenMode);
+        
+        // Fullscreen toggle
+        fullscreenBtn.addEventListener('click', toggleFullscreen);
+        
+        // Speed control
+        speedSlider.addEventListener('input', () => {
+            speed = parseInt(speedSlider.value);
+            // Adjust breathing speed with new formula for wider range
+            globalBreathSpeed = 0.0005 * speed;
+        });
+        
+        // Volume control
+        volumeSlider.addEventListener('input', () => {
+            // Set base volume (0.0 to 1.0)
+            baseVolume = parseInt(volumeSlider.value) / 100;
+            updateSoundVolume();
+        });
+        
+        // Sensitivity control
+        sensitivitySlider.addEventListener('input', () => {
+            sensitivity = parseInt(sensitivitySlider.value);
+        });
+        
+        // Sound scheme control
+        schemeSelect.addEventListener('change', () => {
+            SoundEngine.setScheme(schemeSelect.value);
+        });
+        
+        // Main game loop
+        function gameLoop() {
+            // Clear canvas
+            ctx.fillStyle = bgColor;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            // Update volume based on interaction
+            decreaseVolumeGradually();
+            
+            // Update and draw all elements
+            elements.forEach(element => {
+                element.update();
+                element.draw();
+            });
+            
+            requestAnimationFrame(gameLoop);
+        }
+        
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            canvas.width = Math.min(window.innerWidth * 0.8, 600);
+            canvas.height = Math.min(window.innerHeight * 0.6, 400);
+            
+            // Re-create pattern to match new dimensions
+            createPattern();
+        });
+        
+        // Set initial active mode button
+        patternModeBtn.style.backgroundColor = '#f5e6cf';
+        patternModeBtn.style.color = '#233553';
+        
+        // Start interaction timer
+        startInteractionTimer();
+        
+        // Start inactivity timer
+        resetInactivityTimer();
+        
+        // Create initial pattern and start game
+        createPattern();
+        gameLoop();
+    </script>
+</body>
+</html>
