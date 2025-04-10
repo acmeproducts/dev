@@ -25,7 +25,7 @@
             display: flex;
             justify-content: center;
             width: 100%;
-            height: 100%;
+            height: 50%;
         }
         canvas {
             border: 1px solid white;
@@ -36,6 +36,11 @@
             margin-top: 20px;
             text-align: center;
         }
+        #micData {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 14px;
+        }
     </style>
 </head>
 <body>
@@ -44,16 +49,18 @@
             <canvas id="micVisualizer"></canvas>
         </div>
         <div id="status">Status: Waiting for microphone input...</div>
+        <div id="micData">Mic Data Array: </div>
     </div>
     <script>
         // Get the canvas element and its context
         const micCanvas = document.getElementById('micVisualizer');
         const micCanvasCtx = micCanvas.getContext('2d');
         const statusDiv = document.getElementById('status');
+        const micDataDiv = document.getElementById('micData');
 
         // Set the canvas dimensions
         micCanvas.width = window.innerWidth * 0.9;
-        micCanvas.height = window.innerHeight * 0.9;
+        micCanvas.height = window.innerHeight * 0.45;
 
         // Create an AudioContext
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -88,16 +95,21 @@
                 x += barWidth + 1;
             }
 
-            // Debugging: Log the first few values of micDataArray
-            console.log('Mic Data Array:', micDataArray.slice(0, 10));
+            // Display the first few values of micDataArray on the page
+            micDataDiv.textContent = 'Mic Data Array: ' + micDataArray.slice(0, 10).join(', ');
         }
 
         // Function to connect microphone
         async function connectMicrophone() {
             try {
+                console.log('Requesting microphone access...');
                 const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                console.log('Microphone access granted.');
+
                 const source = audioCtx.createMediaStreamSource(stream);
                 source.connect(micAnalyser);
+                console.log('Microphone connected to analyser.');
+
                 drawMic();
                 statusDiv.textContent = 'Status: Microphone connected and visualizing.';
                 console.log('Microphone connected and visualizing.');
