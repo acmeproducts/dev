@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Music Visualizer</title>
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: black;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            display: flex;
+            flex-direction: column;
+            width: 100%;
+            height: 100%;
+        }
+        .controls {
+            display: flex;
+            justify-content: center;
+            margin-bottom: 20px;
+        }
+        .visualizer-container {
+            display: flex;
+            justify-content: space-around;
+            width: 100%;
+            height: 100%;
+        }
+        canvas {
+            border: 1px solid white;
+            width: 45%;
+            height: 100%;
+        }
+        button {
+            margin: 10px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="controls">
+            <button id="micButton">Use Microphone</button>
+        </div>
+        <div class="visualizer-container">
+            <canvas id="micVisualizer"></canvas>
+        </div>
+    </div>
+    <script>
+        // Get the canvas element and its context
+        const micCanvas = document.getElementById('micVisualizer');
+        const micCanvasCtx = micCanvas.getContext('2d');
+
+        // Set the canvas dimensions
+        micCanvas.width = window.innerWidth / 2 - 30;
+        micCanvas.height = window.innerHeight - 100;
+
+        // Create an AudioContext
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+
+        // AnalyserNode for microphone
+        const micAnalyser = audioCtx.createAnalyser();
+        micAnalyser.fftSize = 2048;
+        const micBufferLength = micAnalyser.frequencyBinCount;
+        const micDataArray = new Uint8Array(micBufferLength);
+
+        // Function to start drawing for microphone
+        function drawMic() {
+            requestAnimationFrame(drawMic);
+
+            // Get the frequency data
+            micAnalyser.getByteFrequencyData(micDataArray);
+
+            // Clear the canvas
+            micCanvasCtx.fillStyle = 'black';
+            micCanvasCtx.fillRect(0, 0, micCanvas.width, micCanvas.height);
+
+            // Draw the frequency bars
+            const barWidth = (micCanvas.width / micBufferLength) * 2.5;
+            let barHeight;
+            let x = 0;
+
+            for (let i = 0; i < micBufferLength; i++) {
+                barHeight = micDataArray[i] / 2;
+                micCanvasCtx.fillStyle = `rgb(${barHeight + 100}, 50, 50)`;
+                micCanvasCtx.fillRect(x, micCanvas.height - barHeight / 2, barWidth, barHeight / 2);
+
+                x += barWidth + 1;
+            }
+        }
+
+        // Function to connect microphone
+        async function connectMicrophone() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                const source = audioCtx.createMediaStreamSource(stream);
+                source.connect(micAnalyser);
+                drawMic();
+            } catch (err) {
+                console.error('Error accessing microphone:', err);
+            }
+        }
+
+        // Event listener for the microphone button
+        document.getElementById('micButton').addEventListener('click', connectMicrophone);
+
+        // Initialize with microphone
+        connectMicrophone();
+    </script>
+</body>
+</html>

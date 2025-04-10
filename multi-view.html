@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, minimum-scale=0.1">
+    <title>Multi-File Viewer</title>
+    <style>
+        body { margin: 0; font-family: sans-serif; display: flex; flex-wrap: wrap; justify-content: flex-start; }
+        .portlet { width: 20%; box-sizing: border-box; padding: 5px; height: 200px; display: flex; justify-content: center; align-items: center; border: 1px solid #ccc; }
+        .portlet iframe, .portlet img, .portlet video, .portlet audio { display: block; max-width: 100%; max-height: 100%; margin: auto; }
+        #fileInput { position: fixed; top: 10px; left: 10px; z-index: 1000; }
+    </style>
+</head>
+<body>
+    <input type="file" id="fileInput" multiple accept="image/*, video/*, audio/*, text/html, image/gif">
+    <script>
+        const fileInput = document.getElementById('fileInput');
+        const body = document.body;
+        const portletsPerRow = 5;
+
+        fileInput.addEventListener('change', function() {
+            body.innerHTML = '<input type="file" id="fileInput" multiple accept="image/*, video/*, audio/*, text/html, image/gif">'; // Clear previous and re-add input
+            const files = this.files;
+            if (files.length > 0) {
+                for (let i = 0; i < files.length; i++) {
+                    const file = files[i];
+                    const fileURL = URL.createObjectURL(file);
+                    const portlet = document.createElement('div');
+                    portlet.classList.add('portlet');
+
+                    const fileType = file.type.split('/')[0];
+                    let content;
+
+                    if (fileType === 'image') {
+                        content = document.createElement('img');
+                        content.src = fileURL;
+                        enableZoom(content);
+                    } else if (fileType === 'video') {
+                        content = document.createElement('video');
+                        content.src = fileURL;
+                        content.controls = true;
+                    } else if (fileType === 'audio') {
+                        content = document.createElement('audio');
+                        content.src = fileURL;
+                        content.controls = true;
+                    } else if (fileType === 'text' && file.type === 'text/html') {
+                        content = document.createElement('iframe');
+                        content.src = fileURL;
+                    } else if (file.type === 'image/gif') {
+                        content = document.createElement('img');
+                        content.src = fileURL;
+                        enableZoom(content);
+                    } else {
+                        content = document.createElement('p');
+                        content.textContent = `Unsupported file type: ${file.name}`;
+                    }
+
+                    if (content) {
+                        portlet.appendChild(content);
+                        body.appendChild(portlet);
+                    }
+                }
+            }
+        });
+
+        function enableZoom(element) {
+            let scale = 1;
+            const zoomSensitivity = 0.05;
+            let isDragging = false;
+            let startX = 0;
+            let startY = 0;
+            let translateX = 0;
+            let translateY = 0;
+
+            element.style.transformOrigin = 'center center';
+            element.style.cursor = 'grab';
+
+            function applyTransform() {
+                element.style.transform = `translate(${translateX}px, ${translateY}px) scale(${scale})`;
+            }
+
+            element.addEventListener('wheel', function(event) {
+                event.preventDefault();
+                scale += event.deltaY * -zoomSensitivity;
+                scale = Math.max(0.1, Math.min(scale, 5)); // Limit zoom
+                applyTransform();
+            }, { passive: false });
+
+            element.addEventListener('mousedown', function(event) {
+                isDragging = true;
+                startX = event.clientX - translateX;
+                startY = event.clientY - translateY;
+                element.style.cursor = 'grabbing';
+            });
+
+            window.addEventListener('mouseup', function() {
+                isDragging = false;
+                element.style.cursor = 'grab';
+            });
+
+            window.addEventListener('mousemove', function(event) {
+                if (!isDragging) return;
+                translateX = event.clientX - startX;
+                translateY = event.clientY - startY;
+                applyTransform();
+            });
+
+            let initialPinchDistance = null;
+            let initialScale = null;
+
+            element.addEventListener('touchstart', function(event) {
+                if (event.touches.length === 2) {
+                    initialPinchDistance = Math.hypot(
+                        event.touches[0].clientX - event.touches[1].clientX,
+                        event.touches[0].clientY - event.touches[1].clientY
+                    );
+                    initialScale = scale;
+                } else if (event.touches.length === 1) {
+                    isDragging = true;
+                    startX = event.touches[0].clientX - translateX;
+                    startY = event.touches[0].clientY - translateY;
+                    element.style.cursor = 'grabbing';
+                }
+            });
+
+            window.addEventListener('touchend', function(event) {
+                if (initialPinchDistance !== null) {
+                    initialPinchDistance = null;
+                }
+                if (isDragging) {
+                    isDragging = false;
+                    element.style.cursor = 'grab';
+                }
+            });
+
+            window.addEventListener('touchmove', function(event) {
+                event.preventDefault(); // Prevent page scroll during zoom/pan
+                if (initialPinchDistance !== null && event.touches.length === 2) {
+                    const currentPinchDistance = Math.hypot(
+                        event.touches[0].clientX - event.touches[1].clientX,
+                        event.touches[0].clientY - event.touches[1].clientY
+                    );
+                    scale = initialScale + (currentPinchDistance - initialPinchDistance) * zoomSensitivity * 5; // Adjust sensitivity for touch
+                    scale = Math.max(0.1, Math.min(scale, 5));
+                    applyTransform();
+                } else if (isDragging && event.touches.length === 1) {
+                    translateX = event.touches[0].clientX - startX;
+                    translateY = event.touches[0].clientY - startY;
+                    applyTransform();
+                }
+            }, { passive: false });
+        }
+    </script>
+</body>
+</html>

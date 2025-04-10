@@ -1,0 +1,575 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, minimum-scale=0.1">
+    <title>Enhanced Multi-File Viewer</title>
+    <style>
+        body { margin: 0; font-family: sans-serif; display: flex; flex-wrap: wrap; justify-content: flex-start; }
+        .portlet-container { width: 20%; box-sizing: border-box; padding: 5px; min-height: 150px; display: flex; flex-direction: column; border: 1px solid #ccc; position: relative; overflow: hidden; }
+        .portlet { display: flex; justify-content: center; align-items: center; width: 100%; height: 100%; overflow: hidden; }
+        .portlet iframe, .portlet img, .portlet video, .portlet audio { display: block; max-width: 100%; max-height: 100%; margin: auto; }
+        #fileInput { position: fixed; top: 10px; left: 10px; z-index: 1000; }
+        .resizer { position: absolute; background: #007bff; opacity: 0; transition: opacity 0.2s ease-in-out; }
+        .resizer:hover { opacity: 0.8; }
+        .resizer.top, .resizer.bottom { left: 0; right: 0; height: 5px; cursor: row-resize; }
+        .resizer.left, .resizer.right { top: 0; bottom: 0; width: 5px; cursor: col-resize; }
+        .resizer.top { top: 0; }
+        .resizer.bottom { bottom: 0; }
+        .resizer.left { left: 0; }
+        .resizer.right { right: 0; }
+        .portlet-header { background: #f0f0f0; padding: 5px; text-align: center; font-size: 0.9em; border-bottom: 1px solid #ccc; cursor: grab; display: flex; justify-content: space-between; align-items: center; }
+        .portlet-header button { margin-left: 5px; font-size: 0.8em; padding: 3px 6px; }
+        .fullscreen-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.9); z-index: 1001; display: flex; justify-content: center; align-items: center; }
+        .fullscreen-content { max-width: 90%; max-height: 90%; }
+        .fullscreen-content iframe, .fullscreen-content img, .fullscreen-content video, .fullscreen-content audio { display: block; max-width: 100%; max-height: 100%; margin: auto; }
+        .fullscreen-close { position: absolute; top: 10px; right: 20px; color: white; font-size: 2em; cursor: pointer; }
+        .hidden { display: none !important; }
+        #loadingMessage { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border: 1px solid #ccc; box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2); z-index: 1002; }
+    </style>
+</head>
+<body>
+    <input type="file" id="fileInput" multiple accept="image/*, video/*, audio/*, text/html, image/gif">
+    <div id="portletContainer" style="display: flex; flex-wrap: wrap; justify-content: flex-start; width: 100%;">
+        </div>
+    <div id="fullscreenView" class="fullscreen-overlay hidden">
+        <span class="fullscreen-close">&times;</span>
+        <div id="fullscreenContent" class="fullscreen-content"></div>
+    </div>
+    <div id="loadingMessage" class="hidden">Loading...</div>
+    <script>
+        const fileInput = document.getElementById('fileInput');
+        const portletContainer = document.getElementById('portletContainer');
+        const fullscreenView = document.getElementById('fullscreenView');
+        const fullscreenContent = document.getElementById('fullscreenContent');
+        const fullscreenCloseButton = fullscreenView.querySelector('.fullscreen-close');
+        const loadingMessageDiv = document.getElementById('loadingMessage');
+        const portletsPerRow = 5;
+        let portlets = [];
+        let objectURLs = [];
+        let layoutData = []; // For saving/loading layouts
+        let isDraggingPortlet = null;
+        let dragOffsetX, dragOffsetY;
+
+        function saveLayout() {
+            layoutData = portlets.map(portletContainer => ({
+                filename: portletContainer.dataset.filename,
+                width: portletContainer.style.width,
+                height: portletContainer.style.height,
+                order: Array.from(portletContainer.parentNode.children).indexOf(portletContainer)
+            }));
+            localStorage.setItem('fileViewerLayout', JSON.stringify(layoutData));
+        }
+
+        function loadLayout() {
+            const savedLayout = localStorage.getItem('fileViewerLayout');
+            if (savedLayout) {
+                layoutData = JSON.parse(savedLayout);
+                // We'll apply this after files are loaded
+            }
+        }
+
+        function applyLayout() {
+            if (layoutData.length > 0 && portlets.length === layoutData.length) {
+                const orderedPortlets = new Array(portlets.length);
+                layoutData.forEach(data => {
+                    const portlet = portlets.find(p => p.dataset.filename === data.filename);
+                    if (portlet) {
+                        portlet.style.width = data.width;
+                        portlet.style.height = data.height;
+                        orderedPortlets[data.order] = portlet;
+                    }
+                });
+                portletContainer.innerHTML = '';
+                orderedPortlets.filter(p => p).forEach(p => portletContainer.appendChild(p));
+                portlets = orderedPortlets.filter(p => p);
+                attachDragAndResize(); // Re-attach listeners after reordering
+            }
+        }
+
+        function revokeObjectURLs() {
+            objectURLs.forEach(URL.revokeObjectURL);
+            objectURLs = [];
+        }
+
+        function createPortlet(file, index, totalFiles) {
+            const fileURL = URL.createObjectURL(file);
+            objectURLs.push(fileURL);
+
+            const portletContainerDiv = document.createElement('div');
+            portletContainerDiv.classList.add('portlet-container');
+            portletContainerDiv.dataset.filename = file.name;
+            portletContainerDiv.style.width = `${100 / portletsPerRow}%`;
+            portletContainerDiv.style.height = '200px'; // Default height
+
+            const header = document.createElement('div');
+            header.classList.add('portlet-header');
+            header.textContent = file.name;
+
+            const downloadButton = document.createElement('button');
+            downloadButton.textContent = 'Download';
+            downloadButton.addEventListener('click', () => {
+                const a = document.createElement('a');
+                a.href = fileURL;
+                a.download = file.name;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+            });
+            header.appendChild(downloadButton);
+
+            const fullscreenButton = document.createElement('button');
+            fullscreenButton.textContent = 'Fullscreen';
+            fullscreenButton.addEventListener('click', () => {
+                showFullscreen(fileURL, file.type, file.name);
+            });
+            header.appendChild(fullscreenButton);
+
+            portletContainerDiv.appendChild(header);
+
+            const portletDiv = document.createElement('div');
+            portletDiv.classList.add('portlet');
+
+            const fileType = file.type.split('/')[0];
+            let content;
+
+            if (fileType === 'image') {
+                content = document.createElement('img');
+                content.src = fileURL;
+                enableZoom(content);
+            } else if (fileType === 'video') {
+                content = document.createElement('video');
+                content.src = fileURL;
+                content.controls = true;
+            } else if (fileType === 'audio') {
+                content = document.createElement('audio');
+                content.src = fileURL;
+                content.controls = true;
+            } else if (fileType === 'text' && file.type === 'text/html') {
+                content = document.createElement('iframe');
+                content.src = fileURL;
+            } else if (file.type === 'image/gif') {
+                content = document.createElement('img');
+                content.src = fileURL;
+                enableZoom(content);
+            } else {
+                content = document.createElement('p');
+                content.textContent = `Unsupported file type: ${file.name}`;
+                content.classList.add('error'); // Add error class for styling
+            }
+
+            if (content) {
+                portletDiv.appendChild(content);
+                portletContainerDiv.appendChild(portletDiv);
+            } else if (!content && fileType !== 'text') {
+                const errorDiv = document.createElement('div');
+                errorDiv.classList.add('portlet', 'error');
+                errorDiv.textContent = `Error loading ${file.name}`;
+                portletContainerDiv.appendChild(errorDiv);
+            }
+
+            // Add resizers
+            const resizers = ['top', 'bottom', 'left', 'right'];
+            resizers.forEach(resizer => {
+                const resizerDiv = document.createElement('div');
+                resizerDiv.classList.add('resizer', resizer);
+                portletContainerDiv.appendChild(resizerDiv);
+            });
+
+            return portletContainerDiv;
+        }
+
+        function handleFiles(files) {
+            portletContainer.innerHTML = ''; // Clear previous content
+            portlets = [];
+            revokeObjectURLs();
+
+            if (files.length > 0) {
+                loadingMessageDiv.textContent = 'Loading... 0 of ' + files.length;
+                loadingMessageDiv.classList.remove('hidden');
+
+                const loadPromises = [];
+                for (let i = 0; i < files.length; i++) {
+                    const file = files[i];
+                    const promise = new Promise(resolve => {
+                        // Simulate a small delay to show the loading progress
+                        setTimeout(() => {
+                            const portlet = createPortlet(file, i, files.length);
+                            portlets.push(portlet);
+                            portletContainer.appendChild(portlet);
+                            loadingMessageDiv.textContent = `Loading... ${i + 1} of ${files.length}`;
+                            resolve();
+                        }, i * 100); // Stagger the loading slightly
+                    });
+                    loadPromises.push(promise);
+                }
+
+                Promise.all(loadPromises).then(() => {
+                    loadingMessageDiv.classList.add('hidden');
+                    attachDragAndResize();
+                    applyLayout(); // Apply saved layout after files are loaded
+                    observePortlets(); // Start observing for lazy loading
+                });
+            }
+        }
+
+        fileInput.addEventListener('change', function() {
+            if (this.files.length > 0) {
+                handleFiles(this.files);
+            }
+        });
+
+        function showFullscreen(url, type, filename) {
+            fullscreenContent.innerHTML = '';
+            let content;
+            const fileType = type.split('/')[0];
+
+            if (fileType === 'image') {
+                content = document.createElement('img');
+                content.src = url;
+                enableZoomFullscreen(content);
+            } else if (fileType === 'video') {
+                content = document.createElement('video');
+                content.src = url;
+                content.controls = true;
+            } else if (fileType === 'audio') {
+                content = document.createElement('audio');
+                content.src = url;
+                content.controls = true;
+            } else if (fileType === 'text' && type === 'text/html') {
+                content = document.createElement('iframe');
+                content.src = url;
+            } else if (type === 'image/gif') {
+                content = document.createElement('img');
+                content.src = url;
+                enableZoomFullscreen(content);
+            } else {
+                content = document.createElement('p');
+                content.textContent = `Unsupported file type: ${filename}`;
+            }
+
+            if (content) {
+                fullscreenContent.appendChild(content);
+                fullscreenView.classList.remove('hidden');
+            }
+        }
+
+        fullscreenCloseButton.addEventListener('click', () => {
+            fullscreenView.classList.add('hidden');
+            // Reset zoom in fullscreen if applicable
+            const zoomedElement = fullscreenContent.querySelector('img, iframe, video, audio');
+            if (zoomedElement) {
+                zoomedElement.style.transform = 'translate(0px, 0px) scale(1)';
+            }
+        });
+
+        function enableZoom(element) {
+            let scale = 1;
+            const zoomSensitivity = 0.05;
+            let isDragging = false;
+            let startX = 0;
+            let startY = 0;
+            let translateX = 0;
+            let translateY = 0;
+
+            element.style.transformOrigin = 'center center';
+            element.style.cursor = 'grab';
+
+            function applyTransform() {
+                element.style.transform = `translate(${translateX}px, <span class="math-inline">\{translateY\}px\) scale\(</span>{scale})`;
+            }
+
+            element.addEventListener('wheel', function(event) {
+                event.preventDefault();
+                scale += event.deltaY * -zoomSensitivity;
+                scale = Math.max(0.1, Math.min(scale, 5));
+                applyTransform();
+            }, { passive: false });
+
+            element.addEventListener('mousedown', function(event) {
+                isDragging = true;
+                startX = event.clientX - translateX;
+                startY = event.clientY - translateY;
+                element.style.cursor = 'grabbing';
+            });
+
+            window.addEventListener('mouseup', function() {
+                isDragging = false;
+                element.style.cursor = 'grab';
+            });
+
+            element.addEventListener('mousemove', function(event) {
+                if (!isDragging) return;
+                translateX = event.clientX - startX;
+                translateY = event.clientY - startY;
+                applyTransform();
+            });
+
+            let initialPinchDistance = null;
+            let initialScale = null;
+
+            element.addEventListener('touchstart', function(event) {
+                if (event.touches.length === 2) {
+                    initialPinchDistance = Math.hypot(
+                        event.touches[0].clientX - event.touches[1].clientX,
+                        event.touches[0].clientY - event.touches[1].clientY
+                    );
+                    initialScale = scale;
+                } else if (event.touches.length === 1) {
+                    isDragging = true;
+                    startX = event.touches[0].clientX - translateX;
+                    startY = event.touches[0].clientY - translateY;
+                    element.style.cursor = 'grabbing';
+                }
+            }, { passive: false });
+
+            window.addEventListener('touchend', function() {
+                initialPinchDistance = null;
+                isDragging = false;
+                element.style.cursor = 'grab';
+            });
+
+            element.addEventListener('touchmove', function(event) {
+                event.preventDefault();
+                if (initialPinchDistance !== null && event.touches.length === 2) {
+                    const currentPinchDistance = Math.hypot(
+                        event.touches[0].clientX - event.touches[1].clientX,
+                        event.touches[0].clientY - event.touches[1].clientY
+                    );
+                    scale = initialScale + (currentPinchDistance - initialPinchDistance) * zoomSensitivity * 5;
+                    scale = Math.max(0.1, Math.min(scale, 5));
+                    applyTransform();
+                } else if (isDragging && event.touches.length === 1) {
+                    translateX = event.touches[0].clientX - startX;
+                    translateY = event.touches[0].clientY - startY;
+                    applyTransform();
+                }
+            }, { passive: false });
+        }
+
+        function enableZoomFullscreen(element) {
+            let scale = 1;
+            const zoomSensitivity = 0.05;
+            let isDragging = false;
+            let startX = 0;
+            let startY = 0;
+            let translateX = 0;
+            let translateY = 0;
+
+            element.style.transformOrigin = 'center center';
+            element.style.cursor = 'grab';
+
+            function applyTransform() {
+                element.style.transform = `translate(${translateX}px, <span class="math-inline">\{translateY\}px\) scale\(</span>{scale})`;
+            }
+
+            element.addEventListener('wheel', function(event) {
+                event.preventDefault();
+				scale += event.deltaY * -zoomSensitivity;
+                scale = Math.max(0.1, Math.min(scale, 5));
+                applyTransform();
+            }, { passive: false });
+
+            element.addEventListener('mousedown', function(event) {
+                isDragging = true;
+                startX = event.clientX - translateX;
+                startY = event.clientY - translateY;
+                element.style.cursor = 'grabbing';
+            });
+
+            window.addEventListener('mouseup', function() {
+                isDragging = false;
+                element.style.cursor = 'grab';
+            });
+
+            element.addEventListener('mousemove', function(event) {
+                if (!isDragging) return;
+                translateX = event.clientX - startX;
+                translateY = event.clientY - startY;
+                applyTransform();
+            });
+
+            let initialPinchDistance = null;
+            let initialScale = null;
+
+            element.addEventListener('touchstart', function(event) {
+                if (event.touches.length === 2) {
+                    initialPinchDistance = Math.hypot(
+                        event.touches[0].clientX - event.touches[1].clientX,
+                        event.touches[0].clientY - event.touches[1].clientY
+                    );
+                    initialScale = scale;
+                } else if (event.touches.length === 1) {
+                    isDragging = true;
+                    startX = event.touches[0].clientX - translateX;
+                    startY = event.touches[0].clientY - translateY;
+                    element.style.cursor = 'grabbing';
+                }
+            }, { passive: false });
+
+            window.addEventListener('touchend', function() {
+                initialPinchDistance = null;
+                isDragging = false;
+                element.style.cursor = 'grab';
+            });
+
+            element.addEventListener('touchmove', function(event) {
+                event.preventDefault();
+                if (initialPinchDistance !== null && event.touches.length === 2) {
+                    const currentPinchDistance = Math.hypot(
+                        event.touches[0].clientX - event.touches[1].clientX,
+                        event.touches[0].clientY - event.touches[1].clientY
+                    );
+                    scale = initialScale + (currentPinchDistance - initialPinchDistance) * zoomSensitivity * 5;
+                    scale = Math.max(0.1, Math.min(scale, 5));
+                    applyTransform();
+                } else if (isDragging && event.touches.length === 1) {
+                    translateX = event.touches[0].clientX - startX;
+                    translateY = event.touches[0].clientY - startY;
+                    applyTransform();
+                }
+            }, { passive: false });
+        }
+
+        function attachDragAndResize() {
+            portlets.forEach(portletContainer => {
+                const header = portletContainer.querySelector('.portlet-header');
+                const resizers = portletContainer.querySelectorAll('.resizer');
+
+                // Make portlets draggable
+                header.addEventListener('mousedown', (e) => {
+                    isDraggingPortlet = portletContainer;
+                    portletContainer.style.cursor = 'grabbing';
+                    dragOffsetX = e.clientX - portletContainer.getBoundingClientRect().left;
+                    dragOffsetY = e.clientY - portletContainer.getBoundingClientRect().top;
+                    portletContainer.style.zIndex = 1000; // Bring to front while dragging
+                });
+
+                window.addEventListener('mousemove', (e) => {
+                    if (!isDraggingPortlet) return;
+                    isDraggingPortlet.style.left = e.clientX - dragOffsetX + 'px';
+                    isDraggingPortlet.style.top = e.clientY - dragOffsetY + 'px';
+                });
+
+                window.addEventListener('mouseup', () => {
+                    if (isDraggingPortlet) {
+                        isDraggingPortlet.style.cursor = 'grab';
+                        isDraggingPortlet.style.zIndex = 'auto';
+
+                        // Calculate the new position in the flow
+                        const containerRect = portletContainer.parentNode.getBoundingClientRect();
+                        const draggedRect = isDraggingPortlet.getBoundingClientRect();
+                        let newIndex = -1;
+                        for (let i = 0; i < portletContainer.parentNode.children.length; i++) {
+                            const sibling = portletContainer.parentNode.children[i];
+                            if (sibling !== isDraggingPortlet) {
+                                const siblingRect = sibling.getBoundingClientRect();
+                                if (draggedRect.left >= siblingRect.left && draggedRect.left < siblingRect.right &&
+                                    draggedRect.top >= siblingRect.top && draggedRect.top < siblingRect.bottom) {
+                                    newIndex = i;
+                                    break;
+                                } else if (draggedRect.right > siblingRect.left && draggedRect.right <= siblingRect.right &&
+                                           draggedRect.top >= siblingRect.top && draggedRect.top < siblingRect.bottom &&
+                                           newIndex === -1) {
+                                    newIndex = i + 1;
+                                }
+                            }
+                        }
+
+                        if (newIndex !== -1 && newIndex < portletContainer.parentNode.children.length) {
+                            portletContainer.parentNode.insertBefore(isDraggingPortlet, portletContainer.parentNode.children[newIndex]);
+                        } else if (newIndex === -1 && portletContainer.parentNode.children.length > 1) {
+                            portletContainer.parentNode.appendChild(isDraggingPortlet);
+                        }
+
+                        // Reset position to be within the flex flow
+                        isDraggingPortlet.style.position = 'relative';
+                        isDraggingPortlet.style.left = 'auto';
+                        isDraggingPortlet.style.top = 'auto';
+                        isDraggingPortlet = null;
+                        saveLayout();
+                    }
+                });
+
+                // Make portlets resizable
+                resizers.forEach(resizer => {
+                    let startX, startY, startWidth, startHeight;
+
+                    resizer.addEventListener('mousedown', (e) => {
+                        isResizing = true;
+                        startX = e.clientX;
+                        startY = e.clientY;
+                        startWidth = parseInt(getComputedStyle(portletContainer).width, 10);
+                        startHeight = parseInt(getComputedStyle(portletContainer).height, 10);
+                        document.body.style.cursor = getComputedStyle(resizer).cursor;
+                    });
+
+                    window.addEventListener('mousemove', (e) => {
+                        if (!isResizing) return;
+                        const dx = e.clientX - startX;
+                        const dy = e.clientY - startY;
+
+                        if (resizer.classList.contains('right')) {
+                            portletContainer.style.width = startWidth + dx + 'px';
+                        } else if (resizer.classList.contains('left')) {
+                            portletContainer.style.width = Math.max(50, startWidth - dx) + 'px';
+                        } else if (resizer.classList.contains('bottom')) {
+                            portletContainer.style.height = startHeight + dy + 'px';
+                        } else if (resizer.classList.contains('top')) {
+                            portletContainer.style.height = Math.max(50, startHeight - dy) + 'px';
+                        }
+                    });
+
+                    window.addEventListener('mouseup', () => {
+                        if (isResizing) {
+                            isResizing = false;
+                            document.body.style.cursor = 'default';
+                            saveLayout();
+                        }
+                    });
+                });
+            });
+        }
+
+        let observer;
+
+        function observePortlets() {
+            observer = new IntersectionObserver((entries) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting && entry.target.dataset.src && !entry.target.src) {
+                        entry.target.src = entry.target.dataset.src;
+                        delete entry.target.dataset.src; // Prevent loading again
+                    }
+                });
+            }, { rootMargin: '50px 50px 50px 50px' }); // Load elements slightly before they enter the viewport
+
+            portlets.forEach(portletContainer => {
+                const img = portletContainer.querySelector('img');
+                const iframe = portletContainer.querySelector('iframe');
+                const video = portletContainer.querySelector('video');
+                const audio = portletContainer.querySelector('audio');
+
+                if (img && !img.src) {
+                    img.dataset.src = img.src;
+                    img.removeAttribute('src');
+                    observer.observe(img);
+                } else if (iframe && !iframe.src) {
+                    iframe.dataset.src = iframe.src;
+                    iframe.removeAttribute('src');
+                    observer.observe(iframe);
+                } else if (video && !video.src) {
+                    video.dataset.src = video.src;
+                    video.removeAttribute('src');
+                    observer.observe(video);
+                } else if (audio && !audio.src) {
+                    audio.dataset.src = audio.src;
+                    audio.removeAttribute('src');
+                    observer.observe(audio);
+                }
+            });
+        }
+
+        loadLayout(); // Load saved layout on page load
+    </script>
+</body>
+</html>
