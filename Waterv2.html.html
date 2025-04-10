@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Meditation App with Enhanced Sound</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      overflow: hidden;
+      background: linear-gradient(to bottom, #a2d4f7, #6bb3d2);
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+    }
+    #modeToggle {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      z-index: 1000;
+      background: rgba(0,0,0,0.5);
+      color: white;
+      padding: 8px 12px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    #soundToggle {
+      position: fixed;
+      top: 10px;
+      right: 120px;
+      z-index: 1000;
+      background: rgba(0,0,0,0.5);
+      color: white;
+      padding: 8px 12px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    #soundSchemeSelector {
+      position: fixed;
+      top: 10px;
+      left: 10px;
+      z-index: 1000;
+      background: rgba(0,0,0,0.5);
+      color: white;
+      padding: 8px 12px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <button id="modeToggle">Mode: Ripple</button>
+  <button id="soundToggle">Sound: On</button>
+  <select id="soundSchemeSelector">
+    <option value="resonant">Resonant</option>
+    <option value="ethereal">Ethereal</option>
+    <option value="chime">Chime</option>
+    <option value="gong">Gong</option>
+  </select>
+  <canvas id="rippleCanvas"></canvas>
+  <script>
+    const canvas = document.getElementById("rippleCanvas");
+    const ctx = canvas.getContext("2d");
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    const modeToggle = document.getElementById("modeToggle");
+    const soundToggle = document.getElementById("soundToggle");
+    const soundSchemeSelector = document.getElementById("soundSchemeSelector");
+    
+    let currentMode = 0;
+    let soundEnabled = true;
+    let currentSoundScheme = "resonant";
+    
+    // Audio context and main components
+    let audioContext;
+    let masterGain;
+    let reverbNode;
+    
+    // Active sound sources for cleanup
+    let activeSources = [];
+    
+    // Sound generation variables
+    const notes = {
+      // Pentatonic scale for harmonic compatibility
+      resonant: [196.00, 220.00, 261.63, 293.66, 329.63], // G3, A3, C4, D4, E4
+      ethereal: [174.61, 196.00, 233.08, 261.63, 311.13], // F3, G3, B♭3, C4, E♭4
+      chime: [523.25, 587.33, 659.25, 783.99, 880.00],    // C5, D5, E5, G5, A5
+      gong: [65.41, 98.00, 130.81, 196.00, 261.63]       // C2, G2, C3, G3, C4
+    };
+    
+    // Sound characteristics by scheme
+    const soundCharacteristics = {
+      resonant: {
+        waveform: 'sine',
+        attack: 0.02,
+        decay: 0.2,
+        sustain: 0.3,
+        release: 3.0,
+        harmonics: [1, 2, 3, 3.5],
+        reverbTime: 3.0
+      },
+      ethereal: {
+        waveform: 'sine',
+        attack: 0.1,
+        decay: 0.4,
+        sustain: 0.6,
+        release: 5.0,
+        harmonics: [1, 2, 3, 5, 8],
+        reverbTime: 5.0
+      },
+      chime: {
+        waveform: 'triangle',
+        attack: 0.001,
+        decay: 0.1,
+        sustain: 0.05,
+        release: 4.0,
+        harmonics: [1, 3, 4.7, 6.2],
+        reverbTime: 3.0
+      },
+      gong: {
+        waveform: 'triangle',
+        attack: 0.005,
+        decay: 0.1,
+        sustain: 0.8,
+        release: 8.0,
+        harmonics: [1, 1.4, 2, 2.8, 3.5],
+        reverbTime: 6.0
+      }
+    };
+    
+    // Initialize audio context
+    function initAudio() {
+      try {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        
+        // Create master gain node
+        masterGain = audioContext.createGain();
+        masterGain.gain.value = 0.7; // Default volume
+        
+        // Create reverb
+        createReverb();
+        
+        // Connect the audio chain
+        masterGain.connect(reverbNode);
+        reverbNode.connect(audioContext.destination);
+        
+        return true;
+      } catch (e) {
+        console.error("Web Audio API not supported:", e);
+        return false;
+      }
+    }
+    
+    // Create reverb effect
+    function createReverb() {
+      reverbNode = audioContext.createConvolver();
+      
+      // Get reverb time based on current sound scheme
+      const reverbTime = soundCharacteristics[currentSoundScheme].reverbTime;
+      
+      // Create impulse response
+      const sampleRate = audioContext.sampleRate;
+      const length = sampleRate * reverbTime;
+      const impulse = audioContext.createBuffer(2, length, sampleRate);
+      const leftChannel = impulse.getChannelData(0);
+      const rightChannel = impulse.getChannelData(1);
+      
+      // Generate reverb tail with slight stereo difference
+      for (let i = 0; i < length; i++) {
+        // Exponential decay
+        const decay = Math.exp(-i / (sampleRate * (reverbTime / 3)));
+        
+        // Random values with decay
+        leftChannel[i] = (Math.random() * 2 - 1) * decay;
+        rightChannel[i] = (Math.random() * 2 - 1) * decay;
+      }
+      
+      reverbNode.buffer = impulse;
+    }
+    
+    // Update reverb when sound scheme changes
+    function updateReverb() {
+      if (reverbNode) {
+        createReverb();
+      }
+    }
+    
+    // Sound toggle functionality
+    soundToggle.onclick = () => {
+      soundEnabled = !soundEnabled;
+      soundToggle.textContent = soundEnabled ? "Sound: On" : "Sound: Off";
+      
+      // Initialize audio if it's first time enabling
+      if (soundEnabled && !audioContext) {
+        initAudio();
+      }
+      
+      // Mute/unmute master volume
+      if (masterGain) {
+        masterGain.gain.value = soundEnabled ? 0.7 : 0.0;
+      }
+      
+      // If in breath mode, reinitialize breath sound
+      if (currentMode === 1 && soundEnabled && breathSoundActive === false) {
+        initBreathSound();
+      }
+    };
+    
+    // Sound scheme selector functionality
+    soundSchemeSelector.onchange = () => {
+      currentSoundScheme = soundSchemeSelector.value;
+      
+      // Update reverb to match new scheme
+      if (soundEnabled && audioContext) {
+        updateReverb();
+        
+        // If in breath mode, reinitialize breath sound with new scheme
+        if (currentMode === 1 && breathSoundActive) {
+          cleanupBreathSound();
+          initBreathSound();
+        }
+      }
+    };
+    
+    // Mode toggle functionality
+    modeToggle.onclick = () => {
+      currentMode = (currentMode + 1) % 2;
+      modeToggle.textContent = currentMode === 0 ? "Mode: Ripple" : "Mode: Breath";
+      
+      // Reset breath timing if switching to breath mode
+      if (currentMode === 1) {
+        startTime = performance.now();
+        
+        // Initialize breath sound if needed
+        if (soundEnabled && !breathSoundActive) {
+          initBreathSound();
+        }
+      } else {
+        // Clean up breath sound if switching away
+        cleanupBreathSound();
+      }
+    };
+
+    // Ripple Mode
+    const ripples = [];
+    
+    // Play harmonic sound for ripple based on current scheme
+    function playRippleSound(x, y) {
+      if (!soundEnabled || !audioContext) return;
+      
+      // Get scheme properties
+      const scheme = soundCharacteristics[currentSoundScheme];
+      
+      // Select a note based on y position (higher = higher note)
+      const noteIndex = Math.floor((1 - y / canvas.height) * notes[currentSoundScheme].length);
+      const baseFrequency = notes[currentSoundScheme][noteIndex];
+      
+      // Create main tone
+      createTone(x, y, baseFrequency, scheme);
+      
+      // Create harmonics for richness
+      scheme.harmonics.forEach((ratio, index) => {
+        if (index > 0) { // Skip the fundamental which we already created
+          // Create harmonic with lower volume
+          createTone(x, y, baseFrequency * ratio, scheme, 0.2 / index);
+        }
+      });
+    }
+    
+    // Create a single tone with envelope
+    function createTone(x, y, frequency, scheme, volumeScale = 1) {
+      // Create oscillator
+      const osc = audioContext.createOscillator();
+      osc.type = scheme.waveform;
+      osc.frequency.value = frequency;
+      
+      // Create gain node for envelope
+      const oscGain = audioContext.createGain();
+      oscGain.gain.value = 0;
+      
+      // Map x position to stereo panning
+      const normalizedX = (x / canvas.width) * 2 - 1; // Range: -1 to 1
+      const panner = audioContext.createStereoPanner();
+      panner.pan.value = normalizedX;
+      
+      // Create envelope
+      const now = audioContext.currentTime;
+      oscGain.gain.setValueAtTime(0, now);
+      oscGain.gain.linearRampToValueAtTime(0.7 * volumeScale, now + scheme.attack);
+      oscGain.gain.linearRampToValueAtTime(scheme.sustain * volumeScale, now + scheme.attack + scheme.decay);
+      oscGain.gain.exponentialRampToValueAtTime(0.001, now + scheme.attack + scheme.decay + scheme.release);
+      
+      // Connect nodes
+      osc.connect(oscGain);
+      oscGain.connect(panner);
+      panner.connect(masterGain);
+      
+      // Start and stop
+      osc.start();
+      osc.stop(now + scheme.attack + scheme.decay + scheme.release);
+      
+      // Track for cleanup
+      activeSources.push(osc);
+      cleanupActiveSources();
+    }
+    
+    // Clean up old sources
+    function cleanupActiveSources() {
+      // Keep only the last 30 sources to prevent memory leaks
+      if (activeSources.length > 30) {
+        activeSources = activeSources.slice(-30);
+      }
+    }
+    
+    canvas.addEventListener("pointerdown", (e) => {
+      if (currentMode !== 0) return;
+      
+      const rect = canvas.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      
+      ripples.push({
+        x: x,
+        y: y,
+        radius: 0,
+        maxRadius: Math.max(canvas.width, canvas.height),
+        opacity: 1
+      });
+      
+      // Play sound for ripple
+      if (soundEnabled) {
+        // Initialize audio if not already done
+        if (!audioContext) {
+          initAudio();
+        }
+        
+        playRippleSound(x, y);
+      }
+    });
+
+    // Breath Mode: synced to 16s
+    let orbRadius = 100;
+    let orbTargetRadius = 100;
+    let breathCycleTime = 16000;
+    let startTime = null;
+    
+    // Breath sound variables
+    let breathOscillators = [];
+    let breathGains = [];
+    let breathSoundActive = false;
+    
+    // Initialize breath sound
+    function initBreathSound() {
+      if (!soundEnabled || !audioContext) return;
+      
+      // Clean up any existing breath sound
+      cleanupBreathSound();
+      
+      // Get scheme properties
+      const scheme = soundCharacteristics[currentSoundScheme];
+      
+      // Create multiple oscillators for rich sound
+      notes[currentSoundScheme].slice(0, 3).forEach((freq, i) => {
+        // Create oscillator
+        const osc = audioContext.createOscillator();
+        osc.type = scheme.waveform;
+        osc.frequency.value = freq;
+        
+        // Create gain node
+        const gain = audioContext.createGain();
+        gain.gain.value = 0;
+        
+        // Create filter for smoother sound
+        const filter = audioContext.createBiquadFilter();
+        filter.type = 'lowpass';
+        filter.frequency.value = freq * 2;
+        filter.Q.value = 1;
+        
+        // Connect nodes
+        osc.connect(filter);
+        filter.connect(gain);
+        gain.connect(masterGain);
+        
+        // Start oscillator
+        osc.start();
+        
+        // Store references
+        breathOscillators.push(osc);
+        breathGains.push(gain);
+      });
+      
+      breathSoundActive = true;
+    }
+    
+    // Clean up breath sound
+    function cleanupBreathSound() {
+      if (breathOscillators.length > 0) {
+        breathOscillators.forEach(osc => {
+          osc.stop();
+        });
+      }
+      breathOscillators = [];
+      breathGains = [];
+      breathSoundActive = false;
+    }
+
+    function getBreathPhaseIntensity(t) {
+      const phaseDurations = {
+        prePause: 500,
+        inhale: 5000,
+        hold: 5000,
+        exhale: 5000,
+        postPause: 500
+      };
+
+      const total = Object.values(phaseDurations).reduce((a, b) => a + b);
+      t = t % total;
+
+      if (t < phaseDurations.prePause) return 0.0;
+      t -= phaseDurations.prePause;
+
+      if (t < phaseDurations.inhale) return t / phaseDurations.inhale;
+      t -= phaseDurations.inhale;
+
+      if (t < phaseDurations.hold) return 1.0;
+      t -= phaseDurations.hold;
+
+      if (t < phaseDurations.exhale) return 1.0 - (t / phaseDurations.exhale);
+      return 0.0;
+    }
+    
+    // Get breath phase name
+    function getBreathPhase(t) {
+      const phaseDurations = {
+        prePause: 500,
+        inhale: 5000,
+        hold: 5000,
+        exhale: 5000,
+        postPause: 500
+      };
+
+      const total = Object.values(phaseDurations).reduce((a, b) => a + b);
+      t = t % total;
+
+      if (t < phaseDurations.prePause) return 'prePause';
+      t -= phaseDurations.prePause;
+
+      if (t < phaseDurations.inhale) return 'inhale';
+      t -= phaseDurations.inhale;
+
+      if (t < phaseDurations.hold) return 'hold';
+      t -= phaseDurations.hold;
+
+      if (t < phaseDurations.exhale) return 'exhale';
+      return 'postPause';
+    }
+    
+    // Update breath sound based on breath phase
+    function updateBreathSound(intensity) {
+      if (!soundEnabled || breathOscillators.length === 0 || breathGains.length === 0) return;
+      
+      // Calculate breath phase
+      const elapsed = performance.now() - startTime;
+      const phase = getBreathPhase(elapsed);
+      
+      // Update each oscillator
+      breathOscillators.forEach((osc, i) => {
+        let frequencyMultiplier = 1;
+        
+        // Change frequency based on phase
+        if (phase === 'inhale') {
+          // Gradually increase pitch during inhale
+          frequencyMultiplier = 1 + (intensity * 0.15); // Up to 15% higher
+        } else if (phase === 'exhale') {
+          // Gradually decrease pitch during exhale
+          frequencyMultiplier = 1 - ((1 - intensity) * 0.1); // Up to 10% lower
+        }
+        
+        // Base frequency from the note array
+        const baseFreq = notes[currentSoundScheme][i];
+        
+        // Apply the multiplier
+        osc.frequency.setTargetAtTime(
+          baseFreq * frequencyMultiplier,
+          audioContext.currentTime,
+          0.2
+        );
+        
+        // Update volume based on intensity and oscillator index
+        // Lower volume for higher harmonics
+        const volumeLevel = (0.25 - (i * 0.08)) * intensity * (soundEnabled ? 1 : 0);
+        
+        breathGains[i].gain.setTargetAtTime(
+          volumeLevel,
+          audioContext.currentTime,
+          0.1
+        );
+      });
+    }
+
+    function animate(time) {
+      if (!startTime) startTime = time;
+      const elapsed = time - startTime;
+      const intensity = getBreathPhaseIntensity(elapsed);
+
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      if (currentMode === 0) {
+        for (let i = 0; i < ripples.length; i++) {
+          const r = ripples[i];
+          ctx.beginPath();
+          ctx.arc(r.x, r.y, r.radius, 0, 2 * Math.PI);
+          ctx.strokeStyle = `rgba(255,255,255,${r.opacity})`;
+          ctx.lineWidth = 2;
+          ctx.shadowColor = `rgba(255,255,255,${r.opacity})`;
+          ctx.shadowBlur = 8;
+          ctx.stroke();
+          ctx.shadowBlur = 0;
+          r.radius += 1.2;
+          r.opacity = 1 - r.radius / r.maxRadius;
+          if (r.radius >= r.maxRadius) {
+            ripples.splice(i, 1);
+            i--;
+          }
+        }
+      } else {
+        orbTargetRadius = 100 + intensity * 60;
+        orbRadius += (orbTargetRadius - orbRadius) * 0.05;
+
+        const auraIntensity = intensity;
+        const auraThickness = 80 * intensity;
+        const centerX = canvas.width / 2;
+        const centerY = canvas.height / 2;
+        const radiusStart = orbRadius;
+        const radiusEnd = orbRadius + auraThickness;
+
+        const gradient = ctx.createRadialGradient(centerX, centerY, radiusStart, centerX, centerY, radiusEnd);
+        gradient.addColorStop(0.0, `rgba(255, 255, 200, ${0.1 * auraIntensity})`);
+        gradient.addColorStop(0.4, `rgba(255, 165, 0, ${0.06 * auraIntensity})`);
+        gradient.addColorStop(0.8, `rgba(255, 0, 0, ${0.04 * auraIntensity})`);
+        gradient.addColorStop(1.0, `rgba(255, 0, 0, 0)`);
+
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, radiusEnd, 0, 2 * Math.PI);
+        ctx.fillStyle = gradient;
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.arc(centerX, centerY, orbRadius, 0, 2 * Math.PI);
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+        ctx.fill();
+        
+        // Update breath sound
+        if (soundEnabled && breathSoundActive) {
+          updateBreathSound(intensity);
+        }
+      }
+
+      requestAnimationFrame(animate);
+    }
+    
+    // Handle window resize
+    window.addEventListener('resize', () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    });
+    
+    // Initialize audio if needed
+    if (soundEnabled) {
+      initAudio();
+    }
+    
+    // Start animation
+    animate();
+  </script>
+</body>
+</html>
