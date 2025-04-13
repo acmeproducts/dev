@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Database Explorer</title>
+</head>
+<body>
+    <h1>Database Explorer</h1>
+
+    
+    <input type="text" id="dbNameInput" value="htmlFileManagerDB" placeholder="Database name">
+    <button onclick="openDatabase()">Open Database</button>
+
+    
+    <h2>Export Database</h2>
+    <button onclick="exportDatabase()">Export to File</button>
+
+    
+    <h2>Import Database</h2>
+    <div>
+        <input type="file" id="importFileInput" accept=".json">
+        <button onclick="importFromFile()">Import from File</button>
+    </div>
+    <div>
+        <textarea id="importTextarea" placeholder="Paste JSON here" style="width:100%; height:100px;"></textarea>
+        <button onclick="importFromText()">Import from Text</button>
+    </div>
+
+    <div id="output"></div>
+
+    <style>
+        /* Existing styles... */
+        .object-store {
+            border: 1px solid #ccc;
+            margin: 10px;
+            padding: 10px;
+            background: #f9f9f9;
+        }
+        .entry {
+            margin: 5px 0;
+        }
+        .data-entry {
+            white-space: pre-wrap;
+            padding: 8px;
+            background: #f0f0f0;
+            border-radius: 4px;
+        }
+        .code {
+            background: #2b2b2b;
+            color: white;
+            font-family: monospace;
+        }
+        details[open] {
+            border: 1px solid #007bff;
+        }
+        .error { color: red; }
+    </style>
+
+    <script>
+        // Default database name
+        const DEFAULT_DB_NAME = "htmlFileManagerDB";
+
+        // Open database with default name if input is empty
+        function openDatabase() {
+            const dbName = document.getElementById("dbNameInput").value.trim() || DEFAULT_DB_NAME;
+            const outputDiv = document.getElementById("output");
+            outputDiv.innerHTML = `<p>Opening database: <strong>${dbName}</strong></p>`;
+            
+            try {
+                const request = indexedDB.open(dbName);
+                request.onsuccess = (event) => {
+                    const db = event.target.result;
+                    outputDiv.innerHTML += `<p>Database opened successfully!</p>`;
+                    displayAllObjectStores(db);
+                    db.close();
+                };
+
+                request.onerror = (event) => {
+                    outputDiv.innerHTML += `<p class="error">Error: ${event.target.error.name}</p>`;
+                };
+            } catch (err) {
+                outputDiv.innerHTML += `<p class="error">Fatal error: ${err.message}</p>`;
+            }
+        }
+
+        // Display all object stores and their data
+        function displayAllObjectStores(db) {
+            const outputDiv = document.getElementById("output");
+            const stores = [...db.objectStoreNames];
+            
+            if (stores.length === 0) {
+                outputDiv.innerHTML += "<p>No object stores found.</p>";
+                return;
+            }
+
+            stores.forEach(storeName => {
+                const storeDiv = document.createElement('div');
+                storeDiv.className = 'object-store';
+                storeDiv.innerHTML = `<h3>Object Store: ${storeName}</h3>`;
+
+                const transaction = db.transaction([storeName], "readonly");
+                const store = transaction.objectStore(storeName);
+                const request = store.openCursor();
+
+                let data = [];
+                request.onsuccess = (event) => {
+                    const cursor = event.target.result;
+                    if (cursor) {
+                        data.push(cursor.value);
+                        cursor.continue();
+                    } else {
+                        if (data.length === 0) {
+                            storeDiv.innerHTML += "<p>No data found in this object store.</p>";
+                        } else {
+                            const entriesHtml = data.map((entry, index) => {
+                                const content = JSON.stringify(entry, null, 2);
+                                const isCode = isContentCode(entry);
+                                const escapedContent = escapeHtml(content);
+                                return `
+                                    <details class="entry">
+                                        <summary>Entry ${index + 1}</summary>
+                                        <pre class="${isCode ? 'code' : ''} data-entry">
+                                            ${escapedContent}
+                                        </pre>
+                                    </details>
+                                `;
+                            }).join('');
+                            storeDiv.innerHTML += entriesHtml;
+                        }
+                        outputDiv.appendChild(storeDiv);
+                    }
+                };
+
+                request.onerror = (event) => {
+                    storeDiv.innerHTML += `<p class="error">Error reading ${storeName}: ${event.target.error.name}</p>`;
+                    outputDiv.appendChild(storeDiv);
+                };
+            });
+        }
+
+        // Export database to JSON file
+        async function exportDatabase() {
+            const dbName = document.getElementById("dbNameInput").value.trim() || DEFAULT_DB_NAME;
+            const outputDiv = document.getElementById("output");
+            
+            try {
+                const db = await openDB(dbName);
+                const data = await exportData(db);
+                db.close();
+
+                const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = `${dbName}-export.json`;
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                URL.revokeObjectURL(url);
+                
+                outputDiv.innerHTML += `<p>Exported to <strong>${dbName}-export.json</strong></p>`;
+            } catch (err) {
+                outputDiv.innerHTML += `<p class="error">Export failed: ${err.message}</p>`;
+            }
+        }
+
+        // Import database from file
+        function importFromFile() {
+            const fileInput = document.getElementById("importFileInput");
+            const file = fileInput.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async (e) => {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    await importData(DEFAULT_DB_NAME, data);
+                    alert("Import successful!");
+                    openDatabase();
+                } catch (err) {
+                    alert("Error importing: " + err.message);
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // Import database from text area
+        async function importFromText() {
+            const text = document.getElementById("importTextarea").value;
+            try {
+                const data = JSON.parse(text);
+                await importData(DEFAULT_DB_NAME, data);
+                alert("Import successful!");
+                openDatabase();
+            } catch (err) {
+                alert("Invalid JSON format.");
+            }
+        }
+
+        // Helper functions
+        async function openDB(dbName) {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(dbName);
+                request.onsuccess = (e) => resolve(e.target.result);
+                request.onerror = (e) => reject(e.target.error);
+            });
+        }
+
+        async function exportData(db) {
+            const data = {};
+            const stores = [...db.objectStoreNames];
+            for (const storeName of stores) {
+                const transaction = db.transaction([storeName], "readonly");
+                const store = transaction.objectStore(storeName);
+                const cursorRequest = store.openCursor();
+                const entries = [];
+                await new Promise((resolve) => {
+                    cursorRequest.onsuccess = (e) => {
+                        const cursor = e.target.result;
+                        if (cursor) {
+                            entries.push(cursor.value);
+                            cursor.continue();
+                        } else {
+                            resolve();
+                        }
+                    };
+                });
+                data[storeName] = entries;
+            }
+            return data;
+        }
+
+        async function importData(dbName, data) {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(dbName, 1);
+                request.onupgradeneeded = (e) => {
+                    const db = e.target.result;
+                    for (const storeName in data) {
+                        if (!db.objectStoreNames.contains(storeName)) {
+                            db.createObjectStore(storeName);
+                        }
+                    }
+                };
+                request.onsuccess = async (e) => {
+                    const db = e.target.result;
+                    try {
+                        for (const storeName in data) {
+                            const store = db.transaction([storeName], "readwrite").objectStore(storeName);
+                            await clearObjectStore(store);
+                            data[storeName].forEach(entry => store.add(entry));
+                        }
+                        resolve();
+                    } catch (err) {
+                        reject(err);
+                    } finally {
+                        db.close();
+                    }
+                };
+                request.onerror = (e) => reject(e);
+            });
+        }
+
+        function clearObjectStore(store) {
+            return new Promise((resolve) => {
+                const request = store.clear();
+                request.onsuccess = () => resolve();
+                request.onerror = (e) => console.error("Clear error", e);
+            });
+        }
+
+        // Detect code-like content
+        function isContentCode(entry) {
+            const content = JSON.stringify(entry, null, 2);
+            return (
+                content.startsWith('{') || 
+                content.startsWith('<') || 
+                content.includes('<script>') || 
+                content.includes('function ')
+            );
+        }
+
+        // Escape HTML entities
+        function escapeHtml(unsafe) {
+            return unsafe
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;")
+                .replace(/"/g, "&quot;")
+                .replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>
