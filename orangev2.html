@@ -1,0 +1,2139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#4299e1">
+    <title>HTML Viewer</title>
+    <style>
+/* Updated styles to support consistent layout with side menu and home screen */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    height: 100vh;
+    width: 100vw;
+    overflow: hidden;
+    background: #f0f0f0;
+    position: fixed;
+    top: 0;
+    left: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Main Layout Structure */
+.layout-container {
+    display: flex;
+    flex: 1;
+    position: relative;
+    overflow: hidden;
+}
+
+/* Home Screen */
+.home-screen {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    background: linear-gradient(135deg, #4299e1, #3182ce);
+    color: white;
+    z-index: 5;
+    padding: 20px;
+    text-align: center;
+    transition: transform 0.3s ease;
+}
+
+.home-screen.hidden {
+    transform: translateX(100%);
+}
+
+.splash-image {
+    width: 120px;
+    height: 120px;
+    border-radius: 60px;
+    background: white;
+    margin-bottom: 20px;
+    object-fit: cover;
+}
+
+.splash-title {
+    font-size: 2rem;
+    margin-bottom: 1rem;
+}
+
+.splash-description {
+    font-size: 1.1rem;
+    margin-bottom: 1rem;
+    opacity: 0.8;
+    max-width: 80%;
+}
+
+.splash-date {
+    margin-top: 2rem;
+    font-size: 1.2rem;
+    opacity: 0.8;
+}
+
+/* Title Bar */
+.title-bar {
+    position: sticky;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: calc(30px + env(safe-area-inset-top, 0));
+    background: rgba(0, 0, 0, 0.1);
+    color: rgba(255, 255, 255, 0.7);
+    display: flex;
+    align-items: flex-end;
+    padding: env(safe-area-inset-top, 0) 15px 2px 50px;
+    font-size: 14px;
+    z-index: 50;
+}
+
+/* Touch Area for Menu */
+.menu-touch-area {
+    position: absolute;
+    top: env(safe-area-inset-top, 0);
+    left: 0;
+    width: 50px;
+    height: 50px;
+    z-index: 50;
+    cursor: pointer;
+    display: flex;
+    align-items: flex-start;
+    justify-content: center;
+}
+
+.menu-touch-area .menu-icon {
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 24px;
+    margin-top: 5px;
+}
+
+/* Menu Panel */
+.menu-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 15;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.3s;
+}
+
+.menu-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.menu-panel {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 80%;
+    max-width: 320px;
+    height: 100%;
+    background: white;
+    z-index: 20;
+    transform: translateX(-100%);
+    transition: transform 0.3s;
+    padding: 1rem;
+    padding-top: 2rem;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.menu-panel.active {
+    transform: translateX(0);
+}
+
+.menu-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.menu-title {
+    font-size: 1.2rem;
+    font-weight: bold;
+}
+
+/* Menu List Scroll Area */
+.menu-scroll {
+    flex: 1;
+    overflow-y: auto;
+    margin-bottom: 1rem;
+    -webkit-overflow-scrolling: touch;
+}
+
+/* Menu Items */
+.menu-list {
+    list-style: none;
+}
+
+.menu-item {
+    margin-bottom: 0.75rem;
+}
+
+.menu-item a {
+    display: flex;
+    align-items: center;
+    padding: 1rem;
+    background: #f8f8f8;
+    border-radius: 8px;
+    color: #333;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.menu-item a.active {
+    background: #e2e8f0;
+    border-left: 4px solid #4299e1;
+}
+
+.menu-item a:active {
+    background: #e8e8e8;
+}
+
+.menu-item-main {
+    flex: 1;
+}
+
+.menu-item-title {
+    margin-bottom: 0.25rem;
+}
+
+.menu-item-desc {
+    font-size: 0.85rem;
+    opacity: 0.7;
+}
+
+.menu-item-icon {
+    margin-right: 0.75rem;
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+}
+
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 2rem 1rem;
+    text-align: center;
+    color: #718096;
+}
+
+.empty-state-icon {
+    font-size: 3rem;
+    margin-bottom: 1rem;
+}
+
+/* Config Panel */
+.panel {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: white;
+    z-index: 25;
+    padding: 1rem;
+    display: none;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+}
+
+.panel.active {
+    display: block;
+}
+
+.panel-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 1.5rem;
+    padding-top: 1rem;
+}
+
+.back-btn {
+    width: 40px;
+    height: 40px;
+    background: none;
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 1rem;
+    cursor: pointer;
+}
+
+.panel-title {
+    font-size: 1.5rem;
+    font-weight: bold;
+}
+
+.form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+}
+
+.form-group label {
+    margin-bottom: 0.5rem;
+    font-weight: 500;
+}
+
+.form-group input, 
+.form-group textarea {
+    padding: 0.75rem;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    font-size: 1rem;
+}
+
+.color-options {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 0.5rem;
+}
+
+.color-option {
+    width: 36px;
+    height: 36px;
+    border-radius: 8px;
+    cursor: pointer;
+    border: 2px solid transparent;
+}
+
+.color-option.selected {
+    border-color: #333;
+}
+
+.save-btn {
+    margin-top: 1rem;
+    padding: 1rem;
+    background: #3182ce;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+}
+
+.save-btn:active {
+    background: #2c5282;
+}
+
+/* File Viewer */
+.viewer-frame {
+    width: 100%;
+    height: 100%;
+    border: none;
+    position: absolute;
+    top: 0;
+    left: 0;
+    z-index: 10;
+}
+
+.viewer-panel {
+    position: relative;
+    flex: 1;
+    overflow: hidden;
+    transition: margin-left 0.3s;
+    z-index: 10;
+}
+
+.viewer-panel.menu-open {
+    margin-left: min(80%, 320px);
+}
+
+/* File Management Section */
+.section-header {
+    margin-top: 2rem;
+    padding-top: 1rem;
+    border-top: 1px solid #eee;
+    margin-bottom: 1rem;
+    font-size: 1.2rem;
+    font-weight: bold;
+}
+
+.file-manager {
+    margin-bottom: 2rem;
+}
+
+.file-list {
+    list-style: none;
+    margin-bottom: 1rem;
+}
+
+.file-item {
+    display: flex;
+    align-items: center;
+    padding: 1rem;
+    background: #f8f8f8;
+    border-radius: 8px;
+    margin-bottom: 0.75rem;
+}
+
+.file-item-icon {
+    margin-right: 0.75rem;
+    flex-shrink: 0;
+}
+
+.file-item-main {
+    flex: 1;
+}
+
+.file-item-controls {
+    display: flex;
+    gap: 8px;
+}
+
+.file-control-btn {
+    width: 36px;
+    height: 36px;
+    border: none;
+    background: rgba(0, 0, 0, 0.05);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.file-control-btn:active {
+    background: rgba(0, 0, 0, 0.1);
+}
+
+.upload-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.75rem 1rem;
+    background: #3182ce;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    font-size: 1rem;
+    font-weight: 500;
+    cursor: pointer;
+    margin-bottom: 1rem;
+    width: 100%;
+}
+
+.upload-btn:active {
+    background: #2c5282;
+}
+
+.upload-btn-icon {
+    width: 20px;
+    height: 20px;
+    margin-right: 8px;
+}
+
+/* File Edit Dialog */
+.file-edit-dialog {
+    background: #f8f8f8;
+    border-radius: 12px;
+    padding: 1rem;
+    margin-bottom: 1rem;
+    display: none;
+}
+
+.file-edit-dialog.active {
+    display: block;
+}
+
+.file-edit-header {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+}
+
+.file-edit-title {
+    font-weight: bold;
+}
+
+.file-edit-close {
+    width: 24px;
+    height: 24px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.image-preview {
+    width: 80px;
+    height: 80px;
+    border-radius: 8px;
+    margin-top: 0.5rem;
+    display: none;
+    object-fit: cover;
+}
+
+/* Confirm Dialog */
+.confirm-dialog {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.5);
+    z-index: 35;
+    display: none;
+    justify-content: center;
+    align-items: center;
+    padding: 1rem;
+}
+
+.confirm-dialog.active {
+    display: flex;
+}
+
+.confirm-box {
+    background: white;
+    border-radius: 12px;
+    padding: 1.5rem;
+    width: 100%;
+    max-width: 320px;
+}
+
+.confirm-title {
+    font-size: 1.2rem;
+    font-weight: bold;
+    margin-bottom: 1rem;
+    text-align: center;
+}
+
+.confirm-buttons {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-top: 1.5rem;
+}
+
+.confirm-btn {
+    flex: 1;
+    padding: 0.75rem;
+    border-radius: 8px;
+    font-weight: 500;
+    text-align: center;
+    cursor: pointer;
+    border: none;
+}
+
+.confirm-btn-cancel {
+    background: #e2e8f0;
+    color: #4a5568;
+}
+
+.confirm-btn-confirm {
+    background: #e53e3e;
+    color: white;
+}
+
+/* Alert */
+.alert {
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: #2d3748;
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border-radius: 8px;
+    font-weight: 500;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    z-index: 40;
+    opacity: 0;
+    transition: opacity 0.3s;
+}
+
+.alert.active {
+    opacity: 1;
+}
+
+/* Footer area */
+.footer {
+    height: 30px;
+    background: rgba(0, 0, 0, 0.1);
+    color: rgba(255, 255, 255, 0.7);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 12px;
+    padding: 0 15px;
+}
+
+/* Home button in menu */
+.home-menu-item {
+    margin-bottom: 1rem;
+}
+
+.home-menu-item a {
+    background: #ebf8ff;
+    border-left: 4px solid #4299e1;
+}
+</style>
+</head>
+<body>
+    <div class="home-screen" id="splash">
+        <img id="splashImage" class="splash-image" src="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNjAwIiBoZWlnaHQ9IjE2MDAiIHZpZXdCb3g9IjAgMCAxNjAwIDE2MDAiPgogIDxjaXJjbGUgY3g9IjgwMCIgY3k9IjgwMCIgcj0iODAwIiBmaWxsPSIjZmZmZmZmIi8+CiAgPHBhdGggZD0iTTExNTAgODUwYzAgMTkzLjMtMTU2LjcgMzUwLTM1MCAzNTBzLTM1MC0xNTYuNy0zNTAtMzUwYzAtMTkzLjMgMTU2LjctMzUwIDM1MC0zNTBzMzUwIDE1Ni43IDM1MCAzNTB6IiBmaWxsPSIjZjNmNGY2Ii8+CiAgPHBhdGggZD0iTTg1MCA1NTBjLTgzIDAtMTUwIDY3LTE1MCAxNTB2MzAwYzAgODMgNjcgMTUwIDE1MCAxNTBoMEMxMTAwIDExNTAgMTEwMCA4NTAgMTEwMCA1NTBIODUweiIgZmlsbD0iI2YzZjRmNiIvPgogIDxwYXRoIGQ9Ik03MDAgNTUwYy04MyAwLTE1MCA2Ny0xNTAgMTUwdjMwMGMwIDgzIDY3IDE1MCAxNTAgMTUwaDBDOTUwIDExNTAgOTUwIDg1MCA5NTAgNTUwSDcwMHoiIGZpbGw9IiNmM2Y0ZjYiLz4KPC9zdmc+Cg==" alt="App Logo">
+        <h1 class="splash-title" id="splashTitle">HTML Viewer</h1>
+        <p class="splash-description" id="splashDesc">Patch #1001 Applied</p>
+        <div class="splash-date" id="dateTime">Loading date...</div>
+    </div>
+    
+    <div class="title-bar" id="titleBar">HTML Viewer</div>
+    <div class="menu-touch-area" id="menuTouchArea"><div class="menu-icon">&#9776;</div></div>
+    <div class="menu-overlay" id="menuOverlay"></div>
+    
+    <div class="menu-panel" id="menuPanel">
+        <div class="menu-header">
+            <h2 class="menu-title">Apps</h2>
+        </div>
+        
+        <ul class="menu-list">
+            <li class="menu-item home-menu-item">
+                <a href="#" id="homeLink">
+                    <svg class="menu-item-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V9z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M9 22V12h6v10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    <div class="menu-item-main">
+                        <div class="menu-item-title">Home</div>
+                    </div>
+                </a>
+            </li>
+        </ul>
+        
+        <div class="menu-scroll">
+            <ul class="menu-list" id="fileList">
+                <div class="empty-state" id="emptyState">
+                    <div class="empty-state-icon">📂</div>
+                    <p>No files yet</p>
+                    <p>Use Configuration to add files</p>
+                </div>
+            </ul>
+        </div>
+        
+        <ul class="menu-list">
+            <li class="menu-item">
+                <a href="#" id="configLink">
+                    <svg class="menu-item-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 15C13.6569 15 15 13.6569 15 12C15 10.3431 13.6569 9 12 9C10.3431 9 9 10.3431 9 12C9 13.6569 10.3431 15 12 15Z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    Configuration
+                </a>
+            </li>
+        </ul>
+    </div>
+    
+    <div class="panel" id="configPanel">
+        <div class="panel-header">
+            <button class="back-btn" id="configBackBtn" aria-label="Back to menu">
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M19 12H5M5 12L12 19M5 12L12 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+            </button>
+            <h2 class="panel-title">Configuration</h2>
+        </div>
+        
+        <div class="form">
+            <div class="form-group">
+                <label for="appTitle">App Title</label>
+                <input type="text" id="appTitle" placeholder="Enter app title">
+            </div>
+            
+            <div class="form-group">
+                <label for="appDesc">App Description</label>
+                <textarea id="appDesc" rows="2" placeholder="Enter app description"></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="appImage">App Image</label>
+                <button class="upload-btn" id="appImageBtn" style="margin-top: 0.5rem;">
+                    <svg class="upload-btn-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <circle cx="8.5" cy="8.5" r="1.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <polyline points="21 15 16 10 5 21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                    Choose Image
+                </button>
+                <input type="file" id="appImageInput" accept="image/*" style="display: none;">
+                <img id="appImagePreview" class="image-preview" src="">
+            </div>
+            
+            <div class="form-group">
+                <label>Theme Color</label>
+                <div class="color-options" id="colorOptions">
+                    <div class="color-option selected" data-color="4299e1" style="background-color: #4299e1;"></div>
+                    <div class="color-option" data-color="48bb78" style="background-color: #48bb78;"></div>
+                    <div class="color-option" data-color="ed8936" style="background-color: #ed8936;"></div>
+                    <div class="color-option" data-color="9f7aea" style="background-color: #9f7aea;"></div>
+                    <div class="color-option" data-color="f56565" style="background-color: #f56565;"></div>
+                    <div class="color-option" data-color="4a5568" style="background-color: #4a5568;"></div>
+                </div>
+            </div>
+            
+            <div class="form-group">
+                <label>Configuration Import/Export</label>
+                <div style="display: flex; gap: 10px; margin-top: 10px;">
+                    <button class="upload-btn" id="exportConfigBtn" style="flex: 1;">
+                        <svg class="upload-btn-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M7 10l5 5 5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M12 15V3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        Export Config
+                    </button>
+                    <button class="upload-btn" id="importConfigBtn" style="flex: 1;">
+                        <svg class="upload-btn-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M17 8l-5-5-5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M12 3v12" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                        Import Config
+                    </button>
+                </div>
+                <input type="file" id="importConfigInput" accept=".json" style="display: none;">
+            </div>
+            
+            <h3 class="section-header">File Management</h3>
+            
+            <button class="upload-btn" id="uploadBtn">
+                <svg class="upload-btn-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M21 15V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M17 8L12 3L7 8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    <path d="M12 3V15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+                Upload HTML File
+            </button>
+            <input type="file" id="fileInput" accept=".html,.htm" multiple style="display: none;">
+            
+            <div class="file-edit-dialog" id="fileEditDialog">
+                <div class="file-edit-header">
+                    <div class="file-edit-title">Edit File</div>
+                    <button class="file-edit-close" id="fileEditClose">
+                        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M18 6L6 18" stroke="current
+Color" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M6 6L18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                </div>
+                
+                <div class="form">
+                    <div class="form-group">
+                        <label for="fileTitle">File Title</label>
+                        <input type="text" id="fileTitle" placeholder="Enter file title">
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="fileDesc">Description (optional)</label>
+                        <textarea id="fileDesc" rows="2" placeholder="Enter file description"></textarea>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label>Icon Type</label>
+                        <div class="color-options">
+                            <select id="iconType" style="width: 100%; padding: 0.75rem; border: 1px solid #ddd; border-radius: 8px; font-size: 1rem;">
+                                <option value="file">File</option>
+                                <option value="code">Code</option>
+                                <option value="chart">Chart</option>
+                                <option value="game">Game</option>
+                                <option value="form">Form</option>
+                                <option value="custom">Custom Icon</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="form-group" id="customIconGroup" style="display: none;">
+                        <label for="customIcon">Custom Icon</label>
+                        <button class="upload-btn" id="customIconBtn" style="margin-top: 0.5rem;">
+                            <svg class="upload-btn-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <rect x="3" y="3" width="18" height="18" rx="2" ry="2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <circle cx="8.5" cy="8.5" r="1.5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <polyline points="21 15 16 10 5 21" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                            Choose Icon
+                        </button>
+                        <input type="file" id="customIconInput" accept="image/*" style="display: none;">
+                        <img id="customIconPreview" class="image-preview" src="">
+                    </div>
+                    
+                    <button class="save-btn" id="saveFileBtn">Save File</button>
+                </div>
+            </div>
+            
+            <div class="file-manager">
+                <h4>Your HTML Files</h4>
+                <ul class="file-list" id="configFileList">
+                    <!-- File items will be added here dynamically -->
+                </ul>
+            </div>
+            
+            <button class="save-btn" id="saveConfigBtn">Save Configuration</button>
+        </div>
+    </div>
+    
+    <div class="layout-container">
+        <div class="viewer-panel" id="viewerPanel">
+            <iframe id="viewerFrame" class="viewer-frame" sandbox="allow-scripts allow-same-origin"></iframe>
+        </div>
+    </div>
+    
+    <div class="footer">HTML Viewer v1.0</div>
+    
+    <div class="confirm-dialog" id="confirmDialog">
+        <div class="confirm-box">
+            <div class="confirm-title">Delete this file?</div>
+            <p>This action cannot be undone.</p>
+            <div class="confirm-buttons">
+                <button class="confirm-btn confirm-btn-cancel" id="cancelDeleteBtn">Cancel</button>
+                <button class="confirm-btn confirm-btn-confirm" id="confirmDeleteBtn">Delete</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="alert" id="alert"></div>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Database setup
+            let db;
+            const DB_NAME = 'htmlFileManagerDB';
+            const DB_VERSION = 1;
+            const STORE_NAME = 'files';
+            const CONFIG_STORE = 'config';
+            
+            // App state
+            let files = [];
+            let currentFileId = null;
+            let appConfig = {
+                title: 'HTML Viewer',
+                description: 'Patch #1001 Applied',
+                image: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNjAwIiBoZWlnaHQ9IjE2MDAiIHZpZXdCb3g9IjAgMCAxNjAwIDE2MDAiPgogIDxjaXJjbGUgY3g9IjgwMCIgY3k9IjgwMCIgcj0iODAwIiBmaWxsPSIjZmZmZmZmIi8+CiAgPHBhdGggZD0iTTExNTAgODUwYzAgMTkzLjMtMTU2LjcgMzUwLTM1MCAzNTBzLTM1MC0xNTYuNy0zNTAtMzUwYzAtMTkzLjMgMTU2LjctMzUwIDM1MC0zNTBzMzUwIDE1Ni43IDM1MCAzNTB6IiBmaWxsPSIjZjNmNGY2Ii8+CiAgPHBhdGggZD0iTTg1MCA1NTBjLTgzIDAtMTUwIDY3LTE1MCAxNTB2MzAwYzAgODMgNjcgMTUwIDE1MCAxNTBoMEMxMTAwIDExNTAgMTEwMCA4NTAgMTEwMCA1NTBIODUweiIgZmlsbD0iI2YzZjRmNiIvPgogIDxwYXRoIGQ9Ik03MDAgNTUwYy04MyAwLTE1MCA2Ny0xNTAgMTUwdjMwMGMwIDgzIDY3IDE1MCAxNTAgMTUwaDBDOTUwIDExNTAgOTUwIDg1MCA5NTAgNTUwSDcwMHoiIGZpbGw9IiNmM2Y0ZjYiLz4KPC9zdmc+Cg==',
+                themeColor: '4299e1'
+            };
+            
+            // DOM Elements
+            const elements = {
+                splash: document.getElementById('splash'),
+                splashTitle: document.getElementById('splashTitle'),
+                splashDesc: document.getElementById('splashDesc'),
+                splashImage: document.getElementById('splashImage'),
+                dateTime: document.getElementById('dateTime'),
+                titleBar: document.getElementById('titleBar'),
+                menuTouchArea: document.getElementById('menuTouchArea'),
+                menuPanel: document.getElementById('menuPanel'),
+                menuOverlay: document.getElementById('menuOverlay'),
+                uploadBtn: document.getElementById('uploadBtn'),
+                fileInput: document.getElementById('fileInput'),
+                fileList: document.getElementById('fileList'),
+                configFileList: document.getElementById('configFileList'),
+                emptyState: document.getElementById('emptyState'),
+                configLink: document.getElementById('configLink'),
+                configPanel: document.getElementById('configPanel'),
+                configBackBtn: document.getElementById('configBackBtn'),
+                appTitle: document.getElementById('appTitle'),
+                appDesc: document.getElementById('appDesc'),
+                appImageBtn: document.getElementById('appImageBtn'),
+                appImageInput: document.getElementById('appImageInput'),
+                appImagePreview: document.getElementById('appImagePreview'),
+                colorOptions: document.getElementById('colorOptions'),
+                saveConfigBtn: document.getElementById('saveConfigBtn'),
+                fileEditDialog: document.getElementById('fileEditDialog'),
+                fileEditClose: document.getElementById('fileEditClose'),
+                fileTitle: document.getElementById('fileTitle'),
+                fileDesc: document.getElementById('fileDesc'),
+                iconType: document.getElementById('iconType'),
+                customIconGroup: document.getElementById('customIconGroup'),
+                customIconBtn: document.getElementById('customIconBtn'),
+                customIconInput: document.getElementById('customIconInput'),
+                customIconPreview: document.getElementById('customIconPreview'),
+                saveFileBtn: document.getElementById('saveFileBtn'),
+                viewerPanel: document.getElementById('viewerPanel'),
+                viewerFrame: document.getElementById('viewerFrame'),
+                confirmDialog: document.getElementById('confirmDialog'),
+                cancelDeleteBtn: document.getElementById('cancelDeleteBtn'),
+                confirmDeleteBtn: document.getElementById('confirmDeleteBtn'),
+                alert: document.getElementById('alert'),
+                homeLink: document.getElementById('homeLink'),
+                exportConfigBtn: document.getElementById('exportConfigBtn'),
+                importConfigBtn: document.getElementById('importConfigBtn'),
+                importConfigInput: document.getElementById('importConfigInput')
+            };
+            
+            // Export configuration and files
+            async function exportConfig() {
+                try {
+                    // Get all files from database
+                    const exportData = {
+                        version: '1.0',
+                        timestamp: new Date().toISOString(),
+                        config: appConfig,
+                        files: files
+                    };
+                    
+                    // Create blob and download
+                    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `html-viewer-backup-${new Date().toISOString().slice(0,10)}.json`;
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    
+                    showAlert('Configuration exported successfully');
+                } catch (error) {
+                    console.error('Error exporting configuration:', error);
+                    showAlert('Error exporting configuration');
+                }
+            }
+            
+            // Import configuration and files
+            async function importConfig(file) {
+                try {
+                    const reader = new FileReader();
+                    
+                    reader.onload = async (e) => {
+                        try {
+                            // Parse and validate import data
+                            const importData = JSON.parse(e.target.result);
+                            
+                            if (!importData.version || !importData.config || !Array.isArray(importData.files)) {
+                                throw new Error('Invalid import file format');
+                            }
+                            
+                            // Update app config
+                            appConfig = importData.config;
+                            await saveConfig();
+                            applyConfig();
+                            
+                            // Clear existing files
+                            const transaction = db.transaction(STORE_NAME, 'readwrite');
+                            const store = transaction.objectStore(STORE_NAME);
+                            await store.clear();
+                            
+                            // Import new files
+                            for (const file of importData.files) {
+                                await addFile(file);
+                            }
+                            
+                            // Reload files and update UI
+                            await loadFiles();
+                            renderConfigFileList();
+                            renderMenuFileList();
+                            
+                            showAlert('Configuration imported successfully');
+                        } catch (error) {
+                            console.error('Error processing import:', error);
+                            showAlert('Error: Invalid import file');
+                        }
+                    };
+                    
+                    reader.onerror = () => {
+                        showAlert('Error reading import file');
+                    };
+                    
+                    reader.readAsText(file);
+                } catch (error) {
+                    console.error('Error importing configuration:', error);
+                    showAlert('Error importing configuration');
+                }
+            }
+            
+            // Update date and time
+            function updateDateTime() {
+                if (elements.dateTime) {
+                    const now = new Date();
+                    const options = { 
+                        weekday: 'long', 
+                        year: 'numeric', 
+                        month: 'long', 
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit' 
+                    };
+                    elements.dateTime.textContent = now.toLocaleDateString(undefined, options);
+                }
+            }
+            
+            // Initialize IndexedDB
+            function initDB() {
+                return new Promise((resolve, reject) => {
+                    console.log('Initializing IndexedDB...');
+                    const request = indexedDB.open(DB_NAME, DB_VERSION);
+                    
+                    request.onupgradeneeded = (event) => {
+                        console.log('Database upgrade needed');
+                        const db = event.target.result;
+                        
+                        // Create files store if it doesn't exist
+                        if (!db.objectStoreNames.contains(STORE_NAME)) {
+                            const store = db.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
+                            store.createIndex('title', 'title', { unique: false });
+                            store.createIndex('order', 'order', { unique: false });
+                        }
+                        
+                        // Create config store if it doesn't exist
+                        if (!db.objectStoreNames.contains(CONFIG_STORE)) {
+                            db.createObjectStore(CONFIG_STORE, { keyPath: 'id' });
+                        }
+                    };
+                    
+                    request.onsuccess = (event) => {
+                        db = event.target.result;
+                        console.log('Database initialized successfully');
+                        resolve();
+                    };
+                    
+                    request.onerror = (event) => {
+                        console.error('Database error:', event.target.error);
+                        reject('Could not initialize database');
+                    };
+                });
+            }
+            
+            // Load all files
+            function loadFiles() {
+                return new Promise((resolve, reject) => {
+                    if (!db) {
+                        reject('Database not initialized');
+                        return;
+                    }
+                    
+                    const transaction = db.transaction(STORE_NAME, 'readonly');
+                    const store = transaction.objectStore(STORE_NAME);
+                    const request = store.getAll();
+                    
+                    request.onsuccess = (event) => {
+                        files = event.target.result;
+                        console.log(`Loaded ${files.length} files`);
+                        resolve(files);
+                    };
+                    
+                    request.onerror = (event) => {
+                        console.error('Error loading files:', event.target.error);
+                        reject('Could not load files');
+                    };
+                });
+            }
+            
+            // Load app configuration
+            function loadConfig() {
+                return new Promise((resolve, reject) => {
+                    if (!db) {
+                        resolve(appConfig);
+                        return;
+                    }
+                    
+                    const transaction = db.transaction(CONFIG_STORE, 'readonly');
+                    const store = transaction.objectStore(CONFIG_STORE);
+                    const request = store.get('appConfig');
+                    
+                    request.onsuccess = (event) => {
+                        if (event.target.result) {
+                            appConfig = event.target.result.config;
+                            console.log('Loaded app config', appConfig);
+                        }
+                        resolve(appConfig);
+                    };
+                    
+                    request.onerror = (event) => {
+                        console.error('Error loading config:', event.target.error);
+                        resolve(appConfig);
+                    };
+                });
+            }
+            
+            // Save app configuration
+            function saveConfig() {
+                return new Promise((resolve, reject) => {
+                    if (!db) {
+                        console.error('Database not initialized, trying to initialize...');
+                        initDB().then(() => {
+                            saveConfig().then(resolve).catch(reject);
+                        }).catch(err => {
+                            console.error('Failed to initialize database:', err);
+                            reject('Database initialization failed');
+                        });
+                        return;
+                    }
+                    
+                    const transaction = db.transaction(CONFIG_STORE, 'readwrite');
+                    const store = transaction.objectStore(CONFIG_STORE);
+                    const request = store.put({
+                        id: 'appConfig',
+                        config: appConfig
+                    });
+                    
+                    request.onsuccess = () => {
+                        console.log('Config saved successfully');
+                        resolve();
+                    };
+                    
+                    request.onerror = (event) => {
+                        console.error('Error saving config:', event.target.error);
+                        reject('Could not save configuration');
+                    };
+                    
+                    // Add transaction completion handler
+                    transaction.oncomplete = () => {
+                        console.log('Config save transaction completed');
+                    };
+                    
+                    transaction.onerror = (event) => {
+                        console.error('Transaction error while saving config:', event.target.error);
+                    };
+                });
+            }
+            
+            // Add a new file
+            function addFile(file) {
+                return new Promise((resolve, reject) => {
+                    if (!db) {
+                        reject('Database not initialized');
+                        return;
+                    }
+                    
+                    // Get the highest order value
+                    const transaction = db.transaction(STORE_NAME, 'readwrite');
+                    const store = transaction.objectStore(STORE_NAME);
+                    
+                    // Get all files to find the highest order
+                    const getAllRequest = store.getAll();
+                    getAllRequest.onsuccess = () => {
+                        const existingFiles = getAllRequest.result;
+                        let highestOrder = -1;
+                        
+                        // Find the highest order value
+                        existingFiles.forEach(f => {
+                            if (f.order > highestOrder) {
+                                highestOrder = f.order;
+                            }
+                        });
+                        
+                        // Set the order to be one higher than the highest existing order
+                        file.order = highestOrder + 1;
+                        console.log('Setting new file order to:', file.order);
+                        
+                        const addRequest = store.add(file);
+                        addRequest.onsuccess = (event) => {
+                            console.log('File added successfully with ID:', event.target.result);
+                            resolve(event.target.result);
+                        };
+                        
+                        addRequest.onerror = (event) => {
+                            console.error('Error adding file:', event.target.error);
+                            reject('Could not add file');
+                        };
+                    };
+                    
+                    getAllRequest.onerror = (event) => {
+                        console.error('Error getting files:', event.target.error);
+                        reject('Could not get files');
+                    };
+                });
+            }
+            
+            // Update a file
+            function updateFile(file) {
+                return new Promise((resolve, reject) => {
+                    if (!db) {
+                        reject('Database not initialized');
+                        return;
+                    }
+                    
+                    const transaction = db.transaction(STORE_NAME, 'readwrite');
+                    const store = transaction.objectStore(STORE_NAME);
+                    const request = store.put(file);
+                    
+                    request.onsuccess = () => {
+                        console.log(`File ${file.id} updated successfully`);
+                        resolve();
+                    };
+                    
+                    request.onerror = (event) => {
+                        console.error('Error updating file:', event.target.error);
+                        reject('Could not update file');
+                    };
+                });
+            }
+            
+            // Delete a file
+            function deleteFile(id) {
+                return new Promise((resolve, reject) => {
+                    if (!db) {
+                        reject('Database not initialized');
+                        return;
+                    }
+                    
+                    const transaction = db.transaction(STORE_NAME, 'readwrite');
+                    const store = transaction.objectStore(STORE_NAME);
+                    const request = store.delete(id);
+                    
+                    request.onsuccess = () => {
+                        console.log(`File ${id} deleted successfully`);
+                        resolve();
+                    };
+                    
+                    request.onerror = (event) => {
+                        console.error('Error deleting file:', event.target.error);
+                        reject('Could not delete file');
+                    };
+                });
+            }
+            
+            // Move a file up in order
+            function moveFileUp(id) {
+                console.log('Moving file up:', id);
+                const fileIndex = files.findIndex(f => f.id === id);
+                if (fileIndex <= 0) {
+                    console.log('Already at the top');
+                    return; // Already at the top
+                }
+                
+                const prevFile = files[fileIndex - 1];
+                const currentFile = files[fileIndex];
+                
+                console.log('Swapping order:', currentFile.order, 'with', prevFile.order);
+                
+                // Swap the order values
+                const tempOrder = prevFile.order;
+                prevFile.order = currentFile.order;
+                currentFile.order = tempOrder;
+                
+                // Update both files in the database
+                Promise.all([
+                    updateFile(prevFile),
+                    updateFile(currentFile)
+                ]).then(() => {
+                    console.log('Files updated, reloading...');
+                    // Reload and re-render
+                    return loadFiles();
+                }).then(() => {
+                    console.log('Files reloaded, rendering...');
+                    // Sort files by order before rendering
+                    files.sort((a, b) => a.order - b.order);
+                    renderConfigFileList();
+                    renderMenuFileList();
+                    showAlert('File order updated');
+                }).catch(error => {
+                    console.error('Error updating file order:', error);
+                    showAlert('Error updating file order');
+                });
+            }
+            
+            // Move a file down in order
+            function moveFileDown(id) {
+                console.log('Moving file down:', id);
+                const fileIndex = files.findIndex(f => f.id === id);
+                if (fileIndex === -1 || fileIndex >= files.length - 1) {
+                    console.log('Already at the bottom');
+                    return; // Already at the bottom
+                }
+                
+                const nextFile = files[fileIndex + 1];
+                const currentFile = files[fileIndex];
+                
+                console.log('Swapping order:', currentFile.order, 'with', nextFile.order);
+                
+                // Swap the order values
+                const tempOrder = nextFile.order;
+                nextFile.order = currentFile.order;
+                currentFile.order = tempOrder;
+                
+                // Update both files in the database
+                Promise.all([
+                    updateFile(nextFile),
+                    updateFile(currentFile)
+                ]).then(() => {
+                    console.log('Files updated, reloading...');
+                    // Reload and re-render
+                    return loadFiles();
+                }).then(() => {
+                    console.log('Files reloaded, rendering...');
+                    // Sort files by order before rendering
+                    files.sort((a, b) => a.order - b.order);
+                    renderConfigFileList();
+                    renderMenuFileList();
+                    showAlert('File order updated');
+                }).catch(error => {
+                    console.error('Error updating file order:', error);
+                    showAlert('Error updating file order');
+                });
+            }
+            
+            // Apply app configuration to UI
+            function applyConfig() {
+                // Update title and splash screen
+                elements.splashTitle.textContent = appConfig.title;
+                elements.splashDesc.textContent = appConfig.description;
+                elements.splashImage.src = appConfig.image;
+                
+                // Update subtle title bar
+                elements.titleBar.textContent = appConfig.title;
+                
+                // Apply theme color
+                const bgColor = `#${appConfig.themeColor}`;
+                const secondColor = getLighterColor(appConfig.themeColor);
+                elements.splash.style.background = `linear-gradient(135deg, ${bgColor}, ${secondColor})`;
+                
+                // Update meta tags
+                const themeColorMeta = document.querySelector('meta[name="theme-color"]');
+                if (themeColorMeta) {
+                    themeColorMeta.content = bgColor;
+                }
+                
+                // Update buttons
+                elements.uploadBtn.style.backgroundColor = bgColor;
+                elements.saveConfigBtn.style.backgroundColor = bgColor;
+                elements.saveFileBtn.style.backgroundColor = bgColor;
+                
+                // Update form values
+                elements.appTitle.value = appConfig.title;
+                elements.appDesc.value = appConfig.description;
+                
+                if (appConfig.image) {
+                    elements.appImagePreview.src = appConfig.image;
+                    elements.appImagePreview.style.display = 'block';
+                }
+                
+                // Update theme color selection
+                const colorOptions = elements.colorOptions.querySelectorAll('.color-option');
+                colorOptions.forEach(option => {
+                    option.classList.remove('selected');
+                    if (option.dataset.color === appConfig.themeColor) {
+                        option.classList.add('selected');
+                    }
+                });
+                
+                document.title = appConfig.title;
+            }
+            
+            // Get a lighter color from a hex color
+            function getLighterColor(hex) {
+                const r = parseInt(hex.substr(0, 2), 16);
+                const g = parseInt(hex.substr(2, 2), 16);
+                const b = parseInt(hex.substr(4, 2), 16);
+                
+                const lighterR = Math.min(r + 40, 255).toString(16).padStart(2, '0');
+                const lighterG = Math.min(g + 40, 255).toString(16).padStart(2, '0');
+                const lighterB = Math.min(b + 40, 255).toString(16).padStart(2, '0');
+                
+                return `#${lighterR}${lighterG}${lighterB}`;
+            }
+            
+            // Render menu file list
+            function renderMenuFileList() {
+                const fileList = elements.fileList;
+                
+                // Clear the list first
+                while (fileList.firstChild) {
+                    fileList.removeChild(fileList.firstChild);
+                }
+                
+                // Show empty state if no files
+                if (files.length === 0) {
+                    fileList.appendChild(elements.emptyState);
+                    return;
+                }
+                
+                // Sort files by order
+                files.sort((a, b) => a.order - b.order);
+                
+                // Create list items for each file
+                files.forEach(file => {
+                    const listItem = createMenuFileItem(file);
+                    fileList.appendChild(listItem);
+                });
+            }
+            
+            // Render config file list
+            function renderConfigFileList() {
+                const fileList = elements.configFileList;
+                
+                // Clear the list first
+                while (fileList.firstChild) {
+                    fileList.removeChild(fileList.firstChild);
+                }
+                
+                // Show message if no files
+                if (files.length === 0) {
+                    const emptyItem = document.createElement('li');
+                    emptyItem.textContent = 'No files added yet';
+                    emptyItem.style.padding = '1rem';
+                    emptyItem.style.color = '#718096';
+                    fileList.appendChild(emptyItem);
+                    return;
+                }
+                
+                // Sort files by order
+                files.sort((a, b) => a.order - b.order);
+                
+                // Create list items for each file
+                files.forEach(file => {
+                    const listItem = createConfigFileItem(file);
+                    fileList.appendChild(listItem);
+                });
+            }
+            
+            // Create a menu item for a file
+            function createMenuFileItem(file) {
+                const li = document.createElement('li');
+                li.className = 'menu-item';
+                
+                const link = document.createElement('a');
+                link.href = '#';
+                link.dataset.id = file.id;
+                
+                // Create icon
+                const icon = document.createElement('div');
+                icon.className = 'menu-item-icon';
+                
+                if (file.iconType === 'custom' && file.customIcon) {
+                    const img = document.createElement('img');
+                    img.src = file.customIcon;
+                    img.style.width = '24px';
+                    img.style.height = '24px';
+                    icon.appendChild(img);
+                } else {
+                    icon.innerHTML = getIconSVG(file.iconType || 'file');
+                }
+                
+                // Create main content
+                const main = document.createElement('div');
+                main.className = 'menu-item-main';
+                
+                const title = document.createElement('div');
+                title.className = 'menu-item-title';
+                title.textContent = file.title || 'Untitled';
+                main.appendChild(title);
+                
+                if (file.description) {
+                    const desc = document.createElement('div');
+                    desc.className = 'menu-item-desc';
+                    desc.textContent = file.description;
+                    main.appendChild(desc);
+                }
+                
+                // Assemble the link
+                link.appendChild(icon);
+                link.appendChild(main);
+                
+                // Add click event to open file
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    openFile(file);
+                });
+                
+                li.appendChild(link);
+                return li;
+            }
+            
+            // Create a config file item
+            function createConfigFileItem(file) {
+                const li = document.createElement('li');
+                li.className = 'file-item';
+                
+                // Create icon
+                const icon = document.createElement('div');
+                icon.className = 'file-item-icon';
+                
+                if (file.iconType === 'custom' && file.customIcon) {
+                    const img = document.createElement('img');
+                    img.src = file.customIcon;
+                    img.style.width = '24px';
+                    img.style.height = '24px';
+                    icon.appendChild(img);
+                } else {
+                    icon.innerHTML = getIconSVG(file.iconType || 'file');
+                }
+                
+                // Create main content
+                const main = document.createElement('div');
+                main.className = 'file-item-main';
+                
+                const title = document.createElement('div');
+                title.className = 'file-item-title';
+                title.textContent = file.title || 'Untitled';
+                main.appendChild(title);
+                
+                if (file.description) {
+                    const desc = document.createElement('div');
+                    desc.style.fontSize = '0.85rem';
+                    desc.style.opacity = '0.7';
+                    desc.textContent = file.description;
+                    main.appendChild(desc);
+                }
+                
+                // Create controls
+                const controls = document.createElement('div');
+                controls.className = 'file-item-controls';
+                
+                // Edit button
+                const editBtn = document.createElement('button');
+                editBtn.className = 'file-control-btn';
+                editBtn.innerHTML = `
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" stroke="currentColor" stroke-width="2"
+                            stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                `;
+                editBtn.addEventListener('click', () => {
+                    openFileEditDialog(file);
+                });
+                
+                // Delete button
+                const deleteBtn = document.createElement('button');
+                deleteBtn.className = 'file-control-btn';
+                deleteBtn.innerHTML = `
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M3 6h18" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" stroke="currentColor"
+                            stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                `;
+                deleteBtn.addEventListener('click', () => {
+                    confirmDelete(file.id);
+                });
+                
+                // Move up button
+                const upBtn = document.createElement('button');
+                upBtn.className = 'file-control-btn';
+                upBtn.innerHTML = `
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 19V5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M5 12l7-7 7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                `;
+                upBtn.addEventListener('click', () => {
+                    moveFileUp(file.id);
+                });
+                
+                // Move down button
+                const downBtn = document.createElement('button');
+                downBtn.className = 'file-control-btn';
+                downBtn.innerHTML = `
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 5v14" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                        <path d="M19 12l-7 7-7-7" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                    </svg>
+                `;
+                downBtn.addEventListener('click', () => {
+                    moveFileDown(file.id);
+                });
+                
+                controls.appendChild(editBtn);
+                controls.appendChild(deleteBtn);
+                controls.appendChild(upBtn);
+                controls.appendChild(downBtn);
+                
+                // Assemble the item
+                li.appendChild(icon);
+                li.appendChild(main);
+                li.appendChild(controls);
+                
+                return li;
+            }
+            
+            // Get SVG for icon type
+            function getIconSVG(type) {
+                switch(type) {
+                    case 'code':
+                        return `
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M16 18l6-6-6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M8 6l-6 6 6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        `;
+                    case 'chart':
+                        return `
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M18 20V10" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M12 20V4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M6 20v-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        `;
+                    case 'game':
+                        return `
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <rect x="2" y="6" width="20" height="12" rx="2" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round"/>
+                                <path d="M12 10v4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M10 12h4" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M17 10.5v3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M7 10.5v3" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        `;
+                    case 'form':
+                        return `
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M11 4h6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M11 8h6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M11 12h6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M11 16h6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M7 8.5a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1z" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round"/>
+                                <path d="M7 12.5a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1z" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round"/>
+                                <path d="M7 16.5a.5.5 0 1 0 0-1 .5.5 0 0 0 0 1z" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+                                    stroke-linejoin="round"/>
+                            </svg>
+                        `;
+                    default: // file
+                        return `
+                            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" stroke="currentColor" stroke-width="2"
+                                    stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M14 2v6h6" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M16 13H8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M16 17H8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M10 9H9" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        `;
+                }
+            }
+            
+            // Process file upload
+            function processFiles(uploadedFiles) {
+                if (!uploadedFiles || uploadedFiles.length === 0) return;
+                
+                const filePromises = [];
+                
+                for (let i = 0; i < uploadedFiles.length; i++) {
+                    const file = uploadedFiles[i];
+                    filePromises.push(processFile(file));
+                }
+                
+                Promise.all(filePromises)
+                    .then(() => {
+                        return loadFiles();
+                    })
+                    .then(() => {
+                        renderConfigFileList();
+                        renderMenuFileList();
+                        showAlert('Files uploaded successfully');
+                    })
+                    .catch(error => {
+                        console.error('Error processing files:', error);
+                        showAlert('Error uploading files');
+                    });
+            }
+            
+            // Process a single file
+            function processFile(file) {
+                return new Promise((resolve, reject) => {
+                    const reader = new FileReader();
+                    
+                    reader.onload = (e) => {
+                        const content = e.target.result;
+                        
+                        // Try to extract title from the file
+                        let title = file.name;
+                        const titleMatch = content.match(/<title[^>]*>(.*?)<\/title>/i);
+                        if (titleMatch && titleMatch[1]) {
+                            title = titleMatch[1];
+                        }
+                        
+                        // Create new file object
+                        const newFile = {
+                            title: title,
+                            description: '',
+                            content: content,
+                            dateAdded: new Date().toISOString(),
+                            iconType: 'file',
+                            customIcon: null
+                        };
+                        
+                        // Add to database
+                        addFile(newFile)
+                            .then(id => {
+                                console.log(`File added with ID: ${id}`);
+                                resolve(id);
+                            })
+                            .catch(reject);
+                    };
+                    
+                    reader.onerror = () => {
+                        reject(`Error reading file: ${file.name}`);
+                    };
+                    
+                    reader.readAsText(file);
+                });
+            }
+            
+            // Open menu
+            function openMenu() {
+                console.log('Opening menu');
+                elements.menuPanel.classList.add('active');
+                elements.menuOverlay.classList.add('active');
+                elements.viewerPanel.classList.add('menu-open');
+            }
+            
+            // Close menu
+            function closeMenu() {
+                console.log('Closing menu');
+                elements.menuPanel.classList.remove('active');
+                elements.menuOverlay.classList.remove('active');
+                elements.viewerPanel.classList.remove('menu-open');
+            }
+            
+            // Toggle menu (open if closed, close if open)
+            function toggleMenu() {
+                if (elements.menuPanel.classList.contains('active')) {
+                    closeMenu();
+                } else {
+                    openMenu();
+                }
+            }
+            
+            // Open config panel
+            function openConfigPanel() {
+                console.log('Opening config panel');
+                closeMenu();
+                
+                // Fill in current values
+                elements.appTitle.value = appConfig.title;
+                elements.appDesc.value = appConfig.description;
+                
+                if (appConfig.image) {
+                    elements.appImagePreview.src = appConfig.image;
+                    elements.appImagePreview.style.display = 'block';
+                }
+                
+                // Set correct color option
+                const colorOptions = elements.colorOptions.querySelectorAll('.color-option');
+                colorOptions.forEach(option => {
+                    option.classList.remove('selected');
+                    if (option.dataset.color === appConfig.themeColor) {
+                        option.classList.add('selected');
+                    }
+                });
+                
+                // Render file list
+                renderConfigFileList();
+                
+                elements.configPanel.classList.add('active');
+                
+                // Hide home screen
+                elements.splash.classList.add('hidden');
+            }
+            
+            // Open file edit dialog
+            function openFileEditDialog(file) {
+                console.log('Opening file edit dialog for:', file.id);
+                currentFileId = file.id;
+                
+                // Fill in current values
+                elements.fileTitle.value = file.title || '';
+                elements.fileDesc.value = file.description || '';
+                elements.iconType.value = file.iconType || 'file';
+                
+                // Handle custom icon display
+                if (file.iconType === 'custom' && file.customIcon) {
+                    elements.customIconGroup.style.display = 'block';
+                    elements.customIconPreview.src = file.customIcon;
+                    elements.customIconPreview.style.display = 'block';
+                } else {
+                    elements.customIconGroup.style.display = 'none';
+                    elements.customIconPreview.style.display = 'none';
+                }
+                
+                elements.fileEditDialog.classList.add('active');
+            }
+            
+            // Close file edit dialog
+            function closeFileEditDialog() {
+                elements.fileEditDialog.classList.remove('active');
+                currentFileId = null;
+            }
+            
+            // Open file viewer
+            function openFile(file) {
+                console.log('Opening file:', file.id);
+                closeMenu();
+                
+                // Hide home screen
+                elements.splash.classList.add('hidden');
+                
+                // Pre-load content before showing
+                const blob = new Blob([file.content], { type: 'text/html' });
+                const url = URL.createObjectURL(blob);
+                
+                // Prepare iframe with content
+                elements.viewerFrame.onload = () => {
+                    // Show viewer panel after content is loaded
+                    elements.viewerPanel.classList.add('active');
+                    
+                    // Make sure title bar is visible
+                    elements.titleBar.style.opacity = '1';
+                    
+                    // Clean up URL
+                    setTimeout(() => URL.revokeObjectURL(url), 100);
+                };
+                
+                // Set source to load content
+                elements.viewerFrame.src = url;
+            }
+            
+            // Go back to home
+            function showHomeScreen() {
+                console.log('Showing home screen');
+                closeMenu();
+                
+                // Hide viewer panel
+                elements.viewerFrame.src = 'about:blank';
+                
+                // Show home screen
+                elements.splash.classList.remove('hidden');
+            }
+            
+            // Show alert message
+            function showAlert(message, duration = 3000) {
+                const alert = elements.alert;
+                alert.textContent = message;
+                alert.classList.add('active');
+                
+                setTimeout(() => {
+                    alert.classList.remove('active');
+                }, duration);
+            }
+            
+            // Confirm delete
+            function confirmDelete(id) {
+                currentFileId = id;
+                elements.confirmDialog.classList.add('active');
+            }
+            
+            // Add swipe gesture support
+            function addSwipeSupport() {
+                let touchStartX = 0;
+                let touchEndX = 0;
+                
+                // Minimum distance required for swipe
+                const minSwipeDistance = 50;
+                
+                document.addEventListener('touchstart', function(e) {
+                    touchStartX = e.changedTouches[0].screenX;
+                }, false);
+                
+                document.addEventListener('touchend', function(e) {
+                    touchEndX = e.changedTouches[0].screenX;
+                    handleSwipe();
+                }, false);
+                
+                function handleSwipe() {
+                    if (touchEndX - touchStartX > minSwipeDistance) {
+                        // Swipe right - open menu
+                        openMenu();
+                    } else if (touchStartX - touchEndX > minSwipeDistance) {
+                        // Swipe left - close menu
+                        closeMenu();
+                    }
+                }
+            }
+            
+            // Set up event listeners
+            function setupEventListeners() {
+                // Menu button
+                elements.menuTouchArea.addEventListener('click', toggleMenu);
+                
+                // Menu overlay (close menu when clicking outside)
+                elements.menuOverlay.addEventListener('click', closeMenu);
+                
+                // Home link
+                elements.homeLink.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    showHomeScreen();
+                });
+                
+                // Upload button
+                elements.uploadBtn.addEventListener('click', () => {
+                    elements.fileInput.click();
+                });
+                
+                // File input change
+                elements.fileInput.addEventListener('change', (e) => {
+                    processFiles(e.target.files);
+                    e.target.value = ''; // Reset input
+                });
+                
+                // Config link
+                elements.configLink.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    openConfigPanel();
+                });
+                
+                // Config back button
+                elements.configBackBtn.addEventListener('click', () => {
+                    elements.configPanel.classList.remove('active');
+                    showHomeScreen();
+                    openMenu();
+                });
+                
+                // App image button
+                elements.appImageBtn.addEventListener('click', () => {
+                    elements.appImageInput.click();
+                });
+                
+                // App image input change
+                elements.appImageInput.addEventListener('change', (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (event) => {
+                            elements.appImagePreview.src = event.target.result;
+                            elements.appImagePreview.style.display = 'block';
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                });
+                
+                // Color options
+                elements.colorOptions.querySelectorAll('.color-option').forEach(option => {
+                    option.addEventListener('click', () => {
+                        // Remove selected from all options
+                        elements.colorOptions.querySelectorAll('.color-option').forEach(opt => {
+                            opt.classList.remove('selected');
+                        });
+                        
+                        // Select this one
+                        option.classList.add('selected');
+                    });
+                });
+                
+                // Save config button
+                elements.saveConfigBtn.addEventListener('click', async () => {
+                    // Get values from form
+                    appConfig.title = elements.appTitle.value.trim() || 'HTML Viewer';
+                    appConfig.description = elements.appDesc.value.trim() || 'Patch #1001 Applied';
+                    
+                    if (elements.appImagePreview.src) {
+                        appConfig.image = elements.appImagePreview.src;
+                    }
+                    
+                    // Get selected color
+                    const selectedColor = elements.colorOptions.querySelector('.color-option.selected');
+                    if (selectedColor) {
+                        appConfig.themeColor = selectedColor.dataset.color;
+                    }
+                    
+                    try {
+                        // Save to database
+                        await saveConfig();
+                        
+                        // Apply to UI
+                        applyConfig();
+                        
+                        // Show confirmation message
+                        showAlert('Configuration saved successfully');
+                        
+                        // Close panel after saving
+                        elements.configPanel.classList.remove('active');
+                        showHomeScreen();
+                        openMenu();
+                    } catch (error) {
+                        console.error('Error saving config:', error);
+                        showAlert('Error saving configuration');
+                    }
+                });
+                
+                // Icon type change
+                elements.iconType.addEventListener('change', () => {
+                    if (elements.iconType.value === 'custom') {
+                        elements.customIconGroup.style.display = 'block';
+                    } else {
+                        elements.customIconGroup.style.display = 'none';
+                    }
+                });
+                
+                // Custom icon button
+                elements.customIconBtn.addEventListener('click', () => {
+                    elements.customIconInput.click();
+                });
+                
+                // Custom icon input change
+                elements.customIconInput.addEventListener('change', (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        const reader = new FileReader();
+                        reader.onload = (event) => {
+                            elements.customIconPreview.src = event.target.result;
+                            elements.customIconPreview.style.display = 'block';
+                        };
+                        reader.readAsDataURL(file);
+                    }
+                });
+                
+                // Close edit dialog
+                elements.fileEditClose.addEventListener('click', closeFileEditDialog);
+                
+                // Save file button
+                elements.saveFileBtn.addEventListener('click', async () => {
+                    if (!currentFileId) {
+                        showAlert('No file selected');
+                        return;
+                    }
+                    
+                    try {
+                        // Find file in array
+                        const fileIndex = files.findIndex(f => f.id === currentFileId);
+                        if (fileIndex === -1) {
+                            showAlert('File not found');
+                            return;
+                        }
+                        
+                        // Update file object
+                        files[fileIndex].title = elements.fileTitle.value.trim() || 'Untitled';
+                        files[fileIndex].description = elements.fileDesc.value.trim();
+                        files[fileIndex].iconType = elements.iconType.value;
+                        
+                        if (elements.iconType.value === 'custom' && elements.customIconPreview.src) {
+                            files[fileIndex].customIcon = elements.customIconPreview.src;
+                        }
+                        
+                        // Save to database
+                        await updateFile(files[fileIndex]);
+                        
+                        showAlert('File updated');
+                        
+                        // Close dialog and refresh list
+                        closeFileEditDialog();
+                        renderConfigFileList();
+                        renderMenuFileList();
+                    } catch (error) {
+                        console.error('Error updating file:', error);
+                        showAlert('Error updating file');
+                    }
+                });
+                
+                // Confirm delete - cancel
+                if (elements.cancelDeleteBtn) {
+                    elements.cancelDeleteBtn.addEventListener('click', () => {
+                        elements.confirmDialog.classList.remove('active');
+                        currentFileId = null;
+                    });
+                }
+                
+                // Confirm delete - confirm
+                if (elements.confirmDeleteBtn) {
+                    elements.confirmDeleteBtn.addEventListener('click', async () => {
+                        if (!currentFileId) return;
+                        
+                        try {
+                            await deleteFile(currentFileId);
+                            await loadFiles();
+                            renderConfigFileList();
+                            renderMenuFileList();
+                            showAlert('File deleted');
+                        } catch (error) {
+                            console.error('Error deleting file:', error);
+                            showAlert('Error deleting file');
+                        }
+                        
+                        elements.confirmDialog.classList.remove('active');
+                        currentFileId = null;
+                    });
+                }
+                
+                // Export configuration button
+                elements.exportConfigBtn.addEventListener('click', () => {
+                    exportConfig();
+                });
+                
+                // Import configuration button
+                elements.importConfigBtn.addEventListener('click', () => {
+                    elements.importConfigInput.click();
+                });
+                
+                // Import configuration file input
+                elements.importConfigInput.addEventListener('change', (e) => {
+                    const file = e.target.files[0];
+                    if (file) {
+                        importConfig(file);
+                    }
+                    e.target.value = ''; // Reset input
+                });
+            }
+            
+            // Initialize app
+            async function initApp() {
+                try {
+                    // Update date time immediately
+                    updateDateTime();
+                    setInterval(updateDateTime, 60000);
+                    
+                    // Initialize database
+                    await initDB();
+                    
+                    // Load app configuration
+                    await loadConfig();
+                    
+                    // Apply configuration to UI
+                    applyConfig();
+                    
+                    // Load files
+                    await loadFiles();
+                    
+                    // Render file lists
+                    renderMenuFileList();
+                    renderConfigFileList();
+                    
+                    // Add swipe gesture support
+                    addSwipeSupport();
+                    
+                    // Set up event listeners
+                    setupEventListeners();
+                    
+                    console.log('App initialized successfully');
+                } catch (error) {
+                    console.error('Error initializing app:', error);
+                    showAlert('Error initializing app');
+                }
+            }
+            
+            // Start the app
+            initApp();
+        });
+    </script>
+</body>
+</html>
