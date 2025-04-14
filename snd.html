@@ -8,61 +8,65 @@
         body {
             margin: 0;
             display: flex;
+            flex-direction: column;
+            height: 100vh;
             background: black;
             color: white;
             font-family: Arial, sans-serif;
         }
-        .container {
+        .header {
+            height: 10%;
             display: flex;
-            width: 100%;
-            height: 100vh;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            box-sizing: border-box;
+            background: #111;
         }
-        .visualizer-container {
+        .header h1 {
+            margin: 0;
+        }
+        .header select {
+            padding: 5px;
+        }
+        .main-container {
             display: flex;
-            justify-content: center;
-            width: 70%;
-            height: 100%;
+            flex: 1;
         }
-        canvas {
-            border: 1px solid white;
-            width: 90%;
-            height: 90%;
-        }
-        #status {
-            margin-top: 20px;
-            text-align: center;
-        }
-        #micData {
-            margin-top: 20px;
-            text-align: center;
-            font-size: 14px;
-        }
-        .side-panel {
-            width: 30%;
-            height: 100%;
+        .table-container {
+            width: 50%;
             padding: 10px;
             box-sizing: border-box;
             overflow-y: auto;
         }
-        .log-section {
-            margin-bottom: 20px;
+        .visualization-container {
+            width: 50%;
+            padding: 10px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
         }
-        .log-section-header {
-            cursor: pointer;
-            font-weight: bold;
+        .canvas-container {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
         }
-        .log-section-content {
-            display: none;
+        canvas {
+            border: 1px solid white;
+            max-width: 100%;
+            max-height: 100%;
         }
-        .log-section-content table {
+        table {
             width: 100%;
             border-collapse: collapse;
         }
-        .log-section-content th, .log-section-content td {
+        th, td {
             border: 1px solid white;
             padding: 8px;
+            text-align: center;
         }
-        .log-section-content th {
+        th {
             background-color: #444;
         }
         .copy-button, .download-button {
@@ -70,29 +74,67 @@
             padding: 5px 10px;
             cursor: pointer;
         }
+        .visualization-options {
+            margin-bottom: 10px;
+        }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="visualizer-container">
-            <canvas id="micVisualizer"></canvas>
-            <div id="status">Status: Waiting for microphone input...</div>
-            <div id="micData">Mic Data Array: </div>
+    <div class="header">
+        <h1>Music Visualizer</h1>
+        <div class="visualization-options">
+            <label for="visualization-select">Visualization:</label>
+            <select id="visualization-select">
+                <option value="bar">Bar Graph</option>
+                <option value="line">Line Graph</option>
+                <option value="wave">Waveform</option>
+                <option value="scatter">Scatter Plot</option>
+                <option value="radar">Radar Chart</option>
+            </select>
         </div>
-        <div class="side-panel" id="sidePanel">
-            <div id="logContainer"></div>
+    </div>
+    <div class="main-container">
+        <div class="table-container">
+            <table id="micDataTable">
+                <thead>
+                    <tr>
+                        <th>Day</th>
+                        <th>Hour</th>
+                        <th>Minute</th>
+                        <th>Second</th>
+                        <th>Channel 1</th>
+                        <th>Channel 2</th>
+                        <th>Channel 3</th>
+                        <th>Channel 4</th>
+                        <th>Channel 5</th>
+                        <th>Channel 6</th>
+                        <th>Channel 7</th>
+                        <th>Channel 8</th>
+                        <th>Channel 9</th>
+                        <th>Channel 10</th>
+                        <th>MAD</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="micDataTableBody">
+                </tbody>
+            </table>
             <button id="downloadButton" class="download-button">Download MAD Data</button>
+        </div>
+        <div class="visualization-container">
+            <div class="canvas-container">
+                <canvas id="micVisualizer"></canvas>
+            </div>
         </div>
     </div>
     <script>
         const micCanvas = document.getElementById('micVisualizer');
         const micCanvasCtx = micCanvas.getContext('2d');
-        const statusDiv = document.getElementById('status');
-        const micDataDiv = document.getElementById('micData');
-        const logContainer = document.getElementById('logContainer');
+        const micDataTableBody = document.getElementById('micDataTableBody');
         const downloadButton = document.getElementById('downloadButton');
+        const visualizationSelect = document.getElementById('visualization-select');
 
-        micCanvas.width = window.innerWidth * 0.63;
+        micCanvas.width = window.innerWidth * 0.45;
         micCanvas.height = window.innerHeight * 0.8;
 
         const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -102,13 +144,15 @@
         const micDataArray = new Uint8Array(micBufferLength);
 
         const madData = [];
-        let currentDayLog = [];
-        let currentHourLog = [];
-        let currentMinuteLog = [];
+        let currentDayLog = { day: '', logs: [] };
+        let currentHourLog = { hour: '', logs: [] };
+        let currentMinuteLog = { minute: '', logs: [] };
 
         function drawMic() {
             requestAnimationFrame(drawMic);
+
             micAnalyser.getByteFrequencyData(micDataArray);
+
             micCanvasCtx.fillStyle = 'black';
             micCanvasCtx.fillRect(0, 0, micCanvas.width, micCanvas.height);
 
@@ -129,18 +173,22 @@
             const day = timestamp.toDateString();
             const hour = timestamp.getHours();
             const minute = timestamp.getMinutes();
+            const second = timestamp.getSeconds();
+            const mad = micDataArray.reduce((acc, val) => acc + val, 0) / micBufferLength;
+
+            console.log('Timestamp:', timestamp.toLocaleString(), 'MAD:', mad.toFixed(2));
 
             if (minute !== currentMinuteLog.minute) {
                 currentMinuteLog.minute = minute;
                 currentMinuteLog.logs = [];
-                currentHourLog.push(currentMinuteLog);
+                currentHourLog.logs.push(currentMinuteLog);
                 currentMinuteLog = { minute, logs: [] };
             }
 
             if (hour !== currentHourLog.hour) {
                 currentHourLog.hour = hour;
                 currentHourLog.logs = [];
-                currentDayLog.push(currentHourLog);
+                currentDayLog.logs.push(currentHourLog);
                 currentHourLog = { hour, logs: [] };
             }
 
@@ -151,9 +199,10 @@
                 currentDayLog = { day, logs: [] };
             }
 
-            currentMinuteLog.logs.push({ timestamp, data: micDataArray.slice() });
+            currentMinuteLog.logs.push({ timestamp, data: micDataArray.slice(), mad });
 
             updateLogDisplay();
+            updateVisualization();
         }
 
         function updateLogDisplay() {
@@ -191,7 +240,7 @@
                 const table = document.createElement('table');
                 const thead = document.createElement('thead');
                 const tr = document.createElement('tr');
-                tr.innerHTML = '<th>Timestamp</th><th>Data</th><th>Actions</th>';
+                tr.innerHTML = '<th>Timestamp</th><th>Data</th><th>MAD</th><th>Actions</th>';
                 thead.appendChild(tr);
                 table.appendChild(thead);
 
@@ -200,7 +249,8 @@
                     const tr = document.createElement('tr');
                     tr.innerHTML = `
                         <td>${log.timestamp.toLocaleString()}</td>
-                        <td>${log.data.join(', ')}</td>
+                        <td>${log.data.slice(0, 10).join(', ')}</td>
+                        <td>${log.mad.toFixed(2)}</td>
                         <td>
                             <button class="copy-button" onclick="copyToClipboard('${log.data.join(', ')}')">Copy</button>
                         </td>
@@ -236,6 +286,102 @@
             URL.revokeObjectURL(url);
         };
 
+        visualizationSelect.onchange = () => {
+            updateVisualization();
+        };
+
+        function updateVisualization() {
+            const selectedVisualization = visualizationSelect.value;
+            micCanvasCtx.clearRect(0, 0, micCanvas.width, micCanvas.height);
+
+            if (madData.length === 0) return;
+
+            const timestamps = madData.map(entry => entry.timestamp.toLocaleTimeString());
+            const mads = madData.map(entry => entry.mad);
+
+            switch (selectedVisualization) {
+                case 'bar':
+                    drawBarGraph(timestamps, mads);
+                    break;
+                case 'line':
+                    drawLineGraph(timestamps, mads);
+                    break;
+                case 'wave':
+                    drawWaveform(mads);
+                    break;
+                case 'scatter':
+                    drawScatterPlot(timestamps, mads);
+                    break;
+                case 'radar':
+                    drawRadarChart(timestamps, mads);
+                    break;
+            }
+        }
+
+        function drawBarGraph(timestamps, mads) {
+            const barWidth = micCanvas.width / mads.length;
+            mads.forEach((mad, index) => {
+                const x = index * barWidth;
+                const y = micCanvas.height - (mad * micCanvas.height / 255);
+                micCanvasCtx.fillStyle = `hsl(${mad * 2}, 100%, 50%)`;
+                micCanvasCtx.fillRect(x, y, barWidth, micCanvas.height - y);
+            });
+        }
+
+        function drawLineGraph(timestamps, mads) {
+            micCanvasCtx.beginPath();
+            micCanvasCtx.moveTo(0, micCanvas.height - (mads[0] * micCanvas.height / 255));
+            mads.forEach((mad, index) => {
+                const x = (index / mads.length) * micCanvas.width;
+                const y = micCanvas.height - (mad * micCanvas.height / 255);
+                micCanvasCtx.lineTo(x, y);
+            });
+            micCanvasCtx.strokeStyle = 'white';
+            micCanvasCtx.lineWidth = 2;
+            micCanvasCtx.stroke();
+        }
+
+        function drawWaveform(mads) {
+            micCanvasCtx.beginPath();
+            mads.forEach((mad, index) => {
+                const x = (index / mads.length) * micCanvas.width;
+                const y = micCanvas.height / 2 + (mad * micCanvas.height / 510) - 255;
+                if (index === 0) micCanvasCtx.moveTo(x, y);
+                else micCanvasCtx.lineTo(x, y);
+            });
+            micCanvasCtx.strokeStyle = 'white';
+            micCanvasCtx.lineWidth = 2;
+            micCanvasCtx.stroke();
+        }
+
+        function drawScatterPlot(timestamps, mads) {
+            mads.forEach((mad, index) => {
+                const x = (index / mads.length) * micCanvas.width;
+                const y = micCanvas.height - (mad * micCanvas.height / 255);
+                micCanvasCtx.fillStyle = `hsl(${mad * 2}, 100%, 50%)`;
+                micCanvasCtx.beginPath();
+                micCanvasCtx.arc(x, y, 3, 0, Math.PI * 2);
+                micCanvasCtx.fill();
+            });
+        }
+
+        function drawRadarChart(timestamps, mads) {
+            const numPoints = mads.length;
+            const angleStep = (Math.PI * 2) / numPoints;
+            micCanvasCtx.beginPath();
+            micCanvasCtx.moveTo(micCanvas.width / 2 + mads[0] * (micCanvas.width / 510), micCanvas.height / 2);
+            mads.forEach((mad, index) => {
+                const angle = index * angleStep;
+                const x = micCanvas.width / 2 + mad * (micCanvas.width / 510) * Math.cos(angle);
+                const y = micCanvas.height / 2 + mad * (micCanvas.height / 510) * Math.sin(angle);
+                micCanvasCtx.lineTo(x, y);
+            });
+            micCanvasCtx.closePath();
+            micCanvasCtx.strokeStyle = 'white';
+            micCanvasCtx.lineWidth = 2;
+            micCanvasCtx.stroke();
+        }
+
         async function connectMicrophone() {
             try {
                 console.log('Requesting microphone access...');
@@ -247,10 +393,10 @@
                 console.log('Microphone connected to analyser.');
 
                 drawMic();
-                statusDiv.textContent = 'Status: Microphone connected and visualizing.';
+                document.getElementById('status').textContent = 'Status: Microphone connected and visualizing.';
                 console.log('Microphone connected and visualizing.');
             } catch (err) {
-                statusDiv.textContent = 'Status: Error accessing microphone.';
+                document.getElementById('status').textContent = 'Status: Error accessing microphone.';
                 console.error('Error accessing microphone:', err);
             }
         }
