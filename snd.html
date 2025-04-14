@@ -134,6 +134,8 @@
         const downloadButton = document.getElementById('downloadButton');
         const visualizationSelect = document.getElementById('visualization-select');
         const statusDiv = document.getElementById('status');
+        const micDataDiv = document.getElementById('micData'); // Ensure micDataDiv is defined
+        const logContainer = document.getElementById('logContainer'); // Ensure logContainer is defined
 
         micCanvas.width = window.innerWidth * 0.45;
         micCanvas.height = window.innerHeight * 0.8;
@@ -202,6 +204,13 @@
 
             updateLogDisplay();
             updateVisualization();
+
+            // Display the first few values of micDataArray on the page
+            if (micDataDiv) {
+                micDataDiv.textContent = 'Mic Data Array: ' + micDataArray.slice(0, 10).join(', ');
+            } else {
+                console.error('micDataDiv is undefined');
+            }
         }
 
         function updateLogDisplay() {
@@ -381,7 +390,7 @@
             mads.forEach((mad, index) => {
                 const angle = index * angleStep;
                 const x = micCanvas.width / 2 + mad * (micCanvas.width / 510) * Math.cos(angle);
-                const y = micCanvas.height / 2 + mad * (micCanvas.height / 510) * Math.sin(angle);
+                const y = micCanvas.height / 2 + mad * (micCanvas.width / 510) * Math.sin(angle);
                 micCanvasCtx.lineTo(x, y);
             });
             micCanvasCtx.closePath();
