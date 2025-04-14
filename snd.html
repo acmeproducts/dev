@@ -133,6 +133,7 @@
         const micDataTableBody = document.getElementById('micDataTableBody');
         const downloadButton = document.getElementById('downloadButton');
         const visualizationSelect = document.getElementById('visualization-select');
+        const statusDiv = document.getElementById('status');
 
         micCanvas.width = window.innerWidth * 0.45;
         micCanvas.height = window.innerHeight * 0.8;
@@ -166,8 +167,6 @@
                 micCanvasCtx.fillRect(x, micCanvas.height - barHeight / 2, barWidth, barHeight / 2);
                 x += barWidth + 1;
             }
-
-            micDataDiv.textContent = 'Mic Data Array: ' + micDataArray.slice(0, 10).join(', ');
 
             const timestamp = new Date();
             const day = timestamp.toDateString();
@@ -294,10 +293,17 @@
             const selectedVisualization = visualizationSelect.value;
             micCanvasCtx.clearRect(0, 0, micCanvas.width, micCanvas.height);
 
-            if (madData.length === 0) return;
+            if (madData.length === 0) {
+                console.log('No data to visualize');
+                return;
+            }
 
             const timestamps = madData.map(entry => entry.timestamp.toLocaleTimeString());
             const mads = madData.map(entry => entry.mad);
+
+            console.log('Visualizing with:', selectedVisualization);
+            console.log('Timestamps:', timestamps);
+            console.log('MAD Values:', mads);
 
             switch (selectedVisualization) {
                 case 'bar':
@@ -315,6 +321,8 @@
                 case 'radar':
                     drawRadarChart(timestamps, mads);
                     break;
+                default:
+                    console.log('Unknown visualization type:', selectedVisualization);
             }
         }
 
@@ -393,10 +401,10 @@
                 console.log('Microphone connected to analyser.');
 
                 drawMic();
-                document.getElementById('status').textContent = 'Status: Microphone connected and visualizing.';
+                statusDiv.textContent = 'Status: Microphone connected and visualizing.';
                 console.log('Microphone connected and visualizing.');
             } catch (err) {
-                document.getElementById('status').textContent = 'Status: Error accessing microphone.';
+                statusDiv.textContent = 'Status: Error accessing microphone.';
                 console.error('Error accessing microphone:', err);
             }
         }
