@@ -1,173 +1,424 @@
-/* full HTML document remains unchanged up to the comment: */
-
-        // VIZ1–VIZ10 definitions here (unchanged from prior version)
-        // You can reinsert the previous drawVIZ1 to drawVIZ10 functions here
-
-        // Utility: Frequency band labels
-        const BAND_LABELS = [
-            "20-100Hz", "100-300Hz", "300-800Hz", "800Hz-1.5kHz", "1.5kHz-3kHz",
-            "3kHz-6kHz", "6kHz-8kHz", "8kHz-10kHz", "10kHz-12kHz", "12kHz-20kHz"
-        ];
-
-        // Add Expand/Collapse All Buttons
-        const tableControls = document.createElement('div');
-        tableControls.innerHTML = `
-            <button onclick="expandAll()">Expand All</button>
-            <button onclick="collapseAll()">Collapse All</button>
-        `;
-        madTable.parentNode.insertBefore(tableControls, madTable);
-
-        function expandAll() {
-            document.querySelectorAll('#madTable details').forEach(d => d.open = true);
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Music Visualizer</title>
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            background: black;
+            color: white;
+            font-family: Arial, sans-serif;
         }
-        function collapseAll() {
-            document.querySelectorAll('#madTable details').forEach(d => d.open = false);
+        .header {
+            height: 10%;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            box-sizing: border-box;
+            background: #111;
         }
-
-        function renderTable() {
-            madTable.innerHTML = '';
-            for (const day in MAD) {
-                const dayEl = document.createElement('details');
-                const daySum = document.createElement('summary');
-                daySum.textContent = `Date: ${day}`;
-                dayEl.appendChild(daySum);
-
-                for (const hour in MAD[day]) {
-                    const hourEl = document.createElement('details');
-                    const hourSum = document.createElement('summary');
-                    hourSum.textContent = `Hour: ${hour}`;
-                    hourEl.appendChild(hourSum);
-
-                    for (const minute in MAD[day][hour]) {
-                        const minEl = document.createElement('details');
-                        const minSum = document.createElement('summary');
-
-                        const entries = Object.values(MAD[day][hour][minute]);
-                        const bandCount = entries.length;
-                        const aggregates = new Array(10).fill(0);
-                        entries.forEach(row => row.forEach((val, i) => aggregates[i] += val));
-
-                        const avg = aggregates.map(t => Math.round(t / bandCount));
-                        const min = aggregates.map((_, i) => Math.min(...entries.map(row => row[i])));
-                        const max = aggregates.map((_, i) => Math.max(...entries.map(row => row[i])));
-
-                        minSum.textContent = `Minute: ${minute} → Avg: [${avg.join(', ')}]`;
-                        minEl.appendChild(minSum);
-
-                        const stats = document.createElement('p');
-                        stats.textContent = `Min: [${min.join(', ')}], Max: [${max.join(', ')}]`;
-                        minEl.appendChild(stats);
-
-                        for (const sec in MAD[day][hour][minute]) {
-                            const secP = document.createElement('p');
-                            const values = MAD[day][hour][minute][sec];
-                            const labeled = values.map((v, i) => `${BAND_LABELS[i]}: ${v}`);
-                            secP.textContent = `Second: ${sec} → [${labeled.join(', ')}]`;
-                            minEl.appendChild(secP);
-                        }
-                        hourEl.appendChild(minEl);
-                    }
-                    dayEl.appendChild(hourEl);
-                }
-                madTable.appendChild(dayEl);
-            }
+        .header h1 {
+            margin: 0;
         }
+        .header select {
+            padding: 5px;
+        }
+        .main-container {
+            display: flex;
+            flex: 1;
+        }
+        .table-container {
+            width: 50%;
+            padding: 10px;
+            box-sizing: border-box;
+            overflow-y: auto;
+        }
+        .visualization-container {
+            width: 50%;
+            padding: 10px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+        }
+        .canvas-container {
+            flex: 1;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        canvas {
+            border: 1px solid white;
+            max-width: 100%;
+            max-height: 100%;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th, td {
+            border: 1px solid white;
+            padding: 8px;
+            text-align: center;
+        }
+        th {
+            background-color: #444;
+        }
+        .copy-button, .download-button {
+            margin-top: 10px;
+            padding: 5px 10px;
+            cursor: pointer;
+        }
+        .visualization-options {
+            margin-bottom: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Music Visualizer</h1>
+        <div class="visualization-options">
+            <label for="visualization-select">Visualization:</label>
+            <select id="visualization-select">
+                <option value="bar">Bar Graph</option>
+                <option value="line">Line Graph</option>
+                <option value="wave">Waveform</option>
+                <option value="scatter">Scatter Plot</option>
+                <option value="radar">Radar Chart</option>
+            </select>
+        </div>
+    </div>
+    <div class="main-container">
+        <div class="table-container">
+            <table id="micDataTable">
+                <thead>
+                    <tr>
+                        <th>Day</th>
+                        <th>Hour</th>
+                        <th>Minute</th>
+                        <th>Second</th>
+                        <th>Channel 1</th>
+                        <th>Channel 2</th>
+                        <th>Channel 3</th>
+                        <th>Channel 4</th>
+                        <th>Channel 5</th>
+                        <th>Channel 6</th>
+                        <th>Channel 7</th>
+                        <th>Channel 8</th>
+                        <th>Channel 9</th>
+                        <th>Channel 10</th>
+                        <th>MAD</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="micDataTableBody">
+                </tbody>
+            </table>
+            <button id="downloadButton" class="download-button">Download MAD Data</button>
+        </div>
+        <div class="visualization-container">
+            <div class="canvas-container">
+                <canvas id="micVisualizer"></canvas>
+            </div>
+        </div>
+    </div>
+    <script>
+        const micCanvas = document.getElementById('micVisualizer');
+        const micCanvasCtx = micCanvas.getContext('2d');
+        const micDataTableBody = document.getElementById('micDataTableBody');
+        const downloadButton = document.getElementById('downloadButton');
+        const visualizationSelect = document.getElementById('visualization-select');
+        const statusDiv = document.getElementById('status');
+        const micDataDiv = document.getElementById('micData'); // Ensure micDataDiv is defined
+        const logContainer = document.getElementById('logContainer'); // Ensure logContainer is defined
 
-        // Visualization logic continues as before
+        micCanvas.width = window.innerWidth * 0.45;
+        micCanvas.height = window.innerHeight * 0.8;
 
-        function drawVIZ1() {
-            const barWidth = (canvas.width / bufferLength) * 2.5;
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const micAnalyser = audioCtx.createAnalyser();
+        micAnalyser.fftSize = 2048;
+        const micBufferLength = micAnalyser.frequencyBinCount;
+        const micDataArray = new Uint8Array(micBufferLength);
+
+        const madData = [];
+        let currentDayLog = { day: '', logs: [] };
+        let currentHourLog = { hour: '', logs: [] };
+        let currentMinuteLog = { minute: '', logs: [] };
+
+        function drawMic() {
+            requestAnimationFrame(drawMic);
+
+            micAnalyser.getByteFrequencyData(micDataArray);
+
+            micCanvasCtx.fillStyle = 'black';
+            micCanvasCtx.fillRect(0, 0, micCanvas.width, micCanvas.height);
+
+            const barWidth = (micCanvas.width / micBufferLength) * 2.5;
             let barHeight;
             let x = 0;
-            for (let i = 0; i < bufferLength; i++) {
-                barHeight = dataArray[i] / 2;
-                ctx.fillStyle = `rgb(${barHeight + 100}, 50, 50)`;
-                ctx.fillRect(x, canvas.height - barHeight / 2, barWidth, barHeight / 2);
+
+            for (let i = 0; i < micBufferLength; i++) {
+                barHeight = micDataArray[i] / 2;
+                micCanvasCtx.fillStyle = `rgb(${barHeight + 100}, 50, 50)`;
+                micCanvasCtx.fillRect(x, micCanvas.height - barHeight / 2, barWidth, barHeight / 2);
                 x += barWidth + 1;
             }
-        }
-        function drawVIZ2() {
-            ctx.beginPath();
-            for (let i = 0; i < bufferLength; i++) {
-                const value = dataArray[i];
-                ctx.lineTo(i * canvas.width / bufferLength, canvas.height - value);
+
+            const timestamp = new Date();
+            const day = timestamp.toDateString();
+            const hour = timestamp.getHours();
+            const minute = timestamp.getMinutes();
+            const second = timestamp.getSeconds();
+            const mad = micDataArray.reduce((acc, val) => acc + val, 0) / micBufferLength;
+
+            console.log('Timestamp:', timestamp.toLocaleString(), 'MAD:', mad.toFixed(2));
+
+            if (minute !== currentMinuteLog.minute) {
+                currentMinuteLog.minute = minute;
+                currentMinuteLog.logs = [];
+                currentHourLog.logs.push(currentMinuteLog);
+                currentMinuteLog = { minute, logs: [] };
             }
-            ctx.strokeStyle = 'cyan';
-            ctx.stroke();
-        }
-        function drawVIZ3() {
-            for (let i = 0; i < bufferLength; i++) {
-                ctx.beginPath();
-                const radius = dataArray[i] / 5;
-                ctx.arc(canvas.width / 2, canvas.height / 2, radius, 0, 2 * Math.PI);
-                ctx.strokeStyle = `hsl(${i * 3.6}, 100%, 50%)`;
-                ctx.stroke();
+
+            if (hour !== currentHourLog.hour) {
+                currentHourLog.hour = hour;
+                currentHourLog.logs = [];
+                currentDayLog.logs.push(currentHourLog);
+                currentHourLog = { hour, logs: [] };
             }
-        }
-        function drawVIZ4() {
-            for (let i = 0; i < bufferLength; i++) {
-                const y = Math.random() * canvas.height;
-                ctx.fillStyle = `rgba(255, ${dataArray[i]}, ${dataArray[bufferLength - i]}, 0.5)`;
-                ctx.fillRect(i * 2, y, 2, 10);
+
+            if (day !== currentDayLog.day) {
+                currentDayLog.day = day;
+                currentDayLog.logs = [];
+                madData.push(currentDayLog);
+                currentDayLog = { day, logs: [] };
             }
-        }
-        function drawVIZ5() {
-            ctx.fillStyle = 'black';
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            for (let i = 0; i < bufferLength; i += 4) {
-                const angle = (i / bufferLength) * 2 * Math.PI;
-                const radius = dataArray[i];
-                const x = canvas.width / 2 + radius * Math.cos(angle);
-                const y = canvas.height / 2 + radius * Math.sin(angle);
-                ctx.fillStyle = `hsl(${angle * 180 / Math.PI}, 100%, 50%)`;
-                ctx.beginPath();
-                ctx.arc(x, y, 3, 0, 2 * Math.PI);
-                ctx.fill();
-            }
-        }
-        function drawVIZ6() {
-            const gradient = ctx.createLinearGradient(0, 0, canvas.width, 0);
-            gradient.addColorStop(0, "red");
-            gradient.addColorStop(1, "blue");
-            ctx.fillStyle = gradient;
-            for (let i = 0; i < bufferLength; i++) {
-                ctx.fillRect(i * 2, canvas.height - dataArray[i], 2, dataArray[i]);
+
+            currentMinuteLog.logs.push({ timestamp, data: micDataArray.slice(), mad });
+
+            updateLogDisplay();
+            updateVisualization();
+
+            // Display the first few values of micDataArray on the page
+            if (micDataDiv) {
+                micDataDiv.textContent = 'Mic Data Array: ' + micDataArray.slice(0, 10).join(', ');
+            } else {
+                console.error('micDataDiv is undefined');
             }
         }
-        function drawVIZ7() {
-            ctx.font = "14px monospace";
-            ctx.fillStyle = "lime";
-            for (let i = 0; i < 20; i++) {
-                ctx.fillText(dataArray[i], 10, 20 * (i + 1));
+
+        function updateLogDisplay() {
+            logContainer.innerHTML = '';
+
+            madData.forEach(dayLog => {
+                const daySection = createLogSection(dayLog.day, dayLog.logs, 'hour');
+                logContainer.appendChild(daySection);
+            });
+        }
+
+        function createLogSection(title, logs, nextLevel) {
+            const section = document.createElement('div');
+            section.className = 'log-section';
+
+            const header = document.createElement('div');
+            header.className = 'log-section-header';
+            header.textContent = title;
+            header.onclick = () => {
+                const content = section.querySelector('.log-section-content');
+                content.style.display = content.style.display === 'block' ? 'none' : 'block';
+            };
+            section.appendChild(header);
+
+            const content = document.createElement('div');
+            content.className = 'log-section-content';
+            section.appendChild(content);
+
+            logs.forEach(log => {
+                const logSection = createLogSection(log[nextLevel], log.logs, nextLevel === 'hour' ? 'minute' : 'second');
+                content.appendChild(logSection);
+            });
+
+            if (nextLevel === 'second') {
+                const table = document.createElement('table');
+                const thead = document.createElement('thead');
+                const tr = document.createElement('tr');
+                tr.innerHTML = '<th>Timestamp</th><th>Data</th><th>MAD</th><th>Actions</th>';
+                thead.appendChild(tr);
+                table.appendChild(thead);
+
+                const tbody = document.createElement('tbody');
+                logs.forEach(log => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${log.timestamp.toLocaleString()}</td>
+                        <td>${log.data.slice(0, 10).join(', ')}</td>
+                        <td>${log.mad.toFixed(2)}</td>
+                        <td>
+                            <button class="copy-button" onclick="copyToClipboard('${log.data.join(', ')}')">Copy</button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+                table.appendChild(tbody);
+
+                content.appendChild(table);
+            }
+
+            return section;
+        }
+
+        function copyToClipboard(text) {
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            alert('Copied to clipboard!');
+        }
+
+        downloadButton.onclick = () => {
+            const jsonData = JSON.stringify(madData, null, 2);
+            const blob = new Blob([jsonData], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'mad_data.json';
+            a.click();
+            URL.revokeObjectURL(url);
+        };
+
+        visualizationSelect.onchange = () => {
+            updateVisualization();
+        };
+
+        function updateVisualization() {
+            const selectedVisualization = visualizationSelect.value;
+            micCanvasCtx.clearRect(0, 0, micCanvas.width, micCanvas.height);
+
+            if (madData.length === 0) {
+                console.log('No data to visualize');
+                return;
+            }
+
+            const timestamps = madData.map(entry => entry.timestamp.toLocaleTimeString());
+            const mads = madData.map(entry => entry.mad);
+
+            console.log('Visualizing with:', selectedVisualization);
+            console.log('Timestamps:', timestamps);
+            console.log('MAD Values:', mads);
+
+            switch (selectedVisualization) {
+                case 'bar':
+                    drawBarGraph(timestamps, mads);
+                    break;
+                case 'line':
+                    drawLineGraph(timestamps, mads);
+                    break;
+                case 'wave':
+                    drawWaveform(mads);
+                    break;
+                case 'scatter':
+                    drawScatterPlot(timestamps, mads);
+                    break;
+                case 'radar':
+                    drawRadarChart(timestamps, mads);
+                    break;
+                default:
+                    console.log('Unknown visualization type:', selectedVisualization);
             }
         }
-        function drawVIZ8() {
-            const imgData = ctx.createImageData(canvas.width, canvas.height);
-            for (let i = 0; i < imgData.data.length; i += 4) {
-                imgData.data[i] = dataArray[(i / 4) % bufferLength]; // R
-                imgData.data[i + 1] = 0; // G
-                imgData.data[i + 2] = 255 - dataArray[(i / 4) % bufferLength]; // B
-                imgData.data[i + 3] = 255;
-            }
-            ctx.putImageData(imgData, 0, 0);
+
+        function drawBarGraph(timestamps, mads) {
+            const barWidth = micCanvas.width / mads.length;
+            mads.forEach((mad, index) => {
+                const x = index * barWidth;
+                const y = micCanvas.height - (mad * micCanvas.height / 255);
+                micCanvasCtx.fillStyle = `hsl(${mad * 2}, 100%, 50%)`;
+                micCanvasCtx.fillRect(x, y, barWidth, micCanvas.height - y);
+            });
         }
-        function drawVIZ9() {
-            ctx.strokeStyle = "white";
-            ctx.beginPath();
-            for (let i = 0; i < bufferLength; i++) {
-                ctx.lineTo(i, Math.sin(dataArray[i] / 255 * 2 * Math.PI) * canvas.height / 2 + canvas.height / 2);
-            }
-            ctx.stroke();
+
+        function drawLineGraph(timestamps, mads) {
+            micCanvasCtx.beginPath();
+            micCanvasCtx.moveTo(0, micCanvas.height - (mads[0] * micCanvas.height / 255));
+            mads.forEach((mad, index) => {
+                const x = (index / mads.length) * micCanvas.width;
+                const y = micCanvas.height - (mad * micCanvas.height / 255);
+                micCanvasCtx.lineTo(x, y);
+            });
+            micCanvasCtx.strokeStyle = 'white';
+            micCanvasCtx.lineWidth = 2;
+            micCanvasCtx.stroke();
         }
-        function drawVIZ10() {
-            ctx.fillStyle = "rgba(0,0,0,0.2)";
-            ctx.fillRect(0, 0, canvas.width, canvas.height);
-            for (let i = 0; i < bufferLength; i += 3) {
-                const length = dataArray[i];
-                ctx.fillStyle = `hsl(${length}, 100%, 50%)`;
-                ctx.fillRect(Math.random() * canvas.width, Math.random() * canvas.height, 5, 5);
+
+        function drawWaveform(mads) {
+            micCanvasCtx.beginPath();
+            mads.forEach((mad, index) => {
+                const x = (index / mads.length) * micCanvas.width;
+                const y = micCanvas.height / 2 + (mad * micCanvas.height / 510) - 255;
+                if (index === 0) micCanvasCtx.moveTo(x, y);
+                else micCanvasCtx.lineTo(x, y);
+            });
+            micCanvasCtx.strokeStyle = 'white';
+            micCanvasCtx.lineWidth = 2;
+            micCanvasCtx.stroke();
+        }
+
+        function drawScatterPlot(timestamps, mads) {
+            mads.forEach((mad, index) => {
+                const x = (index / mads.length) * micCanvas.width;
+                const y = micCanvas.height - (mad * micCanvas.height / 255);
+                micCanvasCtx.fillStyle = `hsl(${mad * 2}, 100%, 50%)`;
+                micCanvasCtx.beginPath();
+                micCanvasCtx.arc(x, y, 3, 0, Math.PI * 2);
+                micCanvasCtx.fill();
+            });
+        }
+
+        function drawRadarChart(timestamps, mads) {
+            const numPoints = mads.length;
+            const angleStep = (Math.PI * 2) / numPoints;
+            micCanvasCtx.beginPath();
+            micCanvasCtx.moveTo(micCanvas.width / 2 + mads[0] * (micCanvas.width / 510), micCanvas.height / 2);
+            mads.forEach((mad, index) => {
+                const angle = index * angleStep;
+                const x = micCanvas.width / 2 + mad * (micCanvas.width / 510) * Math.cos(angle);
+                const y = micCanvas.height / 2 + mad * (micCanvas.width / 510) * Math.sin(angle);
+                micCanvasCtx.lineTo(x, y);
+            });
+            micCanvasCtx.closePath();
+            micCanvasCtx.strokeStyle = 'white';
+            micCanvasCtx.lineWidth = 2;
+            micCanvasCtx.stroke();
+        }
+
+        async function connectMicrophone() {
+            try {
+                console.log('Requesting microphone access...');
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                console.log('Microphone access granted.');
+
+                const source = audioCtx.createMediaStreamSource(stream);
+                source.connect(micAnalyser);
+                console.log('Microphone connected to analyser.');
+
+                drawMic();
+                statusDiv.textContent = 'Status: Microphone connected and visualizing.';
+                console.log('Microphone connected and visualizing.');
+            } catch (err) {
+                statusDiv.textContent = 'Status: Error accessing microphone.';
+                console.error('Error accessing microphone:', err);
             }
         }
+
+        connectMicrophone();
     </script>
 </body>
 </html>
