@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Music Visualizer</title>
+    <style>
+        body {
+            margin: 0;
+            display: flex;
+            background: black;
+            color: white;
+            font-family: Arial, sans-serif;
+        }
+        .container {
+            display: flex;
+            width: 100%;
+            height: 100vh;
+        }
+        .visualizer-container {
+            display: flex;
+            justify-content: center;
+            width: 70%;
+            height: 100%;
+        }
+        canvas {
+            border: 1px solid white;
+            width: 90%;
+            height: 90%;
+        }
+        #status {
+            margin-top: 20px;
+            text-align: center;
+        }
+        #micData {
+            margin-top: 20px;
+            text-align: center;
+            font-size: 14px;
+        }
+        .side-panel {
+            width: 30%;
+            height: 100%;
+            padding: 10px;
+            box-sizing: border-box;
+            overflow-y: auto;
+        }
+        .log-section {
+            margin-bottom: 20px;
+        }
+        .log-section-header {
+            cursor: pointer;
+            font-weight: bold;
+        }
+        .log-section-content {
+            display: none;
+        }
+        .log-section-content table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .log-section-content th, .log-section-content td {
+            border: 1px solid white;
+            padding: 8px;
+        }
+        .log-section-content th {
+            background-color: #444;
+        }
+        .copy-button, .download-button {
+            margin-top: 10px;
+            padding: 5px 10px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="visualizer-container">
+            <canvas id="micVisualizer"></canvas>
+            <div id="status">Status: Waiting for microphone input...</div>
+            <div id="micData">Mic Data Array: </div>
+        </div>
+        <div class="side-panel" id="sidePanel">
+            <div id="logContainer"></div>
+            <button id="downloadButton" class="download-button">Download MAD Data</button>
+        </div>
+    </div>
+    <script>
+        const micCanvas = document.getElementById('micVisualizer');
+        const micCanvasCtx = micCanvas.getContext('2d');
+        const statusDiv = document.getElementById('status');
+        const micDataDiv = document.getElementById('micData');
+        const logContainer = document.getElementById('logContainer');
+        const downloadButton = document.getElementById('downloadButton');
+
+        micCanvas.width = window.innerWidth * 0.63;
+        micCanvas.height = window.innerHeight * 0.8;
+
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const micAnalyser = audioCtx.createAnalyser();
+        micAnalyser.fftSize = 2048;
+        const micBufferLength = micAnalyser.frequencyBinCount;
+        const micDataArray = new Uint8Array(micBufferLength);
+
+        const madData = [];
+        let currentDayLog = [];
+        let currentHourLog = [];
+        let currentMinuteLog = [];
+
+        function drawMic() {
+            requestAnimationFrame(drawMic);
+            micAnalyser.getByteFrequencyData(micDataArray);
+            micCanvasCtx.fillStyle = 'black';
+            micCanvasCtx.fillRect(0, 0, micCanvas.width, micCanvas.height);
+
+            const barWidth = (micCanvas.width / micBufferLength) * 2.5;
+            let barHeight;
+            let x = 0;
+
+            for (let i = 0; i < micBufferLength; i++) {
+                barHeight = micDataArray[i] / 2;
+                micCanvasCtx.fillStyle = `rgb(${barHeight + 100}, 50, 50)`;
+                micCanvasCtx.fillRect(x, micCanvas.height - barHeight / 2, barWidth, barHeight / 2);
+                x += barWidth + 1;
+            }
+
+            micDataDiv.textContent = 'Mic Data Array: ' + micDataArray.slice(0, 10).join(', ');
+
+            const timestamp = new Date();
+            const day = timestamp.toDateString();
+            const hour = timestamp.getHours();
+            const minute = timestamp.getMinutes();
+
+            if (minute !== currentMinuteLog.minute) {
+                currentMinuteLog.minute = minute;
+                currentMinuteLog.logs = [];
+                currentHourLog.push(currentMinuteLog);
+                currentMinuteLog = { minute, logs: [] };
+            }
+
+            if (hour !== currentHourLog.hour) {
+                currentHourLog.hour = hour;
+                currentHourLog.logs = [];
+                currentDayLog.push(currentHourLog);
+                currentHourLog = { hour, logs: [] };
+            }
+
+            if (day !== currentDayLog.day) {
+                currentDayLog.day = day;
+                currentDayLog.logs = [];
+                madData.push(currentDayLog);
+                currentDayLog = { day, logs: [] };
+            }
+
+            currentMinuteLog.logs.push({ timestamp, data: micDataArray.slice() });
+
+            updateLogDisplay();
+        }
+
+        function updateLogDisplay() {
+            logContainer.innerHTML = '';
+
+            madData.forEach(dayLog => {
+                const daySection = createLogSection(dayLog.day, dayLog.logs, 'hour');
+                logContainer.appendChild(daySection);
+            });
+        }
+
+        function createLogSection(title, logs, nextLevel) {
+            const section = document.createElement('div');
+            section.className = 'log-section';
+
+            const header = document.createElement('div');
+            header.className = 'log-section-header';
+            header.textContent = title;
+            header.onclick = () => {
+                const content = section.querySelector('.log-section-content');
+                content.style.display = content.style.display === 'block' ? 'none' : 'block';
+            };
+            section.appendChild(header);
+
+            const content = document.createElement('div');
+            content.className = 'log-section-content';
+            section.appendChild(content);
+
+            logs.forEach(log => {
+                const logSection = createLogSection(log[nextLevel], log.logs, nextLevel === 'hour' ? 'minute' : 'second');
+                content.appendChild(logSection);
+            });
+
+            if (nextLevel === 'second') {
+                const table = document.createElement('table');
+                const thead = document.createElement('thead');
+                const tr = document.createElement('tr');
+                tr.innerHTML = '<th>Timestamp</th><th>Data</th><th>Actions</th>';
+                thead.appendChild(tr);
+                table.appendChild(thead);
+
+                const tbody = document.createElement('tbody');
+                logs.forEach(log => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${log.timestamp.toLocaleString()}</td>
+                        <td>${log.data.join(', ')}</td>
+                        <td>
+                            <button class="copy-button" onclick="copyToClipboard('${log.data.join(', ')}')">Copy</button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+                table.appendChild(tbody);
+
+                content.appendChild(table);
+            }
+
+            return section;
+        }
+
+        function copyToClipboard(text) {
+            const textarea = document.createElement('textarea');
+            textarea.value = text;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            alert('Copied to clipboard!');
+        }
+
+        downloadButton.onclick = () => {
+            const jsonData = JSON.stringify(madData, null, 2);
+            const blob = new Blob([jsonData], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'mad_data.json';
+            a.click();
+            URL.revokeObjectURL(url);
+        };
+
+        async function connectMicrophone() {
+            try {
+                console.log('Requesting microphone access...');
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                console.log('Microphone access granted.');
+
+                const source = audioCtx.createMediaStreamSource(stream);
+                source.connect(micAnalyser);
+                console.log('Microphone connected to analyser.');
+
+                drawMic();
+                statusDiv.textContent = 'Status: Microphone connected and visualizing.';
+                console.log('Microphone connected and visualizing.');
+            } catch (err) {
+                statusDiv.textContent = 'Status: Error accessing microphone.';
+                console.error('Error accessing microphone:', err);
+            }
+        }
+
+        connectMicrophone();
+    </script>
+</body>
+</html>

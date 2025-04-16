@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Simplified Breathing Visualization</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(to bottom, #2d3e50, #1a232e);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      color: white;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
+    .container {
+      width: 100%;
+      max-width: 800px;
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .viz-container {
+      width: 500px;
+      height: 300px;
+      background-color: #1a2a3f;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      position: relative;
+      margin-bottom: 20px;
+      overflow: hidden;
+    }
+    .breathing-bar-wrapper {
+      position: absolute;
+      left: 50%;
+      bottom: 0;
+      width: 50px;
+      height: 100%;
+      transform: translateX(-50%);
+      overflow: hidden;
+    }
+    .breathing-bar {
+      position: absolute;
+      left: 0;
+      bottom: 0;
+      width: 100%;
+      height: 0;
+      background-color: #3498db;
+      border-radius: 5px 5px 0 0;
+    }
+    .controls-panel {
+      width: 500px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .buttons {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      margin-bottom: 10px;
+    }
+    button {
+      background: rgba(30, 39, 46, 0.8);
+      color: white;
+      padding: 8px 15px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    button:hover {
+      background: rgba(40, 50, 60, 0.8);
+    }
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .audio-meter {
+      width: 100%;
+      height: 10px;
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 5px;
+      overflow: hidden;
+      position: relative;
+      margin-bottom: 5px;
+    }
+    .audio-level {
+      height: 100%;
+      width: 0%;
+      background: linear-gradient(to right, #3498db, #e74c3c);
+      border-radius: 5px;
+    }
+    .sliders {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    .slider-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 14px;
+    }
+    .value {
+      width: 30px;
+      text-align: right;
+    }
+    .status {
+      padding: 8px 15px;
+      background: rgba(0, 0, 0, 0.3);
+      border-radius: 5px;
+      text-align: center;
+      margin-top: 5px;
+      font-size: 14px;
+    }
+    .count {
+      font-weight: bold;
+      font-size: 16px;
+      margin-top: 5px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="viz-container">
+      <div class="breathing-bar-wrapper">
+        <div class="breathing-bar" id="breathingBar"></div>
+      </div>
+    </div>
+    
+    <div class="controls-panel">
+      <div class="buttons">
+        <button id="startBtn">Start</button>
+        <button id="resetBtn">Reset</button>
+      </div>
+      
+      <div class="audio-meter">
+        <div class="audio-level" id="audioLevel"></div>
+      </div>
+      
+      <div class="count" id="cycleCount">Cycles: 0</div>
+      
+      <div class="sliders">
+        <div class="slider-group">
+          <label>
+            <span>Sensitivity:</span>
+            <input type="range" id="sensitivity" min="1" max="50" value="25">
+            <span class="value" id="sensitivityValue">25</span>
+          </label>
+          
+          <label>
+            <span>Threshold:</span>
+            <input type="range" id="threshold" min="1" max="50" value="8">
+            <span class="value" id="thresholdValue">8</span>
+          </label>
+        </div>
+        
+        <div class="slider-group">
+          <label>
+            <span>Smoothing:</span>
+            <input type="range" id="smoothing" min="1" max="20" value="3">
+            <span class="value" id="smoothingValue">3</span>
+          </label>
+          
+          <label>
+            <span>Exhale Rate:</span>
+            <input type="range" id="exhaleRate" min="1" max="20" value="10">
+            <span class="value" id="exhaleRateValue">10</span>
+          </label>
+        </div>
+      </div>
+      
+      <div class="status" id="statusText">Ready to start</div>
+    </div>
+  </div>
+
+  <script>
+    // Get elements
+    const breathingBar = document.getElementById('breathingBar');
+    const audioLevel = document.getElementById('audioLevel');
+    const startBtn = document.getElementById('startBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const statusText = document.getElementById('statusText');
+    const cycleCount = document.getElementById('cycleCount');
+    
+    // Get slider elements and values
+    const sensitivityInput = document.getElementById('sensitivity');
+    const thresholdInput = document.getElementById('threshold');
+    const smoothingInput = document.getElementById('smoothing');
+    const exhaleRateInput = document.getElementById('exhaleRate');
+    const sensitivityValue = document.getElementById('sensitivityValue');
+    const thresholdValue = document.getElementById('thresholdValue');
+    const smoothingValue = document.getElementById('smoothingValue');
+    const exhaleRateValue = document.getElementById('exhaleRateValue');
+    
+    // Update value displays when sliders change
+    sensitivityInput.addEventListener('input', () => {
+      sensitivityValue.textContent = sensitivityInput.value;
+    });
+    
+    thresholdInput.addEventListener('input', () => {
+      thresholdValue.textContent = thresholdInput.value;
+    });
+    
+    smoothingInput.addEventListener('input', () => {
+      smoothingValue.textContent = smoothingInput.value;
+    });
+    
+    exhaleRateInput.addEventListener('input', () => {
+      exhaleRateValue.textContent = exhaleRateInput.value;
+    });
+    
+    // Audio processing variables
+    let audioContext;
+    let microphone;
+    let analyser;
+    let dataArray;
+    let isProcessing = false;
+    let animationId;
+    
+    // App state
+    const state = {
+      mode: 'waiting',           // waiting, inhale, exhale
+      barHeight: 0,              // current bar height in pixels
+      cycles: 0,                 // completed cycles
+      soundLevel: 0,             // current sound level (0-100)
+      soundDetected: false,      // whether sound is detected
+      lastSoundState: false,     // previous sound state
+      maxSoundLevel: 1,          // maximum sound level (for scaling)
+      inhalingStarted: false,    // whether inhaling has started
+      exhalingStarted: false,    // whether exhaling has started
+      cycleRegistered: false     // whether current cycle has been counted
+    };
+    
+    // Start the app
+    function startApp() {
+      if (!isProcessing) {
+        initMicrophone();
+      } else {
+        startBreathing();
+      }
+    }
+    
+    // Initialize microphone
+    async function initMicrophone() {
+      try {
+        // Request microphone access
+        const stream = await navigator.mediaDevices.getUserMedia({ 
+          audio: { 
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: false
+          } 
+        });
+        
+        // Set up audio context
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        microphone = audioContext.createMediaStreamSource(stream);
+        analyser = audioContext.createAnalyser();
+        
+        // Configure analyser
+        analyser.fftSize = 128;
+        analyser.smoothingTimeConstant = 0.5;
+        const bufferLength = analyser.frequencyBinCount;
+        dataArray = new Uint8Array(bufferLength);
+        
+        // Connect microphone to analyser
+        microphone.connect(analyser);
+        
+        // Start audio processing
+        isProcessing = true;
+        
+        // Start breathing mode
+        startBreathing();
+        
+        // Start animation loop
+        animationId = requestAnimationFrame(updateFrame);
+        
+      } catch (error) {
+        console.error("Error accessing microphone:", error);
+        statusText.textContent = "Microphone error: " + error.message;
+      }
+    }
+    
+    // Start breathing mode
+    function startBreathing() {
+      // Reset state
+      state.mode = 'inhale';
+      state.barHeight = 0;
+      state.inhalingStarted = false;
+      state.exhalingStarted = false;
+      state.cycleRegistered = false;
+      
+      // Update UI
+      startBtn.disabled = true;
+      statusText.textContent = "Ready to inhale";
+      breathingBar.style.backgroundColor = "#3498db"; // Blue for inhale
+      breathingBar.style.height = "0px";
+    }
+    
+    // Reset everything
+    function resetApp() {
+      // Stop animation
+      if (animationId) {
+        cancelAnimationFrame(animationId);
+        animationId = null;
+      }
+      
+      // Clean up audio
+      if (microphone && analyser) {
+        microphone.disconnect();
+        microphone = null;
+        analyser = null;
+      }
+      
+      if (audioContext) {
+        audioContext.close();
+        audioContext = null;
+      }
+      
+      // Reset state
+      isProcessing = false;
+      state.mode = 'waiting';
+      state.barHeight = 0;
+      state.cycles = 0;
+      state.soundLevel = 0;
+      state.maxSoundLevel = 1;
+      
+      // Reset UI
+      startBtn.disabled = false;
+      statusText.textContent = "Ready to start";
+      cycleCount.textContent = "Cycles: 0";
+      audioLevel.style.width = "0%";
+      breathingBar.style.height = "0px";
+    }
+    
+    // Process one animation frame
+    function updateFrame() {
+      if (!isProcessing) return;
+      
+      // Get current audio data
+      analyser.getByteFrequencyData(dataArray);
+      
+      // Calculate sound level from lower frequencies (where breathing is most audible)
+      let sum = 0;
+      const lowerFreqBins = Math.min(20, dataArray.length);
+      
+      for (let i = 0; i < lowerFreqBins; i++) {
+        sum += dataArray[i];
+      }
+      
+      const rawLevel = sum / lowerFreqBins;
+      
+      // Get slider values
+      const sensitivity = parseInt(sensitivityInput.value);
+      const threshold = parseInt(thresholdInput.value);
+      const smoothing = parseInt(smoothingInput.value) / 10;
+      const exhaleRate = parseInt(exhaleRateInput.value) / 10;
+      
+      // Update maximum level for scaling
+      state.maxSoundLevel = Math.max(state.maxSoundLevel, rawLevel);
+      
+      // Apply smoothing
+      state.soundLevel = (smoothing * state.soundLevel) + ((1 - smoothing) * rawLevel);
+      
+      // Calculate normalized level (0-100%)
+      const normalizedLevel = Math.min(100, (state.soundLevel / state.maxSoundLevel) * 100 * (sensitivity / 25));
+      
+      // Update audio meter
+      audioLevel.style.width = normalizedLevel + "%";
+      
+      // Save previous sound state
+      state.lastSoundState = state.soundDetected;
+      
+      // Check if sound is above threshold
+      state.soundDetected = normalizedLevel >= threshold;
+      
+      // Get dimensions for visualization
+      const container = document.querySelector('.viz-container');
+      const maxHeight = container.clientHeight * 0.9; // 90% of container
+      
+      // Handle breathing visualization based on mode
+      if (state.mode === 'inhale') {
+        if (state.soundDetected) {
+          // Record that inhaling has started (for cycle tracking)
+          state.inhalingStarted = true;
+          
+          // Increase bar height based on sound level
+          const increaseAmount = (normalizedLevel / 100) * 3; // Max 3px per frame
+          state.barHeight = Math.min(maxHeight, state.barHeight + increaseAmount);
+          
+          // Update bar
+          breathingBar.style.backgroundColor = "#3498db"; // Blue for inhale
+          breathingBar.style.height = state.barHeight + "px";
+          
+          // Update status
+          statusText.textContent = "Inhaling...";
+          
+          // If bar is nearly full, suggest exhaling
+          if (state.barHeight > maxHeight * 0.9) {
+            statusText.textContent = "Ready to exhale...";
+          }
+        }
+        else if (state.inhalingStarted && state.barHeight > maxHeight * 0.3) {
+          // Sound stopped after substantial inhale - switch to exhale
+          state.mode = 'exhale';
+          state.exhalingStarted = false;
+          statusText.textContent = "Ready to exhale";
+          breathingBar.style.backgroundColor = "#e74c3c"; // Red for exhale
+        }
+      }
+      else if (state.mode === 'exhale') {
+        if (state.soundDetected) {
+          // Record that exhaling has started
+          state.exhalingStarted = true;
+          
+          // Decrease bar height based on sound level, adjusted by exhale rate
+          const decreaseAmount = (normalizedLevel / 100) * 2 * exhaleRate; // Adjustable decrease rate
+          state.barHeight = Math.max(0, state.barHeight - decreaseAmount);
+          
+          // Update bar
+          breathingBar.style.height = state.barHeight + "px";
+          
+          // Update status
+          statusText.textContent = "Exhaling...";
+        }
+        
+        // Check if exhale is complete
+        if (state.exhalingStarted && state.barHeight < 1) {
+          // Complete the cycle
+          state.barHeight = 0;
+          breathingBar.style.height = "0px";
+          
+          // Count cycle if not already counted
+          if (!state.cycleRegistered && state.inhalingStarted) {
+            state.cycles++;
+            state.cycleRegistered = true;
+            cycleCount.textContent = `Cycles: ${state.cycles}`;
+          }
+          
+          // Start next cycle
+          state.mode = 'inhale';
+          state.inhalingStarted = false;
+          state.exhalingStarted = false;
+          state.cycleRegistered = false;
+          
+          // Update UI for next cycle
+          statusText.textContent = "Ready to inhale";
+          breathingBar.style.backgroundColor = "#3498db"; // Blue for inhale
+        }
+      }
+      
+      // Continue animation loop
+      animationId = requestAnimationFrame(updateFrame);
+    }
+    
+    // Event listeners
+    startBtn.addEventListener('click', startApp);
+    resetBtn.addEventListener('click', resetApp);
+  </script>
+</body>
+</html>

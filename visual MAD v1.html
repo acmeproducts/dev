@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Microphone Array Data Visualizer</title>
+  <style>
+    body {
+      margin: 0;
+      background: black;
+      color: white;
+      font-family: Arial, sans-serif;
+    }
+    .container {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+    }
+    .controls {
+      height: 10%;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 20px;
+      background: #222;
+    }
+    .controls button, .controls select {
+      padding: 6px 12px;
+      margin-right: 10px;
+      background: #444;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    .main-content {
+      display: flex;
+      flex: 1;
+    }
+    .table-container {
+      width: 50%;
+      height: 100%;
+      overflow-y: auto;
+      background: #111;
+      padding: 10px;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      color: white;
+      font-size: 12px;
+    }
+    th, td {
+      padding: 4px 6px;
+      border: 1px solid #333;
+      text-align: center;
+    }
+    thead th {
+      position: sticky;
+      top: 0;
+      background: #222;
+      z-index: 1;
+    }
+    .visualizer-container {
+      width: 50%;
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    canvas {
+      border: 1px solid white;
+      width: 90%;
+      height: 90%;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="controls">
+      <div>
+        <button onclick="startStream()">Start</button>
+        <button onclick="pauseStream()">Pause</button>
+        <button onclick="stopStream()">Stop</button>
+        <button onclick="downloadData()">Download</button>
+      </div>
+      <div>
+        <label for="vizSelect">Visualization:</label>
+        <select id="vizSelect" onchange="changeViz(this.value)">
+          <option value="1">VIZ1</option>
+          <option value="2">VIZ2</option>
+          <option value="3">VIZ3</option>
+          <option value="4">VIZ4</option>
+          <option value="5">VIZ5</option>
+          <option value="6">VIZ6</option>
+          <option value="7">VIZ7</option>
+          <option value="8">VIZ8</option>
+          <option value="9">VIZ9</option>
+          <option value="10">VIZ10</option>
+        </select>
+      </div>
+    </div>
+    <div class="main-content">
+      <div class="table-container">
+        <table id="madFlatTable">
+          <thead>
+            <tr>
+              <th>Date</th><th>Day</th><th>Hour</th><th>Min</th><th>Sec</th>
+              <th>CH1</th><th>CH2</th><th>CH3</th><th>CH4</th><th>CH5</th>
+              <th>CH6</th><th>CH7</th><th>CH8</th><th>CH9</th><th>CH10</th>
+              <th>Sum</th><th>Avg</th>
+            </tr>
+          </thead>
+          <tbody id="madFlatBody"></tbody>
+        </table>
+      </div>
+      <div class="visualizer-container">
+        <canvas id="micVisualizer"></canvas>
+      </div>
+    </div>
+  </div>
+  <script>
+    const canvas = document.getElementById('micVisualizer');
+    const ctx = canvas.getContext('2d');
+    canvas.width = canvas.offsetWidth;
+    canvas.height = canvas.offsetHeight;
+
+    const vizSelect = document.getElementById('vizSelect');
+    const tableBody = document.getElementById('madFlatBody');
+
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    const analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 2048;
+    const bufferLength = analyser.frequencyBinCount;
+    const dataArray = new Uint8Array(bufferLength);
+
+    let streamSource, currentViz = 1, animFrame, madInterval;
+
+    function startStream() {
+      audioCtx.resume().then(() => {
+        navigator.mediaDevices.getUserMedia({ audio: true })
+          .then(stream => {
+            streamSource = audioCtx.createMediaStreamSource(stream);
+            streamSource.connect(analyser);
+            draw();
+            updateMAD();
+          })
+          .catch(err => {
+            alert('Microphone access denied or failed.');
+            console.error(err);
+          });
+      });
+    }
+
+    function pauseStream() {
+      cancelAnimationFrame(animFrame);
+      clearInterval(madInterval);
+    }
+
+    function stopStream() {
+      pauseStream();
+      if (streamSource) streamSource.disconnect();
+    }
+
+    function downloadData() {
+      alert("Download disabled in this scope. Enable IndexedDB or static collection if needed.");
+    }
+
+    function changeViz(v) {
+      currentViz = parseInt(v);
+    }
+
+    function updateMAD() {
+      madInterval = setInterval(() => {
+        analyser.getByteFrequencyData(dataArray);
+        const now = new Date();
+        const date = now.toISOString().slice(0, 10);
+        const day = now.toLocaleDateString(undefined, { weekday: 'short' });
+        const h = now.getHours();
+        const m = now.getMinutes();
+        const s = now.getSeconds();
+
+        const bands = 10;
+        const bandData = Array.from({ length: bands }, (_, i) => {
+          const start = Math.floor(i * bufferLength / bands);
+          const end = Math.floor((i + 1) * bufferLength / bands);
+          const slice = dataArray.slice(start, end);
+          const avg = slice.reduce((a, b) => a + b, 0) / slice.length;
+          return Math.round(avg);
+        });
+
+        const sum = bandData.reduce((a, b) => a + b, 0);
+        const avg = (sum / bands).toFixed(1);
+
+        const row = document.createElement('tr');
+        row.innerHTML = `<td>${date}</td><td>${day}</td><td>${h}</td><td>${m}</td><td>${s}</td>` +
+                        bandData.map(v => `<td>${v}</td>`).join('') +
+                        `<td>${sum}</td><td>${avg}</td>`;
+        tableBody.appendChild(row);
+        if (tableBody.children.length > 1000) tableBody.removeChild(tableBody.firstChild);
+      }, 1000);
+    }
+
+    function draw() {
+      animFrame = requestAnimationFrame(draw);
+      analyser.getByteFrequencyData(dataArray);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      const vizMap = {
+        1: drawVIZ1,
+        2: drawVIZ2,
+        3: drawVIZ3,
+        4: drawVIZ4,
+        5: drawVIZ5,
+        6: drawVIZ6,
+        7: drawVIZ7,
+        8: drawVIZ8,
+        9: drawVIZ9,
+        10: drawVIZ10
+      };
+      if (vizMap[currentViz]) vizMap[currentViz]();
+    }
+    function drawVIZ1() {
+      const barWidth = (canvas.width / bufferLength) * 2.5;
+      let barHeight, x = 0;
+      for (let i = 0; i < bufferLength; i++) {
+        barHeight = dataArray[i] / 2;
+        ctx.fillStyle = `rgb(${barHeight + 100}, 50, 50)`;
+        ctx.fillRect(x, canvas.height - barHeight / 2, barWidth, barHeight / 2);
+        x += barWidth + 1;
+      }
+    }
+
+    function drawVIZ2() {
+      ctx.beginPath();
+      for (let i = 0; i < bufferLength; i++) {
+        const value = dataArray[i];
+        ctx.lineTo(i * canvas.width / bufferLength, canvas.height - value);
+      }
+      ctx.strokeStyle = 'cyan';
+      ctx.stroke();
+    }
+
+    function drawVIZ3() {
+      for (let i = 0; i < bufferLength; i++) {
+        ctx.beginPath();
+        const radius = dataArray[i] / 5;
+        ctx.arc(canvas.width / 2, canvas.height / 2, radius, 0, 2 * Math.PI);
+        ctx.strokeStyle = `hsl(${i * 3.6}, 100%, 50%)`;
+        ctx.stroke();
+      }
+    }
+
+    function drawVIZ4() {
+      const barCount = 64;
+      for (let i = 0; i < barCount; i++) {
+        const idx = Math.floor(i * bufferLength / barCount);
+        const height = dataArray[idx];
+        const x = (i / barCount) * canvas.width;
+        const y = Math.random() * canvas.height;
+        ctx.fillStyle = `rgba(${height + 100}, ${255 - height}, 255, 0.4)`;
+        ctx.fillRect(x, y, 4, height / 4);
+      }
+    }
+
+    function drawVIZ5() {
+      ctx.fillStyle = 'black';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      for (let i = 0; i < bufferLength; i += 4) {
+        const angle = (i / bufferLength) * 2 * Math.PI;
+        const radius = dataArray[i];
+        const x = canvas.width / 2 + radius * Math.cos(angle);
+        const y = canvas.height / 2 + radius * Math.sin(angle);
+        ctx.fillStyle = `hsl(${angle * 180 / Math.PI}, 100%, 50%)`;
+        ctx.beginPath();
+        ctx.arc(x, y, 3, 0, 2 * Math.PI);
+        ctx.fill();
+      }
+    }
+
+    function drawVIZ6() {
+      const gradient = ctx.createLinearGradient(0, 0, canvas.width, 0);
+      gradient.addColorStop(0, "red");
+      gradient.addColorStop(1, "blue");
+      ctx.fillStyle = gradient;
+      for (let i = 0; i < bufferLength; i++) {
+        ctx.fillRect(i * 2, canvas.height - dataArray[i], 2, dataArray[i]);
+      }
+    }
+
+    function drawVIZ7() {
+      ctx.font = "14px monospace";
+      ctx.fillStyle = "lime";
+      for (let i = 0; i < 20; i++) {
+        ctx.fillText(dataArray[i], 10, 20 * (i + 1));
+      }
+    }
+
+    function drawVIZ8() {
+      const imgData = ctx.createImageData(canvas.width, canvas.height);
+      for (let i = 0; i < imgData.data.length; i += 4) {
+        const val = dataArray[(i / 4) % bufferLength];
+        imgData.data[i] = val;
+        imgData.data[i + 1] = 0;
+        imgData.data[i + 2] = 255 - val;
+        imgData.data[i + 3] = 255;
+      }
+      ctx.putImageData(imgData, 0, 0);
+    }
+
+    function drawVIZ9() {
+      ctx.strokeStyle = "white";
+      ctx.beginPath();
+      for (let i = 0; i < bufferLength; i++) {
+        ctx.lineTo(i, Math.sin(dataArray[i] / 255 * 2 * Math.PI) * canvas.height / 2 + canvas.height / 2);
+      }
+      ctx.stroke();
+    }
+
+    function drawVIZ10() {
+      ctx.fillStyle = "rgba(0,0,0,0.05)";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      for (let i = 0; i < 100; i++) {
+        const idx = Math.floor(Math.random() * bufferLength);
+        const val = dataArray[idx];
+        const x = Math.random() * canvas.width;
+        const y = Math.random() * canvas.height;
+        ctx.fillStyle = `hsl(${val}, 100%, 50%)`;
+        ctx.beginPath();
+        ctx.arc(x, y, 2 + val / 64, 0, 2 * Math.PI);
+        ctx.fill();
+      }
+    }
+  </script>
+</body>
+</html>

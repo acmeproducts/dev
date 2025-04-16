@@ -1,0 +1,62 @@
+🧠 INTERNAL NOTE TO SELF (FOR SEPARATE SESSION USE)
+📦 YOU WILL RECEIVE:
+An uploaded HTML file — the full working baseline from the last pipeline.
+
+A copy of these instructions (this document).
+
+A list of new or modified features — clearly scoped, explicitly approved.
+
+📘 YOUR JOB IS TO:
+Reproduce the full pipeline rewrite from scratch, incorporating only the new scope, using the exact delivery standard defined below.
+
+📋 INSTRUCTIONS TO FOLLOW
+DO NOT use canvas tools, Python tools, or download file writers.
+
+DO NOT refer to prior memory or state.
+
+DO NOT chunk interactively or require confirmation.
+
+You are expected to:
+
+Parse the new feature list.
+
+Start from <html> and end at </html>.
+
+Include everything from structure to logic.
+
+Deliver the full program as ordered, valid, self-contained HTML + JS.
+
+🧱 PIPELINE FORMAT
+Output as sequential code blocks.
+
+Chunk size limit: 25,000 characters per block.
+
+Label each chunk as:
+
+<CHUNK X/Y: SECTION NAME>
+... code ...
+<PASTE COMPLETE>
+
+
+✅ COMPLETION CRITERIA
+All chunks received in one go.
+
+Each chunk is valid, copy-paste-ready.
+
+Final product is a single working .html file with changes integrated.
+
+🔒 DO NOT:
+Skip ahead
+
+Wait for input
+
+Use placeholder code
+
+Reintroduce previously removed features
+
+Modify anything outside explicitly defined feature set
+
+🔁 FINAL REMINDER
+You are running in PIPELINE GENERATION MODE [STATIC EXECUTION].
+Treat this as a cold boot — all instructions come only from the session input.
+
