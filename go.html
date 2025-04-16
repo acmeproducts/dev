@@ -3,18 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>GitHub Pages Finder</title>
+    <title>GitHub Pages Viewer</title>
     <script src="https://cdn.tailwindcss.com"></script>
 </head>
 <body class="min-h-screen bg-gray-50">
     <div class="flex h-screen flex-col">
-        <!-- Header -->
-        <header class="bg-white border-b h-14 flex items-center px-6">
-            <button id="toggleSidebar" class="text-gray-600 hover:text-gray-900 mr-4">☰</button>
-            <h1 class="text-lg font-medium text-gray-900">GitHub Pages Finder</h1>
+        <!-- Header (3%) -->
+        <header class="bg-white border-b h-[3vh] flex items-center px-4 justify-between">
+            <div class="flex items-center">
+                <button id="toggleSidebar" class="text-gray-600 hover:text-gray-900 mr-4">☰</button>
+                <h1 class="text-sm font-medium text-gray-900">GitHub Pages Viewer</h1>
+            </div>
+            <div class="flex items-center gap-2">
+                <button id="micPermission" class="text-xs px-2 py-1 bg-gray-100 hover:bg-gray-200 rounded">🎤</button>
+                <div id="micStatus" class="text-xs text-gray-500"></div>
+            </div>
         </header>
 
-        <div class="flex flex-1 overflow-hidden">
+        <div class="flex flex-1 overflow-hidden h-[95vh]">
             <!-- Sidebar -->
             <aside id="sidebar" class="w-80 bg-white border-r overflow-y-auto transition-all duration-300">
                 <div class="p-4">
@@ -41,24 +47,112 @@
             </aside>
 
             <!-- Main content -->
-            <main id="mainContent" class="flex-1 bg-white p-6 overflow-y-auto">
-                <div class="max-w-3xl mx-auto">
-                    <div class="text-center space-y-4">
-                        <h2 class="text-xl font-medium text-gray-900">Welcome to GitHub Pages Finder</h2>
-                        <p class="text-gray-600">Select a file from the sidebar to view its contents.</p>
-                    </div>
-                    <iframe id="pageViewer" class="w-full h-[calc(100vh-12rem)] mt-6 border rounded hidden"></iframe>
+            <main id="mainContent" class="flex-1 bg-white overflow-hidden">
+                <div id="zoomContainer" class="w-full h-full overflow-hidden relative">
+                    <iframe id="pageViewer" 
+                            class="w-full h-full border-0 hidden" 
+                            allow="microphone *; camera *"
+                            sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+                            loading="lazy"></iframe>
                 </div>
             </main>
         </div>
 
-        <!-- Footer -->
-        <footer class="bg-white border-t h-12 flex items-center px-6">
-            <a id="repoLink" href="#" target="_blank" class="text-sm text-gray-600 hover:text-gray-900">View Repository</a>
+        <!-- Footer (2%) -->
+        <footer class="bg-white border-t h-[2vh] flex items-center px-4 justify-between">
+            <a id="repoLink" href="#" target="_blank" class="text-xs text-gray-600 hover:text-gray-900">View Repository</a>
+            <div class="flex items-center gap-2">
+                <input type="url" id="customUrl" placeholder="Enter URL" class="text-xs px-2 py-0.5 border rounded w-64">
+                <button onclick="loadCustomUrl()" class="text-xs px-2 py-0.5 bg-gray-100 hover:bg-gray-200 rounded">Go</button>
+                <button onclick="resetZoom()" class="text-xs px-2 py-0.5 bg-gray-100 hover:bg-gray-200 rounded">Reset Zoom</button>
+            </div>
         </footer>
     </div>
 
     <script>
+        // Zoom functionality
+        const zoomContainer = document.getElementById('zoomContainer');
+        let scale = 1;
+        let panning = false;
+        let pointX = 0;
+        let pointY = 0;
+        let start = { x: 0, y: 0 };
+
+        function setTransform() {
+            zoomContainer.style.transform = `translate(${pointX}px, ${pointY}px) scale(${scale})`;
+        }
+
+        // Mouse wheel zoom
+        zoomContainer.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const xs = (e.clientX - pointX) / scale;
+            const ys = (e.clientY - pointY) / scale;
+            const delta = -e.deltaY * 0.01;
+            scale = Math.min(Math.max(1, scale + delta), 5);
+            pointX = e.clientX - xs * scale;
+            pointY = e.clientY - ys * scale;
+            setTransform();
+        });
+
+        // Touch zoom
+        let initialDistance = 0;
+        zoomContainer.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 2) {
+                e.preventDefault();
+                initialDistance = Math.hypot(
+                    e.touches[0].pageX - e.touches[1].pageX,
+                    e.touches[0].pageY - e.touches[1].pageY
+                );
+            }
+        });
+
+        zoomContainer.addEventListener('touchmove', (e) => {
+            if (e.touches.length === 2) {
+                e.preventDefault();
+                const distance = Math.hypot(
+                    e.touches[0].pageX - e.touches[1].pageX,
+                    e.touches[0].pageY - e.touches[1].pageY
+                );
+                const delta = (distance - initialDistance) * 0.01;
+                scale = Math.min(Math.max(1, scale + delta), 5);
+                initialDistance = distance;
+                setTransform();
+            }
+        });
+
+        function resetZoom() {
+            scale = 1;
+            pointX = 0;
+            pointY = 0;
+            setTransform();
+        }
+
+        // Microphone permission
+        const micButton = document.getElementById('micPermission');
+        const micStatus = document.getElementById('micStatus');
+
+        micButton.addEventListener('click', async () => {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                micStatus.textContent = 'Mic enabled';
+                micStatus.className = 'text-xs text-green-600';
+                stream.getTracks().forEach(track => track.stop());
+            } catch (err) {
+                micStatus.textContent = 'Mic denied';
+                micStatus.className = 'text-xs text-red-600';
+            }
+        });
+
+        // Custom URL loading
+        function loadCustomUrl() {
+            const url = document.getElementById('customUrl').value;
+            if (url) {
+                const iframe = document.getElementById('pageViewer');
+                iframe.src = url;
+                iframe.classList.remove('hidden');
+            }
+        }
+
         // Sidebar toggle
         const sidebar = document.getElementById('sidebar');
         const mainContent = document.getElementById('mainContent');
@@ -84,7 +178,6 @@
             errorEl.classList.add('hidden');
             resultsEl.innerHTML = '';
             
-            // Update repository link
             repoLink.href = `https://github.com/${owner}/${repo}`;
 
             try {
@@ -112,8 +205,8 @@
                         const iframe = document.getElementById('pageViewer');
                         iframe.src = pagesUrl;
                         iframe.classList.remove('hidden');
+                        resetZoom();
                         
-                        // On mobile, close sidebar after selection
                         if (window.innerWidth < 768) {
                             sidebar.classList.add('w-0');
                             sidebar.classList.remove('w-80');
