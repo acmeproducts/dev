@@ -1,0 +1,495 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#000000">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="application-name" content="4mysunshine">
+    <meta name="apple-mobile-web-app-title" content="4mysunshine">
+    <link rel="manifest" href="manifest.json">
+    <title>4mysunshine</title><style>
+    :root {
+        --safe-area-inset-top: env(safe-area-inset-top, 0px);
+        --safe-area-inset-bottom: env(safe-area-inset-bottom, 20px);
+    }
+    
+    * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+        -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+        margin: 0;
+        overflow: hidden;
+        background: #000;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+        height: 100vh;
+        height: -webkit-fill-available;
+        overscroll-behavior: none;
+        position: fixed;
+        width: 100%;
+    }
+
+    canvas {
+        display: block;
+        touch-action: none;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+    }
+
+    #controls {
+        position: fixed;
+        bottom: calc(20px + var(--safe-area-inset-bottom));
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(255, 255, 255, 0.2);
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+        padding: 15px 25px;
+        border-radius: 18px;
+        color: white;
+        display: flex;
+        gap: 20px;
+        align-items: center;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        z-index: 1000;
+        user-select: none;
+    }
+
+    .slider-container {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .slider-container label {
+        white-space: nowrap;
+        font-size: 14px;
+        font-weight: 500;
+        color: rgba(255, 255, 255, 0.9);
+    }
+
+    input[type="range"] {
+        -webkit-appearance: none;
+        width: 100px;
+        height: 4px;
+        background: rgba(255, 255, 255, 0.3);
+        border-radius: 2px;
+        outline: none;
+    }
+
+    input[type="range"]::-webkit-slider-thumb {
+        -webkit-appearance: none;
+        width: 18px;
+        height: 18px;
+        background: white;
+        border-radius: 50%;
+        cursor: pointer;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    input[type="range"]::-moz-range-thumb {
+        width: 18px;
+        height: 18px;
+        background: white;
+        border-radius: 50%;
+        cursor: pointer;
+        border: none;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+    }
+
+    @supports (padding: env(safe-area-inset-bottom)) {
+        #controls {
+            padding-bottom: max(15px, env(safe-area-inset-bottom));
+        }
+    }
+    </style></head>
+<body>
+    <canvas id="c"></canvas>
+    <div id="controls">
+        <div class="slider-container">
+            <label>Volume</label>
+            <input type="range" id="volumeSlider" min="1" max="10" value="2.5">
+        </div>
+        <div class="slider-container">
+            <label>Speed</label>
+            <input type="range" id="speedSlider" min="1" max="10" value="2.5">
+        </div>
+        <div class="slider-container">
+            <label>Color</label>
+            <input type="range" id="colorSlider" min="1" max="10" value="1">
+        </div>
+    </div>
+    <script>
+        // Core variables
+        const f = [293.66, 329.63, 369.99, 440.00, 493.88];
+        const c = document.getElementById('c');
+        const x = c.getContext('2d');
+        let w, h, r, g = 1, p = [], t = 0, n = 0, st, tl = [];
+        let dpr = window.devicePixelRatio || 1;
+
+        // State variables with higher initial volume
+        let volumeLevel = 0.75;  // 50% higher than original
+        let speedLevel = 0.5;
+        let colorRate = 0;
+        let baseColor = 200;
+        let a, m, v, d, z;
+        let pannerLeft, pannerRight; // New stereo panning nodes
+
+        // Ball object
+        const b = {
+            x: 0, y: 0, vx: 0, vy: 0, r: 5,
+            c: `hsl(${baseColor}, 70%, 85%)`,
+            a: 0,
+            brightness: 85
+        };
+
+        // Initialize audio context with stereo setup
+        const initAudioContext = () => {
+            if (!a) {
+                a = new (window.AudioContext || window.webkitAudioContext)();
+                
+                // Create main processing chain
+                m = a.createGain();         // Main gain
+                v = a.createConvolver();    // Reverb
+                d = a.createDelay();        // Delay
+                z = a.createGain();         // Output gain
+                
+                // Create stereo panning nodes
+                pannerLeft = a.createStereoPanner();
+                pannerRight = a.createStereoPanner();
+                
+                // Set panning values for stereo effect
+                pannerLeft.pan.value = -0.7;  // Left channel
+                pannerRight.pan.value = 0.7;  // Right channel
+                
+                // Connect the processing chain with stereo split
+                m.connect(v);
+                v.connect(d);
+                
+                // Split the signal to stereo panners
+                d.connect(pannerLeft);
+                d.connect(pannerRight);
+                
+                // Connect both panners to the final gain
+                pannerLeft.connect(z);
+                pannerRight.connect(z);
+                
+                // Final connection to destination
+                z.connect(a.destination);
+                
+                // Set initial gain and delay values (unchanged)
+                m.gain.value = 0.45;
+                d.delayTime.value = 0.4;
+                z.gain.value = 0.8;
+                
+                // Create stereo reverb buffer
+                const buffer = a.createBuffer(2, a.sampleRate * 4, a.sampleRate);
+                
+                // Fill left channel
+                const dataLeft = buffer.getChannelData(0);
+                for (let i = 0; i < buffer.length; i++) {
+                    dataLeft[i] = Math.exp(-i/buffer.length * 4) * (Math.random() * 2 - 1) * 0.7;
+                }
+                
+                // Fill right channel with slightly different data for true stereo
+                const dataRight = buffer.getChannelData(1);
+                for (let i = 0; i < buffer.length; i++) {
+                    dataRight[i] = Math.exp(-i/buffer.length * 4) * (Math.random() * 2 - 1) * 0.7;
+                }
+                
+                v.buffer = buffer;
+            }
+            if (a.state === 'suspended') {
+                a.resume();
+            }
+        };
+
+        // Color generation
+        const gC = () => {
+            if (colorRate === 0) {
+                b.brightness = 85 + Math.sin(t * 2) * 15;
+                return [
+                    `hsl(${baseColor}, 70%, ${b.brightness}%)`,
+                    `hsl(${baseColor}, 70%, ${Math.max(50, b.brightness - 20)}%)`,
+                    `hsl(${baseColor}, 70%, ${Math.max(40, b.brightness - 30)}%)`
+                ];
+            } else {
+                const h = t * colorRate * 20 % 360;
+                return [
+                    `hsl(${h}, 70%, 85%)`,
+                    `hsl(${(h+120)%360}, 70%, 85%)`,
+                    `hsl(${(h+240)%360}, 70%, 85%)`
+                ];
+            }
+        };
+
+        // Trail particle class
+        class TrailParticle {
+            constructor(x, y, vx, vy, c) {
+                this.x = x;
+                this.y = y;
+                this.vx = vx * 0.3 + (Math.random() - 0.5) * 0.5;
+                this.vy = vy * 0.3 + (Math.random() - 0.5) * 0.5;
+                this.life = 1;
+                this.color = c;
+                this.size = Math.random() * 4 + 2;
+                this.decay = 0.01 + Math.random() * 0.01;
+                this.angle = Math.atan2(vy, vx);
+                this.speed = Math.sqrt(vx * vx + vy * vy);
+            }
+
+            update() {
+                const curveStrength = 0.1;
+                this.angle += curveStrength * this.life;
+                this.x += Math.cos(this.angle) * this.speed * speedLevel;
+                this.y += Math.sin(this.angle) * this.speed * speedLevel;
+                this.life -= this.decay;
+                this.size *= 0.98;
+            }
+
+            draw(ctx) {
+                ctx.beginPath();
+                ctx.arc(w/2 + this.x, h/2 + this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = this.color.replace(')', `,${this.life})`).replace('hsl', 'hsla');
+                ctx.fill();
+            }
+        }
+
+        // Particle generation
+        const gP = () => {
+            p = [];
+            const n = Math.floor(w*h*0.0002);
+            for(let i=0; i<n; i++) {
+                const ang = Math.random()*Math.PI*2;
+                const d = Math.random()*r*0.9;
+                p.push({
+                    x: Math.cos(ang)*d,
+                    y: Math.sin(ang)*d,
+                    r: 1,
+                    c: gC()[Math.floor(Math.random()*3)]
+                });
+            }
+        };
+
+        // Trail management
+        const aT = (x, y, vx, vy, c) => {
+            for(let i = 0; i < 3; i++) {
+                tl.push(new TrailParticle(x, y, vx, vy, c));
+            }
+            if(tl.length > 200) tl.splice(0, 3);
+        };
+
+        const uT = () => {
+            tl.forEach(particle => particle.update());
+            tl = tl.filter(particle => particle.life > 0);
+        };
+
+        // Sound generation with position-based panning
+        const pN = (i, time) => {
+            if (!a) return;
+            
+            // Calculate stereo position based on the ball's position
+            // Normalized x-position from -1 to 1 for stereo positioning
+            const panPosition = b.x / (r * 0.9);
+            
+            // Create fundamental oscillator
+            const o = a.createOscillator();
+            const g = a.createGain();
+            
+            // Create position-dependent stereo panner for this note
+            const notePanner = a.createStereoPanner();
+            notePanner.pan.value = Math.max(-1, Math.min(1, panPosition));
+            
+            // Connect oscillator through gain and panner
+            o.connect(g);
+            g.connect(notePanner);
+            notePanner.connect(m);
+            
+            o.frequency.value = f[i];
+            o.type = 'sine';
+            g.gain.setValueAtTime(0, time);
+            g.gain.linearRampToValueAtTime(0.6 * volumeLevel, time + 0.1);
+            g.gain.exponentialRampToValueAtTime(0.001, time + 2.5);
+            o.start(time);
+            o.stop(time + 2.5);
+            
+            // Create harmonics oscillator with independent panner
+            const h = a.createOscillator();
+            const j = a.createGain();
+            
+            // Create slightly different panning for harmonic to enhance stereo field
+            const harmonicPanner = a.createStereoPanner();
+            // Slightly offset panning value for richer stereo image
+            harmonicPanner.pan.value = Math.max(-1, Math.min(1, panPosition * 0.8));
+            
+            h.connect(j);
+            j.connect(harmonicPanner);
+            harmonicPanner.connect(m);
+            
+            h.frequency.value = f[i]*1.5;
+            h.type = 'sine';
+            j.gain.setValueAtTime(0, time);
+            j.gain.linearRampToValueAtTime(0.3 * volumeLevel, time + 0.1);
+            j.gain.exponentialRampToValueAtTime(0.001, time + 2);
+            h.start(time);
+            h.stop(time + 2);
+            n++;
+        };
+
+        // Collision detection and response
+        const cC = () => {
+            const d = Math.sqrt(b.x*b.x + b.y*b.y);
+            if(d + b.r > r) {
+                const ang = Math.atan2(b.y, b.x);
+                b.x = Math.cos(ang)*(r-b.r);
+                b.y = Math.sin(ang)*(r-b.r);
+                const nx = Math.cos(ang), ny = Math.sin(ang);
+                const dot = b.vx*nx + b.vy*ny;
+                const angle = (Math.random() * 2 + 2) * Math.PI / 180 * (Math.random() < 0.5 ? 1 : -1);
+                const cs = Math.cos(angle);
+                const sn = Math.sin(angle);
+                const vx = b.vx - 2*dot*nx;
+                const vy = b.vy - 2*dot*ny;
+                b.vx = vx*cs - vy*sn;
+                b.vy = vx*sn + vy*cs;
+                const noteIndex = Math.floor((ang + Math.PI) / (2 * Math.PI) * f.length);
+                pN(noteIndex, a ? a.currentTime : 0);
+                b.c = gC()[Math.floor(Math.random()*3)];
+                aT(b.x, b.y, b.vx, b.vy, b.c);
+            }
+
+            p.forEach(q => {
+                const dx = b.x-q.x, dy = b.y-q.y;
+                const d = Math.sqrt(dx*dx + dy*dy);
+                if(d < b.r+q.r) {
+                    const ang = Math.atan2(dy,dx);
+                    b.x = q.x + Math.cos(ang)*(b.r+q.r);
+                    b.y = q.y + Math.sin(ang)*(b.r+q.r);
+                    const nx = Math.cos(ang), ny = Math.sin(ang);
+                    const dot = b.vx*nx + b.vy*ny;
+                    const angle = (Math.random() * 2 + 2) * Math.PI / 180 * (Math.random() < 0.5 ? 1 : -1);
+                    const cs = Math.cos(angle);
+                    const sn = Math.sin(angle);
+                    const vx = b.vx - 2*dot*nx;
+                    const vy = b.vy - 2*dot*ny;
+                    b.vx = vx*cs - vy*sn;
+                    b.vy = vx*sn + vy*cs;
+                    const noteIndex = Math.floor(d / (r/f.length));
+                    pN(noteIndex % f.length, a ? a.currentTime : 0);
+                    b.c = q.c;
+                    aT(b.x, b.y, b.vx, b.vy, b.c);
+                }
+            });
+        };
+
+        // Main update loop
+        const u = () => {
+            if(!g) return;
+            t += 0.016;
+            
+            const cs = gC();
+            const gr = x.createRadialGradient(w/2,h/2,0,w/2,h/2,r);
+            gr.addColorStop(0,cs[0]);
+            gr.addColorStop(1,cs[1]);
+            x.fillStyle = gr;
+            x.fillRect(0,0,w,h);
+            
+            x.beginPath();
+            x.arc(w/2,h/2,r,0,Math.PI*2);
+            x.strokeStyle = cs[2];
+            x.lineWidth = 2;
+            x.stroke();
+            
+            uT();
+            
+            b.x += b.vx * speedLevel;
+            b.y += b.vy * speedLevel;
+            const s = Math.sqrt(b.vx*b.vx + b.vy*b.vy);
+            if(s < 3) {
+                b.vx *= 1.005;
+                b.vy *= 1.005;
+            } else if(s > 6) {
+                b.vx *= 0.995;
+                b.vy *= 0.995;
+            }
+            
+            cC();
+            
+            p.forEach(q => {
+                x.beginPath();
+                x.arc(w/2+q.x,h/2+q.y,q.r,0,Math.PI*2);
+                x.fillStyle = q.c;
+                x.fill();
+            });
+            
+            x.beginPath();
+            x.arc(w/2+b.x,h/2+b.y,b.r,0,Math.PI*2);
+            x.fillStyle = b.c;
+            x.fill();
+            
+            aT(b.x, b.y, b.vx, b.vy, b.c);
+            tl.forEach(particle => particle.draw(x));
+            
+            requestAnimationFrame(u);
+        };
+
+        // Window resize handling
+        const rS = () => {
+            w = window.innerWidth;
+            h = window.innerHeight;
+            r = Math.min(w,h)*0.45;
+            c.width = w * dpr;
+            c.height = h * dpr;
+            c.style.width = w + 'px';
+            c.style.height = h + 'px';
+            x.scale(dpr, dpr);
+            gP();
+        };
+
+        // Initialize
+        window.onload = () => {
+            rS();
+            window.onresize = rS;
+            document.onclick = initAudioContext;
+            document.ontouchstart = initAudioContext;
+            
+            // Initial velocity
+            b.vx = (Math.random()-0.5)*10;
+            b.vy = (Math.random()-0.5)*10;
+            
+            // UI controls
+            document.getElementById('volumeSlider').oninput = (e) => {
+                volumeLevel = e.target.value / 10;
+            };
+            
+            document.getElementById('speedSlider').oninput = (e) => {
+                speedLevel = e.target.value / 10;
+            };
+            
+            document.getElementById('colorSlider').oninput = (e) => {
+                colorRate = (e.target.value - 1) / 9;
+            };
+            
+            u();
+        };
+        
+        // Fix typo in the original code (rs should be rS)
+        window.addEventListener('load', () => {
+            rS();
+            b.a = 1;  // Activate ball movement
+            b.vx = (Math.random() - 0.5) * 10;  // Initial velocity
+            b.vy = (Math.random() - 0.5) * 10;
+            u();  // Start animation
+        });
+</script>
+    </body>
+</html>
