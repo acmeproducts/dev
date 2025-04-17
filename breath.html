@@ -1,0 +1,1687 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Enhanced Breathing App v2.0</title>
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      height: 100%;
+      overflow: hidden;
+      background: linear-gradient(to bottom, #2d3e50, #1a232e);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      color: white;
+      touch-action: manipulation;
+    }
+    canvas {
+      display: block;
+      width: 100%;
+      height: 100%;
+      cursor: pointer;
+    }
+    .controls {
+      position: fixed;
+      top: 10px;
+      right: 10px;
+      z-index: 1000;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 10px;
+    }
+    .control-item {
+      background: rgba(30, 39, 46, 0.8);
+      color: white;
+      padding: 8px 12px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 14px;
+      transition: background 0.3s;
+      min-width: 120px;
+      text-align: center;
+    }
+    .control-item:hover {
+      background: rgba(40, 50, 60, 0.8);
+    }
+    select.control-item {
+      appearance: none;
+      background-image: url("data:image/svg+xml;utf8,<svg fill='white' height='24' viewBox='0 0 24 24' width='24' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/><path d='M0 0h24v24H0z' fill='none'/></svg>");
+      background-repeat: no-repeat;
+      background-position: right 5px center;
+      padding-right: 28px;
+    }
+    .instructions {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(30, 39, 46, 0.8);
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 14px;
+      text-align: center;
+      z-index: 1000;
+      max-width: 400px;
+      transition: opacity 0.5s;
+      opacity: 0;
+    }
+    .toast {
+      position: fixed;
+      top: 60px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.7);
+      color: white;
+      padding: 10px 20px;
+      border-radius: 8px;
+      z-index: 2000;
+      opacity: 0;
+      transition: opacity 0.3s;
+    }
+
+    /* Parameter Panel - Fixed positioning and improved hide behavior */
+    .parameter-panel {
+      position: fixed;
+      top: 0;
+      left: 0;
+      z-index: 1000;
+      background: rgba(20, 30, 40, 0.9);
+      border-radius: 0 0 8px 0;
+      padding: 15px;
+      width: 320px;
+      height: 100%;
+      transition: transform 0.3s;
+      transform: translateX(-100%);
+      overflow-y: auto;
+      box-shadow: 2px 0 10px rgba(0, 0, 0, 0.5);
+    }
+    .parameter-panel.open {
+      transform: translateX(0);
+    }
+    .panel-toggle {
+      position: absolute;
+      right: -40px;
+      top: 10px;
+      background: rgba(30, 39, 46, 0.9);
+      color: white;
+      border: none;
+      border-radius: 0 6px 6px 0;
+      padding: 8px;
+      cursor: pointer;
+      box-shadow: 2px 0 5px rgba(0, 0, 0, 0.3);
+    }
+    .parameter-section {
+      margin-bottom: 20px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+      padding-bottom: 15px;
+    }
+    .parameter-row {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 12px;
+      align-items: center;
+    }
+    .parameter-row label {
+      font-size: 14px;
+      flex: 2;
+      margin-right: 10px;
+    }
+    .spinner-container {
+      display: flex;
+      align-items: center;
+      flex: 1;
+    }
+    .number-input {
+      width: 70px;
+      background: rgba(40, 50, 60, 0.6);
+      color: white;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 4px;
+      padding: 4px 8px;
+      text-align: center;
+      -moz-appearance: textfield; /* Firefox */
+    }
+    .number-input::-webkit-inner-spin-button, 
+    .number-input::-webkit-outer-spin-button { 
+      -webkit-appearance: none;
+      margin: 0;
+    }
+    .spinner-button {
+      background: rgba(60, 70, 80, 0.6);
+      color: white;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 4px;
+      width: 24px;
+      height: 24px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      user-select: none;
+      margin: 0 2px;
+    }
+    .spinner-button:hover {
+      background: rgba(80, 90, 100, 0.6);
+    }
+    .parameter-title {
+      margin-top: 0;
+      margin-bottom: 15px;
+      font-size: 16px;
+      color: rgba(255, 255, 255, 0.9);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+      padding-bottom: 8px;
+    }
+    .preset-controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-bottom: 15px;
+    }
+    .preset-button {
+      background: rgba(30, 39, 46, 0.8);
+      color: white;
+      border: 1px solid rgba(255, 255, 255, 0.3);
+      border-radius: 4px;
+      padding: 6px 10px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .preset-button:hover {
+      background: rgba(40, 50, 60, 0.8);
+    }
+    .preset-input {
+      width: 100%;
+      background: rgba(40, 50, 60, 0.6);
+      color: white;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 4px;
+      padding: 6px 8px;
+      font-size: 14px;
+      margin-bottom: 8px;
+    }
+    .preset-list {
+      max-height: 120px;
+      overflow-y: auto;
+      margin-top: 10px;
+      background: rgba(20, 25, 30, 0.5);
+      border-radius: 4px;
+      padding: 5px;
+    }
+    .preset-item {
+      padding: 6px 8px;
+      border-radius: 4px;
+      cursor: pointer;
+      display: flex;
+      justify-content: space-between;
+    }
+    .preset-item:hover {
+      background: rgba(40, 50, 60, 0.6);
+    }
+    .preset-delete {
+      color: rgba(255, 100, 100, 0.8);
+      cursor: pointer;
+    }
+    .version-info {
+      position: fixed;
+      bottom: 5px;
+      right: 5px;
+      font-size: 10px;
+      color: rgba(255, 255, 255, 0.4);
+    }
+
+    /* Responsive design */
+    @media (max-width: 768px) {
+      .parameter-panel {
+        width: 280px;
+      }
+      .controls {
+        top: 10px;
+        right: 10px;
+      }
+      .control-item {
+        font-size: 12px;
+        min-width: 100px;
+        padding: 6px 10px;
+      }
+      .instructions {
+        font-size: 12px;
+        padding: 8px 16px;
+      }
+    }
+    @media (max-width: 480px) {
+      .parameter-panel {
+        width: 260px;
+      }
+      .parameter-row label {
+        font-size: 12px;
+      }
+      .number-input {
+        width: 60px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="controls">
+    <select id="visualToggle" class="control-item">
+      <option value="timeline">Visual: Timeline</option>
+      <option value="halfmoon">Visual: Half Moon</option>
+      <option value="chill">Visual: Chill</option>
+    </select>
+    <select id="soundSelector" class="control-item">
+      <option value="none">Sound: None</option>
+      <option value="tone">Sound: Sine Wave</option>
+      <option value="flow">Sound: Ocean Flow</option>
+      <option value="ambient">Sound: Ambient</option>
+      <option value="nature">Sound: Nature</option>
+    </select>
+  </div>
+
+  <div class="parameter-panel" id="parameterPanel">
+    <button class="panel-toggle" id="panelToggle">⚙️</button>
+    
+    <div class="parameter-section">
+      <h3 class="parameter-title">Presets</h3>
+      <input type="text" id="presetName" class="preset-input" placeholder="Preset name">
+      <div class="preset-controls">
+        <button id="savePresetBtn" class="preset-button">Save Preset</button>
+        <button id="loadDefaultBtn" class="preset-button">Load Default</button>
+        <button id="clearPresetsBtn" class="preset-button">Clear All</button>
+      </div>
+      <div id="presetList" class="preset-list">
+        <!-- Presets will be loaded here -->
+      </div>
+    </div>
+    
+    <div class="parameter-section">
+      <h3 class="parameter-title">Breathing Parameters</h3>
+      <div class="parameter-row">
+        <label for="inhaleTime">Inhale Duration (ms):</label>
+        <div class="spinner-container">
+          <div class="spinner-button" data-input="inhaleTime" data-action="decrement">-</div>
+          <input type="number" id="inhaleTime" class="number-input" value="5000" min="1000" max="10000" step="100">
+          <div class="spinner-button" data-input="inhaleTime" data-action="increment">+</div>
+        </div>
+      </div>
+      <div class="parameter-row">
+        <label for="holdTime">Hold Duration (ms):</label>
+        <div class="spinner-container">
+          <div class="spinner-button" data-input="holdTime" data-action="decrement">-</div>
+          <input type="number" id="holdTime" class="number-input" value="5000" min="1000" max="10000" step="100">
+          <div class="spinner-button" data-input="holdTime" data-action="increment">+</div>
+        </div>
+      </div>
+      <div class="parameter-row">
+        <label for="exhaleTime">Exhale Duration (ms):</label>
+        <div class="spinner-container">
+          <div class="spinner-button" data-input="exhaleTime" data-action="decrement">-</div>
+          <input type="number" id="exhaleTime" class="number-input" value="5000" min="1000" max="10000" step="100">
+          <div class="spinner-button" data-input="exhaleTime" data-action="increment">+</div>
+        </div>
+      </div>
+      <div class="parameter-row">
+        <label for="prepareTime">Prepare Duration (ms):</label>
+        <div class="spinner-container">
+          <div class="spinner-button" data-input="prepareTime" data-action="decrement">-</div>
+          <input type="number" id="prepareTime" class="number-input" value="3000" min="0" max="5000" step="100">
+          <div class="spinner-button" data-input="prepareTime" data-action="increment">+</div>
+        </div>
+      </div>
+      <div class="parameter-row">
+        <label for="holdBlinks">Blinks During Hold:</label>
+        <div class="spinner-container">
+          <div class="spinner-button" data-input="holdBlinks" data-action="decrement">-</div>
+          <input type="number" id="holdBlinks" class="number-input" value="4" min="0" max="10" step="1">
+          <div class="spinner-button" data-input="holdBlinks" data-action="increment">+</div>
+        </div>
+      </div>
+      <div class="parameter-row">
+        <label for="prepareBlinks">Blinks During Prepare:</label>
+        <div class="spinner-container">
+          <div class="spinner-button" data-input="prepareBlinks" data-action="decrement">-</div>
+          <input type="number" id="prepareBlinks" class="number-input" value="5" min="0" max="10" step="1">
+          <div class="spinner-button" data-input="prepareBlinks" data-action="increment">+</div>
+        </div>
+      </div>
+    </div>
+    
+    <div class="parameter-section">
+      <h3 class="parameter-title">Sound Parameters</h3>
+      <div class="parameter-row">
+        <label for="baseVolume">Initial Volume (%):</label>
+        <div class="spinner-container">
+          <div class="spinner-button" data-input="baseVolume" data-action="decrement">-</div>
+          <input type="number" id="baseVolume" class="number-input" value="20" min="0" max="100" step="5">
+          <div class="spinner-button" data-input="baseVolume" data-action="increment">+</div>
+        </div>
+      </div>
+      <div class="parameter-row">
+        <label for="volumeStep">Volume Change (%):</label>
+        <div class="spinner-container">
+          <div class="spinner-button" data-input="volumeStep" data-action="decrement">-</div>
+          <input type="number" id="volumeStep" class="number-input" value="10" min="1" max="20" step="1">
+          <div class="spinner-button" data-input="volumeStep" data-action="increment">+</div>
+        </div>
+      </div>
+      <div class="parameter-row">
+        <label for="volumeInterval">Change Interval (ms):</label>
+        <div class="spinner-container">
+          <div class="spinner-button" data-input="volumeInterval" data-action="decrement">-</div>
+          <input type="number" id="volumeInterval" class="number-input" value="250" min="50" max="1000" step="10">
+          <div class="spinner-button" data-input="volumeInterval" data-action="increment">+</div>
+        </div>
+      </div>
+      <div class="parameter-row">
+        <label for="maxVolume">Maximum Volume (%):</label>
+        <div class="spinner-container">
+          <div class="spinner-button" data-input="maxVolume" data-action="decrement">-</div>
+          <input type="number" id="maxVolume" class="number-input" value="80" min="10" max="100" step="5">
+          <div class="spinner-button" data-input="maxVolume" data-action="increment">+</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="instructions" id="instructions">
+    Touch and hold to begin breathing
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <canvas id="breathingCanvas"></canvas>
+  
+  <div class="version-info">Enhanced Breathing App v2.0 - Responsive Design & Multiple Presets</div>
+  <script>
+    // Main app variables
+    const canvas = document.getElementById("breathingCanvas");
+    const ctx = canvas.getContext("2d");
+    const instructions = document.getElementById("instructions");
+    const toast = document.getElementById("toast");
+    const visualToggle = document.getElementById("visualToggle");
+    const soundSelector = document.getElementById("soundSelector");
+    const parameterPanel = document.getElementById("parameterPanel");
+    const panelToggle = document.getElementById("panelToggle");
+    
+    // Parameter inputs
+    const inhaleTimeInput = document.getElementById("inhaleTime");
+    const holdTimeInput = document.getElementById("holdTime");
+    const exhaleTimeInput = document.getElementById("exhaleTime");
+    const prepareTimeInput = document.getElementById("prepareTime");
+    const holdBlinksInput = document.getElementById("holdBlinks");
+    const prepareBlinksInput = document.getElementById("prepareBlinks");
+    
+    // Sound parameters
+    const baseVolumeInput = document.getElementById("baseVolume");
+    const volumeStepInput = document.getElementById("volumeStep");
+    const volumeIntervalInput = document.getElementById("volumeInterval");
+    const maxVolumeInput = document.getElementById("maxVolume");
+    
+    // Preset controls
+    const presetNameInput = document.getElementById("presetName");
+    const savePresetBtn = document.getElementById("savePresetBtn");
+    const loadDefaultBtn = document.getElementById("loadDefaultBtn");
+    const clearPresetsBtn = document.getElementById("clearPresetsBtn");
+    const presetList = document.getElementById("presetList");
+
+    // Audio system variables
+    let audioContext = null;
+    let masterGain = null;
+    let oscillator = null;
+    let oscillatorGain = null;
+    let noiseSource = null;
+    let noiseGain = null;
+    let noiseFilter = null;
+    let ambientBuffer = null;
+    let ambientSource = null;
+    let natureBuffer = null;
+    let natureSource = null;
+    let volumeRampInterval = null;
+
+    // Initialize canvas
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    // Default app state
+    const defaultAppState = {
+      currentVisual: "timeline",
+      soundEnabled: false,
+      currentSoundScheme: "none",
+      breathPattern: {
+        inhale: 5000,
+        hold: 5000,
+        exhale: 5000,
+        prepare: 3000,
+        holdBlinks: 4,
+        prepareBlinks: 5
+      },
+      soundParams: {
+        baseVolume: 20,
+        volumeStep: 10,
+        volumeInterval: 250,
+        maxVolume: 80
+      },
+      visualSettings: {
+        plannedLineColor: "#1976d2",
+        actualDotColor: "#e67e22",
+        timelineHeight: 80,
+      }
+    };
+    
+    // App state - will be initialized from local storage or defaults
+    let appState = JSON.parse(JSON.stringify(defaultAppState));
+    
+    // User interaction tracking
+    const userBreathState = {
+      isActive: false,
+      isInhaling: false,
+      isHolding: false,
+      isExhaling: false,
+      startTime: performance.now(),
+      currentPhase: "waiting",
+      lastPhaseChangeTime: 0,
+      breathData: [],
+      cycleCount: 0
+    };
+    
+    // Local storage functions for presets
+    function savePreset(name) {
+      if (!name || name.trim() === '') {
+        showToast("Please enter a preset name");
+        return;
+      }
+      
+      // Get existing presets
+      let presets = JSON.parse(localStorage.getItem('breathingAppPresets') || '{}');
+      
+      // Save current state
+      presets[name] = {
+        breathPattern: appState.breathPattern,
+        soundParams: appState.soundParams,
+        currentVisual: appState.currentVisual,
+        currentSoundScheme: appState.currentSoundScheme
+      };
+      
+      // Save to localStorage
+      localStorage.setItem('breathingAppPresets', JSON.stringify(presets));
+      
+      // Save current state as the active state
+      localStorage.setItem('breathingAppCurrentState', JSON.stringify(appState));
+      
+      // Update preset list
+      updatePresetList();
+      
+      showToast(`Preset "${name}" saved successfully`);
+    }
+    
+    function loadPreset(name) {
+      // Get presets
+      let presets = JSON.parse(localStorage.getItem('breathingAppPresets') || '{}');
+      
+      if (presets[name]) {
+        // Update app state
+        appState.breathPattern = presets[name].breathPattern;
+        appState.soundParams = presets[name].soundParams;
+        appState.currentVisual = presets[name].currentVisual;
+        appState.currentSoundScheme = presets[name].currentSoundScheme;
+        
+        // Update UI
+        updateUIFromState();
+        
+        // Save current state
+        localStorage.setItem('breathingAppCurrentState', JSON.stringify(appState));
+        
+        showToast(`Preset "${name}" loaded`);
+      }
+    }
+    
+    function deletePreset(name) {
+      // Get presets
+      let presets = JSON.parse(localStorage.getItem('breathingAppPresets') || '{}');
+      
+      if (presets[name]) {
+        delete presets[name];
+        
+        // Save updated presets
+        localStorage.setItem('breathingAppPresets', JSON.stringify(presets));
+        
+        // Update preset list
+        updatePresetList();
+        
+        showToast(`Preset "${name}" deleted`);
+      }
+    }
+    
+    function clearAllPresets() {
+      localStorage.removeItem('breathingAppPresets');
+      updatePresetList();
+      showToast("All presets cleared");
+    }
+    
+    function updatePresetList() {
+      // Clear the list
+      presetList.innerHTML = '';
+      
+      // Get presets
+      let presets = JSON.parse(localStorage.getItem('breathingAppPresets') || '{}');
+      
+      // Add each preset to the list
+      for (const name in presets) {
+        const item = document.createElement('div');
+        item.className = 'preset-item';
+        
+        const nameSpan = document.createElement('span');
+        nameSpan.textContent = name;
+        nameSpan.addEventListener('click', () => loadPreset(name));
+        
+        const deleteBtn = document.createElement('span');
+        deleteBtn.className = 'preset-delete';
+        deleteBtn.textContent = '×';
+        deleteBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          deletePreset(name);
+        });
+        
+        item.appendChild(nameSpan);
+        item.appendChild(deleteBtn);
+        
+        presetList.appendChild(item);
+      }
+      
+      // If no presets, show a message
+      if (Object.keys(presets).length === 0) {
+        const emptyItem = document.createElement('div');
+        emptyItem.className = 'preset-item';
+        emptyItem.textContent = 'No saved presets';
+        presetList.appendChild(emptyItem);
+      }
+    }
+
+    // Toggle parameter panel
+    panelToggle.addEventListener("click", function() {
+      parameterPanel.classList.toggle("open");
+    });
+    
+    // Set up spinner buttons
+    document.querySelectorAll('.spinner-button').forEach(button => {
+      button.addEventListener('click', function() {
+        const input = document.getElementById(this.dataset.input);
+        const action = this.dataset.action;
+        const step = parseFloat(input.step) || 1;
+        
+        if (action === 'increment') {
+          input.value = Math.min(parseFloat(input.value) + step, parseFloat(input.max));
+        } else {
+          input.value = Math.max(parseFloat(input.value) - step, parseFloat(input.min));
+        }
+        
+        // Trigger change event
+        input.dispatchEvent(new Event('change'));
+      });
+    });
+    
+    // Update app state from inputs
+    function updateAppStateFromInputs() {
+      // Breathing parameters
+      appState.breathPattern.inhale = parseInt(inhaleTimeInput.value);
+      appState.breathPattern.hold = parseInt(holdTimeInput.value);
+      appState.breathPattern.exhale = parseInt(exhaleTimeInput.value);
+      appState.breathPattern.prepare = parseInt(prepareTimeInput.value);
+      appState.breathPattern.holdBlinks = parseInt(holdBlinksInput.value);
+      appState.breathPattern.prepareBlinks = parseInt(prepareBlinksInput.value);
+      
+      // Sound parameters
+      appState.soundParams.baseVolume = parseInt(baseVolumeInput.value);
+      appState.soundParams.volumeStep = parseInt(volumeStepInput.value);
+      appState.soundParams.volumeInterval = parseInt(volumeIntervalInput.value);
+      appState.soundParams.maxVolume = parseInt(maxVolumeInput.value);
+      
+      // Save current state to localStorage
+      localStorage.setItem('breathingAppCurrentState', JSON.stringify(appState));
+    }
+    
+    // Update UI elements from app state
+    function updateUIFromState() {
+      // Visualization and sound selectors
+      visualToggle.value = appState.currentVisual;
+      soundSelector.value = appState.currentSoundScheme;
+      
+      // Breathing parameters
+      inhaleTimeInput.value = appState.breathPattern.inhale;
+      holdTimeInput.value = appState.breathPattern.hold;
+      exhaleTimeInput.value = appState.breathPattern.exhale;
+      prepareTimeInput.value = appState.breathPattern.prepare;
+      holdBlinksInput.value = appState.breathPattern.holdBlinks;
+      prepareBlinksInput.value = appState.breathPattern.prepareBlinks;
+      
+      // Sound parameters
+      baseVolumeInput.value = appState.soundParams.baseVolume;
+      volumeStepInput.value = appState.soundParams.volumeStep;
+      volumeIntervalInput.value = appState.soundParams.volumeInterval;
+      maxVolumeInput.value = appState.soundParams.maxVolume;
+    }
+    
+    // Set up input event listeners
+    const inputElements = [
+      inhaleTimeInput, holdTimeInput, exhaleTimeInput, prepareTimeInput,
+      holdBlinksInput, prepareBlinksInput, baseVolumeInput, volumeStepInput,
+      volumeIntervalInput, maxVolumeInput
+    ];
+    
+    inputElements.forEach(input => {
+      input.addEventListener("change", function() {
+        updateAppStateFromInputs();
+        
+        // If sound is active, update sound parameters
+        if (appState.soundEnabled) {
+          updateVolumeRamp();
+        }
+      });
+    });
+    
+    // Set up preset buttons
+    savePresetBtn.addEventListener("click", function() {
+      savePreset(presetNameInput.value);
+    });
+    
+    loadDefaultBtn.addEventListener("click", function() {
+      appState = JSON.parse(JSON.stringify(defaultAppState));
+      updateUIFromState();
+      localStorage.setItem('breathingAppCurrentState', JSON.stringify(appState));
+      showToast("Default settings loaded");
+    });
+    
+    clearPresetsBtn.addEventListener("click", function() {
+      clearAllPresets();
+    });
+
+    // Function to draw a blinking dot with specified number of blinks
+    function drawBlinkingDot(x, y, numberOfBlinks, totalDuration, progress, dotColor) {
+      // Calculate which blink we're on and the phase within that blink
+      const blinkDuration = totalDuration / numberOfBlinks;
+      const currentBlink = Math.floor(progress * numberOfBlinks);
+      const blinkProgress = (progress * numberOfBlinks) % 1;
+      
+      // Show dot for first half of each blink cycle
+      const shouldShow = blinkProgress < 0.5;
+      
+      if (shouldShow || currentBlink >= numberOfBlinks) {
+        // Draw dot
+        ctx.fillStyle = dotColor;
+        ctx.beginPath();
+        ctx.arc(x, y, 8, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Draw glow
+        const gradient = ctx.createRadialGradient(x, y, 2, x, y, 16);
+        gradient.addColorStop(0, 'rgba(230, 126, 34, 0.8)');
+        gradient.addColorStop(1, 'rgba(230, 126, 34, 0)');
+        
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(x, y, 16, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+
+    // Get the total breath cycle time
+    function getTotalCycleTime() {
+      const pattern = appState.breathPattern;
+      return pattern.inhale + pattern.hold + pattern.exhale + pattern.prepare;
+    }
+
+    // Calculate breath phase intensity based on time
+    function getBreathPhaseIntensity(t) {
+      const pattern = appState.breathPattern;
+      const activeCycleTime = pattern.inhale + pattern.hold + pattern.exhale;
+      
+      const totalTime = activeCycleTime + pattern.prepare;
+      t = t % totalTime;
+      
+      if (t < activeCycleTime) {
+        if (t < pattern.inhale) {
+          return t / pattern.inhale;
+        } else if (t < pattern.inhale + pattern.hold) {
+          return 1.0;
+        } else {
+          const exhaleProgress = (t - pattern.inhale - pattern.hold) / pattern.exhale;
+          return 1.0 - exhaleProgress;
+        }
+      } else {
+        return 0;
+      }
+    }
+    
+    // Get current breath phase name
+    function getBreathPhase(t) {
+      const pattern = appState.breathPattern;
+      const activeCycleTime = pattern.inhale + pattern.hold + pattern.exhale;
+      
+      const totalTime = activeCycleTime + pattern.prepare;
+      t = t % totalTime;
+      
+      if (t >= activeCycleTime) {
+        return 'prepare';
+      }
+      
+      if (t < pattern.inhale) {
+        return 'inhale';
+      }
+      
+      if (t < pattern.inhale + pattern.hold) {
+        return 'hold';
+      }
+      
+      return 'exhale';
+    }
+    
+    // Calculate easing for smoother transitions
+    function easeInOutCubic(t) {
+      return t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2;
+    }
+    
+    // Get responsive dimensions for visualizations
+    function getResponsiveSize() {
+      const width = canvas.width;
+      const height = canvas.height;
+      
+      // Calculate optimal size based on screen dimensions
+      const minDimension = Math.min(width, height);
+      const maxDimension = Math.max(width, height);
+      
+      // For landscape orientation
+      let timelineWidth, timelineY;
+      
+      if (width > height) {
+        // Landscape orientation
+        timelineWidth = minDimension * 0.7;
+        timelineY = height * 0.6;
+      } else {
+        // Portrait orientation
+        timelineWidth = width * 0.85;
+        timelineY = height * 0.5;
+      }
+      
+      return {
+        width: timelineWidth,
+        y: timelineY,
+        radius: timelineWidth / 2,
+        dotSize: minDimension * 0.015
+      };
+    }
+    
+    // Draw the timeline visualization with updated label positions and responsive sizing
+    function drawTimelineVisualization(elapsed) {
+      const responsive = getResponsiveSize();
+      const timelineWidth = responsive.width;
+      const startX = (canvas.width - timelineWidth) / 2;
+      const timelineY = responsive.y;
+      const dotSize = responsive.dotSize;
+      
+      const pattern = appState.breathPattern;
+      const activeCycleTime = pattern.inhale + pattern.hold + pattern.exhale;
+      
+      const totalCycleTime = activeCycleTime + pattern.prepare;
+      
+      const currentCycleStart = Math.floor(elapsed / totalCycleTime) * totalCycleTime;
+      const currentCycleTime = elapsed - currentCycleStart;
+      
+      // Draw baseline - horizontal line at the bottom
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(startX, timelineY);
+      ctx.lineTo(startX + timelineWidth, timelineY);
+      ctx.stroke();
+      
+      // Draw the semicircle path
+      ctx.setLineDash([5, 3]);
+      ctx.strokeStyle = appState.visualSettings.plannedLineColor;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      
+      // Start at bottom left
+      ctx.moveTo(startX, timelineY);
+      
+      // Draw exact semicircle that meets timeline at start and end
+      const centerX = startX + timelineWidth / 2;
+      const radius = timelineWidth / 2;
+      ctx.arc(centerX, timelineY, radius, Math.PI, 0, false);
+      
+      ctx.stroke();
+      ctx.setLineDash([]);
+      
+      // Draw phase labels with updated alignments
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+      ctx.font = Math.max(12, Math.floor(dotSize * 1.5)) + 'px sans-serif';
+      
+      // Left-aligned INHALE
+      ctx.textAlign = 'left';
+      ctx.fillText('INHALE', startX, timelineY + 25);
+      
+      // Center-aligned HOLD at bottom
+      ctx.textAlign = 'center';
+      ctx.fillText('HOLD', centerX, timelineY + 25);
+      
+      // Right-aligned EXHALE
+      ctx.textAlign = 'right';
+      ctx.fillText('EXHALE', startX + timelineWidth, timelineY + 25);
+      
+      // Calculate and draw the current position dot
+      if (currentCycleTime <= activeCycleTime) {
+        // During active cycle
+        const phase = getBreathPhase(currentCycleTime);
+        let progress;
+        
+        if (phase === 'inhale') {
+          // Calculate progress within inhale phase
+          progress = currentCycleTime / pattern.inhale * 0.5; // 0 to 0.5
+        } else if (phase === 'hold') {
+          // During hold phase we stay at the apex
+          progress = 0.5;
+          
+          // Calculate progress within hold phase for blinking
+          const holdStart = pattern.inhale;
+          const holdProgress = (currentCycleTime - holdStart) / pattern.hold;
+          
+          // Position at apex
+          const apexX = centerX;
+          const apexY = timelineY - radius;
+          
+          // Draw blinking dot
+          drawBlinkingDot(apexX, apexY, pattern.holdBlinks, pattern.hold, holdProgress, appState.visualSettings.actualDotColor);
+          
+          // Skip regular dot drawing during hold phase
+          return;
+        } else if (phase === 'exhale') {
+          // Calculate progress within exhale phase
+          const exhaleStart = pattern.inhale + pattern.hold;
+          const exhaleElapsed = currentCycleTime - exhaleStart;
+          
+          // Use easing for smoother animation
+          const exhaleProgress = easeInOutCubic(exhaleElapsed / pattern.exhale);
+          progress = 0.5 + (exhaleProgress * 0.5); // 0.5 to 1.0
+        }
+        
+        // Map to semicircle position
+        const angle = Math.PI * (1 - progress);
+        const dotX = centerX + Math.cos(angle) * radius;
+        const dotY = timelineY - Math.sin(angle) * radius;
+        
+        // Draw dot with responsive size
+        ctx.fillStyle = appState.visualSettings.actualDotColor;
+        ctx.beginPath();
+        ctx.arc(dotX, dotY, dotSize, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Draw glow
+        const gradient = ctx.createRadialGradient(dotX, dotY, dotSize * 0.25, dotX, dotY, dotSize * 2);
+        gradient.addColorStop(0, 'rgba(230, 126, 34, 0.8)');
+        gradient.addColorStop(1, 'rgba(230, 126, 34, 0)');
+        
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(dotX, dotY, dotSize * 2, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        // In prepare period - blink the dot at end position
+        const dotX = startX + timelineWidth;
+        const dotY = timelineY;
+        
+        // Use the reusable blinking function
+        const prepareProgress = (currentCycleTime - activeCycleTime) / pattern.prepare;
+        drawBlinkingDot(dotX, dotY, pattern.prepareBlinks, pattern.prepare, prepareProgress, appState.visualSettings.actualDotColor);
+      }
+    }
+    
+    // Draw the Half Moon visualization with blinking at apex and responsive sizing
+    function drawHalfMoonVisualization(elapsed) {
+      const responsive = getResponsiveSize();
+      const timelineWidth = responsive.width;
+      const startX = (canvas.width - timelineWidth) / 2;
+      const timelineY = responsive.y;
+      const dotSize = responsive.dotSize;
+      
+      const pattern = appState.breathPattern;
+      const activeCycleTime = pattern.inhale + pattern.hold + pattern.exhale;
+      
+      const totalCycleTime = activeCycleTime + pattern.prepare;
+      
+      const currentCycleStart = Math.floor(elapsed / totalCycleTime) * totalCycleTime;
+      const currentCycleTime = elapsed - currentCycleStart;
+      
+      // Draw timeline base - no background rect, just the line
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(startX, timelineY);
+      ctx.lineTo(startX + timelineWidth, timelineY);
+      ctx.stroke();
+      
+      // Draw the semicircle path - SOLID LINE for Half Moon
+      ctx.setLineDash([]);
+      ctx.strokeStyle = appState.visualSettings.plannedLineColor;
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      
+      // Start at bottom left
+      ctx.moveTo(startX, timelineY);
+      
+      // Draw exact semicircle that meets timeline at start and end
+      const centerX = startX + timelineWidth / 2;
+      const radius = timelineWidth / 2;
+      ctx.arc(centerX, timelineY, radius, Math.PI, 0, false);
+      
+      ctx.stroke();
+      
+      // Draw phase labels with updated alignments
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+      ctx.font = Math.max(12, Math.floor(dotSize * 1.5)) + 'px sans-serif';
+      
+      // Left-aligned INHALE
+      ctx.textAlign = 'left';
+      ctx.fillText('INHALE', startX, timelineY + 25);
+      
+      // Center-aligned HOLD at bottom
+      ctx.textAlign = 'center';
+      ctx.fillText('HOLD', centerX, timelineY + 25);
+      
+      // Right-aligned EXHALE
+      ctx.textAlign = 'right';
+      ctx.fillText('EXHALE', startX + timelineWidth, timelineY + 25);
+      
+      // Calculate and draw the current position dot
+      if (currentCycleTime <= activeCycleTime) {
+        // During active cycle
+        const phase = getBreathPhase(currentCycleTime);
+        let progress;
+        
+        if (phase === 'inhale') {
+          // Calculate progress within inhale phase
+          progress = currentCycleTime / pattern.inhale * 0.5; // 0 to 0.5
+        } else if (phase === 'hold') {
+          // During hold phase we stay at the apex
+          progress = 0.5;
+          
+          // Calculate progress within hold phase for blinking
+          const holdStart = pattern.inhale;
+          const holdProgress = (currentCycleTime - holdStart) / pattern.hold;
+          
+          // Position at apex
+          const apexX = centerX;
+          const apexY = timelineY - radius;
+          
+          // Draw blinking dot with responsive size
+          drawBlinkingDot(apexX, apexY, pattern.holdBlinks, pattern.hold, holdProgress, appState.visualSettings.actualDotColor);
+          
+          // Skip regular dot drawing during hold phase
+          return;
+        } else if (phase === 'exhale') {
+          // Calculate progress within exhale phase
+          const exhaleStart = pattern.inhale + pattern.hold;
+          const exhaleElapsed = currentCycleTime - exhaleStart;
+          
+          // Use easing for smoother animation
+          const exhaleProgress = easeInOutCubic(exhaleElapsed / pattern.exhale);
+          progress = 0.5 + (exhaleProgress * 0.5); // 0.5 to 1.0
+        }
+        
+        // Map to semicircle position
+        const angle = Math.PI * (1 - progress);
+        const dotX = centerX + Math.cos(angle) * radius;
+        const dotY = timelineY - Math.sin(angle) * radius;
+        
+        // Draw dot with responsive size
+        ctx.fillStyle = appState.visualSettings.actualDotColor;
+        ctx.beginPath();
+        ctx.arc(dotX, dotY, dotSize, 0, Math.PI * 2);
+        ctx.fill();
+        
+        // Draw glow
+        const gradient = ctx.createRadialGradient(dotX, dotY, dotSize * 0.25, dotX, dotY, dotSize * 2);
+        gradient.addColorStop(0, 'rgba(230, 126, 34, 0.8)');
+        gradient.addColorStop(1, 'rgba(230, 126, 34, 0)');
+        
+        ctx.fillStyle = gradient;
+        ctx.beginPath();
+        ctx.arc(dotX, dotY, dotSize * 2, 0, Math.PI * 2);
+        ctx.fill();
+      } else {
+        // In prepare period - blink the dot at end position
+        const dotX = startX + timelineWidth;
+        const dotY = timelineY;
+        
+        // Use the reusable blinking function for prepare phase with responsive size
+        const prepareProgress = (currentCycleTime - activeCycleTime) / pattern.prepare;
+        drawBlinkingDot(dotX, dotY, pattern.prepareBlinks, pattern.prepare, prepareProgress, appState.visualSettings.actualDotColor);
+      }
+    }
+    
+    // New Chill visualization with improved fluidity and responsiveness
+    function drawChillVisualization(elapsed) {
+      const pattern = appState.breathPattern;
+      const activeCycleTime = pattern.inhale + pattern.hold + pattern.exhale;
+      const totalCycleTime = activeCycleTime + pattern.prepare;
+      const currentCycleStart = Math.floor(elapsed / totalCycleTime) * totalCycleTime;
+      const currentCycleTime = elapsed - currentCycleStart;
+      
+      // Get current phase
+      const phase = getBreathPhase(currentCycleTime);
+      
+      // Canvas dimensions
+      const width = canvas.width;
+      const height = canvas.height;
+      
+      // Surface configuration
+      const baseSurfaceY = height * 0.7; // Starting position (70% down)
+      const maxRise = height * 0.4;      // How far the surface rises
+      
+      // Current surface Y position
+      let surfaceY = baseSurfaceY;
+      let topLineVisible = true;
+      
+      // Calculate the current surface position based on phase
+      if (phase === 'inhale') {
+        // During inhale: surface rises
+        const inhaleProgress = currentCycleTime / pattern.inhale;
+        
+        // Apply easing for smoother movement
+        const easedProgress = easeInOutCubic(inhaleProgress);
+        surfaceY = baseSurfaceY - (easedProgress * maxRise);
+      } 
+      else if (phase === 'hold') {
+        // During hold: stay at top position and blink
+        surfaceY = baseSurfaceY - maxRise;
+        
+        // Calculate blink state during hold
+        const holdStart = pattern.inhale;
+        const holdElapsed = currentCycleTime - holdStart;
+        const holdProgress = holdElapsed / pattern.hold;
+        
+        // Blink the top line during hold if blinks specified
+        if (pattern.holdBlinks > 0) {
+          const blinkPhase = (holdProgress * pattern.holdBlinks) % 1;
+          topLineVisible = blinkPhase < 0.5; // Visible for first half of each blink
+        }
+      } 
+      else if (phase === 'exhale') {
+        // During exhale: surface falls
+        const exhaleStart = pattern.inhale + pattern.hold;
+        const exhaleElapsed = currentCycleTime - exhaleStart;
+        
+        // Apply easing for much smoother, more fluid movement during exhale
+        const exhaleProgress = easeInOutCubic(exhaleElapsed / pattern.exhale);
+        
+        surfaceY = (baseSurfaceY - maxRise) + (exhaleProgress * maxRise);
+      } 
+      else if (phase === 'prepare') {
+        // During prepare: stay at bottom position and blink
+        surfaceY = baseSurfaceY;
+        
+        // Calculate blink state during prepare
+        const prepareStart = activeCycleTime;
+        const prepareElapsed = currentCycleTime - prepareStart;
+        const prepareProgress = prepareElapsed / pattern.prepare;
+        
+        // Blink the top line during prepare if blinks specified
+        if (pattern.prepareBlinks > 0) {
+          const blinkPhase = (prepareProgress * pattern.prepareBlinks) % 1;
+          topLineVisible = blinkPhase < 0.5; // Visible for first half of each blink
+        }
+      }
+      
+      // Draw the surface
+      ctx.save();
+      
+      // Draw the surface fill with gradient
+      const surfaceGradient = ctx.createLinearGradient(0, surfaceY, 0, height);
+      
+      // Different color based on phase
+      if (phase === 'hold') {
+        surfaceGradient.addColorStop(0, 'rgba(100, 190, 240, 0.8)');  // Brighter blue during hold
+      } else if (phase === 'prepare') {
+        surfaceGradient.addColorStop(0, 'rgba(80, 120, 180, 0.7)');   // Muted blue during prepare
+      } else {
+        surfaceGradient.addColorStop(0, 'rgba(70, 150, 240, 0.8)');   // Normal blue
+      }
+      
+      surfaceGradient.addColorStop(1, 'rgba(20, 40, 80, 0.9)');       // Darker blue at bottom
+      
+      ctx.fillStyle = surfaceGradient;
+      ctx.fillRect(0, surfaceY, width, height - surfaceY);
+      // Draw the top line of the surface only if visible (for blinking effect)
+      if (topLineVisible) {
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(0, surfaceY);
+        ctx.lineTo(width, surfaceY);
+        ctx.stroke();
+      }
+      
+      // Add phase indicator text
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
+      ctx.font = Math.max(16, Math.floor(height * 0.025)) + 'px sans-serif';
+      ctx.textAlign = 'center';
+      
+      let phaseText = '';
+      switch (phase) {
+        case 'inhale': phaseText = 'Inhale...'; break;
+        case 'hold': phaseText = 'Hold...'; break;
+        case 'exhale': phaseText = 'Exhale...'; break;
+        case 'prepare': phaseText = 'Prepare...'; break;
+      }
+      
+      ctx.fillText(phaseText, width / 2, height * 0.3);
+      
+      ctx.restore();
+    }
+
+    // Initialize audio system
+    function initAudio() {
+      try {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        masterGain = audioContext.createGain();
+        masterGain.gain.value = 0.5; // 50% volume
+        masterGain.connect(audioContext.destination);
+        return true;
+      } catch(e) {
+        console.error("Failed to initialize audio:", e);
+        return false;
+      }
+    }
+    
+    // Load ambient and nature sounds
+    async function loadAudioSamples() {
+      if (!audioContext) {
+        if (!initAudio()) return;
+      }
+      
+      try {
+        // Simple ambient sound synthesis
+        const sampleRate = audioContext.sampleRate;
+        const ambientBufferSize = 4 * sampleRate; // 4 seconds
+        ambientBuffer = audioContext.createBuffer(2, ambientBufferSize, sampleRate);
+        
+        // Create ambient sound with soft harmonics
+        const leftChannel = ambientBuffer.getChannelData(0);
+        const rightChannel = ambientBuffer.getChannelData(1);
+        
+        for (let i = 0; i < ambientBufferSize; i++) {
+          const t = i / sampleRate;
+          // Layered sine waves with different frequencies for a soothing ambient sound
+          const sample = (
+            Math.sin(2 * Math.PI * 100 * t) * 0.03 + 
+            Math.sin(2 * Math.PI * 200 * t) * 0.02 +
+            Math.sin(2 * Math.PI * 300 * t) * 0.01 +
+            Math.sin(2 * Math.PI * 400 * t) * 0.005
+          );
+          
+          // Slightly different left/right channels for stereo effect
+          leftChannel[i] = sample;
+          rightChannel[i] = sample * 0.85 + Math.sin(2 * Math.PI * 250 * t) * 0.01;
+        }
+        
+        // Simple nature sound synthesis (bird chirps and wind)
+        const natureBufferSize = 5 * sampleRate; // 5 seconds
+        natureBuffer = audioContext.createBuffer(2, natureBufferSize, sampleRate);
+        
+        // Create nature sounds
+        const natureLeft = natureBuffer.getChannelData(0);
+        const natureRight = natureBuffer.getChannelData(1);
+        
+        // Wind base
+        for (let i = 0; i < natureBufferSize; i++) {
+          const t = i / sampleRate;
+          // Low frequency noise for wind sound
+          natureLeft[i] = (Math.random() * 2 - 1) * 0.03 * (1 + Math.sin(2 * Math.PI * 0.1 * t) * 0.5);
+          natureRight[i] = (Math.random() * 2 - 1) * 0.03 * (1 + Math.sin(2 * Math.PI * 0.12 * t) * 0.5);
+        }
+        
+        // Add occasional bird chirps
+        const numChirps = 10;
+        for (let c = 0; c < numChirps; c++) {
+          const chirpStart = Math.floor(Math.random() * (natureBufferSize - 0.5 * sampleRate));
+          const chirpLength = Math.floor(0.1 * sampleRate + Math.random() * 0.2 * sampleRate);
+          const chirpFreq = 2000 + Math.random() * 1000;
+          
+          for (let i = 0; i < chirpLength; i++) {
+            const t = i / sampleRate;
+            const amplitude = 0.1 * Math.sin(Math.PI * i / chirpLength); // Envelope
+            const chirp = amplitude * Math.sin(2 * Math.PI * chirpFreq * t * (1 + t * 5));
+            
+            if (chirpStart + i < natureBufferSize) {
+              natureLeft[chirpStart + i] += chirp;
+              // Slight delay for right channel for stereo effect
+              if (chirpStart + i + 50 < natureBufferSize) {
+                natureRight[chirpStart + i + 50] += chirp * 0.7;
+              }
+            }
+          }
+        }
+        
+        showToast("Sound samples loaded");
+      } catch(e) {
+        console.error("Error creating audio samples:", e);
+        showToast("Error loading sound samples");
+      }
+    }
+
+    // Start sound based on current scheme
+    function startSound() {
+      try {
+        if (!audioContext) {
+          if (!initAudio()) return;
+        } else if (audioContext.state === 'suspended') {
+          audioContext.resume();
+        }
+        
+        // Clean up any existing sound
+        stopSound();
+        
+        if (appState.currentSoundScheme === "tone") {
+          // Create oscillator for tone
+          oscillator = audioContext.createOscillator();
+          oscillator.type = 'sine';
+          oscillator.frequency.value = 100; // Low tone
+          
+          oscillatorGain = audioContext.createGain();
+          oscillatorGain.gain.value = appState.soundParams.baseVolume / 100; // Start with base volume
+          
+          oscillator.connect(oscillatorGain);
+          oscillatorGain.connect(masterGain);
+          oscillator.start();
+          
+          // Set up volume ramping based on breath cycle
+          updateVolumeRamp();
+        } 
+        else if (appState.currentSoundScheme === "flow") {
+          // Create noise source for flow sound
+          const bufferSize = 2 * audioContext.sampleRate;
+          const noiseBuffer = audioContext.createBuffer(1, bufferSize, audioContext.sampleRate);
+          const output = noiseBuffer.getChannelData(0);
+          
+          for (let i = 0; i < bufferSize; i++) {
+            output[i] = Math.random() * 2 - 1;
+          }
+          
+          noiseSource = audioContext.createBufferSource();
+          noiseSource.buffer = noiseBuffer;
+          noiseSource.loop = true;
+          
+          noiseFilter = audioContext.createBiquadFilter();
+          noiseFilter.type = 'bandpass';
+          noiseFilter.frequency.value = 500;
+          noiseFilter.Q.value = 1;
+          
+          noiseGain = audioContext.createGain();
+          noiseGain.gain.value = appState.soundParams.baseVolume / 100; // Start with base volume
+          
+          noiseSource.connect(noiseFilter);
+          noiseFilter.connect(noiseGain);
+          noiseGain.connect(masterGain);
+          noiseSource.start();
+          
+          // Set up volume ramping
+          updateVolumeRamp();
+        }
+        else if (appState.currentSoundScheme === "ambient") {
+          // Make sure ambient buffer is loaded
+          if (!ambientBuffer) {
+            loadAudioSamples();
+            showToast("Loading ambient sound...");
+            return;
+          }
+          
+          // Create ambient sound source
+          ambientSource = audioContext.createBufferSource();
+          ambientSource.buffer = ambientBuffer;
+          ambientSource.loop = true;
+          
+          oscillatorGain = audioContext.createGain();
+          oscillatorGain.gain.value = appState.soundParams.baseVolume / 100; // Start with base volume
+          
+          ambientSource.connect(oscillatorGain);
+          oscillatorGain.connect(masterGain);
+          ambientSource.start();
+          
+          // Set up volume ramping
+          updateVolumeRamp();
+        }
+        else if (appState.currentSoundScheme === "nature") {
+          // Make sure nature buffer is loaded
+          if (!natureBuffer) {
+            loadAudioSamples();
+            showToast("Loading nature sound...");
+            return;
+          }
+          
+          // Create nature sound source
+          natureSource = audioContext.createBufferSource();
+          natureSource.buffer = natureBuffer;
+          natureSource.loop = true;
+          
+          oscillatorGain = audioContext.createGain();
+          oscillatorGain.gain.value = appState.soundParams.baseVolume / 100; // Start with base volume
+          
+          natureSource.connect(oscillatorGain);
+          oscillatorGain.connect(masterGain);
+          natureSource.start();
+          
+          // Set up volume ramping
+          updateVolumeRamp();
+        }
+      } catch (error) {
+        console.error("Error starting sound:", error);
+        appState.soundEnabled = false;
+        appState.currentSoundScheme = "none";
+        soundSelector.value = "none";
+        showToast("Sound initialization failed. Sound disabled.");
+      }
+    }
+
+    // Stop all sounds
+    function stopSound() {
+      // Clear any volume ramp interval
+      if (volumeRampInterval) {
+        clearInterval(volumeRampInterval);
+        volumeRampInterval = null;
+      }
+      
+      if (oscillator) {
+        try {
+          oscillator.stop();
+          oscillator.disconnect();
+        } catch(e) {
+          console.error("Error stopping oscillator:", e);
+        }
+        oscillator = null;
+        oscillatorGain = null;
+      }
+      
+      if (noiseSource) {
+        try {
+          noiseSource.stop();
+          noiseSource.disconnect();
+        } catch(e) {
+          console.error("Error stopping noise source:", e);
+        }
+        noiseSource = null;
+        noiseGain = null;
+        noiseFilter = null;
+      }
+      
+      if (ambientSource) {
+        try {
+          ambientSource.stop();
+          ambientSource.disconnect();
+        } catch(e) {
+          console.error("Error stopping ambient source:", e);
+        }
+        ambientSource = null;
+      }
+      
+      if (natureSource) {
+        try {
+          natureSource.stop();
+          natureSource.disconnect();
+        } catch(e) {
+          console.error("Error stopping nature source:", e);
+        }
+        natureSource = null;
+      }
+    }
+
+    // Set up volume ramping based on breath cycle
+    function updateVolumeRamp() {
+      // Clear any existing interval
+      if (volumeRampInterval) {
+        clearInterval(volumeRampInterval);
+      }
+      
+      // Get needed parameters
+      const { baseVolume, volumeStep, volumeInterval, maxVolume } = appState.soundParams;
+      
+      // Determine which gain node to use
+      let gainNode;
+      if (oscillatorGain) {
+        gainNode = oscillatorGain;
+      } else if (noiseGain) {
+        gainNode = noiseGain;
+      } else {
+        return; // No active gain node
+      }
+      
+      // Reset volume to base
+      gainNode.gain.value = baseVolume / 100;
+      
+      // Set up interval for volume ramping
+      volumeRampInterval = setInterval(() => {
+        // Get current phase and adjust volume accordingly
+        const now = performance.now();
+        const pattern = appState.breathPattern;
+        const totalCycleTime = pattern.inhale + pattern.hold + pattern.exhale + pattern.prepare;
+        const currentTime = now % totalCycleTime;
+        const phase = getBreathPhase(currentTime);
+        
+        if (phase === 'inhale') {
+          // During inhale: volume rises
+          const newVolume = Math.min(maxVolume / 100, gainNode.gain.value + (volumeStep / 100));
+          gainNode.gain.setTargetAtTime(newVolume, audioContext.currentTime, 0.1);
+        } 
+        else if (phase === 'hold') {
+          // During hold: volume stays at max
+          gainNode.gain.setTargetAtTime(maxVolume / 100, audioContext.currentTime, 0.1);
+        } 
+        else if (phase === 'exhale') {
+          // During exhale: volume decreases
+          const newVolume = Math.max(baseVolume / 100, gainNode.gain.value - (volumeStep / 100));
+          gainNode.gain.setTargetAtTime(newVolume, audioContext.currentTime, 0.1);
+        } 
+        else if (phase === 'prepare') {
+          // During prepare: volume stays at base
+          gainNode.gain.setTargetAtTime(baseVolume / 100, audioContext.currentTime, 0.1);
+        }
+      }, volumeInterval);
+    }
+
+    // Update sound based on breath cycle - legacy method for immediate updates
+    function updateSound(intensity) {
+      if (!audioContext) return;
+      
+      if (appState.currentSoundScheme === "tone" && oscillatorGain) {
+        // Update tone frequency based on intensity
+        if (oscillator) {
+          oscillator.frequency.setTargetAtTime(
+            100 + (intensity * 50),
+            audioContext.currentTime,
+            0.2
+          );
+        }
+      }
+      else if (appState.currentSoundScheme === "flow" && noiseGain) {
+        // Adjust filter frequency
+        if (noiseFilter) {
+          noiseFilter.frequency.setTargetAtTime(
+            400 + (intensity * 600),
+            audioContext.currentTime,
+            0.2
+          );
+        }
+      }
+    }
+
+    // Update instruction text based on phase
+    function updateInstructions(phase) {
+      instructions.style.opacity = "1";
+      
+      switch(phase) {
+        case 'inhale':
+          instructions.textContent = "Inhale...";
+          break;
+        case 'hold':
+          instructions.textContent = "Hold...";
+          break;
+        case 'exhale':
+          instructions.textContent = "Exhale...";
+          break;
+        case 'prepare':
+          instructions.textContent = "Ready for next cycle";
+          break;
+        default:
+          instructions.textContent = "Touch and hold to begin breathing";
+      }
+    }
+
+    // Show toast message
+    function showToast(message) {
+      const toastElement = document.getElementById("toast");
+      toastElement.textContent = message;
+      toastElement.style.opacity = 1;
+      
+      setTimeout(() => {
+        toastElement.style.opacity = 0;
+      }, 3000);
+    }
+
+    // Handle user interface controls
+    visualToggle.addEventListener("change", function() {
+      appState.currentVisual = this.value;
+      
+      // Update the app state in local storage
+      localStorage.setItem('breathingAppCurrentState', JSON.stringify(appState));
+      
+      // Show toast notification when changing visuals
+      showToast(`Visualization changed to: ${this.options[this.selectedIndex].text}`);
+    });
+
+    soundSelector.addEventListener("change", function() {
+      appState.currentSoundScheme = this.value;
+      
+      if (appState.currentSoundScheme === "none") {
+        appState.soundEnabled = false;
+        stopSound();
+      } else {
+        appState.soundEnabled = true;
+        startSound();
+      }
+      
+      // Update the app state in local storage
+      localStorage.setItem('breathingAppCurrentState', JSON.stringify(appState));
+    });
+
+    // Main animation loop
+    function animate() {
+      const now = performance.now();
+      
+      // Clear canvas
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      
+      // Draw background
+      const gradient = ctx.createLinearGradient(0, 0, 0, canvas.height);
+      gradient.addColorStop(0, "#1a2a3f");
+      gradient.addColorStop(1, "#0d1520");
+      ctx.fillStyle = gradient;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      
+      // Draw the selected visualization
+      if (appState.currentVisual === "timeline") {
+        drawTimelineVisualization(now);
+      } else if (appState.currentVisual === "halfmoon") {
+        drawHalfMoonVisualization(now);
+      } else if (appState.currentVisual === "chill") {
+        drawChillVisualization(now);
+      }
+      
+      // Calculate current position in breathing cycle
+      const pattern = appState.breathPattern;
+      const activeCycleTime = pattern.inhale + pattern.hold + pattern.exhale;
+      
+      const totalCycleTime = activeCycleTime + pattern.prepare;
+      
+      const currentCycleStart = Math.floor(now / totalCycleTime) * totalCycleTime;
+      const currentCycleTime = now - currentCycleStart;
+      
+      // Get the current phase of breathing
+      const currentPhase = getBreathPhase(currentCycleTime);
+      
+      // Update instructions
+      updateInstructions(currentPhase);
+      
+      // Calculate breath intensity for sound parameter update (legacy method)
+      if (currentCycleTime <= activeCycleTime) {
+        // During active cycle
+        const intensity = getBreathPhaseIntensity(currentCycleTime);
+        
+        // Update sound if enabled (secondary parameters like frequency, not volume)
+        if (appState.soundEnabled && appState.currentSoundScheme !== "none") {
+          updateSound(intensity);
+        }
+      } else {
+        // During prepare, set secondary sound parameters to base level
+        if (appState.soundEnabled && appState.currentSoundScheme !== "none") {
+          updateSound(0);
+        }
+      }
+      
+      requestAnimationFrame(animate);
+    }
+
+    // Initialize and start
+    async function init() {
+      // Try to load app state from localStorage
+      try {
+        const savedState = localStorage.getItem('breathingAppCurrentState');
+        if (savedState) {
+          const parsedState = JSON.parse(savedState);
+          
+          // Merge saved state with default state to ensure all properties exist
+          appState = {
+            ...defaultAppState,
+            ...parsedState,
+            // Ensure nested objects are properly merged
+            breathPattern: { ...defaultAppState.breathPattern, ...parsedState.breathPattern },
+            soundParams: { ...defaultAppState.soundParams, ...parsedState.soundParams },
+            visualSettings: { ...defaultAppState.visualSettings, ...parsedState.visualSettings }
+          };
+        }
+      } catch (error) {
+        console.error("Error loading saved state:", error);
+        // Fall back to default state
+        appState = JSON.parse(JSON.stringify(defaultAppState));
+      }
+      
+      // Initialize controls with app state
+      updateUIFromState();
+      
+      // Update preset list
+      updatePresetList();
+      
+      // Load audio samples in background
+      loadAudioSamples();
+      
+      // Open parameter panel initially
+      parameterPanel.classList.add("open");
+      
+      // Show welcome toast
+      setTimeout(() => {
+        showToast("Welcome to the Enhanced Breathing App v2.0");
+        instructions.style.opacity = "1";
+      }, 500);
+      
+      // Start animation
+      requestAnimationFrame(animate);
+    }
+
+    // Start the app
+    init();
+  </script>
+</body>
+</html>
