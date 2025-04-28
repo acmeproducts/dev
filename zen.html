@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zen Garden</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background: #2a1810;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            color: #e6d5ac;
+        }
+
+        .garden-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: #2a1810;
+            border: 1px solid #3a2820;
+        }
+
+        .garden {
+            width: 100%;
+            height: 100%;
+            background: #d4c5a0;
+            position: relative;
+            cursor: crosshair;
+            overflow: hidden;
+        }
+
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            touch-action: none;
+        }
+
+        .controls {
+            position: fixed;
+            top: 20px;
+            left: 0;
+            width: 250px;
+            background: rgba(42, 24, 16, 0.95);
+            padding: 1rem;
+            border-radius: 0 8px 8px 0;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.3);
+            border: 1px solid #3a2820;
+            z-index: 100;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+        }
+
+        .controls.open {
+            transform: translateX(0);
+        }
+
+        .menu-toggle {
+            position: absolute;
+            right: -40px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(42, 24, 16, 0.95);
+            padding: 0.5rem;
+            border-radius: 0 4px 4px 0;
+            cursor: pointer;
+            border: 1px solid #3a2820;
+            border-left: none;
+            color: #e6d5ac;
+        }
+
+        @media (max-width: 768px) {
+            .controls {
+                top: auto;
+                bottom: 0;
+                left: 0;
+                width: 100%;
+                transform: translateY(100%);
+                border-radius: 8px 8px 0 0;
+                transition: transform 0.3s ease;
+            }
+
+            .controls.open {
+                transform: translateY(0);
+            }
+
+            .menu-toggle {
+                right: 50%;
+                top: -40px;
+                transform: translateX(50%);
+                border-radius: 4px 4px 0 0;
+                border: 1px solid #3a2820;
+                border-bottom: none;
+            }
+        }
+
+        button {
+            display: block;
+            width: 100%;
+            margin: 0.5rem 0;
+            padding: 0.75rem 1.5rem;
+            background: #3a2820;
+            color: #e6d5ac;
+            border: 1px solid #4a3830;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.2s ease;
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        button.active {
+            background: #4a3830;
+            border-color: #e6d5ac;
+        }
+
+        button:not(:disabled):hover {
+            background: #4a3830;
+            transform: translateY(-1px);
+        }
+
+        button:not(:disabled):active {
+            transform: translateY(1px);
+        }
+
+        .tool-group {
+            margin-bottom: 1rem;
+            border-bottom: 1px solid #3a2820;
+            padding-bottom: 1rem;
+        }
+
+        .tool-group:last-child {
+            border-bottom: none;
+        }
+
+        .rake-size {
+            color: #e6d5ac;
+            margin-top: 1rem;
+            text-align: center;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            margin-top: 0.5rem;
+            background: #3a2820;
+            height: 4px;
+            border-radius: 2px;
+            -webkit-appearance: none;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            background: #e6d5ac;
+            border-radius: 50%;
+            cursor: pointer;
+        }
+
+        .history-controls {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .history-controls button {
+            flex: 1;
+        }
+
+        .sound-control {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            padding: 0.5rem;
+            background: #3a2820;
+            border-radius: 4px;
+        }
+
+        .sound-control label {
+            flex: 1;
+        }
+
+        .sound-control input[type="range"] {
+            width: 100px;
+        }
+
+        select {
+            background: #3a2820;
+            color: #e6d5ac;
+            border: 1px solid #4a3830;
+            padding: 0.25rem;
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <div class="garden-container">
+        <div class="garden">
+            <canvas id="garden-canvas"></canvas>
+        </div>
+    </div>
+
+    <div class="controls">
+        <div class="menu-toggle">☰</div>
+        <div class="tool-group">
+            <div class="sound-control">
+                <label>Sound</label>
+                <input type="range" id="volume" min="0" max="100" value="30">
+                <select id="sound-scheme">
+                    <option value="pentatonic">Pentatonic</option>
+                    <option value="singing_bowl">Singing Bowl</option>
+                    <option value="gentle_major">Gentle Major</option>
+                </select>
+                <button id="sound-toggle" style="width: auto; padding: 0.5rem;">🔇</button>
+            </div>
+        </div>
+        <div class="tool-group">
+            <button id="rake-tool" class="active">Rake</button>
+            <button id="stick-tool">Stick</button>
+            <button id="stone-tool">Place Stone</button>
+            <button id="eraser-tool">Eraser</button>
+        </div>
+        <div class="tool-group">
+            <div class="rake-size">
+                <label for="rake-width">Tool Size</label>
+                <input type="range" id="rake-width" min="1" max="50" value="10" step="1">
+            </div>
+        </div>
+        <div class="tool-group">
+            <div class="history-controls">
+                <button id="undo" disabled>↩ Undo</button>
+                <button id="redo" disabled>↪ Redo</button>
+            </div>
+            <button id="clear">Clear Garden</button>
+        </div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('garden-canvas');
+        const ctx = canvas.getContext('2d');
+        const rakeWidth = document.getElementById('rake-width');
+        const soundToggle = document.getElementById('sound-toggle');
+        const volumeControl = document.getElementById('volume');
+        const soundScheme = document.getElementById('sound-scheme');
+        const controls = document.querySelector('.controls');
+        const menuToggle = document.querySelector('.menu-toggle');
+        const undoBtn = document.getElementById('undo');
+        const redoBtn = document.getElementById('redo');
+        let isDrawing = false;
+        let lastX = 0;
+        let lastY = 0;
+        let currentTool = 'rake';
+
+        const SoundEngine = {
+            audioCtx: null,
+            masterGain: null,
+            reverbNode: null,
+            delayNode: null,
+            pannerNode: null,
+            activeOscillators: [],
+            currentScheme: 'pentatonic',
+            baseVolume: 0.3,
+            ambientInterval: null,
+
+            schemes: {
+                pentatonic: {
+                    frequencies: [293.66, 329.63, 369.99, 440.00, 493.88]
+                },
+                singing_bowl: {
+                    frequencies: [136.1, 174.6, 261.6, 294.3, 326.6, 349.2, 392.0, 436.1]
+                },
+                gentle_major: {
+                    frequencies: [261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88]
+                }
+            },
+
+            init() {
+                if (this.audioCtx) return;
+
+                this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                this.masterGain = this.audioCtx.createGain();
+                this.reverbNode = this.audioCtx.createConvolver();
+                this.delayNode = this.audioCtx.createDelay();
+                this.pannerNode = this.audioCtx.createStereoPanner();
+
+                this.masterGain.gain.value = this.baseVolume;
+                this.delayNode.delayTime.value = 0.3;
+
+                this.createReverb();
+
+                this.masterGain.connect(this.reverbNode);
+                this.reverbNode.connect(this.delayNode);
+                this.delayNode.connect(this.pannerNode);
+                this.pannerNode.connect(this.audioCtx.destination);
+
+                this.startAmbientSounds();
+            },
+
+            createReverb() {
+                const duration = 3;
+                const decay = 2;
+                const sampleRate = this.audioCtx.sampleRate;
+                const length = sampleRate * duration;
+                const impulse = this.audioCtx.createBuffer(2, length, sampleRate);
+                const left = impulse.getChannelData(0);
+                const right = impulse.getChannelData(1);
+
+                for (let i = 0; i < length; i++) {
+                    const n = i / length;
+                    left[i] = (Math.random() * 2 - 1) * Math.pow(1 - n, decay);
+                    right[i] = (Math.random() * 2 - 1) * Math.pow(1 - n, decay);
+                }
+
+                this.reverbNode.buffer = impulse;
+            },
+
+            startAmbientSounds() {
+                if (this.ambientInterval) clearInterval(this.ambientInterval);
+
+                this.ambientInterval = setInterval(() => {
+                    if (!this.audioCtx || this.audioCtx.state !== 'running') return;
+
+                    const frequencies = this.schemes[this.currentScheme].frequencies;
+                    const frequency = frequencies[Math.floor(Math.random() * frequencies.length)];
+                    this.playTone(frequency, 0.1, -0.8 + Math.random() * 1.6);
+                }, 8000 + Math.random() * 4000);
+            },
+
+            playTone(frequency, volume, pan = 0) {
+                if (!this.audioCtx || this.audioCtx.state !== 'running') return;
+
+                const now = this.audioCtx.currentTime;
+                
+                const osc = this.audioCtx.createOscillator();
+                const gainNode = this.audioCtx.createGain();
+                const panner = this.audioCtx.createStereoPanner();
+
+                osc.type = 'sine';
+                osc.frequency.value = frequency;
+                panner.pan.value = pan;
+                
+                gainNode.gain.setValueAtTime(0, now);
+                gainNode.gain.linearRampToValueAtTime(volume * this.baseVolume, now + 0.1);
+                gainNode.gain.exponentialRampToValueAtTime(0.001, now + 2);
+
+                osc.connect(gainNode);
+                gainNode.connect(panner);
+                panner.connect(this.masterGain);
+
+                osc.start(now);
+                osc.stop(now + 2);
+
+                const harmonicOsc = this.audioCtx.createOscillator();
+                const harmonicGain = this.audioCtx.createGain();
+                
+                harmonicOsc.type = 'sine';
+                harmonicOsc.frequency.value = frequency * 1.5;
+                
+                harmonicGain.gain.setValueAtTime(0, now);
+                harmonicGain.gain.linearRampToValueAtTime(volume * this.baseVolume * 0.3, now + 0.1);
+                harmonicGain.gain.exponentialRampToValueAtTime(0.001, now + 1.5);
+
+                harmonicOsc.connect(harmonicGain);
+                harmonicGain.connect(panner);
+
+                harmonicOsc.start(now);
+                harmonicOsc.stop(now + 1.5);
+
+                this.activeOscillators.push(osc, harmonicOsc);
+                this.cleanupOscillators();
+            },
+
+            cleanupOscillators() {
+                if (this.activeOscillators.length > 20) {
+                    this.activeOscillators = this.activeOscillators.slice(-20);
+                }
+            },
+
+            setVolume(value) {
+                this.baseVolume = value;
+                if (this.masterGain) {
+                    this.masterGain.gain.setValueAtTime(value, this.audioCtx.currentTime);
+                }
+            },
+
+            setScheme(scheme) {
+                if (this.schemes[scheme]) {
+                    this.currentScheme = scheme;
+                }
+            }
+        };
+
+        let isSoundEnabled = false;
+
+        soundToggle.addEventListener('click', () => {
+            isSoundEnabled = !isSoundEnabled;
+            soundToggle.textContent = isSoundEnabled ? '🔊' : '🔇';
+            
+            if (isSoundEnabled) {
+                SoundEngine.init();
+                if (SoundEngine.audioCtx.state === 'suspended') {
+                    SoundEngine.audioCtx.resume();
+                }
+            }
+        });
+
+        volumeControl.addEventListener('input', () => {
+            const volume = volumeControl.value / 100;
+            SoundEngine.setVolume(volume);
+        });
+
+        soundScheme.addEventListener('change', () => {
+            SoundEngine.setScheme(soundScheme.value);
+        });
+
+        function playInteractionSound(x, y) {
+            if (!isSoundEnabled) return;
+
+            const frequencies = SoundEngine.schemes[SoundEngine.currentScheme].frequencies;
+            const normalizedY = y / canvas.height;
+            const freqIndex = Math.floor(normalizedY * frequencies.length);
+            const frequency = frequencies[freqIndex];
+            
+            const pan = (x / canvas.width) * 2 - 1;
+            SoundEngine.playTone(frequency, 0.3, pan);
+        }
+
+        const history = [];
+        let currentStep = -1;
+        const maxHistory = 50;
+
+        function saveState() {
+            currentStep++;
+            history.splice(currentStep);
+            history.push(canvas.toDataURL());
+            if (history.length > maxHistory) {
+                history.shift();
+                currentStep--;
+            }
+            updateHistoryButtons();
+        }
+
+        function updateHistoryButtons() {
+            undoBtn.disabled = currentStep < 1;
+            redoBtn.disabled = currentStep >= history.length - 1;
+        }
+
+        function loadState(state) {
+            const img = new Image();
+            img.src = state;
+            img.onload = () => {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, 0, 0);
+            };
+        }
+
+        undoBtn.addEventListener('click', () => {
+            if (currentStep > 0) {
+                currentStep--;
+                loadState(history[currentStep]);
+                updateHistoryButtons();
+            }
+        });
+
+        redoBtn.addEventListener('click', () => {
+            if (currentStep < history.length - 1) {
+                currentStep++;
+                loadState(history[currentStep]);
+                updateHistoryButtons();
+            }
+        });
+
+        menuToggle.addEventListener('click', () => {
+            controls.classList.toggle('open');
+        });
+
+        document.querySelectorAll('.controls button').forEach(button => {
+            if (!['clear', 'undo', 'redo', 'sound-toggle'].includes(button.id)) {
+                button.addEventListener('click', (e) => {
+                    document.querySelectorAll('.controls button').forEach(b => b.classList.remove('active'));
+                    e.target.classList.add('active');
+                    currentTool = e.target.id.replace('-tool', '');
+                });
+            }
+        });
+
+        function resizeCanvas() {
+            canvas.width = canvas.parentElement.clientWidth;
+            canvas.height = canvas.parentElement.clientHeight;
+            
+            ctx.lineCap = 'round';
+            ctx.lineJoin = 'round';
+            ctx.strokeStyle = '#c4b18b';
+            ctx.lineWidth = 3;
+
+            if (history.length > 0) {
+                loadState(history[currentStep]);
+            }
+        }
+
+        function getMousePos(e) {
+            const rect = canvas.getBoundingClientRect();
+            return {
+                x: e.clientX - rect.left,
+                y: e.clientY - rect.top
+            };
+        }
+
+        function startDrawing(e) {
+            isDrawing = true;
+            const pos = getMousePos(e);
+            lastX = pos.x;
+            lastY = pos.y;
+
+            if (currentTool === 'stone') {
+                placeStone(pos.x, pos.y);
+                saveState();
+            } else if (currentTool === 'eraser') {
+                erase(pos.x, pos.y);
+            }
+        }
+
+        const stoneColors = [
+            ['#8B7355', '#6B4423'],
+            ['#D2B48C', '#BC8F8F'],
+            ['#DEB887', '#CD853F'],
+            ['#F5DEB3', '#DAA520'],
+            ['#D2691E', '#8B4513']
+        ];
+
+        function placeStone(x, y) {
+            const sizeMultiplier = parseInt(rakeWidth.value) / 10;
+            const size = 20 * sizeMultiplier;
+            const colors = stoneColors[Math.floor(Math.random() * stoneColors.length)];
+            const gradient = ctx.createRadialGradient(x, y, 0, x, y, size);
+            
+            gradient.addColorStop(0, colors[0]);
+            gradient.addColorStop(1, colors[1]);
+            
+            ctx.beginPath();
+            ctx.fillStyle = gradient;
+            ctx.arc(x, y, size, 0, Math.PI * 2);
+            ctx.fill();
+        }
+
+        function erase(x, y) {
+            const size = parseInt(rakeWidth.value) * 2;
+            ctx.save();
+            ctx.beginPath();
+            ctx.arc(x, y, size, 0, Math.PI * 2);
+            ctx.clip();
+            ctx.clearRect(x - size, y - size, size * 2, size * 2);
+            ctx.restore();
+        }
+
+        function draw(e) {
+            if (!isDrawing) return;
+
+            const pos = getMousePos(e);
+            
+            if (currentTool === 'rake') {
+                drawRakeLines(pos);
+            } else if (currentTool === 'stick') {
+                drawStickLine(pos);
+            } else if (currentTool === 'eraser') {
+                erase(pos.x, pos.y);
+            }
+
+            playInteractionSound(pos.x, pos.y);
+            lastX = pos.x;
+            lastY = pos.y;
+        }
+
+        function drawRakeLines(pos) {
+            const sizeValue = parseInt(rakeWidth.value);
+            const rakeLines = Math.max(3, Math.floor(sizeValue / 3));
+            const spacing = sizeValue / 2;
+            const angle = Math.atan2(pos.y - lastY, pos.x - lastX);
+            const perpendicular = angle + Math.PI / 2;
+            
+            for (let i = -(rakeLines-1)/2; i <= (rakeLines-1)/2; i++) {
+                const offsetX = Math.cos(perpendicular) * (spacing * i);
+                const offsetY = Math.sin(perpendicular) * (spacing * i);
+
+                ctx.beginPath();
+                ctx.moveTo(lastX + offsetX, lastY + offsetY);
+                ctx.lineTo(pos.x + offsetX, pos.y + offsetY);
+                ctx.stroke();
+            }
+        }
+
+        function drawStickLine(pos) {
+            const sizeValue = parseInt(rakeWidth.value);
+            ctx.lineWidth = Math.max(1, Math.min(20, sizeValue / 3));
+            ctx.beginPath();
+            ctx.moveTo(lastX, lastY);
+            ctx.lineTo(pos.x, pos.y);
+            ctx.stroke();
+        }
+
+        function stopDrawing() {
+            if (isDrawing && currentTool !== 'stone') {
+                saveState();
+            }
+            isDrawing = false;
+        }
+
+        window.addEventListener('resize', resizeCanvas);
+        canvas.addEventListener('mousedown', startDrawing);
+        canvas.addEventListener('mousemove', draw);
+        canvas.addEventListener('mouseup', stopDrawing);
+        canvas.addEventListener('mouseout', stopDrawing);
+
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            startDrawing(e.touches[0]);
+        });
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            draw(e.touches[0]);
+        });
+        canvas.addEventListener('touchend', stopDrawing);
+
+        document.getElementById('clear').addEventListener('click', () => {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            saveState();
+        });
+
+        resizeCanvas();
+        saveState();
+        controls.classList.add('open');
+    </script>
+</body>
+</html>
