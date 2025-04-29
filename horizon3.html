@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>MAD Horizons Single Chart Control</title>
+  <style>
+    body { margin: 0; font-family: sans-serif; background: #000; color: #fff; overflow: hidden; }
+    .config-toggle { position: fixed; top: 10px; left: 10px; background: #222; color: #fff; border: none; padding: 8px 12px; cursor: pointer; z-index: 1000; }
+    .config-panel { position: fixed; top: 0; left: 0; height: 100%; width: 300px; background: #111; transform: translateX(-100%); transition: transform 0.3s ease; overflow-y: auto; z-index: 999; padding: 14px; box-sizing: border-box; }
+    .config-panel.open { transform: translateX(0); }
+    .main-top { background: #111; padding: 10px; position: fixed; top: 0; left: 0; right: 0; z-index: 500; display: flex; justify-content: center; gap: 10px; }
+    .main-top button { background: #333; color: #fff; border: none; padding: 8px 16px; cursor: pointer; }
+    .panelArea { margin-top: 60px; height: calc(100vh - 60px); overflow-y: scroll; display: flex; flex-direction: column; }
+    .panel { height: 320px; padding: 4px; flex-shrink: 0; }
+    canvas { width: 100%; height: 100%; background: black; }
+    label { display: block; margin-top: 8px; }
+  </style>
+</head>
+<body>
+
+<button class="config-toggle" onclick="togglePanel()">☰</button>
+<div class="config-panel" id="configPanel">
+  <h3>Chart Settings</h3>
+  <label>Background</label>
+  <input type="color" id="bgColor" value="#000000" onchange="applySettings()">
+  <label>Sample Interval (ms)</label>
+  <input type="number" id="interval" value="1000" min="100" step="100" onchange="applySettings()">
+  <label>Window Size (points)</label>
+  <input type="number" id="windowSize" value="60" min="10" step="10" onchange="applySettings()">
+  <label><input type="checkbox" id="showTitle" checked onchange="applySettings()"> Show Title</label>
+</div>
+
+<div class="main-top">
+  <button onclick="start()">Start</button>
+  <button onclick="stop()">Stop</button>
+  <button onclick="clearAll()">Clear</button>
+  <button onclick="download()">Download</button>
+</div>
+
+<div class="panelArea" id="panelArea">
+  <div class="panel">
+    <div id="chartTitle" style="color:#0f0; font-size:14px; padding:4px;">Live Mic Data</div>
+    <canvas id="chart"></canvas>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
+<script>
+let chart, micStream, audioCtx, analyser, dataArray, captureTimer, fullData = [];
+
+function togglePanel() {
+  document.getElementById("configPanel").classList.toggle("open");
+}
+
+function applySettings() {
+  document.body.style.backgroundColor = document.getElementById("bgColor").value;
+  document.getElementById("panelArea").style.backgroundColor = document.getElementById("bgColor").value;
+  document.getElementById("chartTitle").style.display = document.getElementById("showTitle").checked ? 'block' : 'none';
+}
+
+function buildChart() {
+  const ctx = document.getElementById('chart').getContext('2d');
+  chart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: [],
+      datasets: [{
+        label: 'Sum',
+        data: [],
+        backgroundColor: 'white',
+        borderColor: 'white',
+        fill: false
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      scales: {
+        x: { ticks: { maxTicksLimit: 10 } },
+        y: { beginAtZero: true }
+      },
+      plugins: {
+        zoom: {
+          pan: { enabled: true, mode: 'x' },
+          zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' }
+        }
+      }
+    }
+  });
+}
+
+function start() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 2048;
+    dataArray = new Uint8Array(analyser.frequencyBinCount);
+  }
+  navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+    micStream = stream;
+    const source = audioCtx.createMediaStreamSource(stream);
+    source.connect(analyser);
+    const interval = parseInt(document.getElementById('interval').value);
+    captureTimer = setInterval(capture, interval);
+  }).catch(e => alert('Mic access denied.'));
+}
+
+function stop() {
+  clearInterval(captureTimer);
+  if (micStream) {
+    micStream.getTracks().forEach(t => t.stop());
+    micStream = null;
+  }
+  audioCtx = null;
+}
+
+function capture() {
+  if (!analyser) return;
+  analyser.getByteFrequencyData(dataArray);
+  const values = Array.from({ length: 10 }, (_, idx) => {
+    const start = Math.floor(idx * dataArray.length / 10);
+    const end = Math.floor((idx + 1) * dataArray.length / 10);
+    return dataArray.slice(start, end).reduce((a, b) => a + b, 0) / (end - start);
+  });
+  const sum = values.reduce((a, b) => a + b, 0);
+  const now = new Date().toLocaleTimeString();
+  fullData.push({ timestamp: now, sum: sum });
+
+  if (chart.data.labels.length >= parseInt(document.getElementById('windowSize').value)) {
+    chart.data.labels.shift();
+    chart.data.datasets.forEach(d => d.data.shift());
+  }
+  chart.data.labels.push(now);
+  chart.data.datasets.forEach(d => d.data.push(sum));
+  chart.update();
+}
+
+function clearAll() {
+  if (chart) {
+    chart.data.labels = [];
+    chart.data.datasets.forEach(d => d.data = []);
+    chart.update();
+  }
+  fullData = [];
+}
+
+function download() {
+  const blob = new Blob([JSON.stringify(fullData, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'single_chart_data.json';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
+
+window.onload = () => {
+  buildChart();
+  applySettings();
+};
+</script>
+
+</body>
+</html>
