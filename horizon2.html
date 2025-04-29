@@ -1,75 +1,64 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>MAD Horizons v2.2</title>
+  <meta charset="UTF-8">
+  <title>MAD Horizons v3.0</title>
   <style>
-    body { margin: 0; background: #000; font-family: sans-serif; color: #fff; overflow: hidden; }
+    body { margin: 0; font-family: sans-serif; background: #000; color: #fff; overflow: hidden; }
+    .config-toggle {
+      position: fixed; top: 10px; left: 10px; background: #222; color: #fff; border: none; padding: 8px 12px; cursor: pointer; z-index: 1000;
+    }
     .config-panel {
-      position: fixed; top: 0; left: 0; width: 280px; height: 100%; background: #111;
-      transform: translateX(-100%); transition: transform 0.3s ease; padding: 10px; box-sizing: border-box;
-      overflow-y: auto; z-index: 1000;
+      position: fixed; top: 0; left: 0; height: 100%; width: 320px; background: #111; transform: translateX(-100%);
+      transition: transform 0.3s ease; overflow-y: auto; z-index: 999;
+      padding: 14px; box-sizing: border-box;
     }
     .config-panel.open { transform: translateX(0); }
-    .config-toggle {
-      position: fixed; top: 10px; left: 10px; z-index: 1100; background: #222; border: none;
-      color: white; padding: 6px 10px; cursor: pointer;
+    .config-panel h3 { margin-top: 0; }
+    .config-section { margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid #444; }
+    .control-label { display: block; margin-top: 6px; font-size: 13px; }
+    .main-top {
+      background: #111; padding: 10px; position: fixed; top: 0; left: 0; right: 0; z-index: 500;
+      display: flex; justify-content: center; gap: 10px;
     }
-    .control-label { display: block; margin-top: 10px; font-size: 14px; }
-    .control-group { margin-bottom: 10px; }
-    .main-content { margin-left: 0; height: 100vh; overflow-y: scroll; margin-top: 44px; }
+    .main-top button { background: #333; color: #fff; border: none; padding: 8px 16px; cursor: pointer; }
+    #panelArea { margin-top: 60px; height: calc(100vh - 60px); overflow-y: scroll; }
     .panel { height: 280px; padding: 4px; }
     canvas { width: 100%; height: 100%; background: black; }
-    .top-bar {
-      position: fixed; top: 0; left: 0; width: 100%; height: 44px; background: #111;
-      display: flex; justify-content: center; align-items: center; gap: 10px; z-index: 500;
-    }
-    .top-bar button {
-      background: #333; color: white; border: none; padding: 6px 14px; cursor: pointer;
-    }
   </style>
 </head>
 <body>
 
-  <button class="config-toggle" onclick="togglePanel()">☰</button>
+<button class="config-toggle" onclick="togglePanel()">☰</button>
 
-  <div class="config-panel" id="configPanel">
-    <h3>Configuration</h3>
-    <div class="control-group">
-      <label class="control-label">Background Color</label>
-      <input type="color" id="bgColor" value="#000000" onchange="applySettings()" />
-    </div>
-    <div class="control-group">
-      <label class="control-label"># Panels</label>
-      <input type="number" id="panelCount" min="1" max="10" value="10" onchange="buildPanels()" />
-    </div>
-    <div class="control-group">
-      <label class="control-label">Sampling Interval (ms)</label>
-      <input type="number" id="interval" min="100" step="100" value="1000" />
-    </div>
-    <div class="control-group">
-      <label><input type="checkbox" id="showTitles" checked onchange="applySettings()"> Show Titles</label>
-    </div>
-    <div class="control-group">
-      <button onclick="saveConfig()">Save Config</button>
-      <button onclick="loadConfig()">Load Config</button>
-    </div>
+<div class="config-panel" id="configPanel">
+  <h3>Global Settings</h3>
+  <div class="config-section">
+    <label class="control-label">Background</label>
+    <input type="color" id="globalBg" value="#000000" onchange="applyGlobalSettings()">
+    <label class="control-label">Titles</label>
+    <input type="checkbox" id="globalTitles" checked onchange="applyGlobalSettings()">
+    <button onclick="saveConfig()">Save</button>
+    <button onclick="loadConfig()">Load</button>
   </div>
+  <h3>Panel Settings</h3>
+  <div id="panelConfigs"></div>
+</div>
 
-  <div class="top-bar">
-    <button onclick="start()">Start</button>
-    <button onclick="stop()">Stop</button>
-    <button onclick="clearAll()">Clear</button>
-    <button onclick="download()">Download</button>
-  </div>
+<div class="main-top">
+  <button onclick="start()">Start</button>
+  <button onclick="stop()">Stop</button>
+  <button onclick="clearAll()">Clear</button>
+  <button onclick="download()">Download</button>
+</div>
 
-  <div class="main-content" id="panelArea"></div>
+<div id="panelArea"></div>
 
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
-  <script>
-let audioCtx, analyser, streamSource, micStream, dataArray;
-let charts = [], fullData = [], captureInterval;
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
+<script>
+let charts = [], captureIntervals = [], configs = [];
+let audioCtx, analyser, dataArray, streamSource, micStream;
 
 function togglePanel() {
   document.getElementById("configPanel").classList.toggle("open");
@@ -78,37 +67,40 @@ function togglePanel() {
 function buildPanels() {
   stop();
   clearAll();
-  const count = parseInt(document.getElementById("panelCount").value);
+  charts = [];
+  captureIntervals = [];
+  configs = [];
   const panelArea = document.getElementById("panelArea");
   panelArea.innerHTML = '';
-  charts = [];
+  document.getElementById("panelConfigs").innerHTML = '';
 
-  for (let i = 0; i < count; i++) {
+  for (let i = 0; i < 10; i++) {
     const div = document.createElement("div");
     div.className = "panel";
     const canvas = document.createElement("canvas");
     canvas.id = 'chart' + i;
-    if (document.getElementById("showTitles").checked) {
-      const label = document.createElement("div");
-      label.innerText = `Panel ${i + 1}`;
-      label.style.padding = "4px";
-      label.style.color = "#0f0";
-      div.appendChild(label);
-    }
+    const title = document.createElement("div");
+    title.id = 'title' + i;
+    title.style.color = "#0f0";
+    title.style.fontSize = "14px";
+    title.style.padding = "2px";
+    title.innerText = `Panel ${i+1}`;
+    div.appendChild(title);
     div.appendChild(canvas);
     panelArea.appendChild(div);
 
     const ctx = canvas.getContext("2d");
-    const datasets = Array.from({ length: 10 }, (_, ch) => ({
-      label: 'CH' + (ch + 1),
-      data: [],
-      backgroundColor: 'hsl(' + (ch * 36) + ',100%,50%)',
-      stack: 'stack1'
-    }));
-
-    charts.push(new Chart(ctx, {
+    charts[i] = new Chart(ctx, {
       type: 'bar',
-      data: { labels: [], datasets },
+      data: {
+        labels: [],
+        datasets: [...Array(10)].map((_, ch) => ({
+          label: 'CH' + (ch+1),
+          data: [],
+          backgroundColor: 'hsl(' + ch*36 + ',100%,50%)',
+          stack: 'stack1'
+        }))
+      },
       options: {
         responsive: true,
         maintainAspectRatio: false,
@@ -123,41 +115,38 @@ function buildPanels() {
           }
         }
       }
-    }));
+    });
+
+    configs[i] = { interval: 1000, window: 60 };
+
+    const panelConfig = document.createElement("div");
+    panelConfig.className = "config-section";
+    panelConfig.innerHTML = `
+      <h4>Panel ${i+1}</h4>
+      <label class="control-label">Sample Interval (ms)</label>
+      <input type="number" id="interval${i}" value="1000" min="100" step="100" onchange="updateConfig(${i})">
+      <label class="control-label">Window Size (samples)</label>
+      <input type="number" id="window${i}" value="60" min="10" step="10" onchange="updateConfig(${i})">
+    `;
+    document.getElementById("panelConfigs").appendChild(panelConfig);
   }
 
-  applySettings();
+  applyGlobalSettings();
 }
 
-function applySettings() {
-  document.body.style.backgroundColor = document.getElementById("bgColor").value;
-  document.getElementById("panelArea").style.backgroundColor = document.getElementById("bgColor").value;
-}
-
-function saveConfig() {
-  const config = {
-    bgColor: document.getElementById("bgColor").value,
-    panelCount: document.getElementById("panelCount").value,
-    interval: document.getElementById("interval").value,
-    showTitles: document.getElementById("showTitles").checked
-  };
-  localStorage.setItem("madHorizonsConfig", JSON.stringify(config));
-  alert("Config saved.");
-}
-
-function loadConfig() {
-  const config = JSON.parse(localStorage.getItem("madHorizonsConfig"));
-  if (config) {
-    document.getElementById("bgColor").value = config.bgColor;
-    document.getElementById("panelCount").value = config.panelCount;
-    document.getElementById("interval").value = config.interval;
-    document.getElementById("showTitles").checked = config.showTitles;
-    buildPanels();
-    applySettings();
-    alert("Config loaded.");
-  } else {
-    alert("No saved config.");
+function applyGlobalSettings() {
+  const bg = document.getElementById("globalBg").value;
+  const showTitles = document.getElementById("globalTitles").checked;
+  document.body.style.backgroundColor = bg;
+  document.getElementById("panelArea").style.backgroundColor = bg;
+  for (let i = 0; i < 10; i++) {
+    document.getElementById('title'+i).style.display = showTitles ? "block" : "none";
   }
+}
+
+function updateConfig(i) {
+  configs[i].interval = parseInt(document.getElementById('interval'+i).value);
+  configs[i].window = parseInt(document.getElementById('window'+i).value);
 }
 
 function start() {
@@ -172,13 +161,14 @@ function start() {
     micStream = stream;
     streamSource = audioCtx.createMediaStreamSource(stream);
     streamSource.connect(analyser);
-    const interval = parseInt(document.getElementById("interval").value);
-    captureInterval = setInterval(capture, interval);
+    for (let i = 0; i < 10; i++) {
+      captureIntervals[i] = setInterval(() => capture(i), configs[i].interval);
+    }
   }).catch(err => alert("Mic access denied: " + err.message));
 }
 
 function stop() {
-  clearInterval(captureInterval);
+  captureIntervals.forEach(c => clearInterval(c));
   if (micStream) {
     micStream.getTracks().forEach(t => t.stop());
     micStream = null;
@@ -187,50 +177,60 @@ function stop() {
   }
 }
 
-function capture() {
+function clearAll() {
+  charts.forEach(chart => {
+    chart.data.labels = [];
+    chart.data.datasets.forEach(ds => ds.data = []);
+    chart.update();
+  });
+}
+
+function capture(panelIdx) {
+  if (!analyser) return;
   analyser.getByteFrequencyData(dataArray);
   const bands = 10;
-  const points = Array.from({ length: bands }, (_, i) => {
+  const points = Array.from({length: bands}, (_, i) => {
     const start = Math.floor(i * dataArray.length / bands);
     const end = Math.floor((i + 1) * dataArray.length / bands);
     const slice = dataArray.slice(start, end);
     return Math.round(slice.reduce((a, b) => a + b, 0) / slice.length);
   });
   const now = new Date().toLocaleTimeString();
-  fullData.push({ timestamp: now, channels: points });
-
-  charts.forEach(chart => {
-    if (chart.data.labels.length >= 60) {
-      chart.data.labels.shift();
-      chart.data.datasets.forEach(ds => ds.data.shift());
-    }
-    chart.data.labels.push(now);
-    chart.data.datasets.forEach((d, i) => d.data.push(points[i]));
-    chart.update();
-  });
-}
-
-function clearAll() {
-  charts.forEach(chart => {
-    chart.data.labels = [];
-    chart.data.datasets.forEach(d => d.data = []);
-    chart.update();
-  });
-  fullData = [];
+  const chart = charts[panelIdx];
+  if (chart.data.labels.length >= configs[panelIdx].window) {
+    chart.data.labels.shift();
+    chart.data.datasets.forEach(ds => ds.data.shift());
+  }
+  chart.data.labels.push(now);
+  chart.data.datasets.forEach((d, i) => d.data.push(points[i]));
+  chart.update();
 }
 
 function download() {
-  const blob = new Blob([JSON.stringify(fullData, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'mad_horizons_data.json';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
+  alert("Download raw data not wired yet."); // Left as placeholder if needed later
+}
+
+function saveConfig() {
+  localStorage.setItem("madHorizonsConfig", JSON.stringify(configs));
+  alert("Saved panel configs.");
+}
+
+function loadConfig() {
+  const loaded = JSON.parse(localStorage.getItem("madHorizonsConfig"));
+  if (loaded) {
+    for (let i = 0; i < 10; i++) {
+      configs[i] = loaded[i];
+      document.getElementById('interval'+i).value = configs[i].interval;
+      document.getElementById('window'+i).value = configs[i].window;
+    }
+    alert("Loaded panel configs.");
+  } else {
+    alert("No config saved.");
+  }
 }
 
 window.onload = buildPanels;
-  </script>
+</script>
+
 </body>
 </html>
