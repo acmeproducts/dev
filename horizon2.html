@@ -2,13 +2,14 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>MAD Horizons v2.0 - Full</title>
+  <title>MAD Horizons v2.1</title>
   <style>
-    body { margin: 0; background: #000; color: #fff; font-family: Arial, sans-serif; overflow-y: scroll; }
-    .controls { background: #111; padding: 10px; display: flex; flex-wrap: wrap; gap: 10px; position: sticky; top: 0; z-index: 10; }
-    button { background: #333; color: white; border: none; padding: 8px 16px; cursor: pointer; }
-    canvas { width: 100%; height: 300px; background: black; }
-    .panel { margin-bottom: 10px; }
+    body { margin: 0; background: #000; color: #fff; font-family: sans-serif; overflow: hidden; }
+    .controls { position: fixed; top: 0; left: 0; width: 100%; background: #111; z-index: 10; display: flex; flex-wrap: wrap; padding: 6px; gap: 6px; }
+    button, select, input[type="color"] { padding: 6px; font-size: 14px; background: #333; color: #fff; border: none; }
+    .panel-wrapper { margin-top: 60px; height: calc(100vh - 60px); overflow-y: scroll; }
+    .panel { height: 300px; padding: 4px; }
+    canvas { width: 100%; height: 100%; background: #000; }
   </style>
 </head>
 <body>
@@ -17,54 +18,69 @@
     <button onclick="stop()">Stop</button>
     <button onclick="clearAll()">Clear</button>
     <button onclick="download()">Download</button>
+    <label style="margin-left:10px;">Panels:
+      <select id="panelCount" onchange="setPanelCount()">
+        ${[...Array(10)].map((_,i)=>`<option value="${i+1}">${i+1}</option>`).join('')}
+      </select>
+    </label>
+    <label style="margin-left:10px;">Chart Type:
+      <select id="chartType" onchange="rebuildCharts()">
+        <option value="bar">Stacked Bar</option>
+        <option value="line">Stacked Line</option>
+      </select>
+    </label>
   </div>
 
-  <div id="panels"></div>
+  <div class="panel-wrapper" id="panels"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
   <script>
-let audioCtx, analyser, streamSource, dataArray, micStream;
-let charts = [];
-let fullData = [];
+let audioCtx, analyser, streamSource, micStream, dataArray;
+let charts = [], fullData = [], captureInterval;
+let panelCount = 10, chartType = 'bar';
 
-function makePanel(id) {
-  const container = document.createElement('div');
-  container.className = 'panel';
-  const canvas = document.createElement('canvas');
-  canvas.id = 'c' + id;
-  container.appendChild(canvas);
-  document.getElementById('panels').appendChild(container);
+function initCharts() {
+  const container = document.getElementById('panels');
+  container.innerHTML = '';
+  charts = [];
+  for (let i = 0; i < panelCount; i++) {
+    const div = document.createElement('div');
+    div.className = 'panel';
+    const canvas = document.createElement('canvas');
+    canvas.id = 'chart' + i;
+    div.appendChild(canvas);
+    container.appendChild(div);
 
-  const ctx = canvas.getContext('2d');
-  const chart = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: [],
-      datasets: [...Array(10)].map((_, i) => ({
-        label: 'CH' + (i + 1),
-        data: [],
-        backgroundColor: 'hsl(' + (i * 36) + ',100%,50%)',
-        stack: 'stack1'
-      }))
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } },
-      plugins: {
-        zoom: {
-          pan: { enabled: true, mode: 'x' },
-          zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' }
+    const ctx = canvas.getContext('2d');
+    const datasets = Array.from({ length: 10 }, (_, ch) => ({
+      label: 'CH' + (ch + 1),
+      data: [],
+      backgroundColor: 'hsl(' + (ch * 36) + ',100%,50%)',
+      borderColor: 'hsl(' + (ch * 36) + ',100%,50%)',
+      fill: false,
+      stack: 'stack1'
+    }));
+    charts.push(new Chart(ctx, {
+      type: chartType,
+      data: { labels: [], datasets },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: { stacked: true },
+          y: { stacked: true, beginAtZero: true }
+        },
+        plugins: {
+          zoom: {
+            pan: { enabled: true, mode: 'x' },
+            zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' }
+          }
         }
       }
-    }
-  });
-
-  charts.push(chart);
+    }));
+  }
 }
-
-for (let i = 0; i < 10; i++) makePanel(i);
 
 function start() {
   if (!audioCtx) {
@@ -72,29 +88,36 @@ function start() {
     analyser = audioCtx.createAnalyser();
     analyser.fftSize = 2048;
     dataArray = new Uint8Array(analyser.frequencyBinCount);
-
-    navigator.mediaDevices.getUserMedia({ audio: true })
-      .then(stream => {
-        micStream = stream;
-        streamSource = audioCtx.createMediaStreamSource(stream);
-        streamSource.connect(analyser);
-        setInterval(capture, 1000);
-      })
-      .catch(err => alert('Mic access denied: ' + err.message));
   }
+
+  navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+    micStream = stream;
+    streamSource = audioCtx.createMediaStreamSource(stream);
+    streamSource.connect(analyser);
+    captureInterval = setInterval(capture, 1000);
+  }).catch(err => alert('Mic access denied: ' + err.message));
 }
 
 function stop() {
+  clearInterval(captureInterval);
   if (micStream) {
-    micStream.getTracks().forEach(track => track.stop());
+    micStream.getTracks().forEach(t => t.stop());
     micStream = null;
-    audioCtx = null;
     streamSource = null;
+    audioCtx = null;
   }
 }
 
+function clearAll() {
+  charts.forEach(chart => {
+    chart.data.labels = [];
+    chart.data.datasets.forEach(d => d.data = []);
+    chart.update();
+  });
+  fullData = [];
+}
+
 function capture() {
-  if (!analyser) return;
   analyser.getByteFrequencyData(dataArray);
   const bands = 10;
   const points = Array.from({ length: bands }, (_, i) => {
@@ -109,33 +132,36 @@ function capture() {
   charts.forEach(chart => {
     if (chart.data.labels.length >= 60) {
       chart.data.labels.shift();
-      chart.data.datasets.forEach(d => d.data.shift());
+      chart.data.datasets.forEach(ds => ds.data.shift());
     }
     chart.data.labels.push(now);
-    chart.data.datasets.forEach((d, idx) => d.data.push(points[idx]));
+    chart.data.datasets.forEach((d, i) => d.data.push(points[i]));
     chart.update();
   });
-}
-
-function clearAll() {
-  charts.forEach(chart => {
-    chart.data.labels = [];
-    chart.data.datasets.forEach(d => d.data = []);
-    chart.update();
-  });
-  fullData = [];
 }
 
 function download() {
-  const blob = new Blob([JSON.stringify(fullData, null, 2)], { type: "application/json" });
+  const blob = new Blob([JSON.stringify(fullData, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
+  const a = document.createElement('a');
   a.href = url;
-  a.download = "mad_horizons_data.json";
+  a.download = 'mad_horizons_data.json';
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
 }
+
+function setPanelCount() {
+  panelCount = parseInt(document.getElementById('panelCount').value);
+  initCharts();
+}
+
+function rebuildCharts() {
+  chartType = document.getElementById('chartType').value;
+  initCharts();
+}
+
+window.onload = () => initCharts();
   </script>
 </body>
 </html>
