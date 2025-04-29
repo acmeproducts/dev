@@ -2,14 +2,15 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>MAD Horizons v1.1</title>
+  <title>MAD Horizons v1.2</title>
   <style>
     body { margin: 0; background: #000; color: #fff; font-family: Arial, sans-serif; overflow: hidden; }
     .controls { padding: 10px; background: #111; display: flex; align-items: center; gap: 10px; }
     button { background: #333; color: white; border: none; padding: 8px 12px; cursor: pointer; }
     .panel-container { display: flex; flex-direction: column; height: calc(100vh - 100px); overflow-y: auto; }
-    .panel { flex: none; height: 300px; border-bottom: 1px solid #444; position: relative; }
-    canvas { width: 100%; height: 100%; background: black; }
+    .panel { flex: none; height: 350px; border-bottom: 1px solid #444; position: relative; padding: 5px; }
+    .label { font-size: 18px; padding: 5px 10px; }
+    canvas { width: 100%; height: 300px; background: black; }
     .status { height: 40px; background: #222; color: #0f0; font-size: 16px; padding: 8px 12px; }
   </style>
 </head>
@@ -22,179 +23,174 @@
   </div>
   <div class="status" id="status">Idle</div>
   <div class="panel-container">
-    <div class="panel"><canvas id="canvas1"></canvas></div>
-    <div class="panel"><canvas id="canvas2"></canvas></div>
-    <div class="panel"><canvas id="canvas3"></canvas></div>
-    <div class="panel"><canvas id="canvas4"></canvas></div>
+    <div class="panel"><div class="label">1 Minute Horizon</div><canvas id="canvas1"></canvas></div>
+    <div class="panel"><div class="label">10 Minute Horizon</div><canvas id="canvas2"></canvas></div>
+    <div class="panel"><div class="label">1 Hour Horizon</div><canvas id="canvas3"></canvas></div>
+    <div class="panel"><div class="label">8 Hour Horizon</div><canvas id="canvas4"></canvas></div>
+    <div class="panel"><div class="label">24 Hour Horizon</div><canvas id="canvas5"></canvas></div>
   </div>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
-  <script>
-    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    const analyser = audioCtx.createAnalyser();
-    analyser.fftSize = 2048;
-    const bufferLength = analyser.frequencyBinCount;
-    const dataArray = new Uint8Array(bufferLength);
-    let streamSource, captureInterval, fullCapture = [];
-    const charts = [], statusEl = document.getElementById('status');
-    const canvases = [1,2,3,4].map(n => document.getElementById('canvas'+n));
+<script>
+const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+const analyser = audioCtx.createAnalyser();
+analyser.fftSize = 2048;
+const bufferLength = analyser.frequencyBinCount;
+const dataArray = new Uint8Array(bufferLength);
+let streamSource, captureInterval, fullCapture = [];
+const canvases = [1,2,3,4,5].map(n => document.getElementById('canvas'+n));
+const charts = [];
+const statusEl = document.getElementById('status');
 
-    function setStatus(msg, color = "#0f0") {
-      statusEl.textContent = msg;
-      statusEl.style.color = color;
-    }
+function setStatus(msg, color = "#0f0") {
+  statusEl.textContent = msg;
+  statusEl.style.color = color;
+}
 
-    function startCapture() {
-      setStatus("Resuming Audio Context...");
-      audioCtx.resume().then(() => {
-        setStatus("Requesting Microphone...");
-        navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-          setStatus("Microphone Access Granted. Streaming...");
-          streamSource = audioCtx.createMediaStreamSource(stream);
-          streamSource.connect(analyser);
-          captureInterval = setInterval(captureSample, 1000);
-        }).catch(err => {
-          console.error(err);
-          setStatus("Mic Access Denied: " + err.name, "#f00");
-          alert("Microphone access denied: " + err.message);
-        });
-      }).catch(err => {
-        setStatus("AudioCtx Error: " + err.message, "#f00");
-      });
-    }
+function startCapture() {
+  setStatus("Starting...");
+  audioCtx.resume().then(() => {
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+      setStatus("Capturing Audio...");
+      streamSource = audioCtx.createMediaStreamSource(stream);
+      streamSource.connect(analyser);
+      captureInterval = setInterval(captureSample, 1000);
+    }).catch(err => {
+      setStatus("Mic Denied: "+err.name, "#f00");
+      alert("Microphone access denied: "+err.message);
+    });
+  });
+}
 
-    function stopCapture() {
-      clearInterval(captureInterval);
-      if (streamSource) streamSource.disconnect();
-      setStatus("Stream Stopped", "#ff0");
-    }
+function stopCapture() {
+  clearInterval(captureInterval);
+  if (streamSource) streamSource.disconnect();
+  setStatus("Stopped", "#ff0");
+}
 
-    function clearData() {
-      stopCapture();
-      fullCapture = [];
-      clearDisplays();
-      setStatus("Data Cleared", "#0ff");
-    }
+function clearData() {
+  stopCapture();
+  fullCapture = [];
+  clearDisplays();
+  setStatus("Cleared", "#0ff");
+}
 
-    function captureSample() {
-      analyser.getByteFrequencyData(dataArray);
-      const now = new Date();
-      const bands = 10;
-      const bandData = Array.from({ length: bands }, (_, i) => {
-        const start = Math.floor(i * bufferLength / bands);
-        const end = Math.floor((i + 1) * bufferLength / bands);
-        const slice = dataArray.slice(start, end);
-        const avg = slice.reduce((a, b) => a + b, 0) / slice.length;
-        return Math.round(avg);
-      });
-      const sum = bandData.reduce((a, b) => a + b, 0);
-      fullCapture.push({ timestamp: now.toISOString(), sum, channels: bandData });
-      updatePanels();
-    }
+function captureSample() {
+  analyser.getByteFrequencyData(dataArray);
+  const now = new Date();
+  const bands = 10;
+  const bandData = Array.from({length: bands}, (_, i) => {
+    const start = Math.floor(i * bufferLength / bands);
+    const end = Math.floor((i+1) * bufferLength / bands);
+    const slice = dataArray.slice(start, end);
+    return slice.reduce((a,b)=>a+b,0)/slice.length;
+  });
+  fullCapture.push({ timestamp: now.toISOString(), channels: bandData });
+  updatePanels();
+}
 
-    function downloadRaw() {
-      const blob = new Blob([JSON.stringify(fullCapture, null, 2)], { type: "application/json" });
-      const a = document.createElement("a");
-      a.href = URL.createObjectURL(blob);
-      a.download = "mad_horizons_raw.json";
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-    }
+function downloadRaw() {
+  const blob = new Blob([JSON.stringify(fullCapture, null, 2)], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "mad_horizons_raw.json";
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+}
 
-    function initCharts() {
-      for (let i = 0; i < 4; i++) {
-        charts[i] = new Chart(canvases[i].getContext('2d'), {
-          type: 'line',
-          data: {
-            labels: [],
-            datasets: [
-              { label: "Sum", data: [], borderColor: "white", fill: false },
-              ...Array.from({ length: 10 }, (_, ch) => ({
-                label: `CH${ch+1}`, data: [], borderColor: `hsl(${ch*36},100%,50%)`, fill: false
-              }))
-            ]
-          },
-          options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-              legend: { display: false },
-              tooltip: { mode: "nearest", intersect: false },
-              zoom: {
-                pan: { enabled: true, mode: "x" },
-                zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: "x" }
-              }
-            },
-            scales: {
-              x: { ticks: { maxTicksLimit: 12 } },
-              y: { beginAtZero: true }
-            }
+function initCharts() {
+  for (let i = 0; i < 5; i++) {
+    charts[i] = new Chart(canvases[i].getContext('2d'), {
+      type: 'bar',
+      data: {
+        labels: [],
+        datasets: Array.from({length: 10}, (_, ch) => ({
+          label: `CH${ch+1}`,
+          data: [],
+          backgroundColor: `hsl(${ch*36},100%,50%)`,
+          stack: 'stack1'
+        }))
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: { stacked: true },
+          y: { stacked: true, beginAtZero: true }
+        },
+        plugins: {
+          legend: { display: true },
+          zoom: {
+            pan: { enabled: true, mode: 'x' },
+            zoom: { wheel: {enabled: true}, pinch: {enabled: true}, mode: 'x' }
           }
-        });
-      }
-    }
-
-    function updatePanels() {
-      const now = Date.now();
-      if (!fullCapture.length) return;
-      redrawChart(charts[0], fullCapture.filter(s => Date.parse(s.timestamp) >= now - 60000));
-      redrawChart(charts[1], bucketSamples(fullCapture.filter(s => Date.parse(s.timestamp) >= now - 600000), 10));
-      redrawChart(charts[2], bucketSamples(fullCapture.filter(s => Date.parse(s.timestamp) >= now - 3600000), 60));
-      redrawChart(charts[3], bucketSamples(fullCapture.filter(s => Date.parse(s.timestamp) >= now - 86400000), 1440));
-    }
-
-    function bucketSamples(samples, bucketSizeSec) {
-      const buckets = [], temp = [];
-      let bucketTime = null;
-      for (let sample of samples) {
-        const ts = Date.parse(sample.timestamp);
-        if (!bucketTime) bucketTime = ts;
-        if (ts - bucketTime < bucketSizeSec * 1000) {
-          temp.push(sample);
-        } else {
-          buckets.push(aggregateBucket(temp));
-          temp.length = 0;
-          temp.push(sample);
-          bucketTime = ts;
         }
       }
-      if (temp.length > 0) buckets.push(aggregateBucket(temp));
-      return buckets;
-    }
+    });
+  }
+}
 
-    function aggregateBucket(bucket) {
-      const sum = bucket.reduce((a, b) => a + b.sum, 0) / bucket.length;
-      const channels = Array.from({ length: 10 }, (_, ch) =>
-        bucket.reduce((a, b) => a + b.channels[ch], 0) / bucket.length
-      );
-      return { sum, channels };
-    }
+function updatePanels() {
+  const now = Date.now();
+  redrawChart(charts[0], fullCapture.filter(s => Date.parse(s.timestamp) >= now - 60000));
+  redrawChart(charts[1], bucketSamples(fullCapture.filter(s => Date.parse(s.timestamp) >= now - 600000), 5));
+  redrawChart(charts[2], bucketSamples(fullCapture.filter(s => Date.parse(s.timestamp) >= now - 3600000), 30));
+  redrawChart(charts[3], bucketSamples(fullCapture.filter(s => Date.parse(s.timestamp) >= now - 28800000), 120));
+  redrawChart(charts[4], bucketSamples(fullCapture.filter(s => Date.parse(s.timestamp) >= now - 86400000), 600));
+}
 
-    function redrawChart(chart, data) {
-      if (!data.length) return;
-      while (chart.data.labels.length >= 60) {
-        chart.data.labels.shift();
-        chart.data.datasets.forEach(ds => ds.data.shift());
-      }
-      const now = new Date().toLocaleTimeString();
-      chart.data.labels.push(now);
-      chart.data.datasets[0].data.push(data[data.length-1]?.sum || 0);
-      for (let i = 0; i < 10; i++) {
-        chart.data.datasets[i+1].data.push(data[data.length-1]?.channels[i] || 0);
-      }
-      chart.update();
+function bucketSamples(samples, seconds) {
+  const buckets = [];
+  let current = [];
+  let baseTime = null;
+  samples.forEach(s => {
+    const t = Date.parse(s.timestamp);
+    if (!baseTime) baseTime = t;
+    if (t - baseTime < seconds * 1000) {
+      current.push(s);
+    } else {
+      buckets.push(aggregateBucket(current));
+      current = [s];
+      baseTime = t;
     }
+  });
+  if (current.length) buckets.push(aggregateBucket(current));
+  return buckets;
+}
 
-    function clearDisplays() {
-      charts.forEach(chart => {
-        chart.data.labels = [];
-        chart.data.datasets.forEach(ds => ds.data = []);
-        chart.update();
-      });
-    }
+function aggregateBucket(bucket) {
+  const sums = Array(10).fill(0);
+  bucket.forEach(sample => {
+    sample.channels.forEach((v,i) => sums[i] += v);
+  });
+  return { channels: sums.map(s => s / bucket.length) };
+}
 
-    initCharts();
-  </script>
+function redrawChart(chart, data) {
+  if (!data.length) return;
+  while (chart.data.labels.length >= 60) {
+    chart.data.labels.shift();
+    chart.data.datasets.forEach(ds => ds.data.shift());
+  }
+  const now = new Date().toLocaleTimeString();
+  chart.data.labels.push(now);
+  for (let i = 0; i < 10; i++) {
+    chart.data.datasets[i].data.push(data[data.length-1]?.channels[i] || 0);
+  }
+  chart.update();
+}
+
+function clearDisplays() {
+  charts.forEach(chart => {
+    chart.data.labels = [];
+    chart.data.datasets.forEach(ds => ds.data = []);
+    chart.update();
+  });
+}
+
+initCharts();
+</script>
 </body>
 </html>
