@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Linklink</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: #3b82f6;
+            --accent-color: #bd6a97;
+        }
+        #sidebar {
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+        }
+        #sidebar.active {
+            transform: translateX(0);
+        }
+        .primary-bg { background-color: var(--primary-color); }
+        .accent-bg { background-color: var(--accent-color); }
+        .primary-text { color: var(--primary-color); }
+        .accent-text { color: var(--accent-color); }
+    </style>
+</head>
+<body class="min-h-screen bg-gray-50">
+    <div class="flex h-screen flex-col">
+        <header class="bg-white border-b h-[3vh] flex items-center px-4">
+            <div class="flex items-center w-80 flex-shrink-0">
+                <button id="toggleSidebar" class="text-gray-600 hover:text-gray-900 mr-4">☰</button>
+                <h1 class="text-sm font-medium text-gray-900">Linklink</h1>
+            </div>
+            <div class="flex-1 text-center primary-bg mx-4 rounded">
+                <h1 id="currentUrl" class="text-sm font-medium text-white py-1">Collection</h1>
+            </div>
+            <div id="pacificTime" class="text-sm text-gray-900"></div>
+        </header>
+
+        <div class="flex flex-1 overflow-hidden">
+            <aside id="sidebar" class="w-80 bg-white border-r overflow-y-auto">
+                <div class="p-4">
+                    <div id="linkList" class="space-y-2"></div>
+                </div>
+            </aside>
+
+            <main class="flex-1 bg-white">
+                <iframe id="viewer" class="w-full h-full border-0" sandbox="allow-scripts allow-popups allow-forms"></iframe>
+            </main>
+        </div>
+    </div>
+
+    <script>
+        const links = [{"title":"SoundVisual.html","url":"https://acmeproducts.github.io/dev/SoundVisual.html","id":2},{"title":"SunshineStereo.html","url":"https://acmeproducts.github.io/dev/SunshineStereo.html","id":3},{"title":"Visual MAD v2.html","url":"https://acmeproducts.github.io/dev/Visual MAD v2.html","id":4},{"title":"Waterv2.html.html","url":"https://acmeproducts.github.io/dev/Waterv2.html.html","id":5},{"title":"breath.html","url":"https://acmeproducts.github.io/dev/breath.html","id":6},{"title":"calm-mosaic (1).html","url":"https://acmeproducts.github.io/dev/calm-mosaic (1).html","id":7},{"title":"calm-mosaic (2).html","url":"https://acmeproducts.github.io/dev/calm-mosaic (2).html","id":8},{"title":"codemgr latest.html","url":"https://acmeproducts.github.io/dev/codemgr latest.html","id":9},{"title":"collection-html (conflict 2025-03-03-19-48-48).html","url":"https://acmeproducts.github.io/dev/collection-html (conflict 2025-03-03-19-48-48).html","id":10},{"title":"combined-apps-simple.html","url":"https://acmeproducts.github.io/dev/combined-apps-simple.html","id":11},{"title":"compact-continuous-breathing.html","url":"https://acmeproducts.github.io/dev/compact-continuous-breathing.html","id":12},{"title":"corrected-launcher (1).html","url":"https://acmeproducts.github.io/dev/corrected-launcher (1).html","id":13},{"title":"corrected-launcher.html","url":"https://acmeproducts.github.io/dev/corrected-launcher.html","id":14},{"title":"enhanced-crystal-engine.html","url":"https://acmeproducts.github.io/dev/enhanced-crystal-engine.html","id":15},{"title":"file-35a.html","url":"https://acmeproducts.github.io/dev/file-35a.html","id":16},{"title":"file-4h6.html","url":"https://acmeproducts.github.io/dev/file-4h6.html","id":17},{"title":"go.html","url":"https://acmeproducts.github.io/dev/go.html","id":18},{"title":"harmony and peace.html","url":"https://acmeproducts.github.io/dev/harmony and peace.html","id":19},{"title":"hello.html","url":"https://acmeproducts.github.io/dev/hello.html","id":20},{"title":"htmlFileManagerDB.html","url":"https://acmeproducts.github.io/dev/htmlFileManagerDB.html","id":21},{"title":"index.html","url":"https://acmeproducts.github.io/dev/index.html","id":22},{"title":"modified.html","url":"https://acmeproducts.github.io/dev/modified.html","id":23},{"title":"multi-view-pro.html","url":"https://acmeproducts.github.io/dev/multi-view-pro.html","id":24},{"title":"multi-view.html","url":"https://acmeproducts.github.io/dev/multi-view.html","id":25},{"title":"music viz.html","url":"https://acmeproducts.github.io/dev/music viz.html","id":26},{"title":"orange.html","url":"https://acmeproducts.github.io/dev/orange.html","id":27},{"title":"orangev2.html","url":"https://acmeproducts.github.io/dev/orangev2.html","id":28},{"title":"page.html","url":"https://acmeproducts.github.io/dev/page.html","id":29},{"title":"pic.html","url":"https://acmeproducts.github.io/dev/pic.html","id":30},{"title":"simplified-breathing-app (1).html","url":"https://acmeproducts.github.io/dev/simplified-breathing-app (1).html","id":31},{"title":"snd.html","url":"https://acmeproducts.github.io/dev/snd.html","id":32},{"title":"sndv3.html","url":"https://acmeproducts.github.io/dev/sndv3.html","id":33},{"title":"tealv1.html","url":"https://acmeproducts.github.io/dev/tealv1.html","id":34},{"title":"tealv2.html","url":"https://acmeproducts.github.io/dev/tealv2.html","id":35},{"title":"thts.html","url":"https://acmeproducts.github.io/dev/thts.html","id":36},{"title":"visual MAD v1.html","url":"https://acmeproducts.github.io/dev/visual MAD v1.html","id":37},{"title":"water.html","url":"https://acmeproducts.github.io/dev/water.html","id":38},{"title":"x.html","url":"https://acmeproducts.github.io/dev/x.html","id":39},{"title":"zen.html","url":"https://acmeproducts.github.io/dev/zen.html","id":40}];
+        let currentUrl = '';
+
+        // DOM Elements
+        const elements = {
+            sidebar: document.getElementById('sidebar'),
+            linkList: document.getElementById('linkList'),
+            viewer: document.getElementById('viewer'),
+            currentUrl: document.getElementById('currentUrl'),
+            pacificTime: document.getElementById('pacificTime')
+        };
+
+        // Event Listeners
+        document.getElementById('toggleSidebar').addEventListener('click', () => {
+            elements.sidebar.classList.toggle('active');
+        });
+
+        // Pacific Time Display
+        function updatePacificTime() {
+            const options = {
+                timeZone: 'America/Los_Angeles',
+                hour12: true,
+                hour: 'numeric',
+                minute: '2-digit',
+                second: '2-digit'
+            };
+            elements.pacificTime.textContent = new Date().toLocaleTimeString('en-US', options) + ' PT';
+        }
+        setInterval(updatePacificTime, 1000);
+        updatePacificTime();
+
+        // Initialize link list
+        function updateLinkList() {
+            elements.linkList.innerHTML = '';
+            links.forEach(link => {
+                const div = document.createElement('div');
+                div.className = 'p-3 bg-gray-50 rounded hover:bg-gray-100 cursor-pointer';
+                div.innerHTML = `
+                    <div class="text-sm font-medium text-gray-900">${link.title}</div>
+                    <div class="text-xs text-gray-600 mt-1">${link.url}</div>
+                `;
+                div.addEventListener('click', () => {
+                    elements.viewer.src = link.url;
+                    elements.currentUrl.textContent = link.title;
+                    currentUrl = link.url;
+                    if (window.innerWidth < 768) {
+                        elements.sidebar.classList.remove('active');
+                    }
+                });
+                elements.linkList.appendChild(div);
+            });
+        }
+
+        updateLinkList();
+    </script>
+</body>
+</html>

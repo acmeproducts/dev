@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Link Portal</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        .menu-panel {
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+        }
+        .menu-panel.active {
+            transform: translateX(0);
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-gray-50">
+    <div class="flex h-screen flex-col">
+        <header class="bg-white border-b h-14 flex items-center px-4">
+            <button id="menuBtn" class="text-gray-600 hover:text-gray-900 p-2">☰</button>
+            <h1 class="text-lg font-semibold ml-4">Link Portal</h1>
+        </header>
+
+        <div class="flex-1 flex overflow-hidden relative">
+            <div id="menuPanel" class="menu-panel absolute left-0 top-0 h-full w-64 bg-white shadow-lg z-20">
+                <div class="p-4">
+                    <div id="linkList" class="space-y-2"></div>
+                </div>
+            </div>
+
+            <main class="flex-1 bg-white">
+                <iframe id="viewer" class="w-full h-full border-0" sandbox="allow-scripts allow-same-origin allow-popups"></iframe>
+            </main>
+
+            <div id="overlay" class="absolute inset-0 bg-black bg-opacity-50 z-10 opacity-0 invisible transition-opacity duration-300"></div>
+        </div>
+    </div>
+
+    <script>
+        const links = [];
+        
+        // DOM Elements
+        const menuBtn = document.getElementById('menuBtn');
+        const menuPanel = document.getElementById('menuPanel');
+        const overlay = document.getElementById('overlay');
+        const linkList = document.getElementById('linkList');
+        const viewer = document.getElementById('viewer');
+
+        // Event Listeners
+        menuBtn.addEventListener('click', toggleMenu);
+        overlay.addEventListener('click', toggleMenu);
+
+        // Initialize link list
+        updateLinkList();
+
+        function toggleMenu() {
+            menuPanel.classList.toggle('active');
+            overlay.classList.toggle('opacity-0');
+            overlay.classList.toggle('invisible');
+        }
+
+        function updateLinkList() {
+            linkList.innerHTML = '';
+            links.forEach(link => {
+                const div = document.createElement('div');
+                div.className = 'p-3 bg-gray-50 rounded hover:bg-gray-100 cursor-pointer';
+                div.innerHTML = `
+                    <div class="font-medium">${link.title}</div>
+                    <div class="text-sm text-gray-500 truncate">${link.url}</div>
+                `;
+                div.addEventListener('click', () => {
+                    viewer.src = link.url;
+                    if (window.innerWidth < 768) {
+                        toggleMenu();
+                    }
+                });
+                linkList.appendChild(div);
+            });
+        }
+    </script>
+</body>
+</html>

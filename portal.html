@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Testportal</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        .menu-panel {
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+        }
+        .menu-panel.active {
+            transform: translateX(0);
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-gray-50">
+    <div class="flex h-screen flex-col">
+        <header class="bg-white border-b h-14 flex items-center px-4">
+            <button id="menuBtn" class="text-gray-600 hover:text-gray-900 p-2">☰</button>
+            <h1 class="text-lg font-semibold ml-4">Testportal</h1>
+        </header>
+
+        <div class="flex-1 flex overflow-hidden relative">
+            <div id="menuPanel" class="menu-panel absolute left-0 top-0 h-full w-64 bg-white shadow-lg z-20">
+                <div class="p-4">
+                    <div id="linkList" class="space-y-2"></div>
+                </div>
+            </div>
+
+            <main class="flex-1 bg-white">
+                <iframe id="viewer" class="w-full h-full border-0" sandbox="allow-scripts allow-same-origin allow-popups"></iframe>
+            </main>
+
+            <div id="overlay" class="absolute inset-0 bg-black bg-opacity-50 z-10 opacity-0 invisible transition-opacity duration-300"></div>
+        </div>
+    </div>
+
+    <script>
+        const links = [{"title":"My TiddlyWiki.html","url":"https://acmeproducts.github.io/dev/My TiddlyWiki.html"},{"title":"SoundVisual.html","url":"https://acmeproducts.github.io/dev/SoundVisual.html"},{"title":"SunshineStereo.html","url":"https://acmeproducts.github.io/dev/SunshineStereo.html"},{"title":"Visual MAD v2.html","url":"https://acmeproducts.github.io/dev/Visual MAD v2.html"},{"title":"Waterv2.html.html","url":"https://acmeproducts.github.io/dev/Waterv2.html.html"},{"title":"breath.html","url":"https://acmeproducts.github.io/dev/breath.html"},{"title":"calm-mosaic (1).html","url":"https://acmeproducts.github.io/dev/calm-mosaic (1).html"},{"title":"calm-mosaic (2).html","url":"https://acmeproducts.github.io/dev/calm-mosaic (2).html"},{"title":"codemgr latest.html","url":"https://acmeproducts.github.io/dev/codemgr latest.html"},{"title":"collection-html (conflict 2025-03-03-19-48-48).html","url":"https://acmeproducts.github.io/dev/collection-html (conflict 2025-03-03-19-48-48).html"},{"title":"combined-apps-simple.html","url":"https://acmeproducts.github.io/dev/combined-apps-simple.html"},{"title":"compact-continuous-breathing.html","url":"https://acmeproducts.github.io/dev/compact-continuous-breathing.html"},{"title":"corrected-launcher (1).html","url":"https://acmeproducts.github.io/dev/corrected-launcher (1).html"},{"title":"corrected-launcher.html","url":"https://acmeproducts.github.io/dev/corrected-launcher.html"},{"title":"enhanced-crystal-engine.html","url":"https://acmeproducts.github.io/dev/enhanced-crystal-engine.html"},{"title":"file-35a.html","url":"https://acmeproducts.github.io/dev/file-35a.html"},{"title":"file-4h6.html","url":"https://acmeproducts.github.io/dev/file-4h6.html"},{"title":"go.html","url":"https://acmeproducts.github.io/dev/go.html"},{"title":"harmony and peace.html","url":"https://acmeproducts.github.io/dev/harmony and peace.html"},{"title":"hello.html","url":"https://acmeproducts.github.io/dev/hello.html"},{"title":"htmlFileManagerDB.html","url":"https://acmeproducts.github.io/dev/htmlFileManagerDB.html"},{"title":"index.html","url":"https://acmeproducts.github.io/dev/index.html"},{"title":"modified.html","url":"https://acmeproducts.github.io/dev/modified.html"},{"title":"multi-view-pro.html","url":"https://acmeproducts.github.io/dev/multi-view-pro.html"},{"title":"multi-view.html","url":"https://acmeproducts.github.io/dev/multi-view.html"},{"title":"music viz.html","url":"https://acmeproducts.github.io/dev/music viz.html"},{"title":"orange.html","url":"https://acmeproducts.github.io/dev/orange.html"},{"title":"orangev2.html","url":"https://acmeproducts.github.io/dev/orangev2.html"},{"title":"page.html","url":"https://acmeproducts.github.io/dev/page.html"},{"title":"pic.html","url":"https://acmeproducts.github.io/dev/pic.html"},{"title":"simplified-breathing-app (1).html","url":"https://acmeproducts.github.io/dev/simplified-breathing-app (1).html"},{"title":"snd.html","url":"https://acmeproducts.github.io/dev/snd.html"},{"title":"sndv3.html","url":"https://acmeproducts.github.io/dev/sndv3.html"},{"title":"tealv1.html","url":"https://acmeproducts.github.io/dev/tealv1.html"},{"title":"tealv2.html","url":"https://acmeproducts.github.io/dev/tealv2.html"},{"title":"thts.html","url":"https://acmeproducts.github.io/dev/thts.html"},{"title":"visual MAD v1.html","url":"https://acmeproducts.github.io/dev/visual MAD v1.html"},{"title":"water.html","url":"https://acmeproducts.github.io/dev/water.html"},{"title":"x.html","url":"https://acmeproducts.github.io/dev/x.html"},{"title":"zen.html","url":"https://acmeproducts.github.io/dev/zen.html"},{"title":"My TiddlyWiki.html","url":"https://acmeproducts.github.io/dev/My TiddlyWiki.html"},{"title":"SoundVisual.html","url":"https://acmeproducts.github.io/dev/SoundVisual.html"},{"title":"SunshineStereo.html","url":"https://acmeproducts.github.io/dev/SunshineStereo.html"},{"title":"Visual MAD v2.html","url":"https://acmeproducts.github.io/dev/Visual MAD v2.html"},{"title":"Waterv2.html.html","url":"https://acmeproducts.github.io/dev/Waterv2.html.html"},{"title":"breath.html","url":"https://acmeproducts.github.io/dev/breath.html"},{"title":"calm-mosaic (1).html","url":"https://acmeproducts.github.io/dev/calm-mosaic (1).html"},{"title":"calm-mosaic (2).html","url":"https://acmeproducts.github.io/dev/calm-mosaic (2).html"},{"title":"codemgr latest.html","url":"https://acmeproducts.github.io/dev/codemgr latest.html"},{"title":"collection-html (conflict 2025-03-03-19-48-48).html","url":"https://acmeproducts.github.io/dev/collection-html (conflict 2025-03-03-19-48-48).html"},{"title":"combined-apps-simple.html","url":"https://acmeproducts.github.io/dev/combined-apps-simple.html"},{"title":"compact-continuous-breathing.html","url":"https://acmeproducts.github.io/dev/compact-continuous-breathing.html"},{"title":"corrected-launcher (1).html","url":"https://acmeproducts.github.io/dev/corrected-launcher (1).html"},{"title":"corrected-launcher.html","url":"https://acmeproducts.github.io/dev/corrected-launcher.html"},{"title":"enhanced-crystal-engine.html","url":"https://acmeproducts.github.io/dev/enhanced-crystal-engine.html"},{"title":"file-35a.html","url":"https://acmeproducts.github.io/dev/file-35a.html"},{"title":"file-4h6.html","url":"https://acmeproducts.github.io/dev/file-4h6.html"},{"title":"go.html","url":"https://acmeproducts.github.io/dev/go.html"},{"title":"harmony and peace.html","url":"https://acmeproducts.github.io/dev/harmony and peace.html"},{"title":"hello.html","url":"https://acmeproducts.github.io/dev/hello.html"},{"title":"htmlFileManagerDB.html","url":"https://acmeproducts.github.io/dev/htmlFileManagerDB.html"},{"title":"index.html","url":"https://acmeproducts.github.io/dev/index.html"},{"title":"modified.html","url":"https://acmeproducts.github.io/dev/modified.html"},{"title":"multi-view-pro.html","url":"https://acmeproducts.github.io/dev/multi-view-pro.html"},{"title":"multi-view.html","url":"https://acmeproducts.github.io/dev/multi-view.html"},{"title":"music viz.html","url":"https://acmeproducts.github.io/dev/music viz.html"},{"title":"orange.html","url":"https://acmeproducts.github.io/dev/orange.html"},{"title":"orangev2.html","url":"https://acmeproducts.github.io/dev/orangev2.html"},{"title":"page.html","url":"https://acmeproducts.github.io/dev/page.html"},{"title":"pic.html","url":"https://acmeproducts.github.io/dev/pic.html"},{"title":"simplified-breathing-app (1).html","url":"https://acmeproducts.github.io/dev/simplified-breathing-app (1).html"},{"title":"snd.html","url":"https://acmeproducts.github.io/dev/snd.html"},{"title":"sndv3.html","url":"https://acmeproducts.github.io/dev/sndv3.html"},{"title":"tealv1.html","url":"https://acmeproducts.github.io/dev/tealv1.html"},{"title":"tealv2.html","url":"https://acmeproducts.github.io/dev/tealv2.html"},{"title":"thts.html","url":"https://acmeproducts.github.io/dev/thts.html"},{"title":"visual MAD v1.html","url":"https://acmeproducts.github.io/dev/visual MAD v1.html"},{"title":"water.html","url":"https://acmeproducts.github.io/dev/water.html"},{"title":"x.html","url":"https://acmeproducts.github.io/dev/x.html"},{"title":"zen.html","url":"https://acmeproducts.github.io/dev/zen.html"},{"title":"My TiddlyWiki.html","url":"https://acmeproducts.github.io/dev/My TiddlyWiki.html"},{"title":"SoundVisual.html","url":"https://acmeproducts.github.io/dev/SoundVisual.html"},{"title":"SunshineStereo.html","url":"https://acmeproducts.github.io/dev/SunshineStereo.html"},{"title":"Visual MAD v2.html","url":"https://acmeproducts.github.io/dev/Visual MAD v2.html"},{"title":"Waterv2.html.html","url":"https://acmeproducts.github.io/dev/Waterv2.html.html"},{"title":"breath.html","url":"https://acmeproducts.github.io/dev/breath.html"},{"title":"calm-mosaic (1).html","url":"https://acmeproducts.github.io/dev/calm-mosaic (1).html"},{"title":"calm-mosaic (2).html","url":"https://acmeproducts.github.io/dev/calm-mosaic (2).html"},{"title":"codemgr latest.html","url":"https://acmeproducts.github.io/dev/codemgr latest.html"},{"title":"collection-html (conflict 2025-03-03-19-48-48).html","url":"https://acmeproducts.github.io/dev/collection-html (conflict 2025-03-03-19-48-48).html"},{"title":"combined-apps-simple.html","url":"https://acmeproducts.github.io/dev/combined-apps-simple.html"},{"title":"compact-continuous-breathing.html","url":"https://acmeproducts.github.io/dev/compact-continuous-breathing.html"},{"title":"corrected-launcher (1).html","url":"https://acmeproducts.github.io/dev/corrected-launcher (1).html"},{"title":"corrected-launcher.html","url":"https://acmeproducts.github.io/dev/corrected-launcher.html"},{"title":"enhanced-crystal-engine.html","url":"https://acmeproducts.github.io/dev/enhanced-crystal-engine.html"},{"title":"file-35a.html","url":"https://acmeproducts.github.io/dev/file-35a.html"},{"title":"file-4h6.html","url":"https://acmeproducts.github.io/dev/file-4h6.html"},{"title":"go.html","url":"https://acmeproducts.github.io/dev/go.html"},{"title":"harmony and peace.html","url":"https://acmeproducts.github.io/dev/harmony and peace.html"},{"title":"hello.html","url":"https://acmeproducts.github.io/dev/hello.html"},{"title":"htmlFileManagerDB.html","url":"https://acmeproducts.github.io/dev/htmlFileManagerDB.html"},{"title":"index.html","url":"https://acmeproducts.github.io/dev/index.html"},{"title":"modified.html","url":"https://acmeproducts.github.io/dev/modified.html"},{"title":"multi-view-pro.html","url":"https://acmeproducts.github.io/dev/multi-view-pro.html"},{"title":"multi-view.html","url":"https://acmeproducts.github.io/dev/multi-view.html"},{"title":"music viz.html","url":"https://acmeproducts.github.io/dev/music viz.html"},{"title":"orange.html","url":"https://acmeproducts.github.io/dev/orange.html"},{"title":"orangev2.html","url":"https://acmeproducts.github.io/dev/orangev2.html"},{"title":"page.html","url":"https://acmeproducts.github.io/dev/page.html"},{"title":"pic.html","url":"https://acmeproducts.github.io/dev/pic.html"},{"title":"simplified-breathing-app (1).html","url":"https://acmeproducts.github.io/dev/simplified-breathing-app (1).html"},{"title":"snd.html","url":"https://acmeproducts.github.io/dev/snd.html"},{"title":"sndv3.html","url":"https://acmeproducts.github.io/dev/sndv3.html"},{"title":"tealv1.html","url":"https://acmeproducts.github.io/dev/tealv1.html"},{"title":"tealv2.html","url":"https://acmeproducts.github.io/dev/tealv2.html"},{"title":"thts.html","url":"https://acmeproducts.github.io/dev/thts.html"},{"title":"visual MAD v1.html","url":"https://acmeproducts.github.io/dev/visual MAD v1.html"},{"title":"water.html","url":"https://acmeproducts.github.io/dev/water.html"},{"title":"x.html","url":"https://acmeproducts.github.io/dev/x.html"},{"title":"zen.html","url":"https://acmeproducts.github.io/dev/zen.html"}];
+        
+        // DOM Elements
+        const menuBtn = document.getElementById('menuBtn');
+        const menuPanel = document.getElementById('menuPanel');
+        const overlay = document.getElementById('overlay');
+        const linkList = document.getElementById('linkList');
+        const viewer = document.getElementById('viewer');
+
+        // Event Listeners
+        menuBtn.addEventListener('click', toggleMenu);
+        overlay.addEventListener('click', toggleMenu);
+
+        // Initialize link list
+        updateLinkList();
+
+        function toggleMenu() {
+            menuPanel.classList.toggle('active');
+            overlay.classList.toggle('opacity-0');
+            overlay.classList.toggle('invisible');
+        }
+
+        function updateLinkList() {
+            linkList.innerHTML = '';
+            links.forEach(link => {
+                const div = document.createElement('div');
+                div.className = 'p-3 bg-gray-50 rounded hover:bg-gray-100 cursor-pointer';
+                div.innerHTML = `
+                    <div class="font-medium">${link.title}</div>
+                    <div class="text-sm text-gray-500 truncate">${link.url}</div>
+                `;
+                div.addEventListener('click', () => {
+                    viewer.src = link.url;
+                    if (window.innerWidth < 768) {
+                        toggleMenu();
+                    }
+                });
+                linkList.appendChild(div);
+            });
+        }
+    </script>
+</body>
+</html>
