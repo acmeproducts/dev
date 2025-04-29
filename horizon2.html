@@ -2,67 +2,112 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>MAD Horizons v2.1</title>
+  <title>MAD Horizons v2.2</title>
   <style>
-    body { margin: 0; background: #000; color: #fff; font-family: sans-serif; overflow: hidden; }
-    .controls { position: fixed; top: 0; left: 0; width: 100%; background: #111; z-index: 10; display: flex; flex-wrap: wrap; padding: 6px; gap: 6px; }
-    button, select, input[type="color"] { padding: 6px; font-size: 14px; background: #333; color: #fff; border: none; }
-    .panel-wrapper { margin-top: 60px; height: calc(100vh - 60px); overflow-y: scroll; }
-    .panel { height: 300px; padding: 4px; }
-    canvas { width: 100%; height: 100%; background: #000; }
+    body { margin: 0; background: #000; font-family: sans-serif; color: #fff; overflow: hidden; }
+    .config-panel {
+      position: fixed; top: 0; left: 0; width: 280px; height: 100%; background: #111;
+      transform: translateX(-100%); transition: transform 0.3s ease; padding: 10px; box-sizing: border-box;
+      overflow-y: auto; z-index: 1000;
+    }
+    .config-panel.open { transform: translateX(0); }
+    .config-toggle {
+      position: fixed; top: 10px; left: 10px; z-index: 1100; background: #222; border: none;
+      color: white; padding: 6px 10px; cursor: pointer;
+    }
+    .control-label { display: block; margin-top: 10px; font-size: 14px; }
+    .control-group { margin-bottom: 10px; }
+    .main-content { margin-left: 0; height: 100vh; overflow-y: scroll; margin-top: 44px; }
+    .panel { height: 280px; padding: 4px; }
+    canvas { width: 100%; height: 100%; background: black; }
+    .top-bar {
+      position: fixed; top: 0; left: 0; width: 100%; height: 44px; background: #111;
+      display: flex; justify-content: center; align-items: center; gap: 10px; z-index: 500;
+    }
+    .top-bar button {
+      background: #333; color: white; border: none; padding: 6px 14px; cursor: pointer;
+    }
   </style>
 </head>
 <body>
-  <div class="controls">
+
+  <button class="config-toggle" onclick="togglePanel()">☰</button>
+
+  <div class="config-panel" id="configPanel">
+    <h3>Configuration</h3>
+    <div class="control-group">
+      <label class="control-label">Background Color</label>
+      <input type="color" id="bgColor" value="#000000" onchange="applySettings()" />
+    </div>
+    <div class="control-group">
+      <label class="control-label"># Panels</label>
+      <input type="number" id="panelCount" min="1" max="10" value="10" onchange="buildPanels()" />
+    </div>
+    <div class="control-group">
+      <label class="control-label">Sampling Interval (ms)</label>
+      <input type="number" id="interval" min="100" step="100" value="1000" />
+    </div>
+    <div class="control-group">
+      <label><input type="checkbox" id="showTitles" checked onchange="applySettings()"> Show Titles</label>
+    </div>
+    <div class="control-group">
+      <button onclick="saveConfig()">Save Config</button>
+      <button onclick="loadConfig()">Load Config</button>
+    </div>
+  </div>
+
+  <div class="top-bar">
     <button onclick="start()">Start</button>
     <button onclick="stop()">Stop</button>
     <button onclick="clearAll()">Clear</button>
     <button onclick="download()">Download</button>
-    <label style="margin-left:10px;">Panels:
-      <select id="panelCount" onchange="setPanelCount()">
-        ${[...Array(10)].map((_,i)=>`<option value="${i+1}">${i+1}</option>`).join('')}
-      </select>
-    </label>
-    <label style="margin-left:10px;">Chart Type:
-      <select id="chartType" onchange="rebuildCharts()">
-        <option value="bar">Stacked Bar</option>
-        <option value="line">Stacked Line</option>
-      </select>
-    </label>
   </div>
 
-  <div class="panel-wrapper" id="panels"></div>
+  <div class="main-content" id="panelArea"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
   <script>
 let audioCtx, analyser, streamSource, micStream, dataArray;
 let charts = [], fullData = [], captureInterval;
-let panelCount = 10, chartType = 'bar';
 
-function initCharts() {
-  const container = document.getElementById('panels');
-  container.innerHTML = '';
+function togglePanel() {
+  document.getElementById("configPanel").classList.toggle("open");
+}
+
+function buildPanels() {
+  stop();
+  clearAll();
+  const count = parseInt(document.getElementById("panelCount").value);
+  const panelArea = document.getElementById("panelArea");
+  panelArea.innerHTML = '';
   charts = [];
-  for (let i = 0; i < panelCount; i++) {
-    const div = document.createElement('div');
-    div.className = 'panel';
-    const canvas = document.createElement('canvas');
-    canvas.id = 'chart' + i;
-    div.appendChild(canvas);
-    container.appendChild(div);
 
-    const ctx = canvas.getContext('2d');
+  for (let i = 0; i < count; i++) {
+    const div = document.createElement("div");
+    div.className = "panel";
+    const canvas = document.createElement("canvas");
+    canvas.id = 'chart' + i;
+    if (document.getElementById("showTitles").checked) {
+      const label = document.createElement("div");
+      label.innerText = `Panel ${i + 1}`;
+      label.style.padding = "4px";
+      label.style.color = "#0f0";
+      div.appendChild(label);
+    }
+    div.appendChild(canvas);
+    panelArea.appendChild(div);
+
+    const ctx = canvas.getContext("2d");
     const datasets = Array.from({ length: 10 }, (_, ch) => ({
       label: 'CH' + (ch + 1),
       data: [],
       backgroundColor: 'hsl(' + (ch * 36) + ',100%,50%)',
-      borderColor: 'hsl(' + (ch * 36) + ',100%,50%)',
-      fill: false,
       stack: 'stack1'
     }));
+
     charts.push(new Chart(ctx, {
-      type: chartType,
+      type: 'bar',
       data: { labels: [], datasets },
       options: {
         responsive: true,
@@ -80,6 +125,39 @@ function initCharts() {
       }
     }));
   }
+
+  applySettings();
+}
+
+function applySettings() {
+  document.body.style.backgroundColor = document.getElementById("bgColor").value;
+  document.getElementById("panelArea").style.backgroundColor = document.getElementById("bgColor").value;
+}
+
+function saveConfig() {
+  const config = {
+    bgColor: document.getElementById("bgColor").value,
+    panelCount: document.getElementById("panelCount").value,
+    interval: document.getElementById("interval").value,
+    showTitles: document.getElementById("showTitles").checked
+  };
+  localStorage.setItem("madHorizonsConfig", JSON.stringify(config));
+  alert("Config saved.");
+}
+
+function loadConfig() {
+  const config = JSON.parse(localStorage.getItem("madHorizonsConfig"));
+  if (config) {
+    document.getElementById("bgColor").value = config.bgColor;
+    document.getElementById("panelCount").value = config.panelCount;
+    document.getElementById("interval").value = config.interval;
+    document.getElementById("showTitles").checked = config.showTitles;
+    buildPanels();
+    applySettings();
+    alert("Config loaded.");
+  } else {
+    alert("No saved config.");
+  }
 }
 
 function start() {
@@ -94,8 +172,9 @@ function start() {
     micStream = stream;
     streamSource = audioCtx.createMediaStreamSource(stream);
     streamSource.connect(analyser);
-    captureInterval = setInterval(capture, 1000);
-  }).catch(err => alert('Mic access denied: ' + err.message));
+    const interval = parseInt(document.getElementById("interval").value);
+    captureInterval = setInterval(capture, interval);
+  }).catch(err => alert("Mic access denied: " + err.message));
 }
 
 function stop() {
@@ -106,15 +185,6 @@ function stop() {
     streamSource = null;
     audioCtx = null;
   }
-}
-
-function clearAll() {
-  charts.forEach(chart => {
-    chart.data.labels = [];
-    chart.data.datasets.forEach(d => d.data = []);
-    chart.update();
-  });
-  fullData = [];
 }
 
 function capture() {
@@ -140,6 +210,15 @@ function capture() {
   });
 }
 
+function clearAll() {
+  charts.forEach(chart => {
+    chart.data.labels = [];
+    chart.data.datasets.forEach(d => d.data = []);
+    chart.update();
+  });
+  fullData = [];
+}
+
 function download() {
   const blob = new Blob([JSON.stringify(fullData, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
@@ -151,17 +230,7 @@ function download() {
   document.body.removeChild(a);
 }
 
-function setPanelCount() {
-  panelCount = parseInt(document.getElementById('panelCount').value);
-  initCharts();
-}
-
-function rebuildCharts() {
-  chartType = document.getElementById('chartType').value;
-  initCharts();
-}
-
-window.onload = () => initCharts();
+window.onload = buildPanels;
   </script>
 </body>
 </html>
