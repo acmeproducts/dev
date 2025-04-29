@@ -1,0 +1,1432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SlideBox - Image Organizer</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        /* Custom styles */
+        .stack-container {
+            min-height: 150px;
+        }
+        .image-container {
+            position: relative;
+            width: 100%;
+            height: 60vh;
+            overflow: hidden;
+            user-select: none;
+        }
+        .center-image {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            max-width: 100%;
+            max-height: 100%;
+            pointer-events: none;
+        }
+        .stack-thumbnail {
+            width: 80px;
+            height: 80px;
+            object-fit: cover;
+            border-radius: 4px;
+            cursor: pointer;
+            border: 2px solid transparent;
+            transition: all 0.2s ease;
+        }
+        .stack-thumbnail.selected {
+            border-color: #3b82f6;
+            transform: scale(1.05);
+        }
+        .stack-zone {
+            min-height: 100px;
+            border: 2px dashed #e5e7eb;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+        }
+        .stack-zone.drag-over {
+            border-color: #3b82f6;
+            background-color: rgba(59, 130, 246, 0.1);
+        }
+        .metadata-panel {
+            position: absolute;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            padding: 12px;
+            z-index: 100;
+            max-width: 300px;
+        }
+        /* Grid view styles */
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 16px;
+        }
+        .grid-item {
+            position: relative;
+            aspect-ratio: 1;
+            overflow: hidden;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+        .grid-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        .grid-item.selected {
+            box-shadow: 0 0 0 4px #3b82f6;
+        }
+        /* Swipe indicators */
+        .swipe-indicator {
+            position: absolute;
+            font-size: 48px;
+            color: white;
+            text-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        .swipe-up {
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        .swipe-down {
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+        .swipe-left {
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+        .swipe-right {
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+        /* Toast notification */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 12px 20px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: 1000;
+        }
+        .toast.success {
+            background-color: #10b981;
+        }
+        .toast.error {
+            background-color: #ef4444;
+        }
+        .toast.show {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 font-sans min-h-screen">
+    <!-- Auth Screen -->
+    <div id="auth-screen" class="flex flex-col items-center justify-center min-h-screen p-4">
+        <div class="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
+            <h1 class="text-2xl font-bold text-center mb-6">SlideBox</h1>
+            <p class="mb-4 text-gray-600 text-center">Paste your Google Drive access token to begin</p>
+            <div class="mb-4">
+                <label for="access-token" class="block text-sm font-medium text-gray-700 mb-1">Access Token</label>
+                <input type="password" id="access-token" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Paste your access token here">
+            </div>
+            <button id="submit-token" class="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition duration-200">Submit</button>
+            <div id="auth-error" class="mt-4 text-red-500 text-sm text-center hidden"></div>
+        </div>
+    </div>
+
+    <!-- Folder Selection Screen -->
+    <div id="folder-screen" class="flex flex-col items-center justify-center min-h-screen p-4 hidden">
+        <div class="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
+            <h1 class="text-2xl font-bold text-center mb-6">Select a Folder</h1>
+            <div id="folder-list" class="max-h-80 overflow-y-auto mb-4">
+                <!-- Folders will be populated here -->
+                <div class="flex items-center justify-center py-8 text-gray-400">
+                    <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>Loading folders...</span>
+                </div>
+            </div>
+            <button id="refresh-folders" class="w-full bg-gray-200 text-gray-800 py-2 px-4 rounded-md hover:bg-gray-300 transition duration-200 mb-2">Refresh</button>
+            <button id="logout" class="w-full bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700 transition duration-200">Logout</button>
+        </div>
+    </div>
+
+    <!-- Main App Screen -->
+    <div id="app-screen" class="hidden">
+        <!-- Header -->
+        <header class="bg-white shadow-sm">
+            <div class="container mx-auto px-4 py-3 flex items-center justify-between">
+                <div class="flex items-center">
+                    <h1 class="text-xl font-bold text-gray-800">SlideBox</h1>
+                    <span id="current-folder" class="ml-4 text-sm text-gray-500"></span>
+                </div>
+                <div class="flex items-center">
+                    <button id="back-to-folders" class="bg-gray-200 text-gray-700 py-1 px-3 rounded-md text-sm hover:bg-gray-300 transition duration-200">
+                        Change Folder
+                    </button>
+                </div>
+            </div>
+        </header>
+
+        <!-- Center View -->
+        <div id="center-view" class="container mx-auto p-4">
+            <!-- Image Container -->
+            <div class="image-container bg-white rounded-lg shadow-md mb-4">
+                <img id="center-image" class="center-image" src="" alt="No image selected">
+                
+                <!-- Swipe Indicators -->
+                <div class="swipe-indicator swipe-up">⬆️</div>
+                <div class="swipe-indicator swipe-down">⬇️</div>
+                <div class="swipe-indicator swipe-left">⬅️</div>
+                <div class="swipe-indicator swipe-right">➡️</div>
+                
+                <!-- Overlay for empty state -->
+                <div id="empty-state" class="absolute inset-0 flex items-center justify-center bg-gray-100 hidden">
+                    <div class="text-center">
+                        <p class="text-gray-500 mb-2">No images to review</p>
+                        <button id="select-another-folder" class="bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition duration-200">
+                            Select Another Folder
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stacks -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+                <!-- Needs Review Stack -->
+                <div class="stack-box bg-white rounded-lg shadow-md p-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <h2 class="text-lg font-medium text-gray-800 stack-title cursor-pointer" data-stack="needs_review">Needs Review</h2>
+                        <span class="stack-count bg-gray-200 text-gray-700 px-2 py-1 rounded-md text-xs" data-stack="needs_review">0</span>
+                    </div>
+                    <div class="stack-zone" data-stack="needs_review">
+                        <div class="stack-container flex flex-wrap gap-2 overflow-y-auto" data-stack="needs_review">
+                            <!-- Thumbnails will go here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Reviewed Stack -->
+                <div class="stack-box bg-white rounded-lg shadow-md p-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <h2 class="text-lg font-medium text-gray-800 stack-title cursor-pointer" data-stack="reviewed">Reviewed</h2>
+                        <span class="stack-count bg-gray-200 text-gray-700 px-2 py-1 rounded-md text-xs" data-stack="reviewed">0</span>
+                    </div>
+                    <div class="stack-zone" data-stack="reviewed">
+                        <div class="stack-container flex flex-wrap gap-2 overflow-y-auto" data-stack="reviewed">
+                            <!-- Thumbnails will go here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Priority Stack -->
+                <div class="stack-box bg-white rounded-lg shadow-md p-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <h2 class="text-lg font-medium text-gray-800 stack-title cursor-pointer" data-stack="priority">Priority</h2>
+                        <span class="stack-count bg-gray-200 text-gray-700 px-2 py-1 rounded-md text-xs" data-stack="priority">0</span>
+                    </div>
+                    <div class="stack-zone" data-stack="priority">
+                        <div class="stack-container flex flex-wrap gap-2 overflow-y-auto" data-stack="priority">
+                            <!-- Thumbnails will go here -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Trash Stack -->
+                <div class="stack-box bg-white rounded-lg shadow-md p-4">
+                    <div class="flex items-center justify-between mb-2">
+                        <h2 class="text-lg font-medium text-gray-800 stack-title cursor-pointer" data-stack="trash">Trash</h2>
+                        <span class="stack-count bg-gray-200 text-gray-700 px-2 py-1 rounded-md text-xs" data-stack="trash">0</span>
+                    </div>
+                    <div class="stack-zone" data-stack="trash">
+                        <div class="stack-container flex flex-wrap gap-2 overflow-y-auto" data-stack="trash">
+                            <!-- Thumbnails will go here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Grid View -->
+        <div id="grid-view" class="container mx-auto p-4 hidden">
+            <div class="bg-white rounded-lg shadow-md p-4 mb-4">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 id="grid-title" class="text-xl font-medium text-gray-800">Grid View</h2>
+                    <button id="close-grid" class="bg-gray-200 text-gray-700 py-1 px-3 rounded-md text-sm hover:bg-gray-300 transition duration-200">
+                        Back to Center View
+                    </button>
+                </div>
+                
+                <!-- Grid actions -->
+                <div class="flex flex-wrap gap-2 mb-4">
+                    <div class="flex items-center">
+                        <span class="mr-2 text-sm text-gray-600">Grid Size:</span>
+                        <input type="range" id="grid-size" min="2" max="10" value="4" class="w-24">
+                        <span id="grid-size-value" class="ml-2 text-sm text-gray-600">4</span>
+                    </div>
+                    <div class="flex-grow"></div>
+                    <span id="selection-count" class="bg-blue-100 text-blue-800 px-2 py-1 rounded-md text-sm hidden">0 selected</span>
+                    <button id="tag-selected" class="bg-green-600 text-white py-1 px-3 rounded-md text-sm hover:bg-green-700 transition duration-200 hidden">
+                        Tag
+                    </button>
+                    <button id="move-selected" class="bg-blue-600 text-white py-1 px-3 rounded-md text-sm hover:bg-blue-700 transition duration-200 hidden">
+                        Move
+                    </button>
+                    <button id="delete-selected" class="bg-red-600 text-white py-1 px-3 rounded-md text-sm hover:bg-red-700 transition duration-200 hidden">
+                        Delete
+                    </button>
+                </div>
+                
+                <!-- Grid container -->
+                <div id="grid-container" class="grid-container">
+                    <!-- Grid images will be populated here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Move Action -->
+    <div id="move-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+        <div class="bg-white rounded-lg shadow-md p-6 w-full max-w-md">
+            <h3 class="text-lg font-medium text-gray-800 mb-4">Move to Stack</h3>
+            <div class="space-y-2 mb-4">
+                <button class="move-option w-full text-left px-4 py-2 rounded-md hover:bg-gray-100 transition duration-200" data-stack="needs_review">
+                    Needs Review
+                </button>
+                <button class="move-option w-full text-left px-4 py-2 rounded-md hover:bg-gray-100 transition duration-200" data-stack="reviewed">
+                    Reviewed
+                </button>
+                <button class="move-option w-full text-left px-4 py-2 rounded-md hover:bg-gray-100 transition duration-200" data-stack="priority">
+                    Priority
+                </button>
+                <button class="move-option w-full text-left px-4 py-2 rounded-md hover:bg-gray-100 transition duration-200" data-stack="trash">
+                    Trash
+                </button>
+            </div>
+            <div class="flex justify-end">
+                <button id="cancel-move" class="bg-gray-200 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-300 transition duration-200 mr-2">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Tagging -->
+    <div id="tag-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+        <div class="bg-white rounded-lg shadow-md p-6 w-full max-w-md">
+            <h3 class="text-lg font-medium text-gray-800 mb-4">Add Tags</h3>
+            <div class="mb-4">
+                <label for="tag-input" class="block text-sm font-medium text-gray-700 mb-1">Enter tags (comma separated)</label>
+                <input type="text" id="tag-input" class="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="nature, landscape, vacation">
+            </div>
+            <div id="tag-suggestions" class="flex flex-wrap gap-2 mb-4">
+                <!-- Tag suggestions will be added here -->
+            </div>
+            <div class="flex justify-end">
+                <button id="cancel-tag" class="bg-gray-200 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-300 transition duration-200 mr-2">
+                    Cancel
+                </button>
+                <button id="apply-tag" class="bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 transition duration-200">
+                    Apply
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Delete Confirmation -->
+    <div id="delete-modal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
+        <div class="bg-white rounded-lg shadow-md p-6 w-full max-w-md">
+            <h3 class="text-lg font-medium text-gray-800 mb-4">Confirm Delete</h3>
+            <p class="text-gray-600 mb-4">Are you sure you want to move the selected images to Trash?</p>
+            <div class="flex justify-end">
+                <button id="cancel-delete" class="bg-gray-200 text-gray-700 py-2 px-4 rounded-md hover:bg-gray-300 transition duration-200 mr-2">
+                    Cancel
+                </button>
+                <button id="confirm-delete" class="bg-red-600 text-white py-2 px-4 rounded-md hover:bg-red-700 transition duration-200">
+                    Move to Trash
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notifications -->
+    <div id="toast" class="toast">
+        <!-- Toast message will be shown here -->
+    </div>
+
+    <!-- Metadata Panel (Hidden by default) -->
+    <div id="metadata-panel" class="metadata-panel hidden">
+        <h4 class="text-sm font-medium text-gray-800 mb-2">File Details</h4>
+        <div id="metadata-content" class="text-xs text-gray-600 space-y-1">
+            <!-- Metadata content will be shown here -->
+        </div>
+    </div>
+
+    <script>
+        // Constants
+        const SUPPORTED_IMAGE_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif'];
+        const STACK_TYPES = ['needs_review', 'reviewed', 'priority', 'trash'];
+        
+        // App State
+        const appState = {
+            accessToken: null,
+            currentFolder: null,
+            currentFolderName: '',
+            imageFiles: [],
+            currentImageIndex: 0,
+            stacks: {
+                needs_review: [],
+                reviewed: [],
+                priority: [],
+                trash: []
+            },
+            gridView: {
+                currentStack: null,
+                selectedImages: []
+            },
+            tagSuggestions: new Set(),
+            metadataPanel: {
+                visible: false,
+                target: null
+            }
+        };
+
+        // DOM Elements
+        const elements = {
+            // Screens
+            authScreen: document.getElementById('auth-screen'),
+            folderScreen: document.getElementById('folder-screen'),
+            appScreen: document.getElementById('app-screen'),
+            centerView: document.getElementById('center-view'),
+            gridView: document.getElementById('grid-view'),
+            
+            // Auth
+            accessTokenInput: document.getElementById('access-token'),
+            submitTokenButton: document.getElementById('submit-token'),
+            authError: document.getElementById('auth-error'),
+            
+            // Folders
+            folderList: document.getElementById('folder-list'),
+            refreshFoldersButton: document.getElementById('refresh-folders'),
+            logoutButton: document.getElementById('logout'),
+            currentFolderDisplay: document.getElementById('current-folder'),
+            backToFoldersButton: document.getElementById('back-to-folders'),
+            
+            // Center View
+            centerImage: document.getElementById('center-image'),
+            emptyState: document.getElementById('empty-state'),
+            selectAnotherFolderButton: document.getElementById('select-another-folder'),
+            swipeIndicators: document.querySelectorAll('.swipe-indicator'),
+            
+            // Stacks
+            stackCounts: document.querySelectorAll('.stack-count'),
+            stackContainers: document.querySelectorAll('.stack-container'),
+            stackZones: document.querySelectorAll('.stack-zone'),
+            stackTitles: document.querySelectorAll('.stack-title'),
+            
+            // Grid View
+            gridTitle: document.getElementById('grid-title'),
+            gridContainer: document.getElementById('grid-container'),
+            closeGridButton: document.getElementById('close-grid'),
+            gridSizeSlider: document.getElementById('grid-size'),
+            gridSizeValue: document.getElementById('grid-size-value'),
+            selectionCount: document.getElementById('selection-count'),
+            tagSelectedButton: document.getElementById('tag-selected'),
+            moveSelectedButton: document.getElementById('move-selected'),
+            deleteSelectedButton: document.getElementById('delete-selected'),
+            
+            // Modals
+            moveModal: document.getElementById('move-modal'),
+            tagModal: document.getElementById('tag-modal'),
+            deleteModal: document.getElementById('delete-modal'),
+            cancelMoveButton: document.getElementById('cancel-move'),
+            moveOptions: document.querySelectorAll('.move-option'),
+            tagInput: document.getElementById('tag-input'),
+            tagSuggestions: document.getElementById('tag-suggestions'),
+            cancelTagButton: document.getElementById('cancel-tag'),
+            applyTagButton: document.getElementById('apply-tag'),
+            cancelDeleteButton: document.getElementById('cancel-delete'),
+            confirmDeleteButton: document.getElementById('confirm-delete'),
+            
+            // Metadata
+            metadataPanel: document.getElementById('metadata-panel'),
+            metadataContent: document.getElementById('metadata-content'),
+            
+            // Toast
+            toast: document.getElementById('toast')
+        };
+
+        // Helper Functions
+        function showScreen(screenId) {
+            elements.authScreen.classList.add('hidden');
+            elements.folderScreen.classList.add('hidden');
+            elements.appScreen.classList.add('hidden');
+            
+            document.getElementById(screenId).classList.remove('hidden');
+        }
+        
+        function showToast(message, type = 'success') {
+            elements.toast.textContent = message;
+            elements.toast.className = `toast ${type}`;
+            elements.toast.classList.add('show');
+            
+            setTimeout(() => {
+                elements.toast.classList.remove('show');
+            }, 3000);
+        }
+        
+        function updateStackCounts() {
+            STACK_TYPES.forEach(stack => {
+                const count = appState.stacks[stack].length;
+                document.querySelector(`.stack-count[data-stack="${stack}"]`).textContent = count;
+            });
+        }
+        
+        function updateStackContainers() {
+            STACK_TYPES.forEach(stack => {
+                const container = document.querySelector(`.stack-container[data-stack="${stack}"]`);
+                container.innerHTML = '';
+                
+                appState.stacks[stack].forEach(file => {
+                    const thumbnail = createThumbnail(file, stack);
+                    container.appendChild(thumbnail);
+                });
+            });
+        }
+        
+        function createThumbnail(file, stack) {
+            const div = document.createElement('div');
+            div.className = 'relative';
+            div.dataset.fileId = file.id;
+            
+            const img = document.createElement('img');
+            img.className = 'stack-thumbnail';
+            img.src = file.thumbnailLink || file.webContentLink;
+            img.alt = file.name;
+            img.draggable = true;
+            
+            // Add event listeners
+            img.addEventListener('dragstart', handleDragStart);
+            img.addEventListener('click', () => handleThumbnailClick(file));
+            
+            // Add metadata hover
+            img.addEventListener('mouseenter', (e) => showMetadataPanel(e, file));
+            img.addEventListener('mouseleave', hideMetadataPanel);
+            
+            // Touch support for mobile
+            img.addEventListener('touchstart', (e) => {
+                let timer = setTimeout(() => {
+                    showMetadataPanel(e, file);
+                }, 500);
+                
+                const cancelTimer = () => {
+                    clearTimeout(timer);
+                    document.removeEventListener('touchend', cancelTimer);
+                };
+                
+                document.addEventListener('touchend', cancelTimer);
+            });
+            
+            div.appendChild(img);
+            return div;
+        }
+        
+        function handleDragStart(e) {
+            const fileId = e.target.parentElement.dataset.fileId;
+            e.dataTransfer.setData('text/plain', fileId);
+            e.dataTransfer.effectAllowed = 'move';
+        }
+        
+        function handleThumbnailClick(file) {
+            // Find the index of the file in the imageFiles array
+            const index = appState.imageFiles.findIndex(f => f.id === file.id);
+            if (index !== -1) {
+                appState.currentImageIndex = index;
+                displayCurrentImage();
+            }
+        }
+        
+        function showMetadataPanel(e, file) {
+            const metadata = getFileMetadata(file);
+            elements.metadataContent.innerHTML = `
+                <p><strong>Name:</strong> ${file.name}</p>
+                <p><strong>Type:</strong> ${file.mimeType}</p>
+                <p><strong>Stack:</strong> ${metadata.slideboxStack || 'None'}</p>
+                <p><strong>Tags:</strong> ${metadata.slideboxTags ? metadata.slideboxTags.join(', ') : 'None'}</p>
+                <p><strong>Created:</strong> ${new Date(file.createdTime).toLocaleString()}</p>
+            `;
+            
+            const panel = elements.metadataPanel;
+            panel.style.top = `${e.pageY + 20}px`;
+            panel.style.left = `${e.pageX + 20}px`;
+            panel.classList.remove('hidden');
+            
+            appState.metadataPanel.visible = true;
+            appState.metadataPanel.target = file.id;
+        }
+        
+        function hideMetadataPanel() {
+            if (appState.metadataPanel.visible) {
+                elements.metadataPanel.classList.add('hidden');
+                appState.metadataPanel.visible = false;
+                appState.metadataPanel.target = null;
+            }
+        }
+        
+        function displayCurrentImage() {
+            if (appState.imageFiles.length === 0) {
+                elements.centerImage.src = '';
+                elements.emptyState.classList.remove('hidden');
+                return;
+            }
+            
+            elements.emptyState.classList.add('hidden');
+            const currentFile = appState.imageFiles[appState.currentImageIndex];
+            elements.centerImage.src = currentFile.webContentLink;
+            elements.centerImage.alt = currentFile.name;
+        }
+        
+        function moveToNextImage() {
+            if (appState.imageFiles.length === 0) return;
+            
+            appState.currentImageIndex = (appState.currentImageIndex + 1) % appState.imageFiles.length;
+            displayCurrentImage();
+        }
+        
+        function getFileMetadata(file) {
+            const appProperties = file.appProperties || {};
+            const metadata = {
+                slideboxStack: appProperties.slideboxStack || 'needs_review',
+                slideboxTags: appProperties.slideboxTags ? appProperties.slideboxTags.split(',') : []
+            };
+            return metadata;
+        }
+        
+        function updateFileMetadata(fileId, metadata) {
+            const file = appState.imageFiles.find(f => f.id === fileId);
+            if (!file) return Promise.reject(new Error('File not found'));
+            
+            // Update app properties
+            file.appProperties = {
+                ...file.appProperties,
+                ...metadata
+            };
+            
+            // Update file in Drive
+            return fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?fields=appProperties`, {
+                method: 'PATCH',
+                headers: {
+                    'Authorization': `Bearer ${appState.accessToken}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    appProperties: file.appProperties
+                })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to update file metadata');
+                }
+                return response.json();
+            })
+            .then(() => {
+                // Update stacks
+                updateStacks();
+                return metadata;
+            });
+        }
+        
+        function updateStacks() {
+            // Clear all stacks
+            STACK_TYPES.forEach(stack => {
+                appState.stacks[stack] = [];
+            });
+            
+            // Re-populate stacks based on current metadata
+            appState.imageFiles.forEach(file => {
+                const metadata = getFileMetadata(file);
+                const stack = metadata.slideboxStack;
+                
+                if (STACK_TYPES.includes(stack)) {
+                    appState.stacks[stack].push(file);
+                } else {
+                    // Default to needs_review if invalid stack
+                    appState.stacks.needs_review.push(file);
+                }
+            });
+            
+            // Update UI
+            updateStackCounts();
+            updateStackContainers();
+        }
+        
+        function moveFileToStack(fileId, stack) {
+            return updateFileMetadata(fileId, { slideboxStack: stack })
+                .then(() => {
+                    showToast(`Moved to ${stack.replace('_', ' ')}`);
+                })
+                .catch(error => {
+                    console.error('Error moving file:', error);
+                    showToast('Failed to move file', 'error');
+                });
+        }
+        
+        function addTagsToFile(fileId, tags) {
+            const file = appState.imageFiles.find(f => f.id === fileId);
+            if (!file) return Promise.reject(new Error('File not found'));
+            
+            const metadata = getFileMetadata(file);
+            const currentTags = metadata.slideboxTags || [];
+            
+            // Add new tags (avoiding duplicates)
+            const newTags = [...new Set([...currentTags, ...tags])];
+            
+            // Add to tag suggestions
+            tags.forEach(tag => appState.tagSuggestions.add(tag));
+            
+            // Update metadata
+            return updateFileMetadata(fileId, { slideboxTags: newTags.join(',') })
+                .then(() => {
+                    showToast(`Tags added: ${tags.join(', ')}`);
+                    return newTags;
+                })
+                .catch(error => {
+                    console.error('Error adding tags:', error);
+                    showToast('Failed to add tags', 'error');
+                    return currentTags;
+                });
+        }
+        
+        // Grid View Functions
+        function openGridView(stack) {
+            elements.centerView.classList.add('hidden');
+            elements.gridView.classList.remove('hidden');
+            
+            // Set title
+            elements.gridTitle.textContent = `${stack.replace('_', ' ')} (${appState.stacks[stack].length})`;
+            
+            // Store current stack
+            appState.gridView.currentStack = stack;
+            
+            // Clear selections
+            appState.gridView.selectedImages = [];
+            updateSelectionUI();
+            
+            // Populate grid
+            populateGridView(stack);
+        }
+        
+        function closeGridView() {
+            elements.gridView.classList.add('hidden');
+            elements.centerView.classList.remove('hidden');
+            
+            // Clear grid state
+            appState.gridView.currentStack = null;
+            appState.gridView.selectedImages = [];
+        }
+        
+        function populateGridView(stack) {
+            const container = elements.gridContainer;
+            container.innerHTML = '';
+            
+            // Set grid columns based on slider value
+            container.style.gridTemplateColumns = `repeat(${elements.gridSizeSlider.value}, 1fr)`;
+            
+            appState.stacks[stack].forEach(file => {
+                const div = document.createElement('div');
+                div.className = 'grid-item';
+                div.dataset.fileId = file.id;
+                
+                const img = document.createElement('img');
+                img.className = 'grid-image';
+                img.src = file.thumbnailLink || file.webContentLink;
+                img.alt = file.name;
+                
+                // Add event listeners
+                div.addEventListener('click', (e) => toggleGridSelection(e, file.id));
+                
+                // Add metadata hover
+                div.addEventListener('mouseenter', (e) => showMetadataPanel(e, file));
+                div.addEventListener('mouseleave', hideMetadataPanel);
+                
+                div.appendChild(img);
+                container.appendChild(div);
+            });
+        }
+        
+        function toggleGridSelection(e, fileId) {
+            const gridItem = e.currentTarget;
+            const index = appState.gridView.selectedImages.indexOf(fileId);
+            
+            if (index === -1) {
+                // Add to selection
+                appState.gridView.selectedImages.push(fileId);
+                gridItem.classList.add('selected');
+            } else {
+                // Remove from selection
+                appState.gridView.selectedImages.splice(index, 1);
+                gridItem.classList.remove('selected');
+            }
+            
+            // Update UI
+            updateSelectionUI();
+        }
+        
+        function updateSelectionUI() {
+            const count = appState.gridView.selectedImages.length;
+            
+            if (count > 0) {
+                // Show selection tools
+                elements.selectionCount.classList.remove('hidden');
+                elements.tagSelectedButton.classList.remove('hidden');
+                elements.moveSelectedButton.classList.remove('hidden');
+                elements.deleteSelectedButton.classList.remove('hidden');
+                
+                // Update count
+                elements.selectionCount.textContent = `${count} selected`;
+            } else {
+                // Hide selection tools
+                elements.selectionCount.classList.add('hidden');
+                elements.tagSelectedButton.classList.add('hidden');
+                elements.moveSelectedButton.classList.add('hidden');
+                elements.deleteSelectedButton.classList.add('hidden');
+            }
+        }
+        
+        // Gesture Handling
+        function setupGestureHandling() {
+            const container = elements.centerImage.parentElement;
+            let touchStartX = 0;
+            let touchStartY = 0;
+            let touchEndX = 0;
+            let touchEndY = 0;
+            
+            // Touch events for mobile
+            container.addEventListener('touchstart', (e) => {
+                touchStartX = e.touches[0].clientX;
+                touchStartY = e.touches[0].clientY;
+            });
+            
+            container.addEventListener('touchmove', (e) => {
+                touchEndX = e.touches[0].clientX;
+                touchEndY = e.touches[0].clientY;
+                
+                // Calculate direction and show indicator
+                const deltaX = touchEndX - touchStartX;
+                const deltaY = touchEndY - touchStartY;
+                
+                // Hide all indicators first
+                elements.swipeIndicators.forEach(indicator => {
+                    indicator.style.opacity = '0';
+                });
+                
+                // Show appropriate indicator based on direction
+                if (Math.abs(deltaX) > Math.abs(deltaY)) {
+                    // Horizontal swipe
+                    if (deltaX > 50) {
+                        document.querySelector('.swipe-right').style.opacity = '1';
+                    } else if (deltaX < -50) {
+                        document.querySelector('.swipe-left').style.opacity = '1';
+                    }
+                } else {
+                    // Vertical swipe
+                    if (deltaY > 50) {
+                        document.querySelector('.swipe-down').style.opacity = '1';
+                    } else if (deltaY < -50) {
+                        document.querySelector('.swipe-up').style.opacity = '1';
+                    }
+                }
+            });
+            
+            container.addEventListener('touchend', (e) => {
+                // Hide all indicators
+                elements.swipeIndicators.forEach(indicator => {
+                    indicator.style.opacity = '0';
+                });
+                
+                const deltaX = touchEndX - touchStartX;
+                const deltaY = touchEndY - touchStartY;
+                
+                // Minimum swipe distance
+                const minSwipeDistance = 100;
+                
+                if (Math.abs(deltaX) > Math.abs(deltaY)) {
+                    // Horizontal swipe
+                    if (Math.abs(deltaX) >= minSwipeDistance) {
+                        if (deltaX > 0) {
+                            // Right = reviewed
+                            handleSwipe('reviewed');
+                        } else {
+                            // Left = needs_review
+                            handleSwipe('needs_review');
+                        }
+                    }
+                } else {
+                    // Vertical swipe
+                    if (Math.abs(deltaY) >= minSwipeDistance) {
+                        if (deltaY > 0) {
+                            // Down = trash
+                            handleSwipe('trash');
+                        } else {
+                            // Up = priority
+                            handleSwipe('priority');
+                        }
+                    }
+                }
+            });
+            
+            // Mouse events for desktop
+            let isDragging = false;
+            let dragStartX = 0;
+            let dragStartY = 0;
+            
+            container.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                dragStartX = e.clientX;
+                dragStartY = e.clientY;
+            });
+            
+            container.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                
+                const deltaX = e.clientX - dragStartX;
+                const deltaY = e.clientY - dragStartY;
+                
+                // Hide all indicators first
+                elements.swipeIndicators.forEach(indicator => {
+                    indicator.style.opacity = '0';
+                });
+                
+                // Show appropriate indicator based on direction
+                if (Math.abs(deltaX) > Math.abs(deltaY)) {
+                    // Horizontal drag
+                    if (deltaX > 50) {
+                        document.querySelector('.swipe-right').style.opacity = '1';
+                    } else if (deltaX < -50) {
+                        document.querySelector('.swipe-left').style.opacity = '1';
+                    }
+                } else {
+                    // Vertical drag
+                    if (deltaY > 50) {
+                        document.querySelector('.swipe-down').style.opacity = '1';
+                    } else if (deltaY < -50) {
+                        document.querySelector('.swipe-up').style.opacity = '1';
+                    }
+                }
+            });
+            
+            container.addEventListener('mouseup', (e) => {
+                if (!isDragging) return;
+                
+                // Hide all indicators
+                elements.swipeIndicators.forEach(indicator => {
+                    indicator.style.opacity = '0';
+                });
+                
+                const deltaX = e.clientX - dragStartX;
+                const deltaY = e.clientY - dragStartY;
+                
+                // Minimum drag distance
+                const minDragDistance = 100;
+                
+                if (Math.abs(deltaX) > Math.abs(deltaY)) {
+                    // Horizontal drag
+                    if (Math.abs(deltaX) >= minDragDistance) {
+                        if (deltaX > 0) {
+                            // Right = reviewed
+                            handleSwipe('reviewed');
+                        } else {
+                            // Left = needs_review
+                            handleSwipe('needs_review');
+                        }
+                    }
+                } else {
+                    // Vertical drag
+                    if (Math.abs(deltaY) >= minDragDistance) {
+                        if (deltaY > 0) {
+                            // Down = trash
+                            handleSwipe('trash');
+                        } else {
+                            // Up = priority
+                            handleSwipe('priority');
+                        }
+                    }
+                }
+                
+                isDragging = false;
+            });
+            
+            container.addEventListener('mouseleave', () => {
+                isDragging = false;
+                // Hide all indicators
+                elements.swipeIndicators.forEach(indicator => {
+                    indicator.style.opacity = '0';
+                });
+            });
+        }
+        
+        function handleSwipe(targetStack) {
+            if (appState.imageFiles.length === 0) return;
+            
+            const currentFile = appState.imageFiles[appState.currentImageIndex];
+            moveFileToStack(currentFile.id, targetStack)
+                .then(() => {
+                    moveToNextImage();
+                });
+        }
+        
+        // API Calls
+        function validateToken(token) {
+            return fetch('https://www.googleapis.com/drive/v3/files?pageSize=1', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Invalid token');
+                }
+                return true;
+            });
+        }
+        
+        function fetchFolders() {
+            return fetch('https://www.googleapis.com/drive/v3/files?q=mimeType%3D%27application/vnd.google-apps.folder%27&fields=files(id,name,createdTime)', {
+                headers: {
+                    'Authorization': `Bearer ${appState.accessToken}`
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to fetch folders');
+                }
+                return response.json();
+            })
+            .then(data => data.files || []);
+        }
+        
+        function fetchFilesInFolder(folderId) {
+            return fetch(`https://www.googleapis.com/drive/v3/files?q='${folderId}'%20in%20parents&fields=files(id,name,mimeType,thumbnailLink,webContentLink,appProperties,createdTime)`, {
+                headers: {
+                    'Authorization': `Bearer ${appState.accessToken}`
+                }
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to fetch files');
+                }
+                return response.json();
+            })
+            .then(data => {
+                // Filter for supported image types
+                return (data.files || []).filter(file => 
+                    SUPPORTED_IMAGE_TYPES.includes(file.mimeType)
+                );
+            });
+        }
+        
+        // UI Event Handlers
+        function setupEventListeners() {
+            // Auth screen
+            elements.submitTokenButton.addEventListener('click', () => {
+                const token = elements.accessTokenInput.value.trim();
+                if (!token) {
+                    elements.authError.textContent = 'Please enter an access token';
+                    elements.authError.classList.remove('hidden');
+                    return;
+                }
+                
+                elements.submitTokenButton.disabled = true;
+                elements.submitTokenButton.textContent = 'Validating...';
+                
+                validateToken(token)
+                    .then(() => {
+                        appState.accessToken = token;
+                        showScreen('folder-screen');
+                        loadFolders();
+                    })
+                    .catch(error => {
+                        console.error('Token validation error:', error);
+                        elements.authError.textContent = 'Invalid access token. Please try again.';
+                        elements.authError.classList.remove('hidden');
+                    })
+                    .finally(() => {
+                        elements.submitTokenButton.disabled = false;
+                        elements.submitTokenButton.textContent = 'Submit';
+                    });
+            });
+            
+            // Folder screen
+            elements.refreshFoldersButton.addEventListener('click', loadFolders);
+            
+            elements.logoutButton.addEventListener('click', () => {
+                appState.accessToken = null;
+                showScreen('auth-screen');
+                elements.accessTokenInput.value = '';
+                elements.authError.classList.add('hidden');
+            });
+            
+            // App navigation
+            elements.backToFoldersButton.addEventListener('click', () => {
+                showScreen('folder-screen');
+            });
+            
+            elements.selectAnotherFolderButton.addEventListener('click', () => {
+                showScreen('folder-screen');
+            });
+            
+            // Stack titles (open grid view)
+            elements.stackTitles.forEach(title => {
+                title.addEventListener('click', () => {
+                    const stack = title.dataset.stack;
+                    openGridView(stack);
+                });
+            });
+            
+            // Drop zones for drag and drop
+            elements.stackZones.forEach(zone => {
+                zone.addEventListener('dragover', (e) => {
+                    e.preventDefault();
+                    zone.classList.add('drag-over');
+                });
+                
+                zone.addEventListener('dragleave', () => {
+                    zone.classList.remove('drag-over');
+                });
+                
+                zone.addEventListener('drop', (e) => {
+                    e.preventDefault();
+                    zone.classList.remove('drag-over');
+                    
+                    const fileId = e.dataTransfer.getData('text/plain');
+                    const targetStack = zone.dataset.stack;
+                    
+                    moveFileToStack(fileId, targetStack);
+                });
+            });
+            
+            // Grid view
+            elements.closeGridButton.addEventListener('click', closeGridView);
+            
+            elements.gridSizeSlider.addEventListener('input', () => {
+                const value = elements.gridSizeSlider.value;
+                elements.gridSizeValue.textContent = value;
+                elements.gridContainer.style.gridTemplateColumns = `repeat(${value}, 1fr)`;
+            });
+            
+            // Bulk actions
+            elements.tagSelectedButton.addEventListener('click', () => {
+                // Show tag modal
+                elements.tagModal.classList.remove('hidden');
+                elements.tagInput.value = '';
+                elements.tagInput.focus();
+                
+                // Populate tag suggestions
+                elements.tagSuggestions.innerHTML = '';
+                appState.tagSuggestions.forEach(tag => {
+                    const button = document.createElement('button');
+                    button.className = 'bg-gray-200 text-gray-700 px-2 py-1 rounded-md text-xs hover:bg-gray-300';
+                    button.textContent = tag;
+                    button.addEventListener('click', () => {
+                        elements.tagInput.value += (elements.tagInput.value ? ', ' : '') + tag;
+                    });
+                    elements.tagSuggestions.appendChild(button);
+                });
+            });
+            
+            elements.moveSelectedButton.addEventListener('click', () => {
+                // Show move modal
+                elements.moveModal.classList.remove('hidden');
+            });
+            
+            elements.deleteSelectedButton.addEventListener('click', () => {
+                // Show delete confirmation
+                elements.deleteModal.classList.remove('hidden');
+            });
+            
+            // Tag modal
+            elements.cancelTagButton.addEventListener('click', () => {
+                elements.tagModal.classList.add('hidden');
+            });
+            
+            elements.applyTagButton.addEventListener('click', () => {
+                const tagInput = elements.tagInput.value.trim();
+                if (!tagInput) {
+                    elements.tagModal.classList.add('hidden');
+                    return;
+                }
+                
+                // Parse tags
+                const tags = tagInput.split(',').map(tag => tag.trim()).filter(tag => tag);
+                
+                // Apply tags to all selected images
+                const promises = appState.gridView.selectedImages.map(fileId => 
+                    addTagsToFile(fileId, tags)
+                );
+                
+                Promise.all(promises)
+                    .then(() => {
+                        showToast(`Tags added to ${promises.length} images`);
+                        elements.tagModal.classList.add('hidden');
+                    })
+                    .catch(error => {
+                        console.error('Error adding tags:', error);
+                        showToast('Failed to add tags to some images', 'error');
+                        elements.tagModal.classList.add('hidden');
+                    });
+            });
+            
+            // Move modal
+            elements.cancelMoveButton.addEventListener('click', () => {
+                elements.moveModal.classList.add('hidden');
+            });
+            
+            elements.moveOptions.forEach(option => {
+                option.addEventListener('click', () => {
+                    const targetStack = option.dataset.stack;
+                    
+                    // Move all selected images
+                    const promises = appState.gridView.selectedImages.map(fileId => 
+                        moveFileToStack(fileId, targetStack)
+                    );
+                    
+                    Promise.all(promises)
+                        .then(() => {
+                            showToast(`Moved ${promises.length} images to ${targetStack.replace('_', ' ')}`);
+                            elements.moveModal.classList.add('hidden');
+                            
+                            // Refresh grid if we're moving from current stack
+                            if (appState.gridView.currentStack) {
+                                populateGridView(appState.gridView.currentStack);
+                            }
+                            
+                            // Clear selection
+                            appState.gridView.selectedImages = [];
+                            updateSelectionUI();
+                        })
+                        .catch(error => {
+                            console.error('Error moving files:', error);
+                            showToast('Failed to move some images', 'error');
+                            elements.moveModal.classList.add('hidden');
+                        });
+                });
+            });
+            
+            // Delete modal
+            elements.cancelDeleteButton.addEventListener('click', () => {
+                elements.deleteModal.classList.add('hidden');
+            });
+            
+            elements.confirmDeleteButton.addEventListener('click', () => {
+                // Move all selected images to trash
+                const promises = appState.gridView.selectedImages.map(fileId => 
+                    moveFileToStack(fileId, 'trash')
+                );
+                
+                Promise.all(promises)
+                    .then(() => {
+                        showToast(`Moved ${promises.length} images to trash`);
+                        elements.deleteModal.classList.add('hidden');
+                        
+                        // Refresh grid if we're moving from current stack
+                        if (appState.gridView.currentStack) {
+                            populateGridView(appState.gridView.currentStack);
+                        }
+                        
+                        // Clear selection
+                        appState.gridView.selectedImages = [];
+                        updateSelectionUI();
+                    })
+                    .catch(error => {
+                        console.error('Error moving files to trash:', error);
+                        showToast('Failed to move some images to trash', 'error');
+                        elements.deleteModal.classList.add('hidden');
+                    });
+            });
+            
+            // Keyboard support
+            document.addEventListener('keydown', (e) => {
+                // Only handle when app screen is visible
+                if (elements.appScreen.classList.contains('hidden')) return;
+                
+                // Don't interfere with input fields
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+                
+                switch (e.key) {
+                    case 'ArrowUp':
+                        // Priority
+                        handleSwipe('priority');
+                        break;
+                    case 'ArrowDown':
+                        // Trash
+                        handleSwipe('trash');
+                        break;
+                    case 'ArrowLeft':
+                        // Needs Review
+                        handleSwipe('needs_review');
+                        break;
+                    case 'ArrowRight':
+                        // Reviewed
+                        handleSwipe('reviewed');
+                        break;
+                    case 'Escape':
+                        // Close grid view if open
+                        if (!elements.gridView.classList.contains('hidden')) {
+                            closeGridView();
+                        }
+                        break;
+                    case 'Enter':
+                        // Select image in grid view
+                        if (!elements.gridView.classList.contains('hidden') && document.activeElement.classList.contains('grid-item')) {
+                            toggleGridSelection({ currentTarget: document.activeElement }, document.activeElement.dataset.fileId);
+                        }
+                        break;
+                }
+            });
+        }
+        
+        // Initialize app
+        function initApp() {
+            // Set up event listeners
+            setupEventListeners();
+            
+            // Set up gesture handling
+            setupGestureHandling();
+            
+            // Check if we have a stored token
+            const storedToken = localStorage.getItem('slideboxToken');
+            if (storedToken) {
+                elements.accessTokenInput.value = storedToken;
+            }
+            
+            // Show auth screen
+            showScreen('auth-screen');
+        }
+        
+        function loadFolders() {
+            elements.folderList.innerHTML = `
+                <div class="flex items-center justify-center py-8 text-gray-400">
+                    <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span>Loading folders...</span>
+                </div>
+            `;
+            
+            fetchFolders()
+                .then(folders => {
+                    if (folders.length === 0) {
+                        elements.folderList.innerHTML = `
+                            <div class="py-8 text-center text-gray-500">
+                                <p>No folders found in your Drive</p>
+                            </div>
+                        `;
+                        return;
+                    }
+                    
+                    // Sort folders by creation date (newest first)
+                    folders.sort((a, b) => new Date(b.createdTime) - new Date(a.createdTime));
+                    
+                    elements.folderList.innerHTML = '';
+                    folders.forEach(folder => {
+                        const div = document.createElement('div');
+                        div.className = 'p-3 border-b border-gray-200 hover:bg-gray-50 cursor-pointer';
+                        div.innerHTML = `
+                            <div class="flex items-center">
+                                <svg class="w-5 h-5 text-yellow-500 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
+                                </svg>
+                                <span>${folder.name}</span>
+                            </div>
+                            <div class="text-xs text-gray-500 mt-1">
+                                ${new Date(folder.createdTime).toLocaleDateString()}
+                            </div>
+                        `;
+                        
+                        div.addEventListener('click', () => {
+                            selectFolder(folder);
+                        });
+                        
+                        elements.folderList.appendChild(div);
+                    });
+                })
+                .catch(error => {
+                    console.error('Error fetching folders:', error);
+                    elements.folderList.innerHTML = `
+                        <div class="py-8 text-center text-red-500">
+                            <p>Error loading folders. Please try again.</p>
+                        </div>
+                    `;
+                });
+        }
+        
+        function selectFolder(folder) {
+            appState.currentFolder = folder.id;
+            appState.currentFolderName = folder.name;
+            elements.currentFolderDisplay.textContent = folder.name;
+            
+            // Show loading state
+            elements.centerImage.src = '';
+            elements.emptyState.classList.add('hidden');
+            showToast('Loading images...');
+            
+            // Clear stacks
+            STACK_TYPES.forEach(stack => {
+                appState.stacks[stack] = [];
+                const container = document.querySelector(`.stack-container[data-stack="${stack}"]`);
+                container.innerHTML = '';
+            });
+            
+            // Fetch files in folder
+            fetchFilesInFolder(folder.id)
+                .then(files => {
+                    appState.imageFiles = files;
+                    
+                    if (files.length === 0) {
+                        showToast('No images found in this folder');
+                        elements.emptyState.classList.remove('hidden');
+                        updateStackCounts();
+                        return;
+                    }
+                    
+                    // Initialize to first image
+                    appState.currentImageIndex = 0;
+                    
+                    // Update stacks based on metadata
+                    updateStacks();
+                    
+                    // Display first image
+                    displayCurrentImage();
+                    
+                    showToast(`Loaded ${files.length} images`);
+                    showScreen('app-screen');
+                })
+                .catch(error => {
+                    console.error('Error fetching files:', error);
+                    showToast('Error loading images', 'error');
+                });
+        }
+        
+        // Start the app when page loads
+        window.addEventListener('DOMContentLoaded', initApp);
+    </script>
+</body>
+</html>
