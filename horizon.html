@@ -2,46 +2,15 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>MAD Horizons v1.0</title>
+  <title>MAD Horizons v1.1</title>
   <style>
-    body {
-      margin: 0;
-      background: #000;
-      color: #fff;
-      font-family: Arial, sans-serif;
-      overflow: hidden;
-    }
-    .controls {
-      padding: 10px;
-      background: #111;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    button {
-      background: #333;
-      color: white;
-      border: none;
-      padding: 8px 12px;
-      cursor: pointer;
-    }
-    .panel-container {
-      display: flex;
-      flex-direction: column;
-      height: calc(100vh - 60px);
-      overflow-y: auto;
-    }
-    .panel {
-      flex: none;
-      height: 300px;
-      border-bottom: 1px solid #444;
-      position: relative;
-    }
-    canvas {
-      width: 100%;
-      height: 100%;
-      background: black;
-    }
+    body { margin: 0; background: #000; color: #fff; font-family: Arial, sans-serif; overflow: hidden; }
+    .controls { padding: 10px; background: #111; display: flex; align-items: center; gap: 10px; }
+    button { background: #333; color: white; border: none; padding: 8px 12px; cursor: pointer; }
+    .panel-container { display: flex; flex-direction: column; height: calc(100vh - 100px); overflow-y: auto; }
+    .panel { flex: none; height: 300px; border-bottom: 1px solid #444; position: relative; }
+    canvas { width: 100%; height: 100%; background: black; }
+    .status { height: 40px; background: #222; color: #0f0; font-size: 16px; padding: 8px 12px; }
   </style>
 </head>
 <body>
@@ -51,6 +20,7 @@
     <button onclick="clearData()">Clear</button>
     <button onclick="downloadRaw()">Download Raw Data</button>
   </div>
+  <div class="status" id="status">Idle</div>
   <div class="panel-container">
     <div class="panel"><canvas id="canvas1"></canvas></div>
     <div class="panel"><canvas id="canvas2"></canvas></div>
@@ -65,36 +35,45 @@
     analyser.fftSize = 2048;
     const bufferLength = analyser.frequencyBinCount;
     const dataArray = new Uint8Array(bufferLength);
-    let streamSource;
-    let captureInterval;
-    let fullCapture = [];
-    const canvases = [
-      document.getElementById('canvas1'),
-      document.getElementById('canvas2'),
-      document.getElementById('canvas3'),
-      document.getElementById('canvas4')
-    ];
-    const charts = [];
+    let streamSource, captureInterval, fullCapture = [];
+    const charts = [], statusEl = document.getElementById('status');
+    const canvases = [1,2,3,4].map(n => document.getElementById('canvas'+n));
+
+    function setStatus(msg, color = "#0f0") {
+      statusEl.textContent = msg;
+      statusEl.style.color = color;
+    }
 
     function startCapture() {
+      setStatus("Resuming Audio Context...");
       audioCtx.resume().then(() => {
+        setStatus("Requesting Microphone...");
         navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+          setStatus("Microphone Access Granted. Streaming...");
           streamSource = audioCtx.createMediaStreamSource(stream);
           streamSource.connect(analyser);
           captureInterval = setInterval(captureSample, 1000);
+        }).catch(err => {
+          console.error(err);
+          setStatus("Mic Access Denied: " + err.name, "#f00");
+          alert("Microphone access denied: " + err.message);
         });
+      }).catch(err => {
+        setStatus("AudioCtx Error: " + err.message, "#f00");
       });
     }
 
     function stopCapture() {
       clearInterval(captureInterval);
       if (streamSource) streamSource.disconnect();
+      setStatus("Stream Stopped", "#ff0");
     }
 
     function clearData() {
       stopCapture();
       fullCapture = [];
       clearDisplays();
+      setStatus("Data Cleared", "#0ff");
     }
 
     function captureSample() {
@@ -109,20 +88,14 @@
         return Math.round(avg);
       });
       const sum = bandData.reduce((a, b) => a + b, 0);
-      const sample = {
-        timestamp: now.toISOString(),
-        sum: sum,
-        channels: bandData
-      };
-      fullCapture.push(sample);
+      fullCapture.push({ timestamp: now.toISOString(), sum, channels: bandData });
       updatePanels();
     }
 
     function downloadRaw() {
       const blob = new Blob([JSON.stringify(fullCapture, null, 2)], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
-      a.href = url;
+      a.href = URL.createObjectURL(blob);
       a.download = "mad_horizons_raw.json";
       document.body.appendChild(a);
       a.click();
@@ -136,17 +109,9 @@
           data: {
             labels: [],
             datasets: [
-              {
-                label: "Sum",
-                data: [],
-                borderColor: "white",
-                fill: false
-              },
+              { label: "Sum", data: [], borderColor: "white", fill: false },
               ...Array.from({ length: 10 }, (_, ch) => ({
-                label: `CH${ch+1}`,
-                data: [],
-                borderColor: `hsl(${ch*36},100%,50%)`,
-                fill: false
+                label: `CH${ch+1}`, data: [], borderColor: `hsl(${ch*36},100%,50%)`, fill: false
               }))
             ]
           },
@@ -158,11 +123,7 @@
               tooltip: { mode: "nearest", intersect: false },
               zoom: {
                 pan: { enabled: true, mode: "x" },
-                zoom: {
-                  wheel: { enabled: true },
-                  pinch: { enabled: true },
-                  mode: "x"
-                }
+                zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: "x" }
               }
             },
             scales: {
@@ -175,42 +136,34 @@
     }
 
     function updatePanels() {
-      if (fullCapture.length === 0) return;
       const now = Date.now();
-      const last1Min = fullCapture.filter(s => Date.parse(s.timestamp) >= now - 60000);
-      redrawChart(charts[0], last1Min);
-      const last10Min = fullCapture.filter(s => Date.parse(s.timestamp) >= now - 600000);
-      const tenSecBuckets = bucketSamples(last10Min, 10);
-      redrawChart(charts[1], tenSecBuckets);
-      const last1Hr = fullCapture.filter(s => Date.parse(s.timestamp) >= now - 3600000);
-      const oneMinBuckets = bucketSamples(last1Hr, 60);
-      redrawChart(charts[2], oneMinBuckets);
-      const last24Hr = fullCapture.filter(s => Date.parse(s.timestamp) >= now - 86400000);
-      const twentyFourMinBuckets = bucketSamples(last24Hr, 1440);
-      redrawChart(charts[3], twentyFourMinBuckets);
+      if (!fullCapture.length) return;
+      redrawChart(charts[0], fullCapture.filter(s => Date.parse(s.timestamp) >= now - 60000));
+      redrawChart(charts[1], bucketSamples(fullCapture.filter(s => Date.parse(s.timestamp) >= now - 600000), 10));
+      redrawChart(charts[2], bucketSamples(fullCapture.filter(s => Date.parse(s.timestamp) >= now - 3600000), 60));
+      redrawChart(charts[3], bucketSamples(fullCapture.filter(s => Date.parse(s.timestamp) >= now - 86400000), 1440));
     }
 
     function bucketSamples(samples, bucketSizeSec) {
-      const buckets = [];
-      let temp = [];
-      let currentBucketTime = null;
-      samples.forEach(sample => {
+      const buckets = [], temp = [];
+      let bucketTime = null;
+      for (let sample of samples) {
         const ts = Date.parse(sample.timestamp);
-        if (!currentBucketTime) currentBucketTime = ts;
-        if (ts - currentBucketTime < bucketSizeSec * 1000) {
+        if (!bucketTime) bucketTime = ts;
+        if (ts - bucketTime < bucketSizeSec * 1000) {
           temp.push(sample);
         } else {
           buckets.push(aggregateBucket(temp));
-          temp = [sample];
-          currentBucketTime = ts;
+          temp.length = 0;
+          temp.push(sample);
+          bucketTime = ts;
         }
-      });
+      }
       if (temp.length > 0) buckets.push(aggregateBucket(temp));
       return buckets;
     }
 
     function aggregateBucket(bucket) {
-      if (bucket.length === 0) return { sum: 0, channels: Array(10).fill(0) };
       const sum = bucket.reduce((a, b) => a + b.sum, 0) / bucket.length;
       const channels = Array.from({ length: 10 }, (_, ch) =>
         bucket.reduce((a, b) => a + b.channels[ch], 0) / bucket.length
@@ -224,11 +177,11 @@
         chart.data.labels.shift();
         chart.data.datasets.forEach(ds => ds.data.shift());
       }
-      const now = new Date();
-      chart.data.labels.push(now.toLocaleTimeString());
-      chart.data.datasets[0].data.push(data[data.length - 1]?.sum || 0);
+      const now = new Date().toLocaleTimeString();
+      chart.data.labels.push(now);
+      chart.data.datasets[0].data.push(data[data.length-1]?.sum || 0);
       for (let i = 0; i < 10; i++) {
-        chart.data.datasets[i + 1].data.push(data[data.length - 1]?.channels[i] || 0);
+        chart.data.datasets[i+1].data.push(data[data.length-1]?.channels[i] || 0);
       }
       chart.update();
     }
