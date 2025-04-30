@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>MAD Horizons v3.0</title>
+  <style>
+    body { margin: 0; font-family: sans-serif; background: #000; color: #fff; overflow: hidden; }
+    .config-toggle {
+      position: fixed; top: 10px; left: 10px; background: #222; color: #fff; border: none; padding: 8px 12px; cursor: pointer; z-index: 1000;
+    }
+    .config-panel {
+      position: fixed; top: 0; left: 0; height: 100%; width: 320px; background: #111; transform: translateX(-100%);
+      transition: transform 0.3s ease; overflow-y: auto; z-index: 999;
+      padding: 14px; box-sizing: border-box;
+    }
+    .config-panel.open { transform: translateX(0); }
+    .config-panel h3 { margin-top: 0; }
+    .config-section { margin-bottom: 20px; padding-bottom: 10px; border-bottom: 1px solid #444; }
+    .control-label { display: block; margin-top: 6px; font-size: 13px; }
+    .main-top {
+      background: #111; padding: 10px; position: fixed; top: 0; left: 0; right: 0; z-index: 500;
+      display: flex; justify-content: center; gap: 10px;
+    }
+    .main-top button { background: #333; color: #fff; border: none; padding: 8px 16px; cursor: pointer; }
+    #panelArea { margin-top: 60px; height: calc(100vh - 60px); overflow-y: scroll; }
+    .panel { height: 280px; padding: 4px; }
+    canvas { width: 100%; height: 100%; background: black; }
+  </style>
+</head>
+<body>
+
+<button class="config-toggle" onclick="togglePanel()">☰</button>
+
+<div class="config-panel" id="configPanel">
+  <h3>Global Settings</h3>
+  <div class="config-section">
+    <label class="control-label">Background</label>
+    <input type="color" id="globalBg" value="#000000" onchange="applyGlobalSettings()">
+    <label class="control-label">Titles</label>
+    <input type="checkbox" id="globalTitles" checked onchange="applyGlobalSettings()">
+    <button onclick="saveConfig()">Save</button>
+    <button onclick="loadConfig()">Load</button>
+  </div>
+  <h3>Panel Settings</h3>
+  <div id="panelConfigs"></div>
+</div>
+
+<div class="main-top">
+  <button onclick="start()">Start</button>
+  <button onclick="stop()">Stop</button>
+  <button onclick="clearAll()">Clear</button>
+  <button onclick="download()">Download</button>
+</div>
+
+<div id="panelArea"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
+<script>
+let charts = [], captureIntervals = [], configs = [];
+let audioCtx, analyser, dataArray, streamSource, micStream;
+
+function togglePanel() {
+  document.getElementById("configPanel").classList.toggle("open");
+}
+
+function buildPanels() {
+  stop();
+  clearAll();
+  charts = [];
+  captureIntervals = [];
+  configs = [];
+  const panelArea = document.getElementById("panelArea");
+  panelArea.innerHTML = '';
+  document.getElementById("panelConfigs").innerHTML = '';
+
+  for (let i = 0; i < 10; i++) {
+    const div = document.createElement("div");
+    div.className = "panel";
+    const canvas = document.createElement("canvas");
+    canvas.id = 'chart' + i;
+    const title = document.createElement("div");
+    title.id = 'title' + i;
+    title.style.color = "#0f0";
+    title.style.fontSize = "14px";
+    title.style.padding = "2px";
+    title.innerText = `Panel ${i+1}`;
+    div.appendChild(title);
+    div.appendChild(canvas);
+    panelArea.appendChild(div);
+
+    const ctx = canvas.getContext("2d");
+    charts[i] = new Chart(ctx, {
+      type: 'bar',
+      data: {
+        labels: [],
+        datasets: [...Array(10)].map((_, ch) => ({
+          label: 'CH' + (ch+1),
+          data: [],
+          backgroundColor: 'hsl(' + ch*36 + ',100%,50%)',
+          stack: 'stack1'
+        }))
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        scales: {
+          x: { stacked: true },
+          y: { stacked: true, beginAtZero: true }
+        },
+        plugins: {
+          zoom: {
+            pan: { enabled: true, mode: 'x' },
+            zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' }
+          }
+        }
+      }
+    });
+
+    configs[i] = { interval: 1000, window: 60 };
+
+    const panelConfig = document.createElement("div");
+    panelConfig.className = "config-section";
+    panelConfig.innerHTML = `
+      <h4>Panel ${i+1}</h4>
+      <label class="control-label">Sample Interval (ms)</label>
+      <input type="number" id="interval${i}" value="1000" min="100" step="100" onchange="updateConfig(${i})">
+      <label class="control-label">Window Size (samples)</label>
+      <input type="number" id="window${i}" value="60" min="10" step="10" onchange="updateConfig(${i})">
+    `;
+    document.getElementById("panelConfigs").appendChild(panelConfig);
+  }
+
+  applyGlobalSettings();
+}
+
+function applyGlobalSettings() {
+  const bg = document.getElementById("globalBg").value;
+  const showTitles = document.getElementById("globalTitles").checked;
+  document.body.style.backgroundColor = bg;
+  document.getElementById("panelArea").style.backgroundColor = bg;
+  for (let i = 0; i < 10; i++) {
+    document.getElementById('title'+i).style.display = showTitles ? "block" : "none";
+  }
+}
+
+function updateConfig(i) {
+  configs[i].interval = parseInt(document.getElementById('interval'+i).value);
+  configs[i].window = parseInt(document.getElementById('window'+i).value);
+}
+
+function start() {
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 2048;
+    dataArray = new Uint8Array(analyser.frequencyBinCount);
+  }
+
+  navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+    micStream = stream;
+    streamSource = audioCtx.createMediaStreamSource(stream);
+    streamSource.connect(analyser);
+    for (let i = 0; i < 10; i++) {
+      captureIntervals[i] = setInterval(() => capture(i), configs[i].interval);
+    }
+  }).catch(err => alert("Mic access denied: " + err.message));
+}
+
+function stop() {
+  captureIntervals.forEach(c => clearInterval(c));
+  if (micStream) {
+    micStream.getTracks().forEach(t => t.stop());
+    micStream = null;
+    streamSource = null;
+    audioCtx = null;
+  }
+}
+
+function clearAll() {
+  charts.forEach(chart => {
+    chart.data.labels = [];
+    chart.data.datasets.forEach(ds => ds.data = []);
+    chart.update();
+  });
+}
+
+function capture(panelIdx) {
+  if (!analyser) return;
+  analyser.getByteFrequencyData(dataArray);
+  const bands = 10;
+  const points = Array.from({length: bands}, (_, i) => {
+    const start = Math.floor(i * dataArray.length / bands);
+    const end = Math.floor((i + 1) * dataArray.length / bands);
+    const slice = dataArray.slice(start, end);
+    return Math.round(slice.reduce((a, b) => a + b, 0) / slice.length);
+  });
+  const now = new Date().toLocaleTimeString();
+  const chart = charts[panelIdx];
+  if (chart.data.labels.length >= configs[panelIdx].window) {
+    chart.data.labels.shift();
+    chart.data.datasets.forEach(ds => ds.data.shift());
+  }
+  chart.data.labels.push(now);
+  chart.data.datasets.forEach((d, i) => d.data.push(points[i]));
+  chart.update();
+}
+
+function download() {
+  alert("Download raw data not wired yet."); // Left as placeholder if needed later
+}
+
+function saveConfig() {
+  localStorage.setItem("madHorizonsConfig", JSON.stringify(configs));
+  alert("Saved panel configs.");
+}
+
+function loadConfig() {
+  const loaded = JSON.parse(localStorage.getItem("madHorizonsConfig"));
+  if (loaded) {
+    for (let i = 0; i < 10; i++) {
+      configs[i] = loaded[i];
+      document.getElementById('interval'+i).value = configs[i].interval;
+      document.getElementById('window'+i).value = configs[i].window;
+    }
+    alert("Loaded panel configs.");
+  } else {
+    alert("No config saved.");
+  }
+}
+
+window.onload = buildPanels;
+</script>
+
+</body>
+</html>
