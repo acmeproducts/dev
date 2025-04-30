@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob: 'unsafe-inline' 'unsafe-eval'; frame-src 'self' https: blob: data:;">
+    <title>Link Portal</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        .menu-panel {
+            position: fixed;
+            left: -320px;
+            top: 0;
+            bottom: 0;
+            width: 320px;
+            transition: left 0.3s ease;
+            z-index: 40;
+        }
+        .menu-panel.active {
+            left: 0;
+        }
+        .config-panel {
+            position: fixed;
+            right: -100%;
+            top: 0;
+            bottom: 0;
+            width: 100%;
+            max-width: 480px;
+            transition: right 0.3s ease;
+            z-index: 50;
+        }
+        .config-panel.active {
+            right: 0;
+        }
+        .overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            opacity: 0;
+            visibility: hidden;
+            transition: 0.3s ease;
+            z-index: 30;
+        }
+        .overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        #mainContent {
+            margin-left: 0;
+            transition: margin-left 0.3s ease;
+        }
+        #mainContent.with-menu {
+            margin-left: 320px;
+        }
+        .color-picker {
+            -webkit-appearance: none;
+            width: 50px;
+            height: 50px;
+            border: none;
+            border-radius: 8px;
+            padding: 0;
+            cursor: pointer;
+        }
+        .color-picker::-webkit-color-swatch-wrapper {
+            padding: 0;
+        }
+        .color-picker::-webkit-color-swatch {
+            border: none;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-gray-50">
+    <div class="flex h-screen flex-col">
+        <!-- Header -->
+        <header class="bg-white border-b h-14 flex items-center px-4 justify-between">
+            <div class="flex items-center gap-4">
+                <button id="menuBtn" class="text-gray-900 hover:text-gray-600 p-2 text-xl">☰</button>
+                <h1 id="portalTitle" class="text-lg font-semibold text-gray-900">Link Portal</h1>
+            </div>
+            <div class="flex items-center gap-2">
+                <button id="micPermission" class="text-gray-900 px-3 py-1 rounded hover:bg-gray-100">🎤</button>
+                <div id="micStatus" class="text-sm"></div>
+                <div id="currentTime" class="text-sm text-gray-600 mr-4"></div>
+            </div>
+        </header>
+
+        <!-- Menu Panel -->
+        <div id="menuPanel" class="menu-panel bg-white shadow-lg overflow-y-auto">
+            <div class="p-4 space-y-4">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-lg font-semibold text-gray-900">Menu</h2>
+                    <button id="configBtn" class="px-4 py-2 bg-gray-900 text-white rounded hover:bg-gray-800">
+                        Configure
+                    </button>
+                </div>
+                <div id="linkList" class="space-y-2"></div>
+            </div>
+        </div>
+
+        <!-- Config Panel -->
+        <div id="configPanel" class="config-panel bg-white shadow-lg overflow-y-auto">
+            <div class="p-6 space-y-6">
+                <div class="flex justify-between items-center">
+                    <h2 class="text-xl font-bold text-gray-900">Portal Configuration</h2>
+                    <button id="closeConfig" class="text-2xl text-gray-500">&times;</button>
+                </div>
+
+                <!-- Portal Settings -->
+                <div class="space-y-4">
+                    <h3 class="text-lg font-semibold text-gray-900">Portal Settings</h3>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Portal Name</label>
+                        <input type="text" id="portalName" class="w-full px-3 py-2 border rounded text-gray-900" placeholder="My Portal">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Tagline</label>
+                        <input type="text" id="portalTagline" class="w-full px-3 py-2 border rounded text-gray-900" placeholder="Portal description">
+                    </div>
+                </div>
+
+                <!-- Theme Settings -->
+                <div class="space-y-4">
+                    <h3 class="text-lg font-semibold text-gray-900">Theme Settings</h3>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Primary Color</label>
+                            <input type="color" id="primaryColor" class="color-picker" value="#3B82F6">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Accent Color</label>
+                            <input type="color" id="accentColor" class="color-picker" value="#10B981">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">View Mode</label>
+                        <select id="viewMode" class="w-full px-3 py-2 border rounded text-gray-900">
+                            <option value="standard">Standard</option>
+                            <option value="grid">Grid</option>
+                            <option value="carousel">Carousel</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Color Theme</label>
+                        <select id="colorTheme" class="w-full px-3 py-2 border rounded text-gray-900">
+                            <option value="light">Light</option>
+                            <option value="dark">Dark</option>
+                            <option value="system">System</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- GitHub Repository -->
+                <div class="space-y-4">
+                    <h3 class="text-lg font-semibold text-gray-900">GitHub Repository</h3>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Repository Owner</label>
+                        <input type="text" id="owner" class="w-full px-3 py-2 border rounded text-gray-900" value="acmeproducts">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Repository Name</label>
+                        <input type="text" id="repo" class="w-full px-3 py-2 border rounded text-gray-900" value="dev">
+                    </div>
+                    <button id="searchRepo" class="w-full py-2 bg-gray-900 text-white rounded hover:bg-gray-800">
+                        Search Repository
+                    </button>
+                </div>
+
+                <!-- File Upload -->
+                <div class="space-y-4">
+                    <h3 class="text-lg font-semibold text-gray-900">Upload Files</h3>
+                    <button id="uploadFiles" class="w-full py-2 bg-gray-900 text-white rounded hover:bg-gray-800">
+                        Upload Files
+                    </button>
+                    <div id="uploadedFiles" class="space-y-2"></div>
+                </div>
+
+                <!-- Custom Links -->
+                <div class="space-y-4">
+                    <h3 class="text-lg font-semibold text-gray-900">Add Custom Link</h3>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Link Title</label>
+                        <input type="text" id="linkTitle" class="w-full px-3 py-2 border rounded text-gray-900" placeholder="e.g., Documentation">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Link URL</label>
+                        <input type="url" id="linkUrl" class="w-full px-3 py-2 border rounded text-gray-900" placeholder="https://example.com">
+                    </div>
+                    <button id="addCustomLink" class="w-full py-2 bg-gray-900 text-white rounded hover:bg-gray-800">
+                        Add Custom Link
+                    </button>
+                </div>
+
+                <div id="loading" class="hidden">
+                    <div class="text-sm text-gray-600 bg-gray-50 p-3 rounded">Loading...</div>
+                </div>
+
+                <div id="error" class="hidden text-sm text-red-600 bg-red-50 p-3 rounded"></div>
+
+                <!-- Actions -->
+                <div class="flex gap-2">
+                    <button id="saveConfig" class="flex-1 py-2 bg-green-600 text-white rounded hover:bg-green-700">Save</button>
+                    <button id="importConfig" class="flex-1 py-2 bg-gray-600 text-white rounded hover:bg-gray-700">Import</button>
+                    <button id="exportConfig" class="flex-1 py-2 bg-gray-600 text-white rounded hover:bg-gray-700">Export</button>
+                    <button id="generatePortal" class="flex-1 py-2 bg-blue-600 text-white rounded hover:bg-blue-700">Generate</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Content -->
+        <main id="mainContent" class="flex-1 bg-white">
+            <iframe id="viewer" 
+                    class="w-full h-full border-0" 
+                    sandbox="allow-scripts allow-same-origin allow-popups allow-modals allow-forms"
+                    allow="microphone"
+                    loading="lazy"></iframe>
+        </main>
+
+        <!-- Overlay -->
+        <div id="overlay" class="overlay"></div>
+    </div>
+
+    <!-- Hidden File Inputs -->
+    <input type="file" id="fileUpload" class="hidden" accept="image/*,.html" multiple>
+    <input type="file" id="configImport" class="hidden" accept="application/json">
+
+    <script>
+        let db;
+        const DB_NAME = 'PortalDB';
+        const DB_VERSION = 2;
+        const STORES = ['links', 'settings', 'files'];
+        const blobUrls = new Map();
+
+        async function initDatabase() {
+            return new Promise((resolve, reject) => {
+                const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+                request.onerror = (event) => {
+                    console.error('Database error:', event.target.error);
+                    reject(event.target.error);
+                };
+
+                request.onupgradeneeded = (event) => {
+                    db = event.target.result;
+                    
+                    STORES.forEach(storeName => {
+                        if (!db.objectStoreNames.contains(storeName)) {
+                            db.createObjectStore(storeName, { 
+                                keyPath: 'id',
+                                autoIncrement: storeName !== 'settings'
+                            });
+                        }
+                    });
+                };
+
+                request.onsuccess = (event) => {
+                    db = event.target.result;
+                    resolve(db);
+                };
+            });
+        }
+
+        async function initApp() {
+            try {
+                await initDatabase();
+                await loadSettings();
+                await loadLinks();
+                updateTime();
+                await updateUploadedFiles();
+            } catch (error) {
+                console.error('Failed to initialize application:', error);
+                showError('Failed to initialize application. Please refresh the page.');
+            }
+        }
+
+        initApp();
+
+        const elements = {
+            menuBtn: document.getElementById('menuBtn'),
+            configBtn: document.getElementById('configBtn'),
+            closeConfig: document.getElementById('closeConfig'),
+            menuPanel: document.getElementById('menuPanel'),
+            configPanel: document.getElementById('configPanel'),
+            mainContent: document.getElementById('mainContent'),
+            overlay: document.getElementById('overlay'),
+            linkList: document.getElementById('linkList'),
+            viewer: document.getElementById('viewer'),
+            portalTitle: document.getElementById('portalTitle'),
+            micStatus: document.getElementById('micStatus'),
+            currentTime: document.getElementById('currentTime'),
+            uploadedFiles: document.getElementById('uploadedFiles')
+        };
+
+        elements.menuBtn.addEventListener('click', toggleMenu);
+        elements.configBtn.addEventListener('click', toggleConfig);
+        elements.closeConfig.addEventListener('click', toggleConfig);
+        elements.overlay.addEventListener('click', closeAll);
+        
+        document.getElementById('searchRepo').addEventListener('click', fetchRepository);
+        document.getElementById('addCustomLink').addEventListener('click', addCustomLink);
+        document.getElementById('uploadFiles').addEventListener('click', () => document.getElementById('fileUpload').click());
+        document.getElementById('fileUpload').addEventListener('change', handleFileUpload);
+        document.getElementById('importConfig').addEventListener('click', () => document.getElementById('configImport').click());
+        document.getElementById('configImport').addEventListener('change', importConfig);
+        document.getElementById('exportConfig').addEventListener('click', exportConfig);
+        document.getElementById('generatePortal').addEventListener('click', generatePortal);
+        document.getElementById('saveConfig').addEventListener('click', saveSettings);
+        document.getElementById('micPermission').addEventListener('click', requestMicPermission);
+
+        window.addEventListener('unload', () => {
+            blobUrls.forEach(url => URL.revokeObjectURL(url));
+        });
+
+        function toggleMenu() {
+            elements.menuPanel.classList.toggle('active');
+            elements.mainContent.classList.toggle('with-menu');
+            elements.overlay.classList.toggle('active');
+        }
+
+        function toggleConfig() {
+            elements.configPanel.classList.toggle('active');
+            elements.overlay.classList.toggle('active');
+        }
+
+        function closeAll() {
+            elements.menuPanel.classList.remove('active');
+            elements.configPanel.classList.remove('active');
+            elements.mainContent.classList.remove('with-menu');
+            elements.overlay.classList.remove('active');
+        }
+
+        function updateTime() {
+            const now = new Date();
+            const options = {
+                timeZone: 'America/Los_Angeles',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: true
+            };
+            elements.currentTime.textContent = now.toLocaleTimeString('en-US', options) + ' PT';
+            setTimeout(updateTime, 1000);
+        }
+
+        function showError(message) {
+            const errorEl = document.getElementById('error');
+            errorEl.textContent = message;
+            errorEl.classList.remove('hidden');
+            setTimeout(() => errorEl.classList.add('hidden'), 3000);
+        }
+
+        async function loadSettings() {
+            const transaction = db.transaction(['settings'], 'readonly');
+            const store = transaction.objectStore('settings');
+            const request = store.get('portal');
+
+            return new Promise((resolve, reject) => {
+                request.onsuccess = () => {
+                    if (request.result) {
+                        const settings = request.result;
+                        document.getElementById('portalName').value = settings.name || '';
+                        document.getElementById('portalTagline').value = settings.tagline || '';
+                        document.getElementById('primaryColor').value = settings.primaryColor || '#3B82F6';
+                        document.getElementById('accentColor').value = settings.accentColor || '#10B981';
+                        document.getElementById('viewMode').value = settings.viewMode || 'standard';
+                        document.getElementById('colorTheme').value = settings.colorTheme || 'light';
+                        elements.portalTitle.textContent = settings.name || 'Link Portal';
+                    }
+                    resolve();
+                };
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        async function saveSettings() {
+            const settings = {
+                id: 'portal',
+                name: document.getElementById('portalName').value,
+                tagline: document.getElementById('portalTagline').value,
+                primaryColor: document.getElementById('primaryColor').value,
+                accentColor: document.getElementById('accentColor').value,
+                viewMode: document.getElementById('viewMode').value,
+                colorTheme: document.getElementById('colorTheme').value
+            };
+
+            const transaction = db.transaction(['settings'], 'readwrite');
+            const store = transaction.objectStore('settings');
+            
+            return new Promise((resolve, reject) => {
+                const request = store.put(settings);
+                request.onsuccess = () => {
+                    elements.portalTitle.textContent = settings.name || 'Link Portal';
+                    toggleConfig();
+                    resolve();
+                };
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        async function fetchRepository() {
+            const owner = document.getElementById('owner').value.trim();
+            const repo = document.getElementById('repo').value.trim();
+
+            if (!owner || !repo) {
+                showError('Please enter both repository owner and name');
+                return;
+            }
+
+            try {
+                const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents`);
+                if (!response.ok) throw new Error('Repository not found or access denied');
+                
+                const data = await response.json();
+                const htmlFiles = data.filter(file => file.name.toLowerCase().endsWith('.html'));
+
+                for (const file of htmlFiles) {
+                    const pagesUrl = `https://${owner}.github.io/${repo}/${file.path}`;
+                    await addLink(file.name, pagesUrl);
+                }
+            } catch (error) {
+                console.error('Repository fetch error:', error);
+                showError(error.message);
+            }
+        }
+
+        async function addCustomLink() {
+            const title = document.getElementById('linkTitle').value.trim();
+            const url = document.getElementById('linkUrl').value.trim();
+
+            if (!title || !url) {
+                showError('Please enter both title and URL');
+                return;
+            }
+
+            await addLink(title, url);
+            
+            document.getElementById('linkTitle').value = '';
+            document.getElementById('linkUrl').value = '';
+        }
+
+        async function addLink(title, url) {
+            const transaction = db.transaction(['links'], 'readwrite');
+            const store = transaction.objectStore('links');
+            
+            return new Promise((resolve, reject) => {
+                const request = store.add({ title, url });
+                request.onsuccess = async () => {
+                    await loadLinks();
+                    resolve();
+                };
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        async function loadLinks() {
+            const transaction = db.transaction(['links'], 'readonly');
+            const store = transaction.objectStore('links');
+            
+            return new Promise((resolve, reject) => {
+                const request = store.getAll();
+                request.onsuccess = () => {
+                    const links = request.result;
+                    updateLinkList(links);
+                    resolve();
+                };
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        function updateLinkList(links) {
+            elements.linkList.innerHTML = '';
+
+            links.forEach(link => {
+                const linkEl = document.createElement('div');
+                linkEl.className = 'p-4 bg-gray-50 rounded-lg hover:bg-gray-100 flex justify-between items-center';
+                
+                const contentDiv = document.createElement('div');
+                contentDiv.className = 'flex-1 cursor-pointer';
+                contentDiv.innerHTML = `
+                    <div class="text-sm font-medium text-gray-900">${link.title}</div>
+                    <div class="text-xs text-gray-600 mt-1 truncate">${link.url}</div>
+                `;
+
+                contentDiv.addEventListener('click', () => {
+                    if (link.url.startsWith('blob:')) {
+                        const storedBlob = blobUrls.get(link.id);
+                        if (storedBlob) {
+                            elements.viewer.src = storedBlob;
+                        }
+                    } else {
+                        elements.viewer.src = link.url;
+                    }
+                    if (window.innerWidth < 768) {
+                        closeAll();
+                    }
+                });
+
+                const removeBtn = document.createElement('button');
+                removeBtn.className = 'ml-4 text-red-600 hover:text-red-800';
+                removeBtn.textContent = '✕';
+                removeBtn.addEventListener('click', () => removeLink(link.id));
+
+                linkEl.appendChild(contentDiv);
+                linkEl.appendChild(removeBtn);
+                elements.linkList.appendChild(linkEl);
+            });
+        }
+
+        async function removeLink(id) {
+            const transaction = db.transaction(['links'], 'readwrite');
+            const store = transaction.objectStore('links');
+            
+            return new Promise((resolve, reject) => {
+                const request = store.delete(id);
+                request.onsuccess = async () => {
+                    const blobUrl = blobUrls.get(id);
+                    if (blobUrl) {
+                        URL.revokeObjectURL(blobUrl);
+                        blobUrls.delete(id);
+                    }
+                    await loadLinks();
+                    resolve();
+                };
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        async function handleFileUpload(event) {
+            const files = Array.from(event.target.files);
+            if (!files.length) return;
+
+            for (const file of files) {
+                const reader = new FileReader();
+                
+                await new Promise((resolve, reject) => {
+                    reader.onload = async (e) => {
+                        try {
+                            const fileData = {
+                                name: file.name,
+                                type: file.type,
+                                content: e.target.result
+                            };
+                            await addFileToPortal(fileData);
+                            resolve();
+                        } catch (error) {
+                            reject(error);
+                        }
+                    };
+                    reader.onerror = () => reject(reader.error);
+                    reader.readAsArrayBuffer(file);
+                });
+            }
+            
+            event.target.value = '';
+            await updateUploadedFiles();
+        }
+
+        async function addFileToPortal(fileData) {
+            const transaction = db.transaction(['files'], 'readwrite');
+            const store = transaction.objectStore('files');
+            
+            return new Promise((resolve, reject) => {
+                const request = store.add(fileData);
+                request.onsuccess = async (event) => {
+                    const id = event.target.result;
+                    const blob = new Blob([fileData.content], { type: fileData.type });
+                    const blobUrl = URL.createObjectURL(blob);
+                    blobUrls.set(id, blobUrl);
+                    
+                    await addLink(fileData.name, blobUrl);
+                    resolve();
+                };
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        async function updateUploadedFiles() {
+            const transaction = db.transaction(['files'], 'readonly');
+            const store = transaction.objectStore('files');
+            
+            return new Promise((resolve, reject) => {
+                const request = store.getAll();
+                request.onsuccess = () => {
+                    const files = request.result;
+                    elements.uploadedFiles.innerHTML = '';
+
+                    files.forEach(file => {
+                        const div = document.createElement('div');
+                        div.className = 'p-2 bg-gray-50 rounded flex items-center justify-between';
+                        div.innerHTML = `
+                            <span class="text-sm text-gray-900">${file.name}</span>
+                            <button class="text-red-600 hover:text-red-800" data-id="${file.id}">✕</button>
+                        `;
+                        
+                        const removeBtn = div.querySelector('button');
+                        removeBtn.addEventListener('click', () => removeFile(file.id));
+                        
+                        elements.uploadedFiles.appendChild(div);
+                    });
+                    resolve();
+                };
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        async function removeFile(id) {
+            const transaction = db.transaction(['files'], 'readwrite');
+            const store = transaction.objectStore('files');
+            
+            return new Promise((resolve, reject) => {
+                const request = store.delete(id);
+                request.onsuccess = async () => {
+                    const blobUrl = blobUrls.get(id);
+                    if (blobUrl) {
+                        URL.revokeObjectURL(blobUrl);
+                        blobUrls.delete(id);
+                    }
+                    await updateUploadedFiles();
+                    resolve();
+                };
+                request.onerror = () => reject(request.error);
+            });
+        }
+
+        async function exportConfig() {
+            const [settings, links, files] = await Promise.all([
+                new Promise(resolve => {
+                    const transaction = db.transaction(['settings'], 'readonly');
+                    const store = transaction.objectStore('settings');
+                    const request = store.get('portal');
+                    request.onsuccess = () => resolve(request.result);
+                }),
+                new Promise(resolve => {
+                    const transaction = db.transaction(['links'], 'readonly');
+                    const store = transaction.objectStore('links');
+                    const request = store.getAll();
+                    request.onsuccess = () => resolve(request.result);
+                }),
+                new Promise(resolve => {
+                    const transaction = db.transaction(['files'], 'readonly');
+                    const store = transaction.objectStore('files');
+                    const request = store.getAll();
+                    request.onsuccess = () => resolve(request.result);
+                })
+            ]);
+
+            const config = { settings, links, files };
+            const blob = new Blob([JSON.stringify(config)], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'portal-config.json';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        async function importConfig(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            try {
+                const text = await file.text();
+                const config = JSON.parse(text);
+                
+                blobUrls.forEach(url => URL.revokeObjectURL(url));
+                blobUrls.clear();
+                
+                await Promise.all(STORES.map(storeName => 
+                    new Promise((resolve, reject) => {
+                        const transaction = db.transaction([storeName], 'readwrite');
+                        const store = transaction.objectStore(storeName);
+                        const request = store.clear();
+                        request.onsuccess = () => resolve();
+                        request.onerror = () => reject(request.error);
+                    })
+                ));
+
+                if (config.settings) {
+                    const transaction = db.transaction(['settings'], 'readwrite');
+                    const store = transaction.objectStore('settings');
+                    await new Promise((resolve, reject) => {
+                        const request = store.put(config.settings);
+                        request.onsuccess = () => resolve();
+                        request.onerror = () => reject(request.error);
+                    });
+                }
+
+                if (config.links) {
+                    const transaction = db.transaction(['links'], 'readwrite');
+                    const store = transaction.objectStore('links');
+                    await Promise.all(config.links.map(link => 
+                        new Promise((resolve, reject) => {
+                            const request = store.add(link);
+                            request.onsuccess = () => resolve();
+                            request.onerror = () => reject(request.error);
+                        })
+                    ));
+                }
+
+                if (config.files) {
+                    const transaction = db.transaction(['files'], 'readwrite');
+                    const store = transaction.objectStore('files');
+                    await Promise.all(config.files.map(file => 
+                        new Promise((resolve, reject) => {
+                            const request = store.add(file);
+                            request.onsuccess = (event) => {
+                                const id = event.target.result;
+                                const blob = new Blob([file.content], { type: file.type });
+                                const blobUrl = URL.createObjectURL(blob);
+                                blobUrls.set(id, blobUrl);
+                                resolve();
+                            };
+                            request.onerror = () => reject(request.error);
+                        })
+                    ));
+                }
+
+                await loadSettings();
+                await loadLinks();
+                await updateUploadedFiles();
+            } catch (error) {
+                console.error('Import error:', error);
+                showError('Invalid configuration file');
+            }
+            
+            event.target.value = '';
+        }
+
+        async function requestMicPermission() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                elements.micStatus.textContent = '🎤 Enabled';
+                elements.micStatus.className = 'text-sm text-green-600';
+                stream.getTracks().forEach(track => track.stop());
+            } catch (err) {
+                console.error('Microphone permission error:', err);
+                elements.micStatus.textContent = '🎤 Denied';
+                elements.micStatus.className = 'text-sm text-red-600';
+            }
+        }
+
+        async function generatePortal() {
+            const [settings, links] = await Promise.all([
+                new Promise(resolve => {
+                    const transaction = db.transaction(['settings'], 'readonly');
+                    const store = transaction.objectStore('settings');
+                    const request = store.get('portal');
+                    request.onsuccess = () => resolve(request.result);
+                }),
+                new Promise(resolve => {
+                    const transaction = db.transaction(['links'], 'readonly');
+                    const store = transaction.objectStore('links');
+                    const request = store.getAll();
+                    request.onsuccess = () => resolve(request.result);
+                })
+            ]);
+
+            const template = generatePortalTemplate(settings, links);
+            const blob = new Blob([template], { type: 'text/html' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'generated-portal.html';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        function generatePortalTemplate(settings, links) {
+            return `<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob: 'unsafe-inline' 'unsafe-eval'; frame-src 'self' https: blob: data:;">
+    <title>${settings?.name || 'Generated Portal'}</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-color: ${settings?.primaryColor || '#3B82F6'};
+            --accent-color: ${settings?.accentColor || '#10B981'};
+        }
+        .menu-panel {
+            position: fixed;
+            left: -320px;
+            top: 0;
+            bottom: 0;
+            width: 320px;
+            transition: left 0.3s ease;
+            z-index: 40;
+        }
+        .menu-panel.active {
+            left: 0;
+        }
+        #mainContent {
+            margin-left: 0;
+            transition: margin-left 0.3s ease;
+        }
+        #mainContent.with-menu {
+            margin-left: 320px;
+        }
+        .overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            opacity: 0;
+            visibility: hidden;
+            transition: 0.3s ease;
+            z-index: 30;
+        }
+        .overlay.active {
+            opacity: 1;
+            visibility: visible;
+        }
+        ${settings?.colorTheme === 'dark' ? `
+        body {
+            background: #1a1a1a;
+            color: #ffffff;
+        }
+        .menu-panel {
+            background: #2a2a2a;
+        }
+        header {
+            background: #2a2a2a;
+            border-color: #3a3a3a;
+        }
+        .link-item {
+            background: #3a3a3a !important;
+        }
+        .link-item:hover {
+            background: #4a4a4a !important;
+        }
+        ` : ''}
+    </style>
+</head>
+<body class="min-h-screen">
+    <div class="flex h-screen flex-col">
+        <header class="bg-white border-b h-14 flex items-center px-4 justify-between ${settings?.colorTheme === 'dark' ? 'bg-gray-800 border-gray-700' : ''}">
+            <div class="flex items-center gap-4">
+                <button id="menuBtn" class="text-xl ${settings?.colorTheme === 'dark' ? 'text-white' : 'text-gray-900'}">☰</button>
+                <h1 class="text-lg font-semibold ${settings?.colorTheme === 'dark' ? 'text-white' : 'text-gray-900'}">${settings?.name || 'Generated Portal'}</h1>
+            </div>
+            <div id="currentTime" class="text-sm ${settings?.colorTheme === 'dark' ? 'text-gray-300' : 'text-gray-600'}"></div>
+        </header>
+
+        <div id="menuPanel" class="menu-panel bg-white shadow-lg overflow-y-auto ${settings?.colorTheme === 'dark' ? 'bg-gray-800' : ''}">
+            <div class="p-4">
+                <div class="mb-4">
+                    <h2 class="text-lg font-semibold mb-2 ${settings?.colorTheme === 'dark' ? 'text-white' : 'text-gray-900'}">Menu</h2>
+                    ${settings?.tagline ? `<p class="text-sm ${settings?.colorTheme === 'dark' ? 'text-gray-300' : 'text-gray-600'}">${settings.tagline}</p>` : ''}
+                </div>
+                <div id="linkList" class="space-y-2"></div>
+            </div>
+        </div>
+
+        <main id="mainContent" class="flex-1 ${settings?.colorTheme === 'dark' ? 'bg-gray-900' : 'bg-white'}">
+            <iframe id="viewer" 
+                    class="w-full h-full border-0" 
+                    sandbox="allow-scripts allow-same-origin allow-popups allow-modals allow-forms"
+                    allow="microphone"
+                    loading="lazy"></iframe>
+        </main>
+
+        <div id="overlay" class="overlay"></div>
+    </div>
+
+    <script>
+        const links = ${JSON.stringify(links)};
+        const viewMode = '${settings?.viewMode || 'standard'}';
+        
+        const elements = {
+            menuBtn: document.getElementById('menuBtn'),
+            menuPanel: document.getElementById('menuPanel'),
+            mainContent: document.getElementById('mainContent'),
+            overlay: document.getElementById('overlay'),
+            linkList: document.getElementById('linkList'),
+            viewer: document.getElementById('viewer'),
+            currentTime: document.getElementById('currentTime')
+        };
+
+        elements.menuBtn.addEventListener('click', toggleMenu);
+        elements.overlay.addEventListener('click', toggleMenu);
+
+        updateLinkList();
+        updateTime();
+
+        function toggleMenu() {
+            elements.menuPanel.classList.toggle('active');
+            elements.mainContent.classList.toggle('with-menu');
+            elements.overlay.classList.toggle('active');
+        }
+
+        function updateLinkList() {
+            elements.linkList.innerHTML = '';
+            
+            links.forEach((link, index) => {
+                const linkEl = document.createElement('div');
+                linkEl.className = 'p-4 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer link-item ${settings?.colorTheme === 'dark' ? 'bg-gray-700 hover:bg-gray-600' : ''}';
+                
+                linkEl.innerHTML = \`
+                    <div class="text-sm font-medium ${settings?.colorTheme === 'dark' ? 'text-white' : 'text-gray-900'}">\${link.title}</div>
+                    <div class="text-xs ${settings?.colorTheme === 'dark' ? 'text-gray-400' : 'text-gray-600'} mt-1 truncate">\${link.url}</div>
+                \`;
+
+                linkEl.addEventListener('click', () => {
+                    elements.viewer.src = link.url;
+                    if (window.innerWidth < 768) {
+                        toggleMenu();
+                    }
+                });
+
+                elements.linkList.appendChild(linkEl);
+                
+                if (index === 0) {
+                    setTimeout(() => linkEl.click(), 500);
+                }
+            });
+        }
+
+        function updateTime() {
+            const now = new Date();
+            const options = {
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit',
+                hour12: true
+            };
+            elements.currentTime.textContent = now.toLocaleTimeString('en-US', options);
+            setTimeout(updateTime, 1000);
+        }
+    <\/script>
+</body>
+</html>`;
+        }
+    </script>
+</body>
+</html>
