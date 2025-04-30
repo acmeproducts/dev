@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Real-Time Breathing Visualization</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      padding: 20px;
+      background: #f0f0f0;
+    }
+    #controls {
+      margin-bottom: 20px;
+    }
+    #visualizer {
+      border: 2px solid #333;
+      background: #222;
+      margin: 10px 0;
+    }
+    #status {
+      font-weight: bold;
+      color: #4CAF50;
+      margin-bottom: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div id="status">Click "Start" to begin.</div>
+  <div id="controls">
+    <button onclick="start()">Start</button>
+    <button onclick="stop()">Stop</button>
+    <label>Smoothing: <input type="range" min="0" max="1" step="0.01" value="0.8" id="smoothingSlider" oninput="updateSmoothing()"></label>
+  </div>
+  <canvas id="visualizer" width="800" height="200"></canvas>
+  
+  <script>
+    let audioContext, analyser, source, canvas, ctx, animationFrame;
+
+    function start() {
+      // Initialize AudioContext and stream
+      audioContext = new (window.AudioContext || window.webkitAudioContext)();
+      navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(stream => {
+          source = audioContext.createMediaStreamSource(stream);
+          analyser = audioContext.createAnalyser();
+          analyser.fftSize = 2048; // Balance between detail and performance
+          analyser.smoothingTimeConstant = parseFloat(document.getElementById('smoothingSlider').value);
+          source.connect(analyser);
+          
+          canvas = document.getElementById('visualizer');
+          ctx = canvas.getContext('2d');
+          updateCanvasSize(); // Responsive canvas scaling
+          requestAnimationFrame(visualize);
+          document.getElementById('status').textContent = "Listening... Breathe slowly.";
+        })
+        .catch(error => {
+          document.getElementById('status').textContent = `Error: ${error.name}`;
+        });
+    }
+
+    function stop() {
+      if (audioContext) {
+        audioContext.close();
+        audioContext = null;
+        cancelAnimationFrame(animationFrame);
+        document.getElementById('status').textContent = "Stopped. Click Start to restart.";
+      }
+    }
+
+    function visualize() {
+      const bufferLength = analyser.frequencyBinCount;
+      const dataArray = new Uint8Array(bufferLength);
+      analyser.getByteFrequencyData(dataArray);
+
+      // Clear canvas
+      ctx.fillStyle = '#222';
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      // Calculate breathing amplitude (focus on low frequencies: 0-250Hz)
+      let amplitude = 0;
+      const breathingRange = 50; // First 50 bins (0-250Hz)
+      for (let i = 0; i < breathingRange; i++) {
+        amplitude += dataArray[i];
+      }
+      amplitude = (amplitude / breathingRange) * 1.5; // Amplify breathing signal
+
+      // Draw a responsive line graph
+      ctx.beginPath();
+      ctx.moveTo(0, canvas.height / 2);
+      ctx.lineTo(canvas.width, canvas.height / 2 + amplitude - 100);
+      ctx.strokeStyle = '#00FF00';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+
+      // Add dynamic breathing indicator (pulse effect)
+      ctx.fillStyle = '#FF6B6B';
+      ctx.beginPath();
+      ctx.arc(
+        canvas.width - 20,
+        canvas.height / 2 + amplitude - 100,
+        8 + (amplitude * 0.05),
+        0,
+        Math.PI * 2
+      );
+      ctx.fill();
+
+      animationFrame = requestAnimationFrame(visualize);
+    }
+
+    function updateSmoothing() {
+      if (analyser) {
+        analyser.smoothingTimeConstant = parseFloat(document.getElementById('smoothingSlider').value);
+      }
+    }
+
+    function updateCanvasSize() {
+      const containerWidth = document.body.clientWidth * 0.9; // 90% of viewport width
+      canvas.width = containerWidth;
+      canvas.height = 200;
+    }
+
+    // Responsive resizing
+    window.addEventListener('resize', updateCanvasSize);
+  </script>
+</body>
+</html>
