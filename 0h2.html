@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>MAD Horizons Final Build</title>
+  <style>
+    body { margin: 0; font-family: sans-serif; background: #000; color: #fff; overflow: hidden; }
+    .config-toggle { position: fixed; top: 10px; left: 10px; background: #222; color: #fff; border: none; padding: 8px 12px; cursor: pointer; z-index: 1000; }
+    .config-panel { position: fixed; top: 0; left: 0; height: 100%; width: 320px; background: #111; transform: translateX(-100%); transition: transform 0.3s ease; overflow-y: auto; z-index: 999; padding: 14px; box-sizing: border-box; }
+    .config-panel.open { transform: translateX(0); }
+    .main-top { background: #111; padding: 10px; position: fixed; top: 0; left: 0; right: 0; z-index: 500; display: flex; justify-content: center; gap: 10px; }
+    .main-top button { background: #333; color: #fff; border: none; padding: 8px 16px; cursor: pointer; }
+    .panelArea { margin-top: 60px; height: calc(100vh - 60px); overflow-y: scroll; display: flex; flex-direction: column; }
+    .panel { height: 320px; padding: 4px; flex-shrink: 0; }
+    canvas { width: 100%; height: 100%; background: black; }
+    .config-section { margin-bottom: 20px; border-bottom: 1px solid #444; padding-bottom: 10px; }
+    label { display: block; margin-top: 5px; }
+  </style>
+</head>
+<body>
+
+<button class="config-toggle" onclick="togglePanel()">☰</button>
+<div class="config-panel" id="configPanel">
+  <h3>Global</h3>
+  <div class="config-section">
+    <label>Background</label>
+    <input type="color" id="bgColor" value="#000000" onchange="applyGlobalSettings()">
+    <label><input type="checkbox" id="showTitles" checked onchange="applyGlobalSettings()"> Show Titles</label>
+    <label><input type="checkbox" id="stackMode" checked onchange="rebuildCharts()"> Stacked View</label>
+    <button onclick="saveConfig()">Save</button>
+    <button onclick="loadConfig()">Load</button>
+  </div>
+  <h3>Panels</h3>
+  <div id="panelConfigs"></div>
+</div>
+
+<div class="main-top">
+  <button onclick="start()">Start</button>
+  <button onclick="stop()">Stop</button>
+  <button onclick="clearAll()">Clear</button>
+  <button onclick="download()">Download</button>
+</div>
+
+<div class="panelArea" id="panelArea"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
+<script>
+let charts=[], configs=[], timers=[], micStream=null, audioCtx=null, analyser=null, dataArray=null;
+
+function togglePanel(){document.getElementById("configPanel").classList.toggle("open");}
+
+function applyGlobalSettings(){
+  const bg=document.getElementById("bgColor").value;
+  document.body.style.backgroundColor=bg;
+  document.getElementById("panelArea").style.backgroundColor=bg;
+  const show=document.getElementById("showTitles").checked;
+  charts.forEach((c,i)=>{document.getElementById('title'+i).style.display=show?'block':'none';});
+}
+
+function buildPanels(){
+  clearAll();
+  charts=[];configs=[];timers=[];
+  const area=document.getElementById("panelArea");
+  const cfg=document.getElementById("panelConfigs");
+  area.innerHTML='';cfg.innerHTML='';
+  for(let i=0;i<10;i++){
+    const div=document.createElement("div");div.className="panel";
+    const title=document.createElement("div");title.id="title"+i;title.style.color="#0f0";title.innerText="Panel "+(i+1);
+    const canvas=document.createElement("canvas");canvas.id="chart"+i;
+    div.appendChild(title);div.appendChild(canvas);area.appendChild(div);
+    const ctx=canvas.getContext('2d');
+    charts.push(new Chart(ctx,{type:'bar',data:{labels:[],datasets:[{label:'Sum',data:[],backgroundColor:'white',borderColor:'white'}]},options:{
+      responsive:true,maintainAspectRatio:false,
+      scales:{x:{ticks:{maxTicksLimit:10}},y:{beginAtZero:true}},
+      plugins:{zoom:{pan:{enabled:true,mode:'x'},zoom:{wheel:{enabled:true},pinch:{enabled:true},mode:'x'}}}}}));
+    configs.push({interval:1000,window:60,enabled:true});
+    const pCfg=document.createElement("div");pCfg.className="config-section";
+    pCfg.innerHTML=`<label>Panel ${i+1}</label>
+      <label>Interval (ms)<input type="number" id="interval${i}" value="1000" min="100" onchange="updateConfig(${i})"></label>
+      <label>Window (pts)<input type="number" id="window${i}" value="60" min="10" onchange="updateConfig(${i})"></label>
+      <label><input type="checkbox" id="enabled${i}" checked onchange="updateConfig(${i})"> Enabled</label>`;
+    cfg.appendChild(pCfg);
+  }
+}
+
+function updateConfig(i){
+  configs[i].interval=parseInt(document.getElementById('interval'+i).value);
+  configs[i].window=parseInt(document.getElementById('window'+i).value);
+  configs[i].enabled=document.getElementById('enabled'+i).checked;
+}
+
+function start(){
+  if(!audioCtx){
+    audioCtx=new (window.AudioContext||window.webkitAudioContext)();
+    analyser=audioCtx.createAnalyser();
+    analyser.fftSize=2048;
+    dataArray=new Uint8Array(analyser.frequencyBinCount);
+  }
+  navigator.mediaDevices.getUserMedia({audio:true}).then(stream=>{
+    micStream=stream;
+    const source=audioCtx.createMediaStreamSource(stream);
+    source.connect(analyser);
+    for(let i=0;i<10;i++){
+      if(configs[i].enabled){
+        timers[i]=setInterval(()=>capture(i),configs[i].interval);
+      }
+    }
+  }).catch(e=>alert('Mic denied'));
+}
+
+function stop(){
+  timers.forEach(t=>clearInterval(t));
+  if(micStream){micStream.getTracks().forEach(t=>t.stop());}
+  audioCtx=null;analyser=null;dataArray=null;micStream=null;
+}
+
+function capture(i){
+  if(!analyser)return;
+  analyser.getByteFrequencyData(dataArray);
+  const val=Array.from({length:10},(_,idx)=>{
+    const start=Math.floor(idx*dataArray.length/10);
+    const end=Math.floor((idx+1)*dataArray.length/10);
+    return dataArray.slice(start,end).reduce((a,b)=>a+b,0)/ (end-start);
+  });
+  const sum=val.reduce((a,b)=>a+b,0);
+  const now=new Date().toLocaleTimeString();
+  const chart=charts[i];
+  if(chart.data.labels.length>=configs[i].window){
+    chart.data.labels.shift();
+    chart.data.datasets.forEach(d=>d.data.shift());
+  }
+  chart.data.labels.push(now);
+  chart.data.datasets.forEach((d,idx)=>d.data.push(sum));
+  chart.update();
+}
+
+function clearAll(){
+  charts.forEach(c=>{
+    c.data.labels=[];
+    c.data.datasets.forEach(d=>d.data=[]);
+    c.update();
+  });
+}
+
+function download(){
+  alert('Export coming next build.');
+}
+
+function saveConfig(){
+  localStorage.setItem('madConfig',JSON.stringify(configs));
+  alert('Saved.');
+}
+
+function loadConfig(){
+  const loaded=JSON.parse(localStorage.getItem('madConfig'));
+  if(loaded){configs=loaded;configs.forEach((cfg,i)=>{
+    document.getElementById('interval'+i).value=cfg.interval;
+    document.getElementById('window'+i).value=cfg.window;
+    document.getElementById('enabled'+i).checked=cfg.enabled;
+  });buildPanels();applyGlobalSettings();}
+}
+
+function rebuildCharts(){
+  buildPanels();
+}
+
+window.onload=()=>{buildPanels();applyGlobalSettings();};
+</script>
+
+</body>
+</html>
