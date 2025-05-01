@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Biofeedback Shader App v2.0</title>
+  <title>Biofeedback Shader App v2.1</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body {
@@ -85,8 +85,9 @@
         precision mediump float;
         uniform float iTime;
         uniform float breathAmplitude;
+        uniform vec2 iResolution;
         void main() {
-          vec2 uv = gl_FragCoord.xy / vec2(640.0, 480.0);
+          vec2 uv = gl_FragCoord.xy / iResolution;
           float y = 0.5 + 0.5 * sin(uv.x * 20.0 + iTime * 3.0) * breathAmplitude;
           float c = smoothstep(y - 0.01, y + 0.01, uv.y);
           gl_FragColor = vec4(vec3(c), 1.0);
@@ -96,8 +97,9 @@
         precision mediump float;
         uniform float iTime;
         uniform float breathAmplitude;
+        uniform vec2 iResolution;
         void main() {
-          vec2 uv = gl_FragCoord.xy / vec2(640.0, 480.0);
+          vec2 uv = gl_FragCoord.xy / iResolution;
           vec2 pos = mod(uv * 10.0 + iTime, 1.0);
           float c = step(0.95, abs(sin(pos.x * pos.y * 40.0 * breathAmplitude)));
           gl_FragColor = vec4(vec3(c), 1.0);
@@ -107,11 +109,12 @@
         precision mediump float;
         uniform float iTime;
         uniform float breathAmplitude;
+        uniform vec2 iResolution;
         float rand(vec2 co) {
           return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
         }
         void main() {
-          vec2 uv = gl_FragCoord.xy / vec2(640.0, 480.0);
+          vec2 uv = gl_FragCoord.xy / iResolution;
           float noise = rand(uv * iTime * breathAmplitude);
           gl_FragColor = vec4(vec3(noise), 1.0);
         }
@@ -199,8 +202,10 @@
       gl.clear(gl.COLOR_BUFFER_BIT);
       const iTime = gl.getUniformLocation(program, 'iTime');
       const breath = gl.getUniformLocation(program, 'breathAmplitude');
+      const res = gl.getUniformLocation(program, 'iResolution');
       if (iTime) gl.uniform1f(iTime, performance.now() / 1000);
       if (breath) gl.uniform1f(breath, breathAmplitude);
+      if (res) gl.uniform2f(res, gl.drawingBufferWidth, gl.drawingBufferHeight);
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
       requestAnimationFrame(render);
     }
