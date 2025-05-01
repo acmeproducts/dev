@@ -1,45 +1,53 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Shader App w/ Schemes</title>
+  <title>Biofeedback Shader Complete</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    html, body { margin: 0; overflow: hidden; background: black; font-family: monospace; }
-    canvas#shaderCanvas { width: 100vw; height: 100vh; display: block; }
-    canvas#ampGraph {
-      position: fixed; bottom: 130px; left: 0;
-      width: 100vw; height: 60px;
-      background: rgba(0,0,0,0.3); z-index: 5;
+    html, body { margin: 0; overflow: hidden; background: #000; font-family: monospace; }
+    canvas { display: block; }
+    #shaderCanvas { width: 100vw; height: 70vh; }
+    #ampGraph, #waveformGraph {
+      position: fixed; left: 0; width: 100vw; height: 15vh;
+      background: #111; z-index: 2;
     }
+    #ampGraph { bottom: 30vh; }
+    #waveformGraph { bottom: 15vh; }
     #status, #controls {
-      position: fixed; width: 100%; z-index: 6;
-      font-size: 14px; color: white; padding: 8px;
-      background: rgba(0,0,0,0.7);
+      position: fixed; width: 100%; z-index: 3;
+      font-size: 14px; padding: 8px;
+      background: rgba(0,0,0,0.8); color: white;
     }
     #status { top: 0; }
     #controls {
-      bottom: 0; display: flex; flex-wrap: wrap;
-      gap: 8px; align-items: center;
+      bottom: 0; display: flex; flex-wrap: wrap; gap: 8px;
+      align-items: center; justify-content: flex-start;
     }
-    select, input[type=range], button {
-      padding: 4px; font-family: monospace; font-size: 14px;
+    select, input, button {
+      font-family: monospace; font-size: 14px; padding: 4px;
     }
-    #editor { display:none; position:fixed; top:0; left:0; width:100%; height:100%; z-index:10; background:white; padding:10px; }
-    #editor textarea { width:100%; height:90%; font-family:monospace; }
+    #editor {
+      display: none; position: fixed; top: 0; left: 0; width: 100%;
+      height: 100%; background: white; z-index: 10; padding: 10px;
+    }
+    #editor textarea {
+      width: 100%; height: 85%; font-family: monospace; font-size: 14px;
+    }
   </style>
 </head>
 <body>
 <canvas id="shaderCanvas"></canvas>
 <canvas id="ampGraph"></canvas>
-<div id="status">[OK] Initialized</div>
+<canvas id="waveformGraph"></canvas>
+<div id="status">[OK] Initializing...</div>
 <div id="controls">
   <select id="schemeSelect"></select>
-  <label>Boost <input type="range" id="boost" min="1" max="10" step="0.1" value="4"></label>
-  <label>Baseline <input type="range" id="baseline" min="0" max="0.5" step="0.01" value="0.1"></label>
-  <label>Smooth <input type="range" id="smoothing" min="0" max="1" step="0.01" value="0.3"></label>
+  <label>Boost <input id="boost" type="range" min="1" max="10" step="0.1" value="4"></label>
+  <label>Baseline <input id="baseline" type="range" min="0" max="0.5" step="0.01" value="0.1"></label>
+  <label>Smooth <input id="smoothing" type="range" min="0" max="1" step="0.01" value="0.3"></label>
   <button onclick="toggleEditor()">Edit</button>
-  <button onclick="loadSchemes()">Import Schemes</button>
-  <button onclick="exportCurrent()">Export Shader</button>
+  <button onclick="importSchemes()">Import</button>
+  <button onclick="exportScheme()">Export</button>
 </div>
 <div id="editor">
   <textarea id="customShader"></textarea><br>
@@ -48,199 +56,184 @@
 </div>
 
 <script>
-let gl, program, canvas, audioContext, analyser;
-let ampHistory = Array(500).fill(0);
-let activeShader = '';
-let schemes = {};
-let currentParams = { boost: 4, baseline: 0.1, smoothing: 0.3 };
+let gl, program, shaderCanvas, audioCtx, analyser;
+let ampHistory = Array(300).fill(0);
+let waveform = new Uint8Array(512);
 let smoothedAmp = 0.2;
+let schemes = {};
+let current = { name: '', shader: '', params: { boost: 4, baseline: 0.1, smoothing: 0.3 } };
 
-function showStatus(msg, err=false) {
-  const s = document.getElementById('status');
-  s.textContent = (err ? '[ERROR] ' : '[OK] ') + msg;
-  s.style.color = err ? 'red' : 'lightgreen';
-}
+function $(id) { return document.getElementById(id); }
+function showStatus(msg) { $('status').textContent = '[OK] ' + msg; }
 
-function initGL() {
-  canvas = document.getElementById('shaderCanvas');
-  gl = canvas.getContext('webgl');
-  if (!gl) return showStatus("WebGL not supported", true);
-  window.addEventListener('resize', resize);
+function init() {
+  shaderCanvas = $('shaderCanvas');
+  gl = shaderCanvas.getContext('webgl');
+  if (!gl) return showStatus('WebGL not supported');
   resize();
+  window.onresize = resize;
+  setupAudio();
+  loop();
 }
 
 function resize() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-  gl.viewport(0, 0, canvas.width, canvas.height);
+  shaderCanvas.width = window.innerWidth;
+  shaderCanvas.height = window.innerHeight * 0.7;
+  gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
 }
 
-function compile(src) {
-  const vsSrc = `precision mediump float; attribute vec2 position; void main(){gl_Position=vec4(position,0,1);}`;
-  const vs = gl.createShader(gl.VERTEX_SHADER);
-  gl.shaderSource(vs, vsSrc); gl.compileShader(vs);
-  const fs = gl.createShader(gl.FRAGMENT_SHADER);
-  gl.shaderSource(fs, src); gl.compileShader(fs);
-  if (!gl.getShaderParameter(vs, gl.COMPILE_STATUS)) return null;
-  if (!gl.getShaderParameter(fs, gl.COMPILE_STATUS)) return null;
-  const prog = gl.createProgram();
-  gl.attachShader(prog, vs); gl.attachShader(prog, fs); gl.linkProgram(prog);
-  return gl.getProgramParameter(prog, gl.LINK_STATUS) ? prog : null;
-}
-
-function loadShader(name, shaderCode) {
-  const p = compile(shaderCode);
-  if (!p) return;
-  program = p;
-  gl.useProgram(program);
-  const buf = gl.createBuffer();
-  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
-  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
-    -1, -1, 1, -1, -1, 1, 1, 1
-  ]), gl.STATIC_DRAW);
-  const loc = gl.getAttribLocation(program, 'position');
-  gl.enableVertexAttribArray(loc);
-  gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
-  activeShader = shaderCode;
-  showStatus(`Loaded: ${name}`);
-}
-
-function render() {
-  const amp = getAmp();
-  smoothedAmp = smoothedAmp * (1 - currentParams.smoothing) + amp * currentParams.smoothing;
-  ampHistory.push(smoothedAmp);
-  ampHistory.shift();
-  resize();
-  const res = gl.getUniformLocation(program, 'iResolution');
-  const t = gl.getUniformLocation(program, 'iTime');
-  const a = gl.getUniformLocation(program, 'breathAmplitude');
-  gl.clear(gl.COLOR_BUFFER_BIT);
-  if (res) gl.uniform2f(res, canvas.width, canvas.height);
-  if (t) gl.uniform1f(t, performance.now() / 1000);
-  if (a) gl.uniform1f(a, smoothedAmp);
-  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-  drawAmpGraph();
-  showStatus(`Amp: ${smoothedAmp.toFixed(3)}`);
-}
-
-function loop() {
-  render();
-  requestAnimationFrame(loop);
+function setupAudio() {
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+    const src = audioCtx.createMediaStreamSource(stream);
+    analyser = audioCtx.createAnalyser();
+    analyser.fftSize = 1024;
+    src.connect(analyser);
+    showStatus('Mic OK');
+  }).catch(() => showStatus('Mic blocked'));
 }
 
 function getAmp() {
-  if (!analyser) return currentParams.baseline;
+  if (!analyser) return current.params.baseline;
   const data = new Uint8Array(analyser.frequencyBinCount);
   analyser.getByteFrequencyData(data);
-  let avg = data.reduce((a,b)=>a+b) / data.length / 255;
-  return Math.min(1.0, Math.max(currentParams.baseline, avg * currentParams.boost));
+  const avg = data.reduce((a, b) => a + b) / data.length / 255;
+  const boosted = Math.max(current.params.baseline, avg * current.params.boost);
+  smoothedAmp = smoothedAmp * (1 - current.params.smoothing) + boosted * current.params.smoothing;
+  return smoothedAmp;
 }
 
-function drawAmpGraph() {
-  const g = document.getElementById('ampGraph');
-  const ctx = g.getContext('2d');
-  g.width = g.clientWidth;
-  g.height = g.clientHeight;
-  ctx.clearRect(0, 0, g.width, g.height);
+function compile(src) {
+  const vs = gl.createShader(gl.VERTEX_SHADER);
+  gl.shaderSource(vs, `attribute vec2 position; void main() { gl_Position = vec4(position,0,1); }`);
+  gl.compileShader(vs);
+  const fs = gl.createShader(gl.FRAGMENT_SHADER);
+  gl.shaderSource(fs, src);
+  gl.compileShader(fs);
+  program = gl.createProgram();
+  gl.attachShader(program, vs);
+  gl.attachShader(program, fs);
+  gl.linkProgram(program);
+  gl.useProgram(program);
+  const pos = gl.getAttribLocation(program, 'position');
+  const buf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(pos);
+  gl.vertexAttribPointer(pos, 2, gl.FLOAT, false, 0, 0);
+}
+
+function renderShader() {
+  const amp = getAmp();
+  ampHistory.push(amp); ampHistory.shift();
+  const t = gl.getUniformLocation(program, 'iTime');
+  const b = gl.getUniformLocation(program, 'breathAmplitude');
+  const r = gl.getUniformLocation(program, 'iResolution');
+  gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.uniform1f(t, performance.now() / 1000);
+  gl.uniform1f(b, amp);
+  gl.uniform2f(r, gl.drawingBufferWidth, gl.drawingBufferHeight);
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+}
+
+function drawGraph(canvas, data, color) {
+  const ctx = canvas.getContext('2d');
+  canvas.width = canvas.clientWidth;
+  canvas.height = canvas.clientHeight;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.beginPath();
-  ctx.moveTo(0, g.height * (1 - ampHistory[0]));
-  for (let i = 1; i < ampHistory.length; i++) {
-    const x = i / ampHistory.length * g.width;
-    const y = g.height * (1 - ampHistory[i]);
+  const h = canvas.height;
+  ctx.moveTo(0, h * (1 - data[0]));
+  for (let i = 1; i < data.length; i++) {
+    const x = i / data.length * canvas.width;
+    const y = h * (1 - data[i]);
     ctx.lineTo(x, y);
   }
-  ctx.strokeStyle = '#00FFAA';
+  ctx.strokeStyle = color;
   ctx.lineWidth = 2;
   ctx.stroke();
 }
 
-async function setupAudio() {
-  try {
-    audioContext = new (window.AudioContext || window.webkitAudioContext)();
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-    const source = audioContext.createMediaStreamSource(stream);
-    analyser = audioContext.createAnalyser();
-    analyser.fftSize = 1024;
-    source.connect(analyser);
-    showStatus("Microphone connected.");
-  } catch (e) {
-    showStatus("Mic error: " + e.message, true);
-  }
+function drawWaveform() {
+  if (analyser) analyser.getByteTimeDomainData(waveform);
+  const norm = Array.from(waveform).map(v => (v - 128) / 128);
+  drawGraph($('waveformGraph'), norm.map(x => 0.5 + x * 0.5), '#00faff');
 }
 
-function loadSchemes() {
+function drawAmp() {
+  drawGraph($('ampGraph'), ampHistory, '#00ff88');
+}
+
+function loop() {
+  renderShader();
+  drawAmp();
+  drawWaveform();
+  requestAnimationFrame(loop);
+}
+
+function toggleEditor() {
+  const ed = $('editor');
+  const ta = $('customShader');
+  ed.style.display = ed.style.display === 'block' ? 'none' : 'block';
+  ta.value = current.shader;
+}
+
+function saveShader() {
+  current.shader = $('customShader').value;
+  compile(current.shader);
+  toggleEditor();
+}
+
+function importSchemes() {
   const input = document.createElement('input');
   input.type = 'file';
   input.accept = '.json';
   input.onchange = () => {
-    const file = input.files[0];
     const reader = new FileReader();
     reader.onload = e => {
       const json = JSON.parse(e.target.result);
-      schemes = {};
-      const sel = document.getElementById('schemeSelect');
+      const sel = $('schemeSelect');
       sel.innerHTML = '';
+      schemes = {};
       json.schemes.forEach(s => {
         schemes[s.name] = s;
-        const opt = document.createElement('option');
-        opt.value = s.name;
-        opt.textContent = s.name;
-        sel.appendChild(opt);
+        const o = document.createElement('option');
+        o.value = s.name;
+        o.textContent = s.name;
+        sel.appendChild(o);
       });
-      sel.onchange = () => {
-        const chosen = schemes[sel.value];
-        currentParams = { ...chosen.params };
-        document.getElementById('boost').value = currentParams.boost;
-        document.getElementById('baseline').value = currentParams.baseline;
-        document.getElementById('smoothing').value = currentParams.smoothing;
-        loadShader(sel.value, chosen.shader);
-      };
+      sel.onchange = () => selectScheme(sel.value);
       sel.selectedIndex = 0;
       sel.onchange();
     };
-    reader.readAsText(file);
+    reader.readAsText(input.files[0]);
   };
   input.click();
 }
 
-function toggleEditor() {
-  const e = document.getElementById('editor');
-  const ta = document.getElementById('customShader');
-  if (e.style.display === 'none') {
-    ta.value = activeShader;
-    e.style.display = 'block';
-  } else {
-    e.style.display = 'none';
-  }
+function selectScheme(name) {
+  current = JSON.parse(JSON.stringify(schemes[name]));
+  $('boost').value = current.params.boost;
+  $('baseline').value = current.params.baseline;
+  $('smoothing').value = current.params.smoothing;
+  compile(current.shader);
 }
 
-function saveShader() {
-  activeShader = document.getElementById('customShader').value;
-  const sel = document.getElementById('schemeSelect');
-  loadShader(sel.value, activeShader);
-  toggleEditor();
-}
-
-function exportCurrent() {
-  const blob = new Blob([activeShader], { type: 'text/plain' });
+function exportScheme() {
+  const blob = new Blob([JSON.stringify({ schemes: [current] }, null, 2)], { type: 'application/json' });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'shader.frag';
+  a.download = `${current.name}.json`;
   a.click();
   URL.revokeObjectURL(url);
 }
 
-// calibration link
 ['boost','baseline','smoothing'].forEach(id => {
-  document.getElementById(id).oninput = () => {
-    currentParams[id] = parseFloat(document.getElementById(id).value);
-  };
+  $(id).oninput = () => current.params[id] = parseFloat($(id).value);
 });
 
-initGL();
-setupAudio();
-loop();
+init();
 </script>
 </body>
 </html>
