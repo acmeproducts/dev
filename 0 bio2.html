@@ -1,29 +1,31 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Biofeedback Shader App FINAL</title>
+  <title>Shader App – Diagnostic</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     html, body { margin: 0; overflow: hidden; background: black; }
-    canvas { width: 100vw; height: 100vh; display: block; }
+    canvas#shaderCanvas { width: 100vw; height: 100vh; display: block; }
+    canvas#amplitudeGraph {
+      position: fixed; bottom: 40px; left: 0;
+      width: 100vw; height: 60px;
+      z-index: 5;
+      background: rgba(0,0,0,0.3);
+    }
     #status, #controls {
-      position: fixed; width: 100%; z-index: 5;
+      position: fixed; width: 100%; z-index: 6;
       font-family: monospace; font-size: 14px; color: white; padding: 8px;
       background: rgba(0,0,0,0.7);
     }
     #status { top: 0; }
     #controls { bottom: 0; display: flex; gap: 8px; align-items: center; }
     select, button { padding: 5px; font-family: monospace; font-size: 14px; }
-    #shaderEditor {
-      display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: white; z-index: 10; padding: 10px;
-    }
-    #shaderEditor textarea { width: 100%; height: 90%; font-family: monospace; font-size: 14px; }
   </style>
 </head>
 <body>
-<canvas id="canvas"></canvas>
-<div id="status">[OK] Initializing...</div>
+<canvas id="shaderCanvas"></canvas>
+<canvas id="amplitudeGraph"></canvas>
+<div id="status">[OK] Starting...</div>
 <div id="controls">
   <select id="shaderList">
     <option value="plasma">Plasma</option>
@@ -34,17 +36,18 @@
   <button onclick="toggleEditor()">Edit</button>
   <button onclick="importShader()">Import</button>
   <button onclick="exportShader()">Export</button>
+  <button onclick="unlockAudio()">Unlock Audio</button>
 </div>
-<div id="shaderEditor">
-  <textarea id="customShader"></textarea><br>
+<div id="shaderEditor" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:white; z-index:10; padding:10px;">
+  <textarea id="customShader" style="width:100%; height:90%; font-family:monospace;"></textarea><br>
   <button onclick="saveCustomShader()">Save</button>
   <button onclick="toggleEditor()">Cancel</button>
 </div>
 
 <script>
-let gl, program, canvas;
-let analyser, audioContext;
+let gl, program, canvas, audioContext, analyser;
 let customCode = '';
+let ampHistory = Array(500).fill(0);
 const builtInShaders = {
   plasma: `
     precision mediump float;
@@ -95,13 +98,11 @@ function showStatus(msg, err = false) {
 }
 
 function initGL() {
-  canvas = document.getElementById('canvas');
+  canvas = document.getElementById('shaderCanvas');
   gl = canvas.getContext('webgl');
   if (!gl) return showStatus("WebGL not supported", true);
   window.addEventListener('resize', resizeCanvas);
-  document.getElementById('shaderList').onchange = () => {
-    loadShader(document.getElementById('shaderList').value);
-  };
+  document.getElementById('shaderList').onchange = () => loadShader(document.getElementById('shaderList').value);
   resizeCanvas();
   loadShader('plasma');
 }
@@ -113,34 +114,16 @@ function resizeCanvas() {
 }
 
 function compile(src) {
-  const vsSrc = `
-    precision mediump float;
-    attribute vec2 position;
-    void main() { gl_Position = vec4(position, 0.0, 1.0); }
-  `;
+  const vsSrc = `precision mediump float; attribute vec2 position; void main() { gl_Position = vec4(position, 0.0, 1.0); }`;
   const vs = gl.createShader(gl.VERTEX_SHADER);
-  gl.shaderSource(vs, vsSrc);
-  gl.compileShader(vs);
-  if (!gl.getShaderParameter(vs, gl.COMPILE_STATUS)) {
-    showStatus(gl.getShaderInfoLog(vs), true); return null;
-  }
-
+  gl.shaderSource(vs, vsSrc); gl.compileShader(vs);
+  if (!gl.getShaderParameter(vs, gl.COMPILE_STATUS)) return null;
   const fs = gl.createShader(gl.FRAGMENT_SHADER);
-  gl.shaderSource(fs, src);
-  gl.compileShader(fs);
-  if (!gl.getShaderParameter(fs, gl.COMPILE_STATUS)) {
-    showStatus(gl.getShaderInfoLog(fs), true); return null;
-  }
-
-  const p = gl.createProgram();
-  gl.attachShader(p, vs);
-  gl.attachShader(p, fs);
-  gl.linkProgram(p);
-  if (!gl.getProgramParameter(p, gl.LINK_STATUS)) {
-    showStatus(gl.getProgramInfoLog(p), true); return null;
-  }
-
-  return p;
+  gl.shaderSource(fs, src); gl.compileShader(fs);
+  if (!gl.getShaderParameter(fs, gl.COMPILE_STATUS)) return null;
+  const prog = gl.createProgram();
+  gl.attachShader(prog, vs); gl.attachShader(prog, fs); gl.linkProgram(prog);
+  return gl.getProgramParameter(prog, gl.LINK_STATUS) ? prog : null;
 }
 
 function loadShader(name) {
@@ -152,10 +135,7 @@ function loadShader(name) {
   const buf = gl.createBuffer();
   gl.bindBuffer(gl.ARRAY_BUFFER, buf);
   gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
-    -1, -1,
-     1, -1,
-    -1,  1,
-     1,  1
+    -1,-1, 1,-1, -1,1, 1,1
   ]), gl.STATIC_DRAW);
   const pos = gl.getAttribLocation(program, 'position');
   gl.enableVertexAttribArray(pos);
@@ -164,15 +144,21 @@ function loadShader(name) {
 }
 
 function render() {
+  const amp = getBreathAmplitude();
+  ampHistory.push(amp);
+  ampHistory.shift();
+
   resizeCanvas();
   gl.clear(gl.COLOR_BUFFER_BIT);
   const t = gl.getUniformLocation(program, 'iTime');
-  const amp = gl.getUniformLocation(program, 'breathAmplitude');
+  const a = gl.getUniformLocation(program, 'breathAmplitude');
   const res = gl.getUniformLocation(program, 'iResolution');
   if (t) gl.uniform1f(t, performance.now() / 1000);
-  if (amp) gl.uniform1f(amp, getBreathAmplitude());
+  if (a) gl.uniform1f(a, amp);
   if (res) gl.uniform2f(res, canvas.width, canvas.height);
   gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  drawAmplitudeGraph(ampHistory);
+  showStatus(`Mic Level: ${amp.toFixed(3)}`);
 }
 
 function loop() {
@@ -181,10 +167,10 @@ function loop() {
 }
 
 function getBreathAmplitude() {
-  if (!analyser) return 0.4;
+  if (!analyser) return 0.3;
   const data = new Uint8Array(analyser.frequencyBinCount);
   analyser.getByteFrequencyData(data);
-  return Math.max(0.2, data.reduce((a,b) => a + b) / data.length / 255);
+  return Math.min(1.0, Math.max(0.05, data.reduce((a,b) => a + b) / data.length / 255 * 4));
 }
 
 async function setupAudio() {
@@ -197,7 +183,13 @@ async function setupAudio() {
     source.connect(analyser);
     showStatus("Microphone connected.");
   } catch (e) {
-    showStatus("Microphone access failed", true);
+    showStatus("Mic error: " + e.message, true);
+  }
+}
+
+function unlockAudio() {
+  if (audioContext && audioContext.state === 'suspended') {
+    audioContext.resume().then(() => showStatus("AudioContext resumed."));
   }
 }
 
@@ -244,6 +236,24 @@ function exportShader() {
   a.download = 'custom_shader.frag';
   a.click();
   URL.revokeObjectURL(url);
+}
+
+function drawAmplitudeGraph(data) {
+  const graph = document.getElementById('amplitudeGraph');
+  const ctx = graph.getContext('2d');
+  graph.width = graph.clientWidth;
+  graph.height = graph.clientHeight;
+  ctx.clearRect(0, 0, graph.width, graph.height);
+  ctx.beginPath();
+  ctx.moveTo(0, graph.height * (1 - data[0]));
+  for (let i = 1; i < data.length; i++) {
+    const x = (i / data.length) * graph.width;
+    const y = graph.height * (1 - data[i]);
+    ctx.lineTo(x, y);
+  }
+  ctx.strokeStyle = '#00FFAA';
+  ctx.lineWidth = 2;
+  ctx.stroke();
 }
 
 initGL();
