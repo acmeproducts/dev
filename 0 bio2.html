@@ -1,284 +1,268 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Biofeedback Shader App v2.2</title>
+  <title>Biofeedback Shader App FINAL</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    body {
+    body, html {
       margin: 0;
+      padding: 0;
       overflow: hidden;
-      background: #111;
-      font-family: monospace;
+      background: #000;
     }
-    #canvas {
-      display: block;
+    canvas {
       width: 100vw;
       height: 100vh;
+      display: block;
     }
     #controls, #status {
       position: fixed;
       width: 100%;
-      padding: 10px;
-      background: rgba(0,0,0,0.7);
+      padding: 8px;
+      font-family: monospace;
+      font-size: 14px;
+      z-index: 5;
       color: white;
-      z-index: 2;
     }
     #controls {
       bottom: 0;
-      left: 0;
+      background: rgba(0,0,0,0.8);
     }
     #status {
       top: 0;
-      left: 0;
-    }
-    #shaderEditor {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: #f0f0f0;
-      z-index: 10;
-    }
-    #shaderEditor textarea {
-      width: 100%;
-      height: 90%;
-      font-family: monospace;
-      font-size: 14px;
-    }
-    button, select {
-      margin: 5px;
-      padding: 6px 12px;
+      background: rgba(0,0,0,0.8);
     }
   </style>
 </head>
 <body>
-  <div id="status">[OK] Initializing...</div>
-  <canvas id="canvas"></canvas>
-  <div id="controls">
-    <select id="shaderList">
-      <option value="wave">Wave</option>
-      <option value="maze">Maze</option>
-      <option value="noise">Noise</option>
-      <option value="custom">Custom</option>
-    </select>
-    <button onclick="toggleEditor()">Edit Shader</button>
-    <button onclick="importShader()">Import</button>
-    <button onclick="exportShader()">Export</button>
-  </div>
-  <div id="shaderEditor">
-    <textarea id="customShader"></textarea>
-    <button onclick="saveCustomShader()">Save</button>
-    <button onclick="toggleEditor()">Close</button>
-  </div>
+<canvas id="canvas"></canvas>
+<div id="status">[OK] Starting...</div>
+<div id="controls">
+  <select id="shaderList">
+    <option value="wave">Wave</option>
+    <option value="maze">Maze</option>
+    <option value="noise">Noise</option>
+    <option value="custom">Custom</option>
+  </select>
+  <button onclick="toggleEditor()">Edit</button>
+  <button onclick="importShader()">Import</button>
+  <button onclick="exportShader()">Export</button>
+</div>
+<div id="shaderEditor" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#fff; z-index:10;">
+  <textarea id="customShader" style="width:100%; height:90%; font-family:monospace;"></textarea><br>
+  <button onclick="saveCustomShader()">Save</button>
+  <button onclick="toggleEditor()">Cancel</button>
+</div>
 
-  <script>
-    let gl, program, canvas;
-    let analyser, audioContext;
-    let breathAmplitude = 0;
-    let customCode = '';
-    const builtInShaders = {
-      wave: `
-        precision mediump float;
-        uniform float iTime;
-        uniform float breathAmplitude;
-        uniform vec2 iResolution;
-        void main() {
-          vec2 uv = gl_FragCoord.xy / iResolution;
-          float y = 0.5 + 0.5 * sin(uv.x * 20.0 + iTime * 3.0) * breathAmplitude;
-          float c = smoothstep(y - 0.01, y + 0.01, uv.y);
-          gl_FragColor = vec4(vec3(c), 1.0);
-        }
-      `,
-      maze: `
-        precision mediump float;
-        uniform float iTime;
-        uniform float breathAmplitude;
-        uniform vec2 iResolution;
-        void main() {
-          vec2 uv = gl_FragCoord.xy / iResolution;
-          vec2 pos = mod(uv * 10.0 + iTime, 1.0);
-          float c = step(0.95, abs(sin(pos.x * pos.y * 40.0 * breathAmplitude)));
-          gl_FragColor = vec4(vec3(c), 1.0);
-        }
-      `,
-      noise: `
-        precision mediump float;
-        uniform float iTime;
-        uniform float breathAmplitude;
-        uniform vec2 iResolution;
-        float rand(vec2 co) {
-          return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
-        }
-        void main() {
-          vec2 uv = gl_FragCoord.xy / iResolution;
-          float noise = rand(uv * iTime * breathAmplitude);
-          gl_FragColor = vec4(vec3(noise), 1.0);
-        }
-      `
-    };
-
-    function showStatus(msg, isError = false) {
-      const s = document.getElementById('status');
-      s.textContent = (isError ? '[ERROR] ' : '[OK] ') + msg;
-      s.style.color = isError ? 'red' : 'lightgreen';
+<script>
+let gl, program, canvas;
+let analyser, audioContext;
+let breathAmplitude = 0;
+let customCode = '';
+const builtInShaders = {
+  wave: `
+    precision mediump float;
+    uniform float iTime;
+    uniform float breathAmplitude;
+    uniform vec2 iResolution;
+    void main() {
+      vec2 uv = gl_FragCoord.xy / iResolution;
+      float y = 0.5 + 0.5 * sin(uv.x * 20.0 + iTime * 3.0) * breathAmplitude;
+      float c = smoothstep(y - 0.01, y + 0.01, uv.y);
+      gl_FragColor = vec4(vec3(c), 1.0);
     }
-
-    function initGL() {
-      canvas = document.getElementById('canvas');
-      gl = canvas.getContext('webgl');
-      if (!gl) return showStatus("WebGL not supported", true);
-      window.addEventListener('resize', resizeCanvas);
-      document.getElementById('shaderList').onchange = () => {
-        const val = document.getElementById('shaderList').value;
-        loadShader(val);
-      };
-      resizeCanvas();
-      loadShader('wave');
+  `,
+  maze: `
+    precision mediump float;
+    uniform float iTime;
+    uniform float breathAmplitude;
+    uniform vec2 iResolution;
+    void main() {
+      vec2 uv = gl_FragCoord.xy / iResolution;
+      vec2 pos = mod(uv * 10.0 + iTime, 1.0);
+      float c = step(0.95, abs(sin(pos.x * pos.y * 40.0 * breathAmplitude)));
+      gl_FragColor = vec4(vec3(c), 1.0);
     }
-
-    function resizeCanvas() {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
-      gl.viewport(0, 0, canvas.width, canvas.height);
+  `,
+  noise: `
+    precision mediump float;
+    uniform float iTime;
+    uniform float breathAmplitude;
+    uniform vec2 iResolution;
+    float rand(vec2 co) {
+      return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
     }
-
-    function compile(shaderSource) {
-      const vsSource = `
-        attribute vec2 position;
-        void main() {
-          gl_Position = vec4(position, 0, 1);
-        }
-      `;
-      const vs = gl.createShader(gl.VERTEX_SHADER);
-      gl.shaderSource(vs, vsSource);
-      gl.compileShader(vs);
-      if (!gl.getShaderParameter(vs, gl.COMPILE_STATUS)) {
-        showStatus(gl.getShaderInfoLog(vs), true); return null;
-      }
-
-      const fs = gl.createShader(gl.FRAGMENT_SHADER);
-      gl.shaderSource(fs, shaderSource);
-      gl.compileShader(fs);
-      if (!gl.getShaderParameter(fs, gl.COMPILE_STATUS)) {
-        showStatus(gl.getShaderInfoLog(fs), true); return null;
-      }
-
-      const prog = gl.createProgram();
-      gl.attachShader(prog, vs);
-      gl.attachShader(prog, fs);
-      gl.linkProgram(prog);
-      if (!gl.getProgramParameter(prog, gl.LINK_STATUS)) {
-        showStatus(gl.getProgramInfoLog(prog), true); return null;
-      }
-      return prog;
+    void main() {
+      vec2 uv = gl_FragCoord.xy / iResolution;
+      float noise = rand(uv * iTime * breathAmplitude);
+      gl_FragColor = vec4(vec3(noise), 1.0);
     }
+  `
+};
 
-    function loadShader(name) {
-      const code = builtInShaders[name] || customCode;
-      const compiled = compile(code);
-      if (!compiled) return;
-      program = compiled;
-      gl.useProgram(program);
-      const buffer = gl.createBuffer();
-      gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
-      gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
-        -1, -1, 1, -1, -1, 1, 1, 1
-      ]), gl.STATIC_DRAW);
-      const pos = gl.getAttribLocation(program, 'position');
-      gl.enableVertexAttribArray(pos);
-      gl.vertexAttribPointer(pos, 2, gl.FLOAT, false, 0, 0);
-      resizeCanvas();
-      showStatus(`Shader loaded: ${name}`);
+function showStatus(msg, error = false) {
+  const el = document.getElementById('status');
+  el.textContent = (error ? '[ERROR] ' : '[OK] ') + msg;
+  el.style.color = error ? 'red' : 'lightgreen';
+}
+
+function initGL() {
+  canvas = document.getElementById('canvas');
+  gl = canvas.getContext('webgl');
+  if (!gl) return showStatus("WebGL not supported", true);
+  resizeCanvas();
+  window.addEventListener('resize', resizeCanvas);
+  document.getElementById('shaderList').onchange = () => {
+    loadShader(document.getElementById('shaderList').value);
+  };
+  loadShader('wave');
+}
+
+function resizeCanvas() {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  gl.viewport(0, 0, canvas.width, canvas.height);
+}
+
+function compile(src) {
+  const vsSrc = `
+    precision mediump float;
+    attribute vec2 position;
+    void main() {
+      gl_Position = vec4(position, 0.0, 1.0);
     }
+  `;
+  const vs = gl.createShader(gl.VERTEX_SHADER);
+  gl.shaderSource(vs, vsSrc);
+  gl.compileShader(vs);
+  if (!gl.getShaderParameter(vs, gl.COMPILE_STATUS)) {
+    showStatus(gl.getShaderInfoLog(vs), true); return null;
+  }
 
-    function render() {
-      breathAmplitude = getBreathAmplitude();
-      gl.clearColor(0, 0, 0, 1);
-      gl.clear(gl.COLOR_BUFFER_BIT);
-      const iTime = gl.getUniformLocation(program, 'iTime');
-      const breath = gl.getUniformLocation(program, 'breathAmplitude');
-      const res = gl.getUniformLocation(program, 'iResolution');
-      if (iTime) gl.uniform1f(iTime, performance.now() / 1000);
-      if (breath) gl.uniform1f(breath, breathAmplitude);
-      if (res) gl.uniform2f(res, gl.drawingBufferWidth, gl.drawingBufferHeight);
-      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-    }
+  const fs = gl.createShader(gl.FRAGMENT_SHADER);
+  gl.shaderSource(fs, src);
+  gl.compileShader(fs);
+  if (!gl.getShaderParameter(fs, gl.COMPILE_STATUS)) {
+    showStatus(gl.getShaderInfoLog(fs), true); return null;
+  }
 
-    function loop() {
-      render();
-      requestAnimationFrame(loop);
-    }
+  const p = gl.createProgram();
+  gl.attachShader(p, vs);
+  gl.attachShader(p, fs);
+  gl.linkProgram(p);
+  if (!gl.getProgramParameter(p, gl.LINK_STATUS)) {
+    showStatus(gl.getProgramInfoLog(p), true); return null;
+  }
 
-    function getBreathAmplitude() {
-      if (!analyser) return 0;
-      const data = new Uint8Array(analyser.frequencyBinCount);
-      analyser.getByteFrequencyData(data);
-      return data.reduce((a,b)=>a+b)/data.length/255;
-    }
+  return p;
+}
 
-    async function setupAudio() {
-      try {
-        audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        const source = audioContext.createMediaStreamSource(stream);
-        analyser = audioContext.createAnalyser();
-        analyser.fftSize = 1024;
-        source.connect(analyser);
-        showStatus("Microphone connected.");
-      } catch (e) {
-        showStatus("Microphone error: " + e.message, true);
-      }
-    }
+function loadShader(name) {
+  const src = builtInShaders[name] || customCode;
+  const p = compile(src);
+  if (!p) return;
+  program = p;
+  gl.useProgram(program);
+  const buf = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+    -1, -1,
+     1, -1,
+    -1,  1,
+     1,  1
+  ]), gl.STATIC_DRAW);
+  const pos = gl.getAttribLocation(program, 'position');
+  gl.enableVertexAttribArray(pos);
+  gl.vertexAttribPointer(pos, 2, gl.FLOAT, false, 0, 0);
+  showStatus(`Shader loaded: ${name}`);
+}
 
-    function toggleEditor() {
-      const ed = document.getElementById('shaderEditor');
-      const ta = document.getElementById('customShader');
-      const visible = ed.style.display === 'block';
-      if (!visible) {
-        ta.value = customCode || builtInShaders['wave'];
-      }
-      ed.style.display = visible ? 'none' : 'block';
-    }
+function render() {
+  if (!program) return;
+  gl.clear(gl.COLOR_BUFFER_BIT);
+  const t = gl.getUniformLocation(program, 'iTime');
+  const amp = gl.getUniformLocation(program, 'breathAmplitude');
+  const res = gl.getUniformLocation(program, 'iResolution');
+  if (t) gl.uniform1f(t, performance.now() / 1000);
+  if (amp) gl.uniform1f(amp, getBreathAmplitude());
+  if (res) gl.uniform2f(res, gl.drawingBufferWidth, gl.drawingBufferHeight);
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+}
 
-    function saveCustomShader() {
-      customCode = document.getElementById('customShader').value;
+function loop() {
+  render();
+  requestAnimationFrame(loop);
+}
+
+function getBreathAmplitude() {
+  if (!analyser) return 0.2;
+  const data = new Uint8Array(analyser.frequencyBinCount);
+  analyser.getByteFrequencyData(data);
+  return data.reduce((a, b) => a + b) / data.length / 255;
+}
+
+async function setupAudio() {
+  try {
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const source = audioContext.createMediaStreamSource(stream);
+    analyser = audioContext.createAnalyser();
+    analyser.fftSize = 1024;
+    source.connect(analyser);
+    showStatus("Microphone connected.");
+  } catch (err) {
+    showStatus("Microphone access failed", true);
+  }
+}
+
+function toggleEditor() {
+  const ed = document.getElementById('shaderEditor');
+  const ta = document.getElementById('customShader');
+  if (ed.style.display === 'none') {
+    ta.value = customCode || builtInShaders.wave;
+    ed.style.display = 'block';
+  } else {
+    ed.style.display = 'none';
+  }
+}
+
+function saveCustomShader() {
+  customCode = document.getElementById('customShader').value;
+  document.getElementById('shaderList').value = 'custom';
+  loadShader('custom');
+  toggleEditor();
+}
+
+function importShader() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.frag,.glsl,.txt';
+  input.onchange = () => {
+    const file = input.files[0];
+    const reader = new FileReader();
+    reader.onload = e => {
+      customCode = e.target.result;
       document.getElementById('shaderList').value = 'custom';
       loadShader('custom');
-      toggleEditor();
-    }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
 
-    function importShader() {
-      const input = document.createElement('input');
-      input.type = 'file';
-      input.accept = '.frag,.glsl,.txt';
-      input.onchange = () => {
-        const file = input.files[0];
-        const reader = new FileReader();
-        reader.onload = e => {
-          customCode = e.target.result;
-          document.getElementById('shaderList').value = 'custom';
-          loadShader('custom');
-        };
-        reader.readAsText(file);
-      };
-      input.click();
-    }
+function exportShader() {
+  const blob = new Blob([customCode], {type: 'text/plain'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'custom_shader.frag';
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
-    function exportShader() {
-      const blob = new Blob([customCode], {type: 'text/plain'});
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'custom_shader.frag';
-      a.click();
-      URL.revokeObjectURL(url);
-    }
-
-    initGL();
-    setupAudio();
-    requestAnimationFrame(loop);
-  </script>
+initGL();
+setupAudio();
+loop();
+</script>
 </body>
 </html>
