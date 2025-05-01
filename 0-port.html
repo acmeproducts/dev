@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob: 'unsafe-inline' 'unsafe-eval'; frame-src 'self' https: blob: data:;">
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob: 'unsafe-inline' 'unsafe-eval';">
     <title>Link Portal</title>
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
     <style>
@@ -231,7 +231,7 @@
         const STORES = ['links', 'settings', 'files'];
         const blobUrls = new Map();
 
-        async function initDatabase() {
+        function initDatabase() {
             return new Promise((resolve, reject) => {
                 const request = indexedDB.open(DB_NAME, DB_VERSION);
 
@@ -263,10 +263,10 @@
         async function initApp() {
             try {
                 await initDatabase();
-                await loadSettings();
-                await loadLinks();
+                loadSettings();
+                loadLinks();
                 updateTime();
-                await updateUploadedFiles();
+                updateUploadedFiles();
             } catch (error) {
                 console.error('Failed to initialize application:', error);
                 showError('Failed to initialize application. Please refresh the page.');
@@ -349,30 +349,26 @@
             setTimeout(() => errorEl.classList.add('hidden'), 3000);
         }
 
-        async function loadSettings() {
+        function loadSettings() {
             const transaction = db.transaction(['settings'], 'readonly');
             const store = transaction.objectStore('settings');
             const request = store.get('portal');
 
-            return new Promise((resolve, reject) => {
-                request.onsuccess = () => {
-                    if (request.result) {
-                        const settings = request.result;
-                        document.getElementById('portalName').value = settings.name || '';
-                        document.getElementById('portalTagline').value = settings.tagline || '';
-                        document.getElementById('primaryColor').value = settings.primaryColor || '#3B82F6';
-                        document.getElementById('accentColor').value = settings.accentColor || '#10B981';
-                        document.getElementById('viewMode').value = settings.viewMode || 'standard';
-                        document.getElementById('colorTheme').value = settings.colorTheme || 'light';
-                        elements.portalTitle.textContent = settings.name || 'Link Portal';
-                    }
-                    resolve();
-                };
-                request.onerror = () => reject(request.error);
-            });
+            request.onsuccess = () => {
+                if (request.result) {
+                    const settings = request.result;
+                    document.getElementById('portalName').value = settings.name || '';
+                    document.getElementById('portalTagline').value = settings.tagline || '';
+                    document.getElementById('primaryColor').value = settings.primaryColor || '#3B82F6';
+                    document.getElementById('accentColor').value = settings.accentColor || '#10B981';
+                    document.getElementById('viewMode').value = settings.viewMode || 'standard';
+                    document.getElementById('colorTheme').value = settings.colorTheme || 'light';
+                    elements.portalTitle.textContent = settings.name || 'Link Portal';
+                }
+            };
         }
 
-        async function saveSettings() {
+        function saveSettings() {
             const settings = {
                 id: 'portal',
                 name: document.getElementById('portalName').value,
@@ -385,16 +381,10 @@
 
             const transaction = db.transaction(['settings'], 'readwrite');
             const store = transaction.objectStore('settings');
-            
-            return new Promise((resolve, reject) => {
-                const request = store.put(settings);
-                request.onsuccess = () => {
-                    elements.portalTitle.textContent = settings.name || 'Link Portal';
-                    toggleConfig();
-                    resolve();
-                };
-                request.onerror = () => reject(request.error);
-            });
+            store.put(settings);
+
+            elements.portalTitle.textContent = settings.name || 'Link Portal';
+            toggleConfig();
         }
 
         async function fetchRepository() {
@@ -413,17 +403,17 @@
                 const data = await response.json();
                 const htmlFiles = data.filter(file => file.name.toLowerCase().endsWith('.html'));
 
-                for (const file of htmlFiles) {
+                htmlFiles.forEach(file => {
                     const pagesUrl = `https://${owner}.github.io/${repo}/${file.path}`;
-                    await addLink(file.name, pagesUrl);
-                }
+                    addLink(file.name, pagesUrl);
+                });
             } catch (error) {
                 console.error('Repository fetch error:', error);
                 showError(error.message);
             }
         }
 
-        async function addCustomLink() {
+        function addCustomLink() {
             const title = document.getElementById('linkTitle').value.trim();
             const url = document.getElementById('linkUrl').value.trim();
 
@@ -432,39 +422,28 @@
                 return;
             }
 
-            await addLink(title, url);
+            addLink(title, url);
             
             document.getElementById('linkTitle').value = '';
             document.getElementById('linkUrl').value = '';
         }
 
-        async function addLink(title, url) {
+        function addLink(title, url) {
             const transaction = db.transaction(['links'], 'readwrite');
             const store = transaction.objectStore('links');
-            
-            return new Promise((resolve, reject) => {
-                const request = store.add({ title, url });
-                request.onsuccess = async () => {
-                    await loadLinks();
-                    resolve();
-                };
-                request.onerror = () => reject(request.error);
-            });
+            store.add({ title, url });
+            loadLinks();
         }
 
-        async function loadLinks() {
+        function loadLinks() {
             const transaction = db.transaction(['links'], 'readonly');
             const store = transaction.objectStore('links');
-            
-            return new Promise((resolve, reject) => {
-                const request = store.getAll();
-                request.onsuccess = () => {
-                    const links = request.result;
-                    updateLinkList(links);
-                    resolve();
-                };
-                request.onerror = () => reject(request.error);
-            });
+            const request = store.getAll();
+
+            request.onsuccess = () => {
+                const links = request.result;
+                updateLinkList(links);
+            };
         }
 
         function updateLinkList(links) {
@@ -472,465 +451,4 @@
 
             links.forEach(link => {
                 const linkEl = document.createElement('div');
-                linkEl.className = 'p-4 bg-gray-50 rounded-lg hover:bg-gray-100 flex justify-between items-center';
-                
-                const contentDiv = document.createElement('div');
-                contentDiv.className = 'flex-1 cursor-pointer';
-                contentDiv.innerHTML = `
-                    <div class="text-sm font-medium text-gray-900">${link.title}</div>
-                    <div class="text-xs text-gray-600 mt-1 truncate">${link.url}</div>
-                `;
-
-                contentDiv.addEventListener('click', () => {
-                    if (link.url.startsWith('blob:')) {
-                        const storedBlob = blobUrls.get(link.id);
-                        if (storedBlob) {
-                            elements.viewer.src = storedBlob;
-                        }
-                    } else {
-                        elements.viewer.src = link.url;
-                    }
-                    if (window.innerWidth < 768) {
-                        closeAll();
-                    }
-                });
-
-                const removeBtn = document.createElement('button');
-                removeBtn.className = 'ml-4 text-red-600 hover:text-red-800';
-                removeBtn.textContent = '✕';
-                removeBtn.addEventListener('click', () => removeLink(link.id));
-
-                linkEl.appendChild(contentDiv);
-                linkEl.appendChild(removeBtn);
-                elements.linkList.appendChild(linkEl);
-            });
-        }
-
-        async function removeLink(id) {
-            const transaction = db.transaction(['links'], 'readwrite');
-            const store = transaction.objectStore('links');
-            
-            return new Promise((resolve, reject) => {
-                const request = store.delete(id);
-                request.onsuccess = async () => {
-                    const blobUrl = blobUrls.get(id);
-                    if (blobUrl) {
-                        URL.revokeObjectURL(blobUrl);
-                        blobUrls.delete(id);
-                    }
-                    await loadLinks();
-                    resolve();
-                };
-                request.onerror = () => reject(request.error);
-            });
-        }
-
-        async function handleFileUpload(event) {
-            const files = Array.from(event.target.files);
-            if (!files.length) return;
-
-            for (const file of files) {
-                const reader = new FileReader();
-                
-                await new Promise((resolve, reject) => {
-                    reader.onload = async (e) => {
-                        try {
-                            const fileData = {
-                                name: file.name,
-                                type: file.type,
-                                content: e.target.result
-                            };
-                            await addFileToPortal(fileData);
-                            resolve();
-                        } catch (error) {
-                            reject(error);
-                        }
-                    };
-                    reader.onerror = () => reject(reader.error);
-                    reader.readAsArrayBuffer(file);
-                });
-            }
-            
-            event.target.value = '';
-            await updateUploadedFiles();
-        }
-
-        async function addFileToPortal(fileData) {
-            const transaction = db.transaction(['files'], 'readwrite');
-            const store = transaction.objectStore('files');
-            
-            return new Promise((resolve, reject) => {
-                const request = store.add(fileData);
-                request.onsuccess = async (event) => {
-                    const id = event.target.result;
-                    const blob = new Blob([fileData.content], { type: fileData.type });
-                    const blobUrl = URL.createObjectURL(blob);
-                    blobUrls.set(id, blobUrl);
-                    
-                    await addLink(fileData.name, blobUrl);
-                    resolve();
-                };
-                request.onerror = () => reject(request.error);
-            });
-        }
-
-        async function updateUploadedFiles() {
-            const transaction = db.transaction(['files'], 'readonly');
-            const store = transaction.objectStore('files');
-            
-            return new Promise((resolve, reject) => {
-                const request = store.getAll();
-                request.onsuccess = () => {
-                    const files = request.result;
-                    elements.uploadedFiles.innerHTML = '';
-
-                    files.forEach(file => {
-                        const div = document.createElement('div');
-                        div.className = 'p-2 bg-gray-50 rounded flex items-center justify-between';
-                        div.innerHTML = `
-                            <span class="text-sm text-gray-900">${file.name}</span>
-                            <button class="text-red-600 hover:text-red-800" data-id="${file.id}">✕</button>
-                        `;
-                        
-                        const removeBtn = div.querySelector('button');
-                        removeBtn.addEventListener('click', () => removeFile(file.id));
-                        
-                        elements.uploadedFiles.appendChild(div);
-                    });
-                    resolve();
-                };
-                request.onerror = () => reject(request.error);
-            });
-        }
-
-        async function removeFile(id) {
-            const transaction = db.transaction(['files'], 'readwrite');
-            const store = transaction.objectStore('files');
-            
-            return new Promise((resolve, reject) => {
-                const request = store.delete(id);
-                request.onsuccess = async () => {
-                    const blobUrl = blobUrls.get(id);
-                    if (blobUrl) {
-                        URL.revokeObjectURL(blobUrl);
-                        blobUrls.delete(id);
-                    }
-                    await updateUploadedFiles();
-                    resolve();
-                };
-                request.onerror = () => reject(request.error);
-            });
-        }
-
-        async function exportConfig() {
-            const [settings, links, files] = await Promise.all([
-                new Promise(resolve => {
-                    const transaction = db.transaction(['settings'], 'readonly');
-                    const store = transaction.objectStore('settings');
-                    const request = store.get('portal');
-                    request.onsuccess = () => resolve(request.result);
-                }),
-                new Promise(resolve => {
-                    const transaction = db.transaction(['links'], 'readonly');
-                    const store = transaction.objectStore('links');
-                    const request = store.getAll();
-                    request.onsuccess = () => resolve(request.result);
-                }),
-                new Promise(resolve => {
-                    const transaction = db.transaction(['files'], 'readonly');
-                    const store = transaction.objectStore('files');
-                    const request = store.getAll();
-                    request.onsuccess = () => resolve(request.result);
-                })
-            ]);
-
-            const config = { settings, links, files };
-            const blob = new Blob([JSON.stringify(config)], { type: 'application/json' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'portal-config.json';
-            a.click();
-            URL.revokeObjectURL(url);
-        }
-
-        async function importConfig(event) {
-            const file = event.target.files[0];
-            if (!file) return;
-
-            try {
-                const text = await file.text();
-                const config = JSON.parse(text);
-                
-                blobUrls.forEach(url => URL.revokeObjectURL(url));
-                blobUrls.clear();
-                
-                await Promise.all(STORES.map(storeName => 
-                    new Promise((resolve, reject) => {
-                        const transaction = db.transaction([storeName], 'readwrite');
-                        const store = transaction.objectStore(storeName);
-                        const request = store.clear();
-                        request.onsuccess = () => resolve();
-                        request.onerror = () => reject(request.error);
-                    })
-                ));
-
-                if (config.settings) {
-                    const transaction = db.transaction(['settings'], 'readwrite');
-                    const store = transaction.objectStore('settings');
-                    await new Promise((resolve, reject) => {
-                        const request = store.put(config.settings);
-                        request.onsuccess = () => resolve();
-                        request.onerror = () => reject(request.error);
-                    });
-                }
-
-                if (config.links) {
-                    const transaction = db.transaction(['links'], 'readwrite');
-                    const store = transaction.objectStore('links');
-                    await Promise.all(config.links.map(link => 
-                        new Promise((resolve, reject) => {
-                            const request = store.add(link);
-                            request.onsuccess = () => resolve();
-                            request.onerror = () => reject(request.error);
-                        })
-                    ));
-                }
-
-                if (config.files) {
-                    const transaction = db.transaction(['files'], 'readwrite');
-                    const store = transaction.objectStore('files');
-                    await Promise.all(config.files.map(file => 
-                        new Promise((resolve, reject) => {
-                            const request = store.add(file);
-                            request.onsuccess = (event) => {
-                                const id = event.target.result;
-                                const blob = new Blob([file.content], { type: file.type });
-                                const blobUrl = URL.createObjectURL(blob);
-                                blobUrls.set(id, blobUrl);
-                                resolve();
-                            };
-                            request.onerror = () => reject(request.error);
-                        })
-                    ));
-                }
-
-                await loadSettings();
-                await loadLinks();
-                await updateUploadedFiles();
-            } catch (error) {
-                console.error('Import error:', error);
-                showError('Invalid configuration file');
-            }
-            
-            event.target.value = '';
-        }
-
-        async function requestMicPermission() {
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-                elements.micStatus.textContent = '🎤 Enabled';
-                elements.micStatus.className = 'text-sm text-green-600';
-                stream.getTracks().forEach(track => track.stop());
-            } catch (err) {
-                console.error('Microphone permission error:', err);
-                elements.micStatus.textContent = '🎤 Denied';
-                elements.micStatus.className = 'text-sm text-red-600';
-            }
-        }
-
-        async function generatePortal() {
-            const [settings, links] = await Promise.all([
-                new Promise(resolve => {
-                    const transaction = db.transaction(['settings'], 'readonly');
-                    const store = transaction.objectStore('settings');
-                    const request = store.get('portal');
-                    request.onsuccess = () => resolve(request.result);
-                }),
-                new Promise(resolve => {
-                    const transaction = db.transaction(['links'], 'readonly');
-                    const store = transaction.objectStore('links');
-                    const request = store.getAll();
-                    request.onsuccess = () => resolve(request.result);
-                })
-            ]);
-
-            const template = generatePortalTemplate(settings, links);
-            const blob = new Blob([template], { type: 'text/html' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'generated-portal.html';
-            a.click();
-            URL.revokeObjectURL(url);
-        }
-
-        function generatePortalTemplate(settings, links) {
-            return `<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob: 'unsafe-inline' 'unsafe-eval'; frame-src 'self' https: blob: data:;">
-    <title>${settings?.name || 'Generated Portal'}</title>
-    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
-    <style>
-        :root {
-            --primary-color: ${settings?.primaryColor || '#3B82F6'};
-            --accent-color: ${settings?.accentColor || '#10B981'};
-        }
-        .menu-panel {
-            position: fixed;
-            left: -320px;
-            top: 0;
-            bottom: 0;
-            width: 320px;
-            transition: left 0.3s ease;
-            z-index: 40;
-        }
-        .menu-panel.active {
-            left: 0;
-        }
-        #mainContent {
-            margin-left: 0;
-            transition: margin-left 0.3s ease;
-        }
-        #mainContent.with-menu {
-            margin-left: 320px;
-        }
-        .overlay {
-            position: fixed;
-            inset: 0;
-            background: rgba(0, 0, 0, 0.5);
-            opacity: 0;
-            visibility: hidden;
-            transition: 0.3s ease;
-            z-index: 30;
-        }
-        .overlay.active {
-            opacity: 1;
-            visibility: visible;
-        }
-        ${settings?.colorTheme === 'dark' ? `
-        body {
-            background: #1a1a1a;
-            color: #ffffff;
-        }
-        .menu-panel {
-            background: #2a2a2a;
-        }
-        header {
-            background: #2a2a2a;
-            border-color: #3a3a3a;
-        }
-        .link-item {
-            background: #3a3a3a !important;
-        }
-        .link-item:hover {
-            background: #4a4a4a !important;
-        }
-        ` : ''}
-    </style>
-</head>
-<body class="min-h-screen">
-    <div class="flex h-screen flex-col">
-        <header class="bg-white border-b h-14 flex items-center px-4 justify-between ${settings?.colorTheme === 'dark' ? 'bg-gray-800 border-gray-700' : ''}">
-            <div class="flex items-center gap-4">
-                <button id="menuBtn" class="text-xl ${settings?.colorTheme === 'dark' ? 'text-white' : 'text-gray-900'}">☰</button>
-                <h1 class="text-lg font-semibold ${settings?.colorTheme === 'dark' ? 'text-white' : 'text-gray-900'}">${settings?.name || 'Generated Portal'}</h1>
-            </div>
-            <div id="currentTime" class="text-sm ${settings?.colorTheme === 'dark' ? 'text-gray-300' : 'text-gray-600'}"></div>
-        </header>
-
-        <div id="menuPanel" class="menu-panel bg-white shadow-lg overflow-y-auto ${settings?.colorTheme === 'dark' ? 'bg-gray-800' : ''}">
-            <div class="p-4">
-                <div class="mb-4">
-                    <h2 class="text-lg font-semibold mb-2 ${settings?.colorTheme === 'dark' ? 'text-white' : 'text-gray-900'}">Menu</h2>
-                    ${settings?.tagline ? `<p class="text-sm ${settings?.colorTheme === 'dark' ? 'text-gray-300' : 'text-gray-600'}">${settings.tagline}</p>` : ''}
-                </div>
-                <div id="linkList" class="space-y-2"></div>
-            </div>
-        </div>
-
-        <main id="mainContent" class="flex-1 ${settings?.colorTheme === 'dark' ? 'bg-gray-900' : 'bg-white'}">
-            <iframe id="viewer" 
-                    class="w-full h-full border-0" 
-                    sandbox="allow-scripts allow-same-origin allow-popups allow-modals allow-forms"
-                    allow="microphone"
-                    loading="lazy"></iframe>
-        </main>
-
-        <div id="overlay" class="overlay"></div>
-    </div>
-
-    <script>
-        const links = ${JSON.stringify(links)};
-        const viewMode = '${settings?.viewMode || 'standard'}';
-        
-        const elements = {
-            menuBtn: document.getElementById('menuBtn'),
-            menuPanel: document.getElementById('menuPanel'),
-            mainContent: document.getElementById('mainContent'),
-            overlay: document.getElementById('overlay'),
-            linkList: document.getElementById('linkList'),
-            viewer: document.getElementById('viewer'),
-            currentTime: document.getElementById('currentTime')
-        };
-
-        elements.menuBtn.addEventListener('click', toggleMenu);
-        elements.overlay.addEventListener('click', toggleMenu);
-
-        updateLinkList();
-        updateTime();
-
-        function toggleMenu() {
-            elements.menuPanel.classList.toggle('active');
-            elements.mainContent.classList.toggle('with-menu');
-            elements.overlay.classList.toggle('active');
-        }
-
-        function updateLinkList() {
-            elements.linkList.innerHTML = '';
-            
-            links.forEach((link, index) => {
-                const linkEl = document.createElement('div');
-                linkEl.className = 'p-4 bg-gray-50 rounded-lg hover:bg-gray-100 cursor-pointer link-item ${settings?.colorTheme === 'dark' ? 'bg-gray-700 hover:bg-gray-600' : ''}';
-                
-                linkEl.innerHTML = \`
-                    <div class="text-sm font-medium ${settings?.colorTheme === 'dark' ? 'text-white' : 'text-gray-900'}">\${link.title}</div>
-                    <div class="text-xs ${settings?.colorTheme === 'dark' ? 'text-gray-400' : 'text-gray-600'} mt-1 truncate">\${link.url}</div>
-                \`;
-
-                linkEl.addEventListener('click', () => {
-                    elements.viewer.src = link.url;
-                    if (window.innerWidth < 768) {
-                        toggleMenu();
-                    }
-                });
-
-                elements.linkList.appendChild(linkEl);
-                
-                if (index === 0) {
-                    setTimeout(() => linkEl.click(), 500);
-                }
-            });
-        }
-
-        function updateTime() {
-            const now = new Date();
-            const options = {
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit',
-                hour12: true
-            };
-            elements.currentTime.textContent = now.toLocaleTimeString('en-US', options);
-            setTimeout(updateTime, 1000);
-        }
-    <\/script>
-</body>
-</html>`;
-        }
-    </script>
-</body>
-</html>
+                linkEl.className = 'p-4 bg-gray-50 rounded-lg 
