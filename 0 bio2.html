@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Biofeedback Shader App v2.1</title>
+  <title>Biofeedback Shader App v2.2</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body {
@@ -15,23 +15,21 @@
       width: 100vw;
       height: 100vh;
     }
-    #controls {
+    #controls, #status {
       position: fixed;
+      width: 100%;
+      padding: 10px;
+      background: rgba(0,0,0,0.7);
+      color: white;
+      z-index: 2;
+    }
+    #controls {
       bottom: 0;
       left: 0;
-      width: 100%;
-      background: rgba(0,0,0,0.7);
-      color: white;
-      padding: 10px;
     }
     #status {
-      position: fixed;
       top: 0;
       left: 0;
-      width: 100%;
-      background: rgba(0,0,0,0.7);
-      color: white;
-      padding: 10px;
     }
     #shaderEditor {
       display: none;
@@ -131,20 +129,19 @@
       canvas = document.getElementById('canvas');
       gl = canvas.getContext('webgl');
       if (!gl) return showStatus("WebGL not supported", true);
-      resizeCanvas();
       window.addEventListener('resize', resizeCanvas);
       document.getElementById('shaderList').onchange = () => {
         const val = document.getElementById('shaderList').value;
         loadShader(val);
       };
+      resizeCanvas();
       loadShader('wave');
-      render();
     }
 
     function resizeCanvas() {
       canvas.width = window.innerWidth;
       canvas.height = window.innerHeight;
-      gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
+      gl.viewport(0, 0, canvas.width, canvas.height);
     }
 
     function compile(shaderSource) {
@@ -179,7 +176,7 @@
     }
 
     function loadShader(name) {
-      let code = builtInShaders[name] || customCode;
+      const code = builtInShaders[name] || customCode;
       const compiled = compile(code);
       if (!compiled) return;
       program = compiled;
@@ -192,12 +189,12 @@
       const pos = gl.getAttribLocation(program, 'position');
       gl.enableVertexAttribArray(pos);
       gl.vertexAttribPointer(pos, 2, gl.FLOAT, false, 0, 0);
+      resizeCanvas();
       showStatus(`Shader loaded: ${name}`);
     }
 
     function render() {
       breathAmplitude = getBreathAmplitude();
-      gl.viewport(0, 0, gl.drawingBufferWidth, gl.drawingBufferHeight);
       gl.clearColor(0, 0, 0, 1);
       gl.clear(gl.COLOR_BUFFER_BIT);
       const iTime = gl.getUniformLocation(program, 'iTime');
@@ -207,7 +204,11 @@
       if (breath) gl.uniform1f(breath, breathAmplitude);
       if (res) gl.uniform2f(res, gl.drawingBufferWidth, gl.drawingBufferHeight);
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
-      requestAnimationFrame(render);
+    }
+
+    function loop() {
+      render();
+      requestAnimationFrame(loop);
     }
 
     function getBreathAmplitude() {
@@ -277,6 +278,7 @@
 
     initGL();
     setupAudio();
+    requestAnimationFrame(loop);
   </script>
 </body>
 </html>
