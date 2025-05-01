@@ -4,52 +4,39 @@
   <title>Biofeedback Shader App FINAL</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
-    body, html {
-      margin: 0;
-      padding: 0;
-      overflow: hidden;
-      background: #000;
+    html, body { margin: 0; overflow: hidden; background: black; }
+    canvas { width: 100vw; height: 100vh; display: block; }
+    #status, #controls {
+      position: fixed; width: 100%; z-index: 5;
+      font-family: monospace; font-size: 14px; color: white; padding: 8px;
+      background: rgba(0,0,0,0.7);
     }
-    canvas {
-      width: 100vw;
-      height: 100vh;
-      display: block;
+    #status { top: 0; }
+    #controls { bottom: 0; display: flex; gap: 8px; align-items: center; }
+    select, button { padding: 5px; font-family: monospace; font-size: 14px; }
+    #shaderEditor {
+      display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: white; z-index: 10; padding: 10px;
     }
-    #controls, #status {
-      position: fixed;
-      width: 100%;
-      padding: 8px;
-      font-family: monospace;
-      font-size: 14px;
-      z-index: 5;
-      color: white;
-    }
-    #controls {
-      bottom: 0;
-      background: rgba(0,0,0,0.8);
-    }
-    #status {
-      top: 0;
-      background: rgba(0,0,0,0.8);
-    }
+    #shaderEditor textarea { width: 100%; height: 90%; font-family: monospace; font-size: 14px; }
   </style>
 </head>
 <body>
 <canvas id="canvas"></canvas>
-<div id="status">[OK] Starting...</div>
+<div id="status">[OK] Initializing...</div>
 <div id="controls">
   <select id="shaderList">
-    <option value="wave">Wave</option>
-    <option value="maze">Maze</option>
-    <option value="noise">Noise</option>
+    <option value="plasma">Plasma</option>
+    <option value="bars">VU Bars</option>
+    <option value="firepulse">Fire Pulse</option>
     <option value="custom">Custom</option>
   </select>
   <button onclick="toggleEditor()">Edit</button>
   <button onclick="importShader()">Import</button>
   <button onclick="exportShader()">Export</button>
 </div>
-<div id="shaderEditor" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#fff; z-index:10;">
-  <textarea id="customShader" style="width:100%; height:90%; font-family:monospace;"></textarea><br>
+<div id="shaderEditor">
+  <textarea id="customShader"></textarea><br>
   <button onclick="saveCustomShader()">Save</button>
   <button onclick="toggleEditor()">Cancel</button>
 </div>
@@ -57,65 +44,66 @@
 <script>
 let gl, program, canvas;
 let analyser, audioContext;
-let breathAmplitude = 0;
 let customCode = '';
 const builtInShaders = {
-  wave: `
+  plasma: `
     precision mediump float;
     uniform float iTime;
     uniform float breathAmplitude;
     uniform vec2 iResolution;
     void main() {
-      vec2 uv = gl_FragCoord.xy / iResolution;
-      float y = 0.5 + 0.5 * sin(uv.x * 20.0 + iTime * 3.0) * breathAmplitude;
-      float c = smoothstep(y - 0.01, y + 0.01, uv.y);
-      gl_FragColor = vec4(vec3(c), 1.0);
+      vec2 uv = (gl_FragCoord.xy / iResolution) * 2.0 - 1.0;
+      float len = length(uv);
+      float angle = atan(uv.y, uv.x);
+      float color = 0.5 + 0.5 * cos(10.0 * len + iTime * 3.0 + breathAmplitude * 10.0 + angle);
+      gl_FragColor = vec4(vec3(color * 0.8, color * 0.3 + 0.2, color), 1.0);
     }
   `,
-  maze: `
+  bars: `
     precision mediump float;
     uniform float iTime;
     uniform float breathAmplitude;
     uniform vec2 iResolution;
     void main() {
       vec2 uv = gl_FragCoord.xy / iResolution;
-      vec2 pos = mod(uv * 10.0 + iTime, 1.0);
-      float c = step(0.95, abs(sin(pos.x * pos.y * 40.0 * breathAmplitude)));
-      gl_FragColor = vec4(vec3(c), 1.0);
+      float bar = step(1.0 - breathAmplitude, uv.y);
+      gl_FragColor = mix(vec4(0.0, 1.0, 0.2, 1.0), vec4(0), bar);
     }
   `,
-  noise: `
+  firepulse: `
     precision mediump float;
     uniform float iTime;
     uniform float breathAmplitude;
     uniform vec2 iResolution;
-    float rand(vec2 co) {
-      return fract(sin(dot(co.xy ,vec2(12.9898,78.233))) * 43758.5453);
+    float noise(vec2 p) {
+      return fract(sin(dot(p, vec2(12.9898,78.233))) * 43758.5453);
     }
     void main() {
       vec2 uv = gl_FragCoord.xy / iResolution;
-      float noise = rand(uv * iTime * breathAmplitude);
-      gl_FragColor = vec4(vec3(noise), 1.0);
+      float t = iTime * 0.5 + breathAmplitude * 3.0;
+      float n = noise(uv * 10.0 + vec2(t));
+      float glow = smoothstep(0.4, 0.6, n);
+      gl_FragColor = vec4(glow * vec3(1.0, 0.3 + breathAmplitude, 0.0), 1.0);
     }
   `
 };
 
-function showStatus(msg, error = false) {
+function showStatus(msg, err = false) {
   const el = document.getElementById('status');
-  el.textContent = (error ? '[ERROR] ' : '[OK] ') + msg;
-  el.style.color = error ? 'red' : 'lightgreen';
+  el.textContent = (err ? '[ERROR] ' : '[OK] ') + msg;
+  el.style.color = err ? 'red' : 'lightgreen';
 }
 
 function initGL() {
   canvas = document.getElementById('canvas');
   gl = canvas.getContext('webgl');
   if (!gl) return showStatus("WebGL not supported", true);
-  resizeCanvas();
   window.addEventListener('resize', resizeCanvas);
   document.getElementById('shaderList').onchange = () => {
     loadShader(document.getElementById('shaderList').value);
   };
-  loadShader('wave');
+  resizeCanvas();
+  loadShader('plasma');
 }
 
 function resizeCanvas() {
@@ -128,9 +116,7 @@ function compile(src) {
   const vsSrc = `
     precision mediump float;
     attribute vec2 position;
-    void main() {
-      gl_Position = vec4(position, 0.0, 1.0);
-    }
+    void main() { gl_Position = vec4(position, 0.0, 1.0); }
   `;
   const vs = gl.createShader(gl.VERTEX_SHADER);
   gl.shaderSource(vs, vsSrc);
@@ -178,14 +164,14 @@ function loadShader(name) {
 }
 
 function render() {
-  if (!program) return;
+  resizeCanvas();
   gl.clear(gl.COLOR_BUFFER_BIT);
   const t = gl.getUniformLocation(program, 'iTime');
   const amp = gl.getUniformLocation(program, 'breathAmplitude');
   const res = gl.getUniformLocation(program, 'iResolution');
   if (t) gl.uniform1f(t, performance.now() / 1000);
   if (amp) gl.uniform1f(amp, getBreathAmplitude());
-  if (res) gl.uniform2f(res, gl.drawingBufferWidth, gl.drawingBufferHeight);
+  if (res) gl.uniform2f(res, canvas.width, canvas.height);
   gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 }
 
@@ -195,10 +181,10 @@ function loop() {
 }
 
 function getBreathAmplitude() {
-  if (!analyser) return 0.2;
+  if (!analyser) return 0.4;
   const data = new Uint8Array(analyser.frequencyBinCount);
   analyser.getByteFrequencyData(data);
-  return data.reduce((a, b) => a + b) / data.length / 255;
+  return Math.max(0.2, data.reduce((a,b) => a + b) / data.length / 255);
 }
 
 async function setupAudio() {
@@ -210,7 +196,7 @@ async function setupAudio() {
     analyser.fftSize = 1024;
     source.connect(analyser);
     showStatus("Microphone connected.");
-  } catch (err) {
+  } catch (e) {
     showStatus("Microphone access failed", true);
   }
 }
@@ -219,7 +205,7 @@ function toggleEditor() {
   const ed = document.getElementById('shaderEditor');
   const ta = document.getElementById('customShader');
   if (ed.style.display === 'none') {
-    ta.value = customCode || builtInShaders.wave;
+    ta.value = customCode || builtInShaders.plasma;
     ed.style.display = 'block';
   } else {
     ed.style.display = 'none';
