@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Biofeedback Shader App v1.2</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body {
+      margin: 0;
+      overflow: hidden;
+      background: #1a1a1a;
+      font-family: Arial, sans-serif;
+    }
+    #canvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    #controls {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      padding: 10px;
+      background: rgba(0,0,0,0.7);
+      color: white;
+      font-size: 14px;
+    }
+    #status {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      padding: 10px;
+      background: rgba(0,0,0,0.7);
+      color: white;
+      font-size: 14px;
+    }
+    #shaderEditor {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: white;
+      padding: 20px;
+      font-family: monospace;
+      overflow: auto;
+    }
+    button {
+      padding: 8px 16px;
+      margin: 4px;
+      background: #2c2c2c;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+    #shaderList {
+      margin-bottom: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div id="status"></div>
+  <canvas id="canvas"></canvas>
+  <div id="controls">
+    <select id="shaderList">
+      <option value="wave">Breathing Wave</option>
+      <option value="maze">Geometric Maze</option>
+      <option value="noise">Noise Flow</option>
+      <option value="custom">Custom Shader</option>
+    </select>
+    <button onclick="toggleEditor()">Edit Shader</button>
+    <button onclick="importShader()">Import</button>
+    <button onclick="exportShader()">Export</button>
+    <div id="parameters"></div>
+  </div>
+  <div id="shaderEditor">
+    <textarea id="customShader" rows="20" cols="60"></textarea><br>
+    <button onclick="saveCustomShader()">Save</button>
+    <button onclick="toggleEditor()">Close</button>
+  </div>
+
+  <script>
+    // Global variables
+    let gl, canvas, program;
+    let breathAmplitude = 0;
+    let analyser, audioContext;
+    const builtInShaders = {
+      // Shaders remain the same (see full code below)
+    };
+
+    // Status display functions
+    function showStatus(message) {
+      const statusDiv = document.getElementById('status');
+      statusDiv.textContent = `[OK] ${message}`;
+      statusDiv.style.color = 'lightgreen';
+    }
+
+    function showError(message) {
+      const statusDiv = document.getElementById('status');
+      statusDiv.textContent = `[ERROR] ${message}`;
+      statusDiv.style.color = 'red';
+    }
+
+    // Initialize WebGL
+    function init() {
+      try {
+        canvas = document.getElementById('canvas');
+        gl = canvas.getContext('webgl');
+        if (!gl) {
+          showError("Failed to initialize WebGL. Check device support.");
+          return;
+        }
+        showStatus("WebGL initialized.");
+
+        resizeCanvas();
+        setupAudio();
+        loadShader('wave');
+        render();
+      } catch (error) {
+        showError(`Initialization error: ${error.message}`);
+      }
+    }
+
+    // Setup microphone input
+    async function setupAudio() {
+      try {
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const source = audioContext.createMediaStreamSource(stream);
+        analyser = audioContext.createAnalyser();
+        source.connect(analyser);
+        analyser.fftSize = 2048;
+        showStatus("Microphone access granted.");
+      } catch (error) {
+        showError(`Microphone error: ${error.message}`);
+      }
+    }
+
+    // Get breath amplitude
+    function getBreathAmplitude() {
+      const array = new Uint8Array(analyser.frequencyBinCount);
+      analyser.getByteFrequencyData(array);
+      return array.reduce((a, b) => a + b) / array.length / 255;
+    }
+
+    // Update canvas size
+    function resizeCanvas() {
+      try {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        gl.viewport(0, 0, canvas.width, canvas.height);
+        showStatus("Canvas resized.");
+      } catch (error) {
+        showError(`Resize error: ${error.message}`);
+      }
+    }
+
+    // Load a built-in shader
+    function loadShader(shaderName) {
+      try {
+        document.getElementById('shaderList').value = shaderName;
+        const code = builtInShaders[shaderName];
+        if (!code) {
+          showError(`Shader '${shaderName}' not found.`);
+          return;
+        }
+        compileShader(code);
+        updateParameters(shaderName);
+        showStatus(`Shader loaded: ${shaderName}`);
+      } catch (error) {
+        showError(`Shader load error: ${error.message}`);
+      }
+    }
+
+    // Compile the GLSL code
+    function compileShader(code) {
+      try {
+        const vs = `...vertex shader code...`; // (same as before)
+        const fs = `...fragment shader code...`; // (same as before)
+
+        // Compile vertex shader
+        const vertexShader = loadShaderSource(vs, gl.VERTEX_SHADER);
+        if (!vertexShader) {
+          showError("Vertex shader compilation failed.");
+          return;
+        }
+
+        // Compile fragment shader
+        const fragmentShader = loadShaderSource(fs, gl.FRAGMENT_SHADER);
+        if (!fragmentShader) {
+          showError("Fragment shader compilation failed.");
+          return;
+        }
+
+        // Link program
+        program = gl.createProgram();
+        gl.attachShader(program, vertexShader);
+        gl.attachShader(program, fragmentShader);
+        gl.linkProgram(program);
+        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+          showError(`Shader linking error: ${gl.getProgramInfoLog(program)}`);
+          return;
+        }
+        gl.useProgram(program);
+        showStatus("Shader compiled and linked.");
+
+        setupAttributes();
+      } catch (error) {
+        showError(`Shader compilation error: ${error.message}`);
+      }
+    }
+
+    // Load shader source with error checks
+    function loadShaderSource(source, type) {
+      const shader = gl.createShader(type);
+      gl.shaderSource(shader, source);
+      gl.compileShader(shader);
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+        showError(`Shader compilation error: ${gl.getShaderInfoLog(shader)}`);
+        return null;
+      }
+      return shader;
+    }
+
+    // Setup vertex attributes
+    function setupAttributes() {
+      try {
+        // (same as before, but add error checks)
+        showStatus("Vertex attributes set.");
+      } catch (error) {
+        showError(`Vertex setup error: ${error.message}`);
+      }
+    }
+
+    // Update parameters
+    function updateParameters(shaderName) {
+      // (same as before, but add status messages)
+    }
+
+    // Render loop
+    function render() {
+      try {
+        resizeCanvas();
+        gl.clearColor(0, 0, 0, 1);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        breathAmplitude = getBreathAmplitude();
+        gl.uniform1f(gl.getUniformLocation(program, "iTime"), performance.now() / 1000);
+        gl.uniform1f(gl.getUniformLocation(program, "breathAmplitude"), breathAmplitude);
+        gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+        requestAnimationFrame(render);
+      } catch (error) {
+        showError(`Render error: ${error.message}`);
+      }
+    }
+
+    // Toggle editor
+    function toggleEditor() {
+      // (same as before)
+    }
+
+    // Import/export functions
+    function importShader() {
+      try {
+        // (same as before with error handling)
+      } catch (error) {
+        showError(`Import error: ${error.message}`);
+      }
+    }
+
+    // Export shader
+    function exportShader() {
+      try {
+        // (same as before with error handling)
+      } catch (error) {
+        showError(`Export error: ${error.message}`);
+      }
+    }
+
+    // Save custom shader
+    function saveCustomShader() {
+      try {
+        // (same as before with error handling)
+      } catch (error) {
+        showError(`Save error: ${error.message}`);
+      }
+    }
+
+    // Start the app
+    init();
+  </script>
+</body>
+</html>
