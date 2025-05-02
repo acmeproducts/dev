@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Biofeedback Shader App (Standalone)</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    body { margin: 0; overflow: hidden; background: #1a1a1a; }
+    #canvas { width: 100%; height: 100%; display: block; }
+    #status { 
+      position: fixed; top: 0; left: 0; width: 100%; 
+      padding: 10px; background: rgba(0,0,0,0.7); 
+      color: white; font-family: Arial; 
+    }
+    #controls {
+      position: fixed; bottom: 0; left: 0; padding: 10px; 
+      background: rgba(0,0,0,0.7); color: white; 
+    }
+    button { 
+      padding: 8px; margin: 4px; 
+      background: #2c2c2c; color: white; border: none; 
+      cursor: pointer; 
+    }
+  </style>
+</head>
+<body>
+  <div id="status">Initializing...</div>
+  <canvas id="canvas"></canvas>
+  <div id="controls">
+    <select id="shaderList"></select>
+  </div>
+
+<script>
+let gl, canvas, program, analyser, audioContext;
+const statusDiv = document.getElementById('status');
+
+// Embedded Shaders (no external files)
+const shaders = {
+  "Breathing Wave": `uniform float uSpeed;
+    uniform float breathAmplitude;
+    void mainImage(out vec4 fragColor, in vec2 fragCoord) {
+      float time = iTime * (1.0 + uSpeed);
+      float y = sin(time + (fragCoord.x / iResolution.x) * 3.14);
+      vec3 color = vec3(
+        0.5 + 0.5 * sin(time),
+        0.5 * (1.0 + y),
+        0.2 + breathAmplitude * 0.3
+      );
+      fragColor = vec4(color, 1.0);
+    }`,
+  "Custom Shader": "// Write your GLSL code here\nvoid mainImage(out vec4 fragColor, in vec2 fragCoord) { fragColor = vec4(1.0); }"
+};
+
+// Status/error messages
+function showStatus(msg, isError=false) {
+  statusDiv.textContent = msg;
+  statusDiv.style.color = isError ? 'red' : 'lightgreen';
+}
+
+// Initialize WebGL
+function init() {
+  canvas = document.getElementById('canvas');
+  gl = canvas.getContext('webgl');
+  if (!gl) return showStatus("Error: WebGL not supported", true);
+  
+  // Setup viewport and resize
+  window.addEventListener('resize', () => {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+    gl.viewport(0, 0, canvas.width, canvas.height);
+  });
+  window.dispatchEvent(new Event('resize'));
+  
+  // Load shaders and controls
+  loadShaders();
+  setupAudio();
+  loadShader('Breathing Wave');
+  render();
+}
+
+// Setup microphone (optional)
+async function setupAudio() {
+  try {
+    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const source = audioContext.createMediaStreamSource(stream);
+    analyser = audioContext.createAnalyser();
+    source.connect(analyser);
+    analyser.fftSize = 2048;
+    showStatus("Microphone access granted");
+  } catch (e) {
+    showStatus("Microphone access denied", true);
+  }
+}
+
+// Load shader from embedded list
+function loadShaders() {
+  const shaderList = document.getElementById('shaderList');
+  Object.keys(shaders).forEach(name => {
+    const option = document.createElement('option');
+    option.value = name;
+    option.textContent = name;
+    shaderList.appendChild(option);
+  });
+  shaderList.value = Object.keys(shaders)[0];
+}
+
+// Compile and run shader
+function loadShader(name) {
+  const shaderCode = shaders[name];
+  const vs = `
+    attribute vec2 aVertexPosition;
+    uniform mat4 uMatrix;
+    void main() {
+      gl_Position = uMatrix * vec4(aVertexPosition, 0, 1);
+    }`;
+  const fs = `
+    precision mediump float;
+    uniform vec2 iResolution;
+    uniform float iTime;
+    uniform float breathAmplitude;
+    ${shaderCode}
+    void main() {
+      mainImage(gl_FragColor, gl_FragCoord.xy);
+    }`;
+  
+  // Compile shaders
+  const vertexShader = compileShader(gl.VERTEX_SHADER, vs);
+  const fragmentShader = compileShader(gl.FRAGMENT_SHADER, fs);
+  if (!vertexShader || !fragmentShader) return;
+  
+  // Link program
+  program = gl.createProgram();
+  gl.attachShader(program, vertexShader);
+  gl.attachShader(program, fragmentShader);
+  gl.linkProgram(program);
+  gl.useProgram(program);
+  
+  // Setup vertex attributes
+  const positionLocation = gl.getAttribLocation(program, "aVertexPosition");
+  const positionBuffer = gl.createBuffer();
+  gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+  gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]), gl.STATIC_DRAW);
+  gl.enableVertexAttribArray(positionLocation);
+  gl.vertexAttribPointer(positionLocation, 2, gl.FLOAT, false, 0, 0);
+  
+  // Setup uniforms
+  const uMatrix = gl.getUniformLocation(program, "uMatrix");
+  const orthoMatrix = [
+    2 / canvas.width, 0, 0, 0,
+    0, -2 / canvas.height, 0, 0,
+    0, 0, 1, 0,
+    -1, 1, 0, 1
+  ];
+  gl.uniformMatrix4fv(uMatrix, false, orthoMatrix);
+  
+  showStatus(`Loaded: ${name}`);
+}
+
+// Compile shader helper
+function compileShader(type, source) {
+  const shader = gl.createShader(type);
+  gl.shaderSource(shader, source);
+  gl.compileShader(shader);
+  if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+    showStatus(`Shader error: ${gl.getShaderInfoLog(shader)}`, true);
+    return null;
+  }
+  return shader;
+}
+
+// Animation loop
+function render() {
+  requestAnimationFrame(render);
+  
+  // Update resolution/time uniforms
+  const resolutionLocation = gl.getUniformLocation(program, "iResolution");
+  gl.uniform2f(resolutionLocation, canvas.width, canvas.height);
+  
+  const timeLocation = gl.getUniformLocation(program, "iTime");
+  gl.uniform1f(timeLocation, performance.now() / 1000);
+  
+  // Update breath amplitude (if microphone is available)
+  const breathLocation = gl.getUniformLocation(program, "breathAmplitude");
+  if (analyser) {
+    const array = new Uint8Array(analyser.frequencyBinCount);
+    analyser.getByteFrequencyData(array);
+    const avg = array.reduce((a,b) => a+b, 0) / array.length;
+    gl.uniform1f(breathLocation, avg / 255);
+  } else {
+    gl.uniform1f(breathLocation, 0.0);
+  }
+  
+  // Draw
+  gl.clearColor(0, 0, 0, 1);
+  gl.clear(gl.COLOR_BUFFER_BIT);
+  gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+}
+
+// Start the app
+init();
+</script>
+</body>
+</html>
