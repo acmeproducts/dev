@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Biofeedback Shader App v2.2</title>
+  <title>Biofeedback Shader App v3.0</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     body {
@@ -54,8 +54,8 @@
       border: none;
       cursor: pointer;
     }
-    #shaderList {
-      margin-bottom: 10px;
+    #parameters {
+      margin-top: 10px;
     }
   </style>
 </head>
@@ -84,17 +84,65 @@
     let breathAmplitude = 0;
     let analyser, audioContext;
     const builtInShaders = {
-      // Existing shaders (wave, maze, noise) remain the same...
-
-      // Your custom shader with parameters:
+      // Breathing Wave (with parameters as object)
+      "wave": {
+        code: `uniform float uWaveSpeed;
+        uniform float uColorHue;
+        uniform float breathAmplitude;
+        void mainImage(out vec4 fragColor, in vec2 fragCoord) {
+          float time = iTime * (1.0 + uWaveSpeed);
+          float y = sin(time + (fragCoord.x / iResolution.x) * 3.14);
+          vec3 color = vec3(
+            0.5 + 0.5 * sin(time + uColorHue),
+            0.5 * (1.0 + y),
+            0.2 + 0.3 * breathAmplitude
+          );
+          fragColor = vec4(color, 1.0);
+        }`,
+        parameters: {
+          uWaveSpeed: { min: 0.1, max: 2.0, default: 0.5, description: "Wave speed" },
+          uColorHue: { min: 0.0, max: 6.28, default: 0.0, description: "Color hue shift" }
+        }
+      },
+      // Geometric Maze (parameters as object)
+      "maze": {
+        code: `uniform float uPatternScale;
+        uniform float breathAmplitude;
+        void mainImage(out vec4 fragColor, in vec2 fragCoord) {
+          vec2 uv = fragCoord / iResolution.xy;
+          float maze = fract(sin(dot(uv, vec2(12.9898, 78.233))) * 43758.5453);
+          maze *= 0.5 + 0.5 * uPatternScale;
+          vec3 color = vec3(maze);
+          color.r *= 1.0 - breathAmplitude * 0.5;
+          fragColor = vec4(color, 1.0);
+        }`,
+        parameters: {
+          uPatternScale: { min: 0.1, max: 2.0, default: 1.0, description: "Pattern complexity" }
+        }
+      },
+      // Noise Flow (parameters as object)
+      "noise": {
+        code: `uniform float uNoiseSpeed;
+        uniform float breathAmplitude;
+        void mainImage(out vec4 fragColor, in vec2 fragCoord) {
+          vec2 uv = (fragCoord / iResolution.xy) * 2.0 - 1.0;
+          float noise = sin(iTime * uNoiseSpeed + uv.x * 10.0 + uv.y * 5.0);
+          noise = mix(noise, 0.5, breathAmplitude * 0.3);
+          fragColor = vec4(vec3(noise), 1.0);
+        }`,
+        parameters: {
+          uNoiseSpeed: { min: 0.1, max: 5.0, default: 1.0, description: "Noise animation speed" }
+        }
+      },
+      // Your custom shader with controls
       "customEffect": {
         code: `uniform vec2 iResolution;
         uniform float iTime;
         uniform float breathAmplitude;
-        uniform float sensitivity; // New parameter for sensitivity
-        uniform float scale; // New parameter for scaling
+        uniform float sensitivity; // New parameter
+        uniform float scale; // New parameter
 
-        // Noise function (replace with your implementation)
+        // Noise function
         vec4 B(vec2 pos) {
           return vec4(fract(sin(dot(pos, vec2(12.9898, 78.233))) * 43758.5453));
         }
@@ -130,13 +178,13 @@
           }
           Q -= exp(-0.3 * (w)) * (1.0 - min(q, 1.0));
           
-          // Apply sensitivity and scale parameters
+          // Apply controls
           fragColor = Q * sensitivity;
           fragColor.rgb *= scale;
         }`,
         parameters: {
-          sensitivity: { min: 0.1, max: 5.0, default: 1.0, description: "Adjust visual intensity" },
-          scale: { min: 0.1, max: 3.0, default: 1.0, description: "Scale the effect" }
+          sensitivity: { min: 0.1, max: 5.0, default: 1.0, description: "Visual intensity" },
+          scale: { min: 0.1, max: 3.0, default: 1.0, description: "Effect scale" }
         }
       }
     };
@@ -160,7 +208,7 @@
         canvas = document.getElementById('canvas');
         gl = canvas.getContext('webgl');
         if (!gl) {
-          showError("WebGL not supported. Use Chrome/Firefox on a modern device.");
+          showError("WebGL not supported. Use Chrome/Firefox.");
           return;
         }
         showStatus("WebGL initialized.");
@@ -185,7 +233,7 @@
         analyser.fftSize = 2048;
         showStatus("Microphone access granted.");
       } catch (error) {
-        showError("Microphone access denied. Grant permissions in browser settings.");
+        showError("Microphone denied. Grant permissions!");
       }
     }
 
@@ -212,7 +260,7 @@
           return;
         }
 
-        // Vertex shader (common for all)
+        // Vertex shader (common)
         const vs = `
           attribute vec2 aVertexPosition;
           uniform mat4 uMatrix;
@@ -221,7 +269,7 @@
           }
         `;
 
-        // Fragment shader (from builtInShaders)
+        // Fragment shader
         const fs = `
           precision mediump float;
           uniform vec2 iResolution;
@@ -238,7 +286,7 @@
         gl.shaderSource(vertexShader, vs);
         gl.compileShader(vertexShader);
         if (!gl.getShaderParameter(vertexShader, gl.COMPILE_STATUS)) {
-          showError("Vertex shader failed: " + gl.getShaderInfoLog(vertexShader));
+          showError("Vertex shader failed.");
           return;
         }
 
@@ -269,7 +317,7 @@
         gl.enableVertexAttribArray(positionAttributeLocation);
         gl.vertexAttribPointer(positionAttributeLocation, 2, gl.FLOAT, false, 0, 0);
 
-        // Set uMatrix (orthographic projection)
+        // Orthographic matrix
         const uMatrix = gl.getUniformLocation(program, "uMatrix");
         const orthoMatrix = [
           2 / canvas.width, 0, 0, 0,
@@ -279,7 +327,7 @@
         ];
         gl.uniformMatrix4fv(uMatrix, false, orthoMatrix);
 
-        // Set uniforms
+        // Set iResolution
         const iResolution = gl.getUniformLocation(program, "iResolution");
         gl.uniform2f(iResolution, canvas.width, canvas.height);
 
@@ -291,15 +339,15 @@
         }
 
         // Generate controls
-        generateControls(shaderData.parameters);
+        generateControls(params);
 
         showStatus("Shader loaded: " + shaderName);
       } catch (error) {
-        showError(`Shader error: ${error.message}`);
+        showError(`Error: ${error.message}`);
       }
     }
 
-    // Generate UI controls for parameters
+    // Generate controls for parameters
     function generateControls(parameters) {
       const controlsDiv = document.getElementById('parameters');
       controlsDiv.innerHTML = '';
@@ -347,7 +395,7 @@
       editor.style.display = editor.style.display === 'none' ? 'block' : 'none';
     }
 
-    // Save custom shader (basic placeholder)
+    // Save custom shader
     function saveCustomShader() {
       const customCode = document.getElementById('customShader').value;
       builtInShaders.custom = { code: customCode, parameters: {} };
