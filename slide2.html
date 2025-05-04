@@ -23,18 +23,18 @@
             grid-template-columns: 100%;
             border: 10px solid #e5e7eb;
             box-sizing: border-box;
+            position: relative;
         }
         
         /* Main content area */
         .main-content {
             display: grid;
             grid-template-columns: 10% 80% 10%;
-            grid-template-rows: auto 1fr auto auto;
+            grid-template-rows: auto 1fr auto;
             grid-template-areas:
                 "priority priority priority"
                 "in center out"
-                "trash trash trash"
-                "swipe swipe swipe";
+                "trash trash trash";
             height: 100%;
             gap: 1px;
             background-color: #f3f4f6;
@@ -62,29 +62,6 @@
             display: flex;
             flex-direction: row;
             align-items: center;
-        }
-        
-        /* Left swipe trigger positioned in the left border */
-        .left-swipe-trigger {
-            position: absolute;
-            top: 0;
-            left: 0;
-            width: 10px;
-            height: 100%;
-            z-index: 99;
-            cursor: e-resize;
-            background: transparent;
-        }
-        
-        /* Bottom swipe trigger positioned after trash stack */
-        .bottom-swipe-trigger {
-            position: relative;
-            height: 10px;
-            width: 100%;
-            background: transparent;
-            z-index: 99;
-            cursor: n-resize;
-            grid-area: swipe;
         }
         
         /* Vertical stack headers (In, Out) */
@@ -165,6 +142,7 @@
             position: sticky;
             bottom: 0;
             z-index: 10;
+            /* Removed border-top: none to match priority stack */
         }
         
         /* Thumbnail styles */
@@ -248,6 +226,28 @@
         .stack-panel.collapsed-vertical .stack-content,
         .stack-panel.collapsed-horizontal .stack-content {
             display: none;
+        }
+        
+        /* Left swipe trigger positioned in the left border */
+        .left-swipe-trigger {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 10px;
+            height: 100%;
+            z-index: 99;
+            cursor: e-resize;
+        }
+        
+        /* Bottom swipe trigger positioned in the bottom border */
+        .bottom-swipe-trigger {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 10px;
+            z-index: 99;
+            cursor: n-resize;
         }
         
         /* Image zoom controls */
@@ -643,36 +643,338 @@
         <!-- Left swipe trigger positioned in the left border area -->
         <div class="left-swipe-trigger" id="left-swipe-trigger"></div>
         
+        <!-- Bottom swipe trigger positioned in the bottom border area -->
+        <div class="bottom-swipe-trigger" id="bottom-swipe-trigger"></div>
+        
+        <!-- Folder Panel -->
+        <div class="folder-panel" id="folder-panel">
+            <div class="folder-panel-header">
+                <h1 class="folder-panel-title">Folders</h1>
+                <div class="folder-panel-close" id="close-folder-panel">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </div>
+            </div>
+            
+            <div class="folder-panel-content">
+                <div class="current-folder-info">
+                    <div class="folder-label">Current Folder</div>
+                    <div class="folder-value">AI Generated Art</div>
+                </div>
+                
+                <div class="folder-label">Select Folder</div>
+                <ul class="folder-list">
+                    <li class="folder-item">
+                        <div class="folder-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                            </svg>
+                        </div>
+                        <div class="folder-name">Vacation Photos</div>
+                    </li>
+                    <li class="folder-item">
+                        <div class="folder-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                            </svg>
+                        </div>
+                        <div class="folder-name">AI Generated Art</div>
+                    </li>
+                    <li class="folder-item">
+                        <div class="folder-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                            </svg>
+                        </div>
+                        <div class="folder-name">Project Screenshots</div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
         <!-- Main Content Grid -->
         <main id="main-content" class="main-content">
             <!-- Priority Stack (Top) -->
             <div class="stack-panel priority-stack horizontal-stack" data-stack="priority">
-                <!-- Priority stack content -->
+                <div class="stack-header">
+                    <h2 class="stack-title" data-stack="priority">Priority</h2>
+                    <span class="stack-count" data-stack="priority">3</span>
+                </div>
+                <div class="stack-content">
+                    <div class="thumbnail-container horizontal-thumbnails">
+                        <img src="https://source.unsplash.com/random/140x140?abstract" class="thumbnail" alt="Abstract">
+                        <img src="https://source.unsplash.com/random/140x140?colorful" class="thumbnail selected" alt="Colorful Art">
+                        <img src="https://source.unsplash.com/random/140x140?sunset" class="thumbnail" alt="Sunset">
+                    </div>
+                </div>
             </div>
             
             <!-- In Stack (Left) -->
             <div class="stack-panel in-stack vertical-stack" data-stack="in">
-                <!-- In stack content -->
+                <div class="stack-header">
+                    <h2 class="stack-title" data-stack="in">In</h2>
+                    <span class="stack-count" data-stack="in">5</span>
+                </div>
+                <div class="stack-content">
+                    <div class="thumbnail-container vertical-thumbnails">
+                        <img src="https://source.unsplash.com/random/140x140?digital" class="thumbnail" alt="Digital">
+                        <img src="https://source.unsplash.com/random/140x140?landscape" class="thumbnail" alt="Landscape">
+                        <img src="https://source.unsplash.com/random/140x140?fantasy" class="thumbnail" alt="Fantasy">
+                        <img src="https://source.unsplash.com/random/140x140?nature" class="thumbnail" alt="Nature">
+                        <img src="https://source.unsplash.com/random/140x140?people" class="thumbnail" alt="People">
+                    </div>
+                </div>
             </div>
             
             <!-- Center Stage -->
             <div class="stack-panel center-stage">
-                <!-- Center stage content -->
+                <!-- Main image -->
+                <img src="https://source.unsplash.com/random/800x600?colorful" class="center-image" alt="Colorful Art">
+                
+                <!-- Current stack indicator in center stage -->
+                <div class="current-stack-indicator">Priority</div>
+                
+                <!-- Top controls -->
+                <div class="zoom-control">
+                    <span class="mr-2">Zoom:</span>
+                    <input type="range" min="50" max="150" value="100" class="w-20">
+                    <span class="ml-2">100%</span>
+                </div>
+                
+                <!-- Metadata Panel -->
+                <div class="metadata-panel" id="metadata-panel">
+                    <div class="metadata-header">
+                        <h3 class="metadata-title">Image Details</h3>
+                        <div class="close-button" id="close-metadata">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-500" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                            </svg>
+                        </div>
+                    </div>
+                    
+                    <div class="metadata-tabs">
+                        <div class="metadata-tab active" data-tab="details">Details</div>
+                        <div class="metadata-tab" data-tab="tags">Tags</div>
+                        <div class="metadata-tab" data-tab="custom">Custom</div>
+                        <div class="metadata-tab" data-tab="notes">Notes</div>
+                    </div>
+                    
+                    <div class="metadata-content">
+                        <!-- Details Section -->
+                        <div class="metadata-section active" id="details-section">
+                            <div class="metadata-field">
+                                <div class="field-label">Filename:</div>
+                                <div class="field-value">
+                                    <a href="https://source.unsplash.com/random/800x600?colorful" target="_blank" class="filename-link">Colorful Art.jpg</a>
+                                </div>
+                            </div>
+                            <div class="metadata-field">
+                                <div class="field-label">Size:</div>
+                                <div class="field-value">3.2 MB</div>
+                            </div>
+                            <div class="metadata-field">
+                                <div class="field-label">Dimensions:</div>
+                                <div class="field-value">1024 × 1024 px</div>
+                            </div>
+                            <div class="metadata-field">
+                                <div class="field-label">Created:</div>
+                                <div class="field-value">May 1, 2025</div>
+                            </div>
+                            <div class="metadata-field">
+                                <div class="field-label">Type:</div>
+                                <div class="field-value">JPEG Image</div>
+                            </div>
+                            <div class="metadata-field">
+                                <div class="field-label">Steps:</div>
+                                <div class="field-value">30</div>
+                            </div>
+                            <div class="metadata-field">
+                                <div class="field-label">Seed:</div>
+                                <div class="field-value monospace">646121592</div>
+                            </div>
+                            <div class="metadata-field">
+                                <div class="field-label">CFG Scale:</div>
+                                <div class="field-value">7</div>
+                            </div>
+                            <div class="metadata-field">
+                                <div class="field-label">Negative:</div>
+                                <div class="field-value text-gray-500 italic">(none)</div>
+                            </div>
+                            <div class="metadata-field">
+                                <div class="field-label">Global Hash:</div>
+                                <div class="field-value monospace">ef777a1caf50fdef020d4fa65dbe9b9351c3c862c0954000c6579d88f0119ebe</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Tags Section -->
+                        <div class="metadata-section" id="tags-section">
+                            <div class="flex flex-wrap mb-3">
+                                <div class="tag">
+                                    colorful
+                                    <span class="tag-remove">×</span>
+                                </div>
+                                <div class="tag">
+                                    art
+                                    <span class="tag-remove">×</span>
+                                </div>
+                                <div class="tag">
+                                    vibrant
+                                    <span class="tag-remove">×</span>
+                                </div>
+                                <div class="tag">
+                                    abstract
+                                    <span class="tag-remove">×</span>
+                                </div>
+                                <div class="tag">
+                                    digital
+                                    <span class="tag-remove">×</span>
+                                </div>
+                                <div class="tag add-tag">+ Add</div>
+                            </div>
+                            
+                            <div class="text-xs mt-4">
+                                <div class="font-medium mb-1 text-gray-700">Session Tags:</div>
+                                <div class="flex flex-wrap">
+                                    <div class="tag bg-amber-50 text-amber-700">colorful</div>
+                                    <div class="tag bg-amber-50 text-amber-700">vibrant</div>
+                                    <div class="tag bg-amber-50 text-amber-700">ai generated</div>
+                                    <div class="tag bg-amber-50 text-amber-700">abstract</div>
+                                    <div class="tag bg-amber-50 text-amber-700">painting</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Custom Section -->
+                        <div class="metadata-section" id="custom-section">
+                            <div class="metadata-field">
+                                <div class="field-label">Project ID:</div>
+                                <div class="field-value">0220 Exp</div>
+                            </div>
+                            <div class="metadata-field">
+                                <div class="field-label">Prompt:</div>
+                                <div class="field-value">abstract colorful art style</div>
+                            </div>
+                            <div class="metadata-field">
+                                <div class="field-label">Model:</div>
+                                <div class="field-value">fluently-xl</div>
+                            </div>
+                            <div class="metadata-field">
+                                <div class="field-label">Dimensions:</div>
+                                <div class="field-value">1024 × 1024</div>
+                            </div>
+                            <div class="metadata-field">
+                                <div class="field-label">Steps:</div>
+                                <div class="field-value">30</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Notes Section -->
+                        <div class="metadata-section" id="notes-section">
+                            <textarea class="notes-textarea" placeholder="Add notes about this image...">This image features a vibrant abstract composition with bold colors and dynamic shapes. The artist's use of contrasting hues creates visual energy that draws the viewer in.</textarea>
+                            
+                            <button class="save-button">Save Notes</button>
+                            
+                            <div class="rating-container">
+                                <div class="rating-label">Quality Rating:</div>
+                                <div class="star-rating" id="quality-rating">
+                                    <svg class="star active" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                    </svg>
+                                    <svg class="star active" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                    </svg>
+                                    <svg class="star active" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                    </svg>
+                                    <svg class="star active" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                    </svg>
+                                    <svg class="star" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                    </svg>
+                                </div>
+                            </div>
+                            
+                            <div class="rating-container">
+                                <div class="rating-label">Content Rating:</div>
+                                <div class="star-rating" id="content-rating">
+                                    <svg class="star active" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                    </svg>
+                                    <svg class="star active" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                    </svg>
+                                    <svg class="star active" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                    </svg>
+                                    <svg class="star active" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                    </svg>
+                                    <svg class="star active" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
             
             <!-- Out Stack (Right) -->
             <div class="stack-panel out-stack vertical-stack" data-stack="out">
-                <!-- Out stack content -->
+                <div class="stack-header">
+                    <h2 class="stack-title" data-stack="out">Out</h2>
+                    <span class="stack-count" data-stack="out">2</span>
+                </div>
+                <div class="stack-content">
+                    <div class="thumbnail-container vertical-thumbnails">
+                        <img src="https://source.unsplash.com/random/140x140?art" class="thumbnail" alt="Art">
+                        <img src="https://source.unsplash.com/random/140x140?painting" class="thumbnail" alt="Painting">
+                    </div>
+                </div>
             </div>
             
-            <!-- Trash Stack (Bottom) -->
+            <!-- Trash Stack (Bottom) - with border-top matching priority stack -->
             <div class="stack-panel trash-stack horizontal-stack" data-stack="trash">
-                <!-- Trash stack content -->
+                <div class="stack-header">
+                    <h2 class="stack-title" data-stack="trash">Trash</h2>
+                    <span class="stack-count" data-stack="trash">1</span>
+                </div>
+                <div class="stack-content">
+                    <div class="thumbnail-container horizontal-thumbnails">
+                        <img src="https://source.unsplash.com/random/140x140?sketch" class="thumbnail" alt="Sketch">
+                    </div>
+                </div>
             </div>
-
-            <!-- Bottom swipe trigger moved inside main-content -->
-            <div class="bottom-swipe-trigger" id="bottom-swipe-trigger"></div>
         </main>
+    </div>
+
+    <!-- Grid View Modal -->
+    <div class="grid-view-modal" id="grid-view-modal">
+        <div class="grid-view-content">
+            <div class="grid-view-header">
+                <h2 class="grid-view-title">Grid View</h2>
+                <button class="px-3 py-1 text-sm bg-gray-200 hover:bg-gray-300 rounded" id="close-grid-modal">Close</button>
+            </div>
+            <div class="grid-view-body">
+                <div class="grid-container" id="grid-container">
+                    <!-- Sample grid items -->
+                    <div class="grid-item">
+                        <img src="https://source.unsplash.com/random/300x300?abstract" class="grid-image" alt="Abstract">
+                    </div>
+                    <div class="grid-item">
+                        <img src="https://source.unsplash.com/random/300x300?colorful" class="grid-image" alt="Colorful">
+                    </div>
+                    <div class="grid-item">
+                        <img src="https://source.unsplash.com/random/300x300?sunset" class="grid-image" alt="Sunset">
+                    </div>
+                    <div class="grid-item">
+                        <img src="https://source.unsplash.com/random/300x300?landscape" class="grid-image" alt="Landscape">
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
