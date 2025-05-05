@@ -9,9 +9,9 @@
 <body class="min-h-screen bg-gray-50">
 <div class="flex h-screen flex-col">
 
-  <!-- Modal for repo selection -->
-  <div id="repoModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center">
-    <div class="bg-white rounded-lg shadow-lg max-w-2xl w-full max-h-[80vh] overflow-auto p-4">
+  <!-- Modal -->
+  <div id="repoModal" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 items-center justify-center">
+    <div class="bg-white rounded-lg shadow-lg max-w-2xl w-full max-h-[80vh] overflow-auto p-4 mx-auto mt-10">
       <h2 class="text-lg font-bold mb-2">Select Repositories to Scan</h2>
       <div id="repoList" class="grid grid-cols-2 gap-2 mb-4 text-sm"></div>
       <div class="flex justify-end gap-2">
@@ -37,7 +37,6 @@
   </header>
 
   <div class="flex flex-1 overflow-hidden h-[95vh]">
-    <!-- Sidebar -->
     <aside id="sidebar" class="w-80 bg-white border-r overflow-y-auto transition-all duration-300">
       <div class="p-4">
         <div class="space-y-4">
@@ -47,10 +46,9 @@
           </div>
           <div>
             <label class="block text-sm font-medium text-gray-700 mb-1">Repository Name</label>
-            <input type="text" id="repo" class="w-full px-3 py-2 border rounded text-sm" placeholder="e.g., vscode">
+            <input type="text" id="repo" class="w-full px-3 py-2 border rounded text-sm" placeholder="(optional)">
           </div>
           <button onclick="fetchHtmlFiles()" class="w-full py-2 bg-gray-900 text-white rounded text-sm hover:bg-gray-800">Search</button>
-          <button onclick="generateMenu()" class="w-full py-2 bg-green-700 text-white rounded text-sm hover:bg-green-600 mt-2">Generate</button>
         </div>
         <div id="loading" class="hidden mt-4 text-sm text-gray-600">Loading...</div>
         <div id="error" class="hidden mt-4 text-sm text-red-600 bg-red-50 p-3 rounded"></div>
@@ -58,7 +56,6 @@
       </div>
     </aside>
 
-    <!-- Main content -->
     <main id="mainContent" class="flex-1 bg-white overflow-hidden">
       <div id="zoomContainer" class="w-full h-full overflow-hidden relative">
         <iframe id="pageViewer" class="w-full h-full border-0 hidden"
@@ -80,213 +77,147 @@
 </div>
 
 <script>
-  let scale = 1, pointX = 0, pointY = 0, selectedElement = null;
-  let fileList = [], repoSelectionList = [];
+let fileList = [];
+let repoSelectionList = [];
 
-  const zoomContainer = document.getElementById('zoomContainer');
-  function setTransform() {
-    zoomContainer.style.transform = `translate(${pointX}px, ${pointY}px) scale(${scale})`;
-  }
-
-  zoomContainer.addEventListener('wheel', e => {
-    e.preventDefault();
-    const xs = (e.clientX - pointX) / scale;
-    const ys = (e.clientY - pointY) / scale;
-    const delta = -e.deltaY * 0.01;
-    scale = Math.min(Math.max(1, scale + delta), 5);
-    pointX = e.clientX - xs * scale;
-    pointY = e.clientY - ys * scale;
-    setTransform();
-  });
-
-  function resetZoom() {
-    scale = 1; pointX = 0; pointY = 0; setTransform();
-  }
-
-  document.getElementById('toggleSidebar').addEventListener('click', () => {
-    sidebar.classList.toggle('w-0');
-    sidebar.classList.toggle('w-80');
-  });
-
-  document.getElementById('micPermission').addEventListener('click', async () => {
-    const micStatus = document.getElementById('micStatus');
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      micStatus.textContent = 'Mic enabled';
-      micStatus.className = 'text-xs text-green-600';
-      stream.getTracks().forEach(track => track.stop());
-    } catch {
-      micStatus.textContent = 'Mic denied';
-      micStatus.className = 'text-xs text-red-600';
-    }
-  });
-
-  function loadCustomUrl() {
-    const url = document.getElementById('customUrl').value;
-    if (url) {
+function renderList() {
+  const resultsEl = document.getElementById('results');
+  resultsEl.innerHTML = '';
+  fileList.forEach((f, idx) => {
+    const el = document.createElement('div');
+    el.className = 'p-3 bg-gray-50 rounded hover:bg-gray-100 cursor-pointer flex justify-between items-center';
+    el.innerHTML = `<div class="truncate">${f.name}</div><button class="text-red-600" onclick="removeFile(${idx})">X</button>`;
+    el.addEventListener('click', e => {
+      if (e.target.tagName === 'BUTTON') return;
       const iframe = document.getElementById('pageViewer');
-      iframe.src = url;
+      iframe.src = f.url;
       iframe.classList.remove('hidden');
-      document.getElementById('currentFile').textContent = url;
-    }
-  }
-
-  function renderList() {
-    const resultsEl = document.getElementById('results');
-    resultsEl.innerHTML = '';
-    fileList.forEach((f, idx) => {
-      const el = document.createElement('div');
-      el.className = 'p-3 bg-gray-50 rounded hover:bg-gray-100 cursor-pointer flex justify-between items-center';
-      el.innerHTML = `<div class="flex-1 truncate">${f.name}</div><button class="text-red-600 ml-4" onclick="removeFile(${idx})">X</button>`;
-      el.addEventListener('click', (e) => {
-        if (e.target.tagName === 'BUTTON') return;
-        const iframe = document.getElementById('pageViewer');
-        iframe.src = f.url;
-        iframe.classList.remove('hidden');
-        document.getElementById('currentFile').textContent = f.name;
-        resetZoom();
-      });
-      resultsEl.appendChild(el);
+      document.getElementById('currentFile').textContent = f.name;
     });
-  }
+    resultsEl.appendChild(el);
+  });
+}
 
-  function removeFile(idx) {
-    fileList.splice(idx, 1);
-    renderList();
-  }
+function removeFile(idx) {
+  fileList.splice(idx, 1);
+  renderList();
+}
 
-  function openRepoModal(repos) {
-    repoSelectionList = [...repos];
-    const modal = document.getElementById('repoModal');
-    const repoListEl = document.getElementById('repoList');
-    repoListEl.innerHTML = '';
-    repos.forEach((repo, i) => {
-      const div = document.createElement('div');
-      div.className = 'flex items-center justify-between bg-gray-100 px-2 py-1 rounded';
-      div.innerHTML = `<span class="truncate">${repo.name}</span><button class="text-red-600 ml-2 text-sm" onclick="removeRepo(${i})">X</button>`;
-      repoListEl.appendChild(div);
-    });
-    modal.classList.remove('hidden');
-  }
+function openRepoModal(repos) {
+  repoSelectionList = [...repos];
+  const modal = document.getElementById('repoModal');
+  const repoListEl = document.getElementById('repoList');
+  repoListEl.innerHTML = '';
+  repos.forEach((repo, i) => {
+    const div = document.createElement('div');
+    div.className = 'flex items-center justify-between bg-gray-100 px-2 py-1 rounded';
+    div.innerHTML = `<span class="truncate">${repo.name}</span><button class="text-red-600 ml-2 text-sm" onclick="removeRepo(${i})">X</button>`;
+    repoListEl.appendChild(div);
+  });
+  modal.classList.remove('hidden');
+}
 
-  function closeRepoModal() {
-    document.getElementById('repoModal').classList.add('hidden');
-  }
+function closeRepoModal() {
+  document.getElementById('repoModal').classList.add('hidden');
+}
 
-  function removeRepo(index) {
-    repoSelectionList.splice(index, 1);
-    openRepoModal(repoSelectionList);
-  }
+function removeRepo(index) {
+  repoSelectionList.splice(index, 1);
+  openRepoModal(repoSelectionList);
+}
 
-  async function confirmRepoSelection() {
-    closeRepoModal();
-    await scanSelectedRepos();
-  }
+async function confirmRepoSelection() {
+  closeRepoModal();
+  const owner = document.getElementById('owner').value.trim();
+  const loadingEl = document.getElementById('loading');
+  const errorEl = document.getElementById('error');
+  const resultsEl = document.getElementById('results');
+  const repoLink = document.getElementById('repoLink');
+  fileList = [];
 
-  async function scanSelectedRepos() {
-    const owner = document.getElementById('owner').value.trim();
-    const loadingEl = document.getElementById('loading');
-    const errorEl = document.getElementById('error');
-    const resultsEl = document.getElementById('results');
-    const repoLink = document.getElementById('repoLink');
-    fileList = [];
+  loadingEl.classList.remove('hidden');
+  errorEl.classList.add('hidden');
+  resultsEl.innerHTML = '';
 
-    loadingEl.classList.remove('hidden');
-    errorEl.classList.add('hidden');
-    resultsEl.innerHTML = '';
-
-    for (const r of repoSelectionList) {
-      try {
-        const treeRes = await fetch(`https://api.github.com/repos/${owner}/${r.name}/git/trees/main?recursive=1`);
-        if (!treeRes.ok) continue;
-        const tree = await treeRes.json();
-        const htmlFiles = tree.tree.filter(item => item.path.endsWith('.html') && item.type === 'blob');
-        htmlFiles.forEach(f => {
-          fileList.push({
-            name: `${r.name}/${f.path}`,
-            url: `https://${owner}.github.io/${r.name}/${f.path}`
-          });
-        });
-      } catch {}
-    }
-
-    if (!fileList.length) {
-      errorEl.textContent = 'No HTML files found in selected repositories.';
-      errorEl.classList.remove('hidden');
-    } else {
-      renderList();
-      repoLink.href = `https://github.com/${owner}`;
-    }
-
-    loadingEl.classList.add('hidden');
-  }
-
-  async function fetchHtmlFiles() {
-    const owner = document.getElementById('owner').value.trim();
-    const repo = document.getElementById('repo').value.trim();
-    const loadingEl = document.getElementById('loading');
-    const errorEl = document.getElementById('error');
-    const resultsEl = document.getElementById('results');
-    const repoLink = document.getElementById('repoLink');
-    fileList = [];
-
-    loadingEl.classList.remove('hidden');
-    errorEl.classList.add('hidden');
-    resultsEl.innerHTML = '';
-
-    if (!owner) {
-      errorEl.textContent = 'Repository owner is required.';
-      errorEl.classList.remove('hidden');
-      loadingEl.classList.add('hidden');
-      return;
-    }
-
-    if (repo) {
-      try {
-        const treeRes = await fetch(`https://api.github.com/repos/${owner}/${repo}/git/trees/main?recursive=1`);
-        if (!treeRes.ok) throw new Error('Failed to read repository tree.');
-        const tree = await treeRes.json();
-        const htmlFiles = tree.tree.filter(item => item.path.endsWith('.html') && item.type === 'blob');
-        fileList = htmlFiles.map(f => ({
-          name: f.path,
-          url: `https://${owner}.github.io/${repo}/${f.path}`
-        }));
-        if (!fileList.length) throw new Error('No HTML files found.');
-        renderList();
-        repoLink.href = `https://github.com/${owner}/${repo}`;
-      } catch (err) {
-        errorEl.textContent = err.message;
-        errorEl.classList.remove('hidden');
-      } finally {
-        loadingEl.classList.add('hidden');
-      }
-      return;
-    }
-
+  for (const r of repoSelectionList) {
     try {
-      const repoRes = await fetch(`https://api.github.com/users/${owner}/repos?per_page=100`);
-      if (!repoRes.ok) throw new Error('Failed to list user repositories.');
-      const repos = await repoRes.json();
-      openRepoModal(repos);
+      const response = await fetch(`https://api.github.com/repos/${owner}/${r.name}/contents`);
+      if (!response.ok) continue;
+      const data = await response.json();
+      const htmlFiles = data.filter(file => file.name.toLowerCase().endsWith('.html'));
+      htmlFiles.forEach(f => {
+        fileList.push({
+          name: `${r.name}/${f.name}`,
+          url: `https://${owner}.github.io/${r.name}/${f.path}`
+        });
+      });
+    } catch {}
+  }
+
+  if (!fileList.length) {
+    errorEl.textContent = 'No HTML files found.';
+    errorEl.classList.remove('hidden');
+  } else {
+    renderList();
+    repoLink.href = `https://github.com/${owner}`;
+  }
+
+  loadingEl.classList.add('hidden');
+}
+
+async function fetchHtmlFiles() {
+  const owner = document.getElementById('owner').value.trim();
+  const repo = document.getElementById('repo').value.trim();
+  const loadingEl = document.getElementById('loading');
+  const errorEl = document.getElementById('error');
+  const resultsEl = document.getElementById('results');
+  const repoLink = document.getElementById('repoLink');
+  fileList = [];
+
+  loadingEl.classList.remove('hidden');
+  errorEl.classList.add('hidden');
+  resultsEl.innerHTML = '';
+
+  if (!owner) {
+    errorEl.textContent = 'Repository owner is required.';
+    errorEl.classList.remove('hidden');
+    loadingEl.classList.add('hidden');
+    return;
+  }
+
+  if (repo) {
+    try {
+      const response = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents`);
+      if (!response.ok) throw new Error('Repository not found or access denied');
+      const data = await response.json();
+      const htmlFiles = data.filter(file => file.name.toLowerCase().endsWith('.html'));
+      fileList = htmlFiles.map(file => ({
+        name: file.name,
+        url: `https://${owner}.github.io/${repo}/${file.path}`
+      }));
+      if (!fileList.length) throw new Error('No HTML files found.');
+      renderList();
+      repoLink.href = `https://github.com/${owner}/${repo}`;
     } catch (err) {
       errorEl.textContent = err.message;
       errorEl.classList.remove('hidden');
+    } finally {
       loadingEl.classList.add('hidden');
     }
+    return;
   }
 
-  function generateMenu() {
-    if (!fileList.length) return alert("No files to include.");
-    const encoded = JSON.stringify(fileList).replace(/</g, '\\u003c');
-    const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Portable Menu</title><style>body{margin:0;font-family:sans-serif;}#sidebar{width:250px;background:#f3f3f3;float:left;height:100vh;overflow-y:auto;border-right:1px solid #ccc;}#main{margin-left:250px;height:100vh;}iframe{width:100%;height:100%;border:none;} .item{padding:10px;border-bottom:1px solid #ddd;cursor:pointer;}.item:hover{background:#eee;}</style></head><body><div id="sidebar"></div><div id="main"><iframe id="viewer" src=""></iframe></div><script>const fileList=${encoded};const sidebar=document.getElementById('sidebar');const viewer=document.getElementById('viewer');fileList.forEach(f=>{const div=document.createElement('div');div.className='item';div.textContent=f.name;div.onclick=()=>viewer.src=f.url;sidebar.appendChild(div);});</script></body></html>`;
-    const blob = new Blob([html], { type: 'text/html' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'portable_menu_iframe.html';
-    link.click();
-    URL.revokeObjectURL(url);
+  try {
+    const repoRes = await fetch(`https://api.github.com/users/${owner}/repos?per_page=100`);
+    if (!repoRes.ok) throw new Error('Failed to list user repositories.');
+    const repos = await repoRes.json();
+    openRepoModal(repos);
+  } catch (err) {
+    errorEl.textContent = err.message;
+    errorEl.classList.remove('hidden');
+    loadingEl.classList.add('hidden');
   }
+}
 </script>
 </body>
 </html>
