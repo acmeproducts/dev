@@ -1,0 +1,1133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SlideBox v2.0</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        /* Base styles */
+        body, html {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            overflow: hidden;
+        }
+        
+        /* Main layout grid - No header */
+        .app-container {
+            display: grid;
+            height: 100vh;
+            grid-template-rows: 1fr;
+            grid-template-columns: 100%;
+        }
+        
+        /* Main content area */
+        .main-content {
+            display: grid;
+            grid-template-columns: 10% 80% 10%;
+            grid-template-rows: auto 1fr auto;
+            grid-template-areas:
+                "priority priority priority"
+                "in center out"
+                "trash trash trash";
+            height: 100%;
+            gap: 1px;
+            background-color: #f3f4f6;
+            transition: all 0.3s ease;
+        }
+        
+        /* Stack panels */
+        .stack-panel {
+            background-color: #fffbeb;
+            border: 1px solid #fbbf24;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+        
+        /* Horizontal stack headers (Priority, Trash) */
+        .horizontal-stack .stack-header {
+            padding: 6px 10px;
+            background-color: #fef3c7;
+            border-bottom: 1px solid #fbbf24;
+            height: 28px;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+        }
+        
+        /* Vertical stack headers (In, Out) */
+        .vertical-stack .stack-header {
+            padding: 6px 10px;
+            background-color: #fef3c7;
+            border-bottom: 1px solid #fbbf24;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .stack-title {
+            font-size: 12px;
+            font-weight: 500;
+            color: #4b5563;
+            cursor: pointer;
+        }
+        
+        /* Horizontal stack title */
+        .horizontal-stack .stack-title {
+            margin-right: 8px;
+        }
+        
+        /* Vertical stack title */
+        .vertical-stack .stack-title {
+            margin-bottom: 4px;
+        }
+        
+        /* Stack count pill - serves as collapse toggle */
+        .stack-count {
+            font-size: 10px;
+            padding: 1px 6px;
+            background-color: #f3f4f6;
+            border-radius: 10px;
+            color: #6b7280;
+            min-width: 40px;
+            text-align: center;
+            cursor: pointer;
+            border: 1px solid #d1d5db;
+            transition: background-color 0.2s;
+        }
+        
+        .stack-count:hover {
+            background-color: #e5e7eb;
+        }
+        
+        .stack-content {
+            flex: 1;
+            overflow: auto;
+            position: relative;
+        }
+        
+        /* Stack-specific styles */
+        .priority-stack {
+            grid-area: priority;
+            max-height: 110px;
+        }
+        
+        .in-stack {
+            grid-area: in;
+        }
+        
+        .center-stage {
+            grid-area: center;
+            position: relative;
+        }
+        
+        .out-stack {
+            grid-area: out;
+        }
+        
+        .trash-stack {
+            grid-area: trash;
+            max-height: 110px;
+            position: sticky;
+            bottom: 0;
+            z-index: 10;
+        }
+        
+        /* Thumbnail styles */
+        .thumbnail-container {
+            display: flex;
+            padding: 4px;
+            gap: 4px;
+        }
+        
+        .vertical-thumbnails {
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .horizontal-thumbnails {
+            flex-direction: row;
+            align-items: center;
+        }
+        
+        .thumbnail {
+            width: 70px;
+            height: 70px;
+            object-fit: cover;
+            border: 2px solid transparent;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        
+        .thumbnail.selected {
+            border-color: #f59e0b;
+        }
+        
+        /* Center stage image */
+        .center-image {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            max-height: 100%;
+            max-width: 100%;
+        }
+        
+        /* Current stack indicator in center stage */
+        .current-stack-indicator {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background-color: rgba(0, 0, 0, 0.3);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            pointer-events: none;
+        }
+        
+        /* Collapsible states */
+        .stack-panel.collapsed-horizontal {
+            max-height: 28px;
+        }
+        
+        .stack-panel.collapsed-vertical {
+            max-width: 28px;
+        }
+        
+        /* Vertical stack collapsed state */
+        .stack-panel.collapsed-vertical .stack-header {
+            transform: rotate(0deg); /* No rotation */
+            padding: 10px 2px;
+            writing-mode: inherit;
+            height: auto;
+        }
+        
+        .horizontal-stack.collapsed-horizontal .stack-count,
+        .vertical-stack.collapsed-vertical .stack-count {
+            display: block; /* Keep pills visible */
+            margin-top: 0;
+            position: relative;
+            z-index: 5;
+        }
+        
+        .stack-panel.collapsed-vertical .stack-content,
+        .stack-panel.collapsed-horizontal .stack-content {
+            display: none;
+        }
+        
+        /* For collapsed trash panel - special handling */
+        .trash-stack.collapsed-horizontal {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            width: 100%;
+            background-color: #fffbeb;
+            z-index: 20;
+        }
+        
+        /* Image zoom controls */
+        .zoom-control {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(255, 255, 255, 0.8);
+            border-radius: 8px;
+            padding: 8px 12px;
+            display: flex;
+            align-items: center;
+            z-index: 10;
+        }
+        
+        /* Metadata panel trigger tab - REVISED POSITION AND APPEARANCE */
+        .metadata-trigger {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background-color: rgba(254, 243, 199, 0.6);
+            border: 1px solid rgba(251, 191, 36, 0.6);
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            cursor: pointer;
+            z-index: 19;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.3s ease;
+        }
+        
+        /* Swipe trigger for folder panel */
+        .swipe-trigger {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 20px;
+            height: 100%;
+            z-index: 99;
+            opacity: 0.2; /* Made slightly visible for demo */
+            background-color: rgba(0, 0, 0, 0.05);
+        }
+        
+        /* Folder side panel */
+        .folder-panel {
+            position: fixed;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background-color: white;
+            box-shadow: 0 0 15px rgba(0, 0, 0, 0.1);
+            transition: left 0.3s ease;
+            z-index: 200;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .folder-panel.visible {
+            left: 0;
+        }
+        
+        .folder-panel-header {
+            padding: 16px;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .folder-panel-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #1f2937;
+        }
+        
+        .folder-panel-close {
+            cursor: pointer;
+            width: 32px;
+            height: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #6b7280;
+        }
+        
+        /* Metadata panel slides up from bottom */
+        .metadata-panel {
+            position: absolute;
+            left: 10%;
+            right: 10%;
+            bottom: 0;
+            height: 0;
+            background-color: rgba(255, 255, 255, 0.9);
+            transition: height 0.3s ease;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            border-top: 1px solid #fbbf24;
+            border-left: 1px solid #fbbf24;
+            border-right: 1px solid #fbbf24;
+            border-top-left-radius: 12px;
+            border-top-right-radius: 12px;
+            box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(5px);
+            z-index: 18;
+        }
+        
+        .metadata-panel.expanded {
+            height: 50%;
+        }
+        
+        .metadata-header {
+            padding: 8px 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #fbbf24;
+            background-color: rgba(254, 243, 199, 0.9);
+        }
+        
+        .metadata-title {
+            font-weight: 500;
+            font-size: 14px;
+            color: #4b5563;
+        }
+        
+        .close-button {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .close-button:hover {
+            background-color: rgba(243, 244, 246, 0.8);
+        }
+        
+        .metadata-tabs {
+            display: flex;
+            border-bottom: 1px solid #fbbf24;
+            background-color: rgba(255, 251, 235, 0.8);
+        }
+        
+        .metadata-tab {
+            padding: 8px 12px;
+            font-size: 12px;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            color: #6b7280;
+        }
+        
+        .metadata-tab.active {
+            border-bottom-color: #f59e0b;
+            color: #4b5563;
+            font-weight: 500;
+        }
+        
+        .metadata-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px;
+            background-color: rgba(255, 251, 235, 0.8);
+        }
+        
+        .metadata-section {
+            display: none;
+            height: 100%;
+            overflow-y: auto;
+        }
+        
+        .metadata-section.active {
+            display: block;
+        }
+        
+        /* Tags */
+        .tag {
+            display: inline-flex;
+            align-items: center;
+            background-color: #fee4a6;
+            border-radius: 12px;
+            padding: 2px 8px;
+            margin: 2px;
+            font-size: 12px;
+        }
+        
+        .tag-remove {
+            margin-left: 4px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .add-tag {
+            background-color: #f3f4f6;
+            border: 1px dashed #9ca3af;
+            cursor: pointer;
+        }
+        
+        /* Custom metadata fields */
+        .metadata-field {
+            display: flex;
+            margin-bottom: 8px;
+            font-size: 12px;
+        }
+        
+        .field-label {
+            width: 90px;
+            color: #6b7280;
+            flex-shrink: 0;
+        }
+        
+        .field-value {
+            color: #1f2937;
+            flex: 1;
+            word-break: break-word;
+        }
+        
+        /* Filename link style */
+        .filename-link {
+            color: #3b82f6;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+        
+        .filename-link:hover {
+            color: #2563eb;
+        }
+        
+        /* Code block for API JSON */
+        .code-block {
+            background-color: rgba(248, 250, 252, 0.9);
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 11px;
+            padding: 8px;
+            overflow-x: auto;
+            color: #334155;
+            margin-top: 8px;
+        }
+        
+        /* Monospace font for hashes and technical values */
+        .monospace {
+            font-family: monospace;
+            font-size: 11px;
+            word-break: break-all;
+        }
+        
+        /* Notes tab with ratings - REVISED LAYOUT */
+        .notes-textarea {
+            width: 100%;
+            min-height: 100px;
+            padding: 8px;
+            margin-bottom: 12px;
+            border: 1px solid #e5e7eb;
+            border-radius: 4px;
+            font-size: 12px;
+            resize: vertical;
+        }
+        
+        .save-button {
+            background-color: #f59e0b;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            border: none;
+            margin-bottom: 16px;
+            width: 100%;
+            display: block;
+        }
+        
+        .save-button:hover {
+            background-color: #d97706;
+        }
+        
+        .rating-container {
+            margin-bottom: 12px;
+        }
+        
+        .rating-label {
+            display: block;
+            margin-bottom: 4px;
+            font-weight: 500;
+            font-size: 12px;
+            color: #4b5563;
+        }
+        
+        .star-rating {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .star {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            color: #d1d5db;
+        }
+        
+        .star.active {
+            color: #f59e0b;
+        }
+        
+        /* Grid view styles */
+        .grid-view {
+            position: absolute;
+            inset: 0;
+            background-color: white;
+            z-index: 25;
+            padding: 16px;
+            display: none;
+        }
+        
+        .grid-view.visible {
+            display: block;
+        }
+        
+        .grid-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        
+        .grid-title {
+            font-size: 18px;
+            font-weight: 500;
+        }
+        
+        .close-grid {
+            padding: 6px 12px;
+            background-color: #f3f4f6;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 12px;
+        }
+        
+        .grid-item {
+            aspect-ratio: 1;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .grid-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+    </style>
+</head>
+<body class="bg-gray-100">
+    <div class="app-container">
+        <!-- Swipe trigger for folder panel - RESTORED -->
+        <div class="swipe-trigger" id="swipe-trigger"></div>
+        
+        <!-- Folder Panel -->
+        <div class="folder-panel" id="folder-panel">
+            <div class="folder-panel-header">
+                <h1 class="folder-panel-title">Folders</h1>
+                <div class="folder-panel-close" id="close-folder-panel">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </div>
+            </div>
+            
+            <div class="folder-panel-content">
+                <div class="current-folder-info">
+                    <div class="folder-label">Current Folder</div>
+                    <div class="folder-value">AI Generated Art</div>
+                </div>
+                
+                <div class="folder-label">Select Folder</div>
+                <ul class="folder-list">
+                    <li class="folder-item">
+                        <div class="folder-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                            </svg>
+                        </div>
+                        <div class="folder-name">Vacation Photos</div>
+                    </li>
+                    <li class="folder-item">
+                        <div class="folder-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                            </svg>
+                        </div>
+                        <div class="folder-name">AI Generated Art</div>
+                    </li>
+                    <li class="folder-item">
+                        <div class="folder-icon">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z" />
+                            </svg>
+                        </div>
+                        <div class="folder-name">Project Screenshots</div>
+                    </li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Main Content Grid -->
+        <main id="main-content" class="main-content">
+            <!-- Priority Stack (Top) -->
+            <div class="stack-panel priority-stack horizontal-stack" data-stack="priority">
+                <div class="stack-header">
+                    <h2 class="stack-title" data-stack="priority">Priority</h2>
+                    <span class="stack-count" data-stack="priority">3</span>
+                </div>
+                <div class="stack-content">
+                    <div class="thumbnail-container horizontal-thumbnails">
+                        <img src="https://source.unsplash.com/random/140x140?abstract" class="thumbnail" alt="Abstract">
+                        <img src="https://source.unsplash.com/random/140x140?colorful" class="thumbnail selected" alt="Colorful Art">
+                        <img src="https://source.unsplash.com/random/140x140?sunset" class="thumbnail" alt="Sunset">
+                    </div>
+                </div>
+            </div>
+            
+            <!-- In Stack (Left) -->
+            <div class="stack-panel in-stack vertical-stack" data-stack="in">
+                <div class="stack-header">
+                    <h2 class="stack-title" data-stack="in">In</h2>
+                    <span class="stack-count" data-stack="in">5</span>
+                </div>
+                <div class="stack-content">
+                    <div class="thumbnail-container vertical-thumbnails">
+                        <img src="https://source.unsplash.com/random/140x140?digital" class="thumbnail" alt="Digital">
+                        <img src="https://source.unsplash.com/random/140x140?landscape" class="thumbnail" alt="Landscape">
+                        <img src="https://source.unsplash.com/random/140x140?fantasy" class="thumbnail" alt="Fantasy">
+                        <img src="https://source.unsplash.com/random/140x140?nature" class="thumbnail" alt="Nature">
+                        <img src="https://source.unsplash.com/random/140x140?people" class="thumbnail" alt="People">
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Center Stage -->
+            <div class="stack-panel center-stage">
+                <!-- Main image - UPDATED to match selected thumbnail -->
+                <img src="https://source.unsplash.com/random/800x600?colorful" class="center-image" alt="Colorful Art">
+                
+                <!-- Current stack indicator in center stage -->
+                <div class="current-stack-indicator">Priority</div>
+                
+                <!-- Top controls -->
+                <div class="zoom-control">
+                    <span class="mr-2">Zoom:</span>
+                    <input type="range" min="50" max="150" value="100" class="w-20">
+                    <span class="ml-2">100%</span>
+                </div>
+                
+                <!-- Metadata trigger tab - REVISED -->
+                <div class="metadata-trigger" id="metadata-trigger">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-amber-700" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                    </svg>
+                </div>
+                
+                <!-- Grid View -->
+                <div class="grid-view" id="grid-view">
+                    <div class="grid-header">
+                        <h2 class="grid-title">Priority</h2>
+                        <div class="close-grid" id="close-grid">Close</div>
+                    </div>
+                    <div class="grid-container">
+                        <div class="grid-item">
+                            <img src="https://source.unsplash.com/random/140x140?abstract" class="grid-image" alt="Abstract">
+                        </div>
+                        <div class="grid-item">
+                            <img src="https://source.unsplash.com/random/140x140?colorful" class="grid-image" alt="Colorful Art">
+                        </div>
+                        <div class="grid-item">
+                            <img src="https://source.unsplash.com/random/140x140?sunset" class="grid-image" alt="Sunset">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Metadata Panel -->
+                <div class="metadata-panel" id="metadata-panel">
+                    <div class="metadata-header">
+                        <h3 class="metadata-title">Image Details</h3>
+                        <div class="close-button" id="close-metadata">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-500" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                            </svg>
+                        </div>
+                    </div>
+                    
+                    <div class="metadata-tabs">
+                        <div class="metadata-tab active" data-tab="details">Details</div>
+                        <div class="metadata-tab" data-tab="tags">Tags</div>
+                        <div class="metadata-tab" data-tab="custom">Custom</div>
+                        <div class="metadata-tab" data-tab="notes">Notes</div>
+                    </div>
+                    
+                    <div class="metadata-content">
+                        <!-- Details Section - WITH FILENAME AS HYPERLINK -->
+                        <div class="metadata-section active" id="details-section">
+                            <div class="metadata-field">
+                                <div class="field-label">Filename:</div>
+                                <div class="field-value">
+                                    <a href="https://source.unsplash.com/random/800x600?colorful" target="_blank" class="filename-link">Colorful Art.jpg</a>
+                                </div>
+                            </div>
+                            <div class="metadata-field">
+                                <div class="field-label">Size:</div>
+                                <div class="field-value">3.2 MB</div>
+                            </div>
+                            <div class="metadata-field">
+                                <div class="field-label">Dimensions:</div>
+                                <div class="field-value">1024 × 1024 px</div>
+                            </div>
+                            <div class="metadata-field">
+                                <div class="field-label">Created:</div>
+                                <div class="field-value">May 1, 2025</div>
+                            </div>
+                            <div class="metadata-field">
+                                <div class="field-label">Type:</div>
+                                <div class="field-value">JPEG Image</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Tags Section -->
+                        <div class="metadata-section" id="tags-section">
+                            <div class="flex flex-wrap mb-3">
+                                <div class="tag">
+                                    colorful
+                                    <span class="tag-remove">×</span>
+                                </div>
+                                <div class="tag">
+                                    art
+                                    <span class="tag-remove">×</span>
+                                </div>
+                                <div class="tag">
+                                    vibrant
+                                    <span class="tag-remove">×</span>
+                                </div>
+                                <div class="tag">
+                                    abstract
+                                    <span class="tag-remove">×</span>
+                                </div>
+                                <div class="tag">
+                                    digital
+                                    <span class="tag-remove">×</span>
+                                </div>
+                                <div class="tag add-tag">+ Add</div>
+                            </div>
+                            
+                            <div class="text-xs mt-4">
+                                <div class="font-medium mb-1 text-gray-700">Session Tags:</div>
+                                <div class="flex flex-wrap">
+                                    <div class="tag bg-amber-50 text-amber-700">colorful</div>
+                                    <div class="tag bg-amber-50 text-amber-700">vibrant</div>
+                                    <div class="tag bg-amber-50 text-amber-700">ai generated</div>
+                                    <div class="tag bg-amber-50 text-amber-700">abstract</div>
+                                    <div class="tag bg-amber-50 text-amber-700">painting</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Custom Section with AI Generation Metadata -->
+                        <div class="metadata-section" id="custom-section">
+                            <div class="metadata-field">
+                                <div class="field-label">Project ID:</div>
+                                <div class="field-value">0220 Exp</div>
+                            </div>
+                            <div class="metadata-field">
+                                <div class="field-label">Prompt:</div>
+                                <div class="field-value">abstract colorful art style</div>
+                            </div>
+                            <div class="metadata-field">
+                                <div class="field-label">Model:</div>
+                                <div class="field-value">fluently-xl</div>
+                            </div>
+                            <div class="metadata-field">
+                                <div class="field-label">Dimensions:</div>
+                                <div class="field-value">1024 × 1024</div>
+                            </div>
+                            <div class="metadata-field">
+                                <div class="field-label">Steps:</div>
+                                <div class="field-value">30</div>
+                            </div>
+                            <div class="metadata-field">
+                                <div class="field-label">Seed:</div>
+                                <div class="field-value monospace">646121592</div>
+                            </div>
+                            <div class="metadata-field">
+                                <div class="field-label">CFG Scale:</div>
+                                <div class="field-value">7</div>
+                            </div>
+                            <div class="metadata-field">
+                                <div class="field-label">Negative:</div>
+                                <div class="field-value text-gray-500 italic">(none)</div>
+                            </div>
+                            <div class="metadata-field">
+                                <div class="field-label">Global Hash:</div>
+                                <div class="field-value monospace">ef777a1caf50fdef020d4fa65dbe9b9351c3c862c0954000c6579d88f0119ebe</div>
+                            </div>
+                            
+                            <div class="mt-4 mb-2 text-xs font-medium">API Call:</div>
+                            <div class="code-block">
+{
+  "Project_ID": "0220 Exp",
+  "cfg_scale": 7,
+  "height": 1024,
+  "hide_watermark": true,
+  "model": "fluently-xl",
+  "negative_prompt": "",
+  "prompt": "abstract colorful art style",
+  "return_binary": true,
+  "seed": 646121592,
+  "steps": 30,
+  "width": 1024
+}
+                            </div>
+                        </div>
+                        
+                        <!-- Notes Section - REVISED LAYOUT -->
+                        <div class="metadata-section" id="notes-section">
+                            <textarea class="notes-textarea" placeholder="Add notes about this image...">This image features a vibrant abstract composition with bold colors and dynamic shapes. The artist's use of contrasting hues creates visual energy that draws the viewer in.</textarea>
+                            
+                            <!-- Save button now appears BEFORE ratings -->
+                            <button class="save-button">Save Notes</button>
+                            
+                            <div class="rating-container">
+                                <div class="rating-label">Quality Rating:</div>
+                                <div class="star-rating">
+                                    <svg class="star active" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                    </svg>
+                                    <svg class="star active" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                    </svg>
+                                    <svg class="star active" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                    </svg>
+                                    <svg class="star active" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                    </svg>
+                                    <svg class="star" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                    </svg>
+                                </div>
+                            </div>
+                            
+                            <div class="rating-container">
+                                <div class="rating-label">Content Rating:</div>
+                                <div class="star-rating">
+                                    <svg class="star active" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                    </svg>
+                                    <svg class="star active" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                    </svg>
+                                    <svg class="star active" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                    </svg>
+                                    <svg class="star active" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                    </svg>
+                                    <svg class="star active" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Out Stack (Right) -->
+            <div class="stack-panel out-stack vertical-stack" data-stack="out">
+                <div class="stack-header">
+                    <h2 class="stack-title" data-stack="out">Out</h2>
+                    <span class="stack-count" data-stack="out">2</span>
+                </div>
+                <div class="stack-content">
+                    <div class="thumbnail-container vertical-thumbnails">
+                        <img src="https://source.unsplash.com/random/140x140?art" class="thumbnail" alt="Art">
+                        <img src="https://source.unsplash.com/random/140x140?painting" class="thumbnail" alt="Painting">
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Trash Stack (Bottom) -->
+            <div class="stack-panel trash-stack horizontal-stack" data-stack="trash">
+                <div class="stack-header">
+                    <h2 class="stack-title" data-stack="trash">Trash</h2>
+                    <span class="stack-count" data-stack="trash">1</span>
+                </div>
+                <div class="stack-content">
+                    <div class="thumbnail-container horizontal-thumbnails">
+                        <img src="https://source.unsplash.com/random/140x140?sketch" class="thumbnail" alt="Sketch">
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Function to adjust layout based on which stacks are collapsed
+        function adjustLayout() {
+            // Get all stack panels
+            const inStack = document.querySelector('.in-stack');
+            const outStack = document.querySelector('.out-stack');
+            const priorityStack = document.querySelector('.priority-stack');
+            const trashStack = document.querySelector('.trash-stack');
+            
+            // Check which ones are collapsed
+            const inCollapsed = inStack.classList.contains('collapsed-vertical');
+            const outCollapsed = outStack.classList.contains('collapsed-vertical');
+            const priorityCollapsed = priorityStack.classList.contains('collapsed-horizontal');
+            const trashCollapsed = trashStack.classList.contains('collapsed-horizontal');
+            
+            // Calculate column template based on collapsed states
+            let columnsTemplate;
+            if (inCollapsed && outCollapsed) {
+                columnsTemplate = '28px calc(100% - 56px) 28px';
+            } else if (inCollapsed) {
+                // Corrected: Center stage expands to the left when "in" stack is collapsed
+                columnsTemplate = '28px calc(100% - 28px - 10%) 10%';
+            } else if (outCollapsed) {
+                // Corrected: Center stage expands to the right when "out" stack is collapsed
+                columnsTemplate = '10% calc(100% - 28px - 10%) 28px';
+            } else {
+                columnsTemplate = '10% 80% 10%';
+            }
+            
+            // Calculate row template based on collapsed states
+            let rowsTemplate;
+            if (priorityCollapsed && trashCollapsed) {
+                rowsTemplate = '28px calc(100% - 56px) 28px';
+            } else if (priorityCollapsed) {
+                rowsTemplate = '28px calc(100% - 28px - 110px) 110px';
+            } else if (trashCollapsed) {
+                rowsTemplate = '110px calc(100% - 28px - 110px) 28px';
+            } else {
+                rowsTemplate = 'auto 1fr auto';
+            }
+            
+            // Apply new grid template
+            document.getElementById('main-content').style.gridTemplateColumns = columnsTemplate;
+            document.getElementById('main-content').style.gridTemplateRows = rowsTemplate;
+        }
+        
+        // Set up event handlers
+        document.addEventListener('DOMContentLoaded', function() {
+            // Toggle stack collapse when clicking on stack counts
+            const stackCounts = document.querySelectorAll('.stack-count');
+            stackCounts.forEach(count => {
+                count.addEventListener('click', function() {
+                    const stack = this.closest('.stack-panel');
+                    
+                    if (stack.classList.contains('in-stack') || stack.classList.contains('out-stack')) {
+                        // Vertical stack
+                        stack.classList.toggle('collapsed-vertical');
+                    } else {
+                        // Horizontal stack
+                        stack.classList.toggle('collapsed-horizontal');
+                    }
+                    
+                    // Adjust layout
+                    adjustLayout();
+                });
+            });
+            
+            // Open grid view when clicking on stack titles - FIXED 
+            const stackTitles = document.querySelectorAll('.stack-title');
+            stackTitles.forEach(title => {
+                title.addEventListener('click', function() {
+                    const stackName = this.dataset.stack;
+                    const gridView = document.getElementById('grid-view');
+                    const gridTitle = document.querySelector('.grid-title');
+                    
+                    // Set grid view title to match the stack name
+                    gridTitle.textContent = stackName.charAt(0).toUpperCase() + stackName.slice(1);
+                    
+                    // Show grid view
+                    gridView.classList.add('visible');
+                });
+            });
+            
+            // Close grid view
+            const closeGrid = document.getElementById('close-grid');
+            closeGrid.addEventListener('click', function() {
+                const gridView = document.getElementById('grid-view');
+                gridView.classList.remove('visible');
+            });
+            
+            // Folder panel toggle
+            const swipeTrigger = document.getElementById('swipe-trigger');
+            const folderPanel = document.getElementById('folder-panel');
+            const closeFolderPanel = document.getElementById('close-folder-panel');
+            
+            swipeTrigger.addEventListener('click', function() {
+                folderPanel.classList.add('visible');
+            });
+            
+            closeFolderPanel.addEventListener('click', function() {
+                folderPanel.classList.remove('visible');
+            });
+            
+            // Metadata panel toggle
+            const metadataTrigger = document.getElementById('metadata-trigger');
+            const metadataPanel = document.getElementById('metadata-panel');
+            const closeMetadataBtn = document.getElementById('close-metadata');
+            
+            metadataTrigger.addEventListener('click', function() {
+                metadataPanel.classList.toggle('expanded');
+                if (metadataPanel.classList.contains('expanded')) {
+                    metadataTrigger.style.opacity = '0';
+                } else {
+                    setTimeout(() => {
+                        metadataTrigger.style.opacity = '1';
+                    }, 300);
+                }
+            });
+            
+            closeMetadataBtn.addEventListener('click', function() {
+                metadataPanel.classList.remove('expanded');
+                setTimeout(() => {
+                    metadataTrigger.style.opacity = '1';
+                }, 300);
+            });
+            
+            // Tab switching in metadata panel
+            const tabs = document.querySelectorAll('.metadata-tab');
+            const sections = document.querySelectorAll('.metadata-section');
+            
+            tabs.forEach(tab => {
+                tab.addEventListener('click', function() {
+                    const tabName = this.getAttribute('data-tab');
+                    
+                    // Deactivate all tabs and sections
+                    tabs.forEach(t => t.classList.remove('active'));
+                    sections.forEach(s => s.classList.remove('active'));
+                    
+                    // Activate clicked tab and corresponding section
+                    this.classList.add('active');
+                    document.getElementById(tabName + '-section').classList.add('active');
+                });
+            });
+            
+            // Make star ratings interactive
+            function setupStarRating(container) {
+                const stars = container.querySelectorAll('.star');
+                stars.forEach((star, index) => {
+                    star.addEventListener('click', function() {
+                        // Toggle active state for clicked star and all previous stars
+                        stars.forEach((s, i) => {
+                            s.classList.toggle('active', i <= index);
+                        });
+                    });
+                });
+            }
+            
+            // Setup star ratings for both quality and content
+            setupStarRating(document.getElementById('quality-rating'));
+            setupStarRating(document.getElementById('content-rating'));
+            
+            // Simulate thumbnail selection
+            const thumbnails = document.querySelectorAll('.thumbnail');
+            thumbnails.forEach(thumb => {
+                thumb.addEventListener('click', function() {
+                    // Remove selection from all thumbnails
+                    thumbnails.forEach(t => t.classList.remove('selected'));
+                    
+                    // Add selection to clicked thumbnail
+                    this.classList.add('selected');
+                    
+                    // Update center image
+                    const centerImage = document.querySelector('.center-image');
+                    centerImage.src = this.src.replace('140x140', '800x600');
+                    centerImage.alt = this.alt;
+                    
+                    // Update stack indicator
+                    const stackPanel = this.closest('.stack-panel');
+                    const stackName = stackPanel.dataset.stack;
+                    document.getElementById('current-stack-indicator').textContent = 
+                        stackName.charAt(0).toUpperCase() + stackName.slice(1);
+                });
+            });
+        });
+    </script>
+</body>
+</html>
