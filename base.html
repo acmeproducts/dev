@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>SlideBox V3 Core</title>
+  <title>SlideBox V3 from V2 Shell</title>
   <style>
     html, body {
       margin: 0; padding: 0; height: 100%; overflow: hidden;
@@ -11,13 +11,13 @@
     }
     .app-container {
       display: grid;
-      height: 100vh;
       grid-template-rows: auto 1fr auto;
-      grid-template-columns: 10% 80% 10%;
+      grid-template-columns: 20% 60% 20%;
       grid-template-areas:
         "priority priority priority"
         "in center out"
         "trash trash trash";
+      height: 100vh;
     }
     .stack-panel {
       display: flex;
@@ -26,11 +26,11 @@
       overflow: hidden;
     }
     .stack-header {
-      background: #f0f0f0;
-      padding: 4px;
-      font-size: 14px;
-      cursor: pointer;
+      background: #eee;
+      padding: 6px;
       text-align: center;
+      cursor: pointer;
+      font-weight: bold;
     }
     .stack-content {
       overflow: auto;
@@ -38,7 +38,7 @@
       display: flex;
       flex-wrap: wrap;
       justify-content: center;
-      align-items: center;
+      align-items: flex-start;
       padding: 4px;
     }
     .vertical-stack .stack-content {
@@ -72,12 +72,40 @@
       max-height: 90%;
       object-fit: contain;
     }
-    .priority-stack { grid-area: priority; max-height: 110px; }
-    .trash-stack { grid-area: trash; max-height: 110px; }
+    .priority-stack { grid-area: priority; max-height: 120px; }
+    .trash-stack { grid-area: trash; max-height: 120px; }
     .in-stack { grid-area: in; }
     .out-stack { grid-area: out; }
     .collapsed-horizontal { max-height: 28px !important; }
     .collapsed-vertical { max-width: 28px !important; }
+
+    /* Metadata panel */
+    #metadata-panel {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 50%;
+      background: #fafafa;
+      border-top: 2px solid #ccc;
+      box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+      display: none;
+      padding: 12px;
+      overflow-y: auto;
+      z-index: 1000;
+    }
+    #metadata-toggle {
+      position: absolute;
+      bottom: 8px;
+      right: 8px;
+      z-index: 1001;
+      padding: 6px 12px;
+      background: #007bff;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
@@ -98,6 +126,7 @@
     </div>
     <div class="stack-panel center-stage" id="center">
       <img id="centerImage" class="center-image" src="https://picsum.photos/id/1011/300/200" />
+      <button id="metadata-toggle">Metadata</button>
     </div>
     <div class="stack-panel out-stack vertical-stack">
       <div class="stack-header" onclick="togglePanel(this)">Out</div>
@@ -115,15 +144,28 @@
     </div>
   </div>
 
+  <!-- Metadata panel -->
+  <div id="metadata-panel">
+    <h3>Metadata</h3>
+    <p><strong>Filename:</strong> dummy-image.png</p>
+    <p><strong>Dimensions:</strong> 300 x 200</p>
+    <p><strong>Type:</strong> PNG</p>
+    <p><strong>Date:</strong> 2025-05-06</p>
+  </div>
+
   <script>
     const centerImage = document.getElementById('centerImage');
     const thumbnails = document.querySelectorAll('.thumbnail');
+    const metadataPanel = document.getElementById('metadata-panel');
+    const toggleBtn = document.getElementById('metadata-toggle');
 
     thumbnails.forEach(thumb => {
       thumb.addEventListener('click', () => {
         thumbnails.forEach(t => t.classList.remove('selected'));
         thumb.classList.add('selected');
         centerImage.src = thumb.src;
+        // Dummy metadata population (can wire in real data later)
+        document.querySelector('#metadata-panel p:nth-child(2)').textContent = 'Filename: ' + thumb.src.split('/').pop();
       });
     });
 
@@ -132,6 +174,10 @@
       const isHorizontal = panel.classList.contains('horizontal-stack');
       panel.classList.toggle(isHorizontal ? 'collapsed-horizontal' : 'collapsed-vertical');
     }
+
+    toggleBtn.addEventListener('click', () => {
+      metadataPanel.style.display = metadataPanel.style.display === 'none' ? 'block' : 'none';
+    });
   </script>
 </body>
 </html>
