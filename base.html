@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>SlideBox V3 Core</title>
+  <style>
+    html, body {
+      margin: 0; padding: 0; height: 100%; overflow: hidden;
+      font-family: sans-serif;
+    }
+    .app-container {
+      display: grid;
+      height: 100vh;
+      grid-template-rows: auto 1fr auto;
+      grid-template-columns: 10% 80% 10%;
+      grid-template-areas:
+        "priority priority priority"
+        "in center out"
+        "trash trash trash";
+    }
+    .stack-panel {
+      display: flex;
+      flex-direction: column;
+      border: 1px solid #ccc;
+      overflow: hidden;
+    }
+    .stack-header {
+      background: #f0f0f0;
+      padding: 4px;
+      font-size: 14px;
+      cursor: pointer;
+      text-align: center;
+    }
+    .stack-content {
+      overflow: auto;
+      flex: 1;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+      padding: 4px;
+    }
+    .vertical-stack .stack-content {
+      flex-direction: column;
+    }
+    .horizontal-stack .stack-content {
+      flex-direction: row;
+    }
+    .thumbnail {
+      width: 70px;
+      height: 70px;
+      object-fit: contain;
+      margin: 4px;
+      border: 2px solid transparent;
+      cursor: pointer;
+    }
+    .thumbnail.selected {
+      border-color: orange;
+    }
+    .center-stage {
+      grid-area: center;
+      position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      background: #fff;
+      border: 1px solid #ccc;
+    }
+    .center-image {
+      max-width: 90%;
+      max-height: 90%;
+      object-fit: contain;
+    }
+    .priority-stack { grid-area: priority; max-height: 110px; }
+    .trash-stack { grid-area: trash; max-height: 110px; }
+    .in-stack { grid-area: in; }
+    .out-stack { grid-area: out; }
+    .collapsed-horizontal { max-height: 28px !important; }
+    .collapsed-vertical { max-width: 28px !important; }
+  </style>
+</head>
+<body>
+  <div class="app-container">
+    <div class="stack-panel priority-stack horizontal-stack">
+      <div class="stack-header" onclick="togglePanel(this)">Priority</div>
+      <div class="stack-content" id="priority">
+        <img src="https://picsum.photos/id/1011/300/200" class="thumbnail" />
+        <img src="https://picsum.photos/id/1012/300/300" class="thumbnail" />
+      </div>
+    </div>
+    <div class="stack-panel in-stack vertical-stack">
+      <div class="stack-header" onclick="togglePanel(this)">In</div>
+      <div class="stack-content" id="in">
+        <img src="https://picsum.photos/id/1013/200/400" class="thumbnail" />
+        <img src="https://picsum.photos/id/1014/300/300" class="thumbnail" />
+      </div>
+    </div>
+    <div class="stack-panel center-stage" id="center">
+      <img id="centerImage" class="center-image" src="https://picsum.photos/id/1011/300/200" />
+    </div>
+    <div class="stack-panel out-stack vertical-stack">
+      <div class="stack-header" onclick="togglePanel(this)">Out</div>
+      <div class="stack-content" id="out">
+        <img src="https://picsum.photos/id/1015/400/200" class="thumbnail" />
+        <img src="https://picsum.photos/id/1016/300/300" class="thumbnail" />
+      </div>
+    </div>
+    <div class="stack-panel trash-stack horizontal-stack">
+      <div class="stack-header" onclick="togglePanel(this)">Trash</div>
+      <div class="stack-content" id="trash">
+        <img src="https://picsum.photos/id/1017/300/400" class="thumbnail" />
+        <img src="https://picsum.photos/id/1018/300/300" class="thumbnail" />
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const centerImage = document.getElementById('centerImage');
+    const thumbnails = document.querySelectorAll('.thumbnail');
+
+    thumbnails.forEach(thumb => {
+      thumb.addEventListener('click', () => {
+        thumbnails.forEach(t => t.classList.remove('selected'));
+        thumb.classList.add('selected');
+        centerImage.src = thumb.src;
+      });
+    });
+
+    function togglePanel(header) {
+      const panel = header.parentElement;
+      const isHorizontal = panel.classList.contains('horizontal-stack');
+      panel.classList.toggle(isHorizontal ? 'collapsed-horizontal' : 'collapsed-vertical');
+    }
+  </script>
+</body>
+</html>
