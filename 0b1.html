@@ -1,139 +1,171 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>SlideBox Layout Test</title>
+    <title>SlideBox Layout Debug</title>
     <style>
-        body, html {
+        body {
             margin: 0;
             padding: 0;
-            height: 100%;
             font-family: sans-serif;
         }
         
-        .main-content {
-            display: grid;
-            grid-template-columns: 10% 80% 10%;
-            grid-template-areas:
-                "in center out";
-            height: 400px;
-            background-color: #f3f4f6;
+        .debug-panel {
+            background: #f0f0f0;
+            padding: 10px;
+            border-bottom: 1px solid #ccc;
         }
         
-        .panel {
-            border: 1px solid #ccc;
+        .layout-container {
+            display: grid;
+            height: 500px;
+            grid-template-columns: 10% 80% 10%;
+            grid-template-areas: "in center out";
+            border: 1px solid #999;
+            margin: 10px;
+        }
+        
+        .in-stack {
+            grid-area: in;
+            background-color: #ffdddd;
+            border-right: 1px solid #ccc;
+            display: flex;
+            flex-direction: column;
             overflow: hidden;
         }
         
-        .in-panel {
-            grid-area: in;
-            background-color: #ffdddd;
-        }
-        
-        .center-panel {
+        .center-stage {
             grid-area: center;
             background-color: #ddffdd;
             display: flex;
             justify-content: center;
             align-items: center;
+            position: relative;
         }
         
-        .out-panel {
+        .out-stack {
             grid-area: out;
             background-color: #ddddff;
+            border-left: 1px solid #ccc;
+            overflow: hidden;
         }
         
-        .center-content {
-            width: 80%;
-            height: 80%;
-            background-color: #008800;
+        .content-box {
+            background-color: #228822;
             color: white;
-            display: flex;
-            justify-content: center;
-            align-items: center;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
         }
         
-        .collapsed {
+        /* Collapsed states */
+        .in-stack.collapsed-vertical {
             max-width: 28px;
             min-width: 28px;
         }
-
-        .controls {
-            padding: 10px;
-            background: #eee;
+        
+        .out-stack.collapsed-vertical {
+            max-width: 28px;
+            min-width: 28px;
         }
         
-        #debug-info {
+        .debug-output {
+            margin-top: 20px;
+            padding: 10px;
             background: #fff;
             border: 1px solid #ccc;
-            padding: 10px;
-            margin-top: 10px;
             font-family: monospace;
+            white-space: pre-wrap;
         }
     </style>
 </head>
 <body>
-    <div class="controls">
-        <button id="toggle-in">Toggle In Panel</button>
-        <button id="toggle-out">Toggle Out Panel</button>
+    <div class="debug-panel">
+        <button id="toggle-in">Toggle In Stack</button>
+        <button id="toggle-out">Toggle Out Stack</button>
         <button id="reset">Reset Layout</button>
     </div>
     
-    <div class="main-content" id="main-content">
-        <div class="panel in-panel" id="in-panel">Left Panel</div>
-        <div class="panel center-panel" id="center-panel">
-            <div class="center-content">Center Content</div>
+    <div class="layout-container" id="layout-container">
+        <div class="in-stack" id="in-stack">
+            <div style="padding:10px">In Stack</div>
         </div>
-        <div class="panel out-panel" id="out-panel">Right Panel</div>
+        <div class="center-stage" id="center-stage">
+            <div class="content-box">Center Content<br>Should Be Visible</div>
+        </div>
+        <div class="out-stack" id="out-stack">
+            <div style="padding:10px">Out Stack</div>
+        </div>
     </div>
     
-    <div id="debug-info">
-        Grid Template: <span id="grid-template">10% 80% 10%</span>
+    <div class="debug-output" id="debug-output">
+        Current Layout: default
     </div>
     
     <script>
-        const inPanel = document.getElementById('in-panel');
-        const outPanel = document.getElementById('out-panel');
-        const mainContent = document.getElementById('main-content');
-        const gridTemplateDisplay = document.getElementById('grid-template');
+        // Get elements
+        const layoutContainer = document.getElementById('layout-container');
+        const inStack = document.getElementById('in-stack');
+        const outStack = document.getElementById('out-stack');
+        const debugOutput = document.getElementById('debug-output');
         
+        // Add event listeners
         document.getElementById('toggle-in').addEventListener('click', function() {
-            inPanel.classList.toggle('collapsed');
+            inStack.classList.toggle('collapsed-vertical');
             adjustLayout();
         });
         
         document.getElementById('toggle-out').addEventListener('click', function() {
-            outPanel.classList.toggle('collapsed');
+            outStack.classList.toggle('collapsed-vertical');
             adjustLayout();
         });
         
         document.getElementById('reset').addEventListener('click', function() {
-            inPanel.classList.remove('collapsed');
-            outPanel.classList.remove('collapsed');
+            inStack.classList.remove('collapsed-vertical');
+            outStack.classList.remove('collapsed-vertical');
             adjustLayout();
         });
         
+        // Adjust layout based on which stacks are collapsed
         function adjustLayout() {
-            const inCollapsed = inPanel.classList.contains('collapsed');
-            const outCollapsed = outPanel.classList.contains('collapsed');
+            // Check which ones are collapsed
+            const inCollapsed = inStack.classList.contains('collapsed-vertical');
+            const outCollapsed = outStack.classList.contains('collapsed-vertical');
             
+            // Calculate column template based on collapsed states
             let columnsTemplate;
-            
             if (inCollapsed && outCollapsed) {
                 columnsTemplate = '28px calc(100% - 56px) 28px';
             } else if (inCollapsed) {
                 columnsTemplate = '28px calc(100% - 28px - 10%) 10%';
             } else if (outCollapsed) {
-                columnsTemplate = '10% calc(100% - 28px - 10%) 28px'; 
+                columnsTemplate = '10% calc(100% - 28px - 10%) 28px';
             } else {
                 columnsTemplate = '10% 80% 10%';
             }
             
-            // Apply the new template
-            mainContent.style.gridTemplateColumns = columnsTemplate;
-            gridTemplateDisplay.textContent = columnsTemplate;
+            // Apply new grid template
+            layoutContainer.style.gridTemplateColumns = columnsTemplate;
             
-            console.log(`Layout adjusted: ${columnsTemplate}`);
+            // Calculate dimensions
+            const containerWidth = layoutContainer.offsetWidth;
+            const inWidth = inStack.offsetWidth;
+            const centerWidth = document.getElementById('center-stage').offsetWidth;
+            const outWidth = outStack.offsetWidth;
+            
+            // Update debug output
+            debugOutput.textContent = `
+Layout Configuration:
+- In Stack: ${inCollapsed ? 'Collapsed' : 'Expanded'} (${inWidth}px)
+- Center: ${centerWidth}px
+- Out Stack: ${outCollapsed ? 'Collapsed' : 'Expanded'} (${outWidth}px)
+- Container Width: ${containerWidth}px
+- Grid Template: ${columnsTemplate}
+- Total Width: ${inWidth + centerWidth + outWidth}px
+            `;
         }
+        
+        // Initialize with a slight delay to ensure accurate measurements
+        setTimeout(adjustLayout, 100);
     </script>
 </body>
 </html>
