@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>SlideBox Layout Test</title>
+    <style>
+        body, html {
+            margin: 0;
+            padding: 0;
+            height: 100%;
+            font-family: sans-serif;
+        }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 10% 80% 10%;
+            grid-template-areas:
+                "in center out";
+            height: 400px;
+            background-color: #f3f4f6;
+        }
+        
+        .panel {
+            border: 1px solid #ccc;
+            overflow: hidden;
+        }
+        
+        .in-panel {
+            grid-area: in;
+            background-color: #ffdddd;
+        }
+        
+        .center-panel {
+            grid-area: center;
+            background-color: #ddffdd;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .out-panel {
+            grid-area: out;
+            background-color: #ddddff;
+        }
+        
+        .center-content {
+            width: 80%;
+            height: 80%;
+            background-color: #008800;
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .collapsed {
+            max-width: 28px;
+            min-width: 28px;
+        }
+
+        .controls {
+            padding: 10px;
+            background: #eee;
+        }
+        
+        #debug-info {
+            background: #fff;
+            border: 1px solid #ccc;
+            padding: 10px;
+            margin-top: 10px;
+            font-family: monospace;
+        }
+    </style>
+</head>
+<body>
+    <div class="controls">
+        <button id="toggle-in">Toggle In Panel</button>
+        <button id="toggle-out">Toggle Out Panel</button>
+        <button id="reset">Reset Layout</button>
+    </div>
+    
+    <div class="main-content" id="main-content">
+        <div class="panel in-panel" id="in-panel">Left Panel</div>
+        <div class="panel center-panel" id="center-panel">
+            <div class="center-content">Center Content</div>
+        </div>
+        <div class="panel out-panel" id="out-panel">Right Panel</div>
+    </div>
+    
+    <div id="debug-info">
+        Grid Template: <span id="grid-template">10% 80% 10%</span>
+    </div>
+    
+    <script>
+        const inPanel = document.getElementById('in-panel');
+        const outPanel = document.getElementById('out-panel');
+        const mainContent = document.getElementById('main-content');
+        const gridTemplateDisplay = document.getElementById('grid-template');
+        
+        document.getElementById('toggle-in').addEventListener('click', function() {
+            inPanel.classList.toggle('collapsed');
+            adjustLayout();
+        });
+        
+        document.getElementById('toggle-out').addEventListener('click', function() {
+            outPanel.classList.toggle('collapsed');
+            adjustLayout();
+        });
+        
+        document.getElementById('reset').addEventListener('click', function() {
+            inPanel.classList.remove('collapsed');
+            outPanel.classList.remove('collapsed');
+            adjustLayout();
+        });
+        
+        function adjustLayout() {
+            const inCollapsed = inPanel.classList.contains('collapsed');
+            const outCollapsed = outPanel.classList.contains('collapsed');
+            
+            let columnsTemplate;
+            
+            if (inCollapsed && outCollapsed) {
+                columnsTemplate = '28px calc(100% - 56px) 28px';
+            } else if (inCollapsed) {
+                columnsTemplate = '28px calc(100% - 28px - 10%) 10%';
+            } else if (outCollapsed) {
+                columnsTemplate = '10% calc(100% - 28px - 10%) 28px'; 
+            } else {
+                columnsTemplate = '10% 80% 10%';
+            }
+            
+            // Apply the new template
+            mainContent.style.gridTemplateColumns = columnsTemplate;
+            gridTemplateDisplay.textContent = columnsTemplate;
+            
+            console.log(`Layout adjusted: ${columnsTemplate}`);
+        }
+    </script>
+</body>
+</html>
