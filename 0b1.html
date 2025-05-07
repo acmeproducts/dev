@@ -1,171 +1,905 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>SlideBox Layout Debug</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SlideBox Layout Proving Ground</title>
     <style>
         body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
             margin: 0;
-            padding: 0;
-            font-family: sans-serif;
+            padding: 20px;
         }
         
-        .debug-panel {
-            background: #f0f0f0;
+        .control-panel {
+            background: #f5f5f5;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+        }
+        
+        .upload-section {
+            margin-top: 10px;
             padding: 10px;
-            border-bottom: 1px solid #ccc;
+            background: #fff;
+            border: 1px solid #ddd;
+            border-radius: 4px;
         }
         
-        .layout-container {
-            display: grid;
+        .test-container {
+            border: 2px solid #ddd;
+            margin-bottom: 20px;
             height: 500px;
+        }
+        
+        /* Original Layout (Problem reproduction) */
+        .main-content-original {
+            display: grid;
+            height: 100%;
             grid-template-columns: 10% 80% 10%;
-            grid-template-areas: "in center out";
-            border: 1px solid #999;
-            margin: 10px;
+            grid-template-rows: auto 1fr auto;
+            grid-template-areas:
+                "priority priority priority"
+                "in center out"
+                "trash trash trash";
+            background-color: #f3f4f6;
+        }
+        
+        /* Solution 1: FR-based Grid */
+        .main-content-solution1 {
+            display: grid;
+            height: 100%;
+            grid-template-columns: 10% minmax(0, 1fr) 10%;
+            grid-template-rows: auto 1fr auto;
+            grid-template-areas:
+                "priority priority priority"
+                "in center out"
+                "trash trash trash";
+            background-color: #f3f4f6;
+        }
+        
+        /* Solution 2: Flexbox Centering */
+        .main-content-solution2 {
+            display: grid;
+            height: 100%;
+            grid-template-columns: 10% 80% 10%;
+            grid-template-rows: auto 1fr auto;
+            grid-template-areas:
+                "priority priority priority"
+                "in center out"
+                "trash trash trash";
+            background-color: #f3f4f6;
+        }
+        
+        /* Common panel styles */
+        .stack-panel {
+            border: 1px solid #ccc;
+            overflow: hidden;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .stack-header {
+            padding: 6px;
+            background-color: #eee;
+            border-bottom: 1px solid #ccc;
+            font-size: 12px;
         }
         
         .in-stack {
             grid-area: in;
-            background-color: #ffdddd;
-            border-right: 1px solid #ccc;
-            display: flex;
-            flex-direction: column;
-            overflow: hidden;
+            background-color: #fff0f0;
         }
         
         .center-stage {
             grid-area: center;
-            background-color: #ddffdd;
-            display: flex;
-            justify-content: center;
-            align-items: center;
             position: relative;
+            background-color: #f0fff0;
+        }
+        
+        /* Original center image styling */
+        .center-image-original {
+            max-height: 90%;
+            max-width: 90%;
+            object-fit: contain;
+        }
+        
+        /* Solution 2 styling */
+        .center-image-solution2 {
+            max-height: 100%;
+            max-width: 100%;
+            display: block;
+            margin: auto;
+            position: relative;
+            top: 0;
+            left: 0;
+            transform: none;
+        }
+        
+        .center-image-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            width: 100%;
         }
         
         .out-stack {
             grid-area: out;
-            background-color: #ddddff;
-            border-left: 1px solid #ccc;
-            overflow: hidden;
+            background-color: #f0f0ff;
         }
         
-        .content-box {
-            background-color: #228822;
-            color: white;
-            padding: 20px;
-            border-radius: 8px;
-            text-align: center;
+        .priority-stack {
+            grid-area: priority;
+            max-height: 50px;
+            background-color: #fffff0;
+        }
+        
+        .trash-stack {
+            grid-area: trash;
+            max-height: 50px;
+            background-color: #f0ffff;
         }
         
         /* Collapsed states */
-        .in-stack.collapsed-vertical {
+        .stack-panel.collapsed-vertical {
             max-width: 28px;
             min-width: 28px;
         }
         
-        .out-stack.collapsed-vertical {
-            max-width: 28px;
-            min-width: 28px;
-        }
-        
-        .debug-output {
-            margin-top: 20px;
-            padding: 10px;
+        .debug-panel {
             background: #fff;
-            border: 1px solid #ccc;
+            border: 1px solid #ddd;
+            padding: 15px;
+            margin-top: 20px;
             font-family: monospace;
+            font-size: 12px;
             white-space: pre-wrap;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .tabs {
+            display: flex;
+            border-bottom: 1px solid #ddd;
+            margin-bottom: 20px;
+        }
+        
+        .tab {
+            padding: 8px 16px;
+            cursor: pointer;
+            background: #f0f0f0;
+            border: 1px solid #ddd;
+            border-bottom: none;
+            margin-right: 4px;
+            border-radius: 4px 4px 0 0;
+        }
+        
+        .tab.active {
+            background: white;
+            font-weight: bold;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+
+        button {
+            padding: 8px 12px;
+            margin-right: 8px;
+            cursor: pointer;
+        }
+        
+        .image-preview {
+            max-width: 150px;
+            max-height: 100px;
+            margin-top: 10px;
+            border: 1px solid #ddd;
+        }
+        
+        .image-meta {
+            margin-top: 10px;
+            font-size: 12px;
+        }
+        
+        .preset-images {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin-top: 10px;
+        }
+        
+        .preset-image {
+            width: 60px;
+            height: 60px;
+            object-fit: cover;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        .preset-image:hover {
+            border-color: #3b82f6;
+        }
+        
+        /* Test results panel */
+        .test-results-panel {
+            background: #f8f8f8;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 15px;
+            margin-top: 20px;
+        }
+        
+        .test-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .copy-button {
+            background: #3b82f6;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            padding: 8px 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .copy-button:hover {
+            background: #2563eb;
+        }
+        
+        .copy-icon {
+            width: 16px;
+            height: 16px;
+        }
+        
+        .test-name-input {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            width: 300px;
+            margin-right: 10px;
+        }
+        
+        .results-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 15px;
+        }
+        
+        .results-table th, .results-table td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        
+        .results-table th {
+            background: #f1f1f1;
+        }
+        
+        .results-table tr:nth-child(even) {
+            background: #f9f9f9;
+        }
+        
+        .pass {
+            color: #16a34a;
+            font-weight: bold;
+        }
+        
+        .fail {
+            color: #dc2626;
+            font-weight: bold;
+        }
+        
+        .warning {
+            color: #ca8a04;
+            font-weight: bold;
         }
     </style>
 </head>
 <body>
-    <div class="debug-panel">
-        <button id="toggle-in">Toggle In Stack</button>
-        <button id="toggle-out">Toggle Out Stack</button>
-        <button id="reset">Reset Layout</button>
+    <h1>SlideBox Layout Proving Ground</h1>
+    
+    <div class="tabs">
+        <div class="tab active" data-tab="original">Original (Issue Reproduction)</div>
+        <div class="tab" data-tab="solution1">Solution 1: Grid Template</div>
+        <div class="tab" data-tab="solution2">Solution 2: Flexbox Centering</div>
     </div>
     
-    <div class="layout-container" id="layout-container">
-        <div class="in-stack" id="in-stack">
-            <div style="padding:10px">In Stack</div>
+    <div class="control-panel">
+        <div>
+            <button id="toggle-in">Toggle In Stack</button>
+            <button id="toggle-out">Toggle Out Stack</button>
+            <button id="reset">Reset Layout</button>
+            <button id="run-test">Run Test & Generate Results</button>
         </div>
-        <div class="center-stage" id="center-stage">
-            <div class="content-box">Center Content<br>Should Be Visible</div>
+        
+        <div class="upload-section">
+            <h3>Image Testing</h3>
+            
+            <div>
+                <label for="image-upload">Upload your own image:</label>
+                <input type="file" id="image-upload" accept="image/*">
+                <div id="image-preview-container">
+                    <img id="image-preview" class="image-preview" style="display: none;">
+                    <div id="image-meta" class="image-meta"></div>
+                </div>
+            </div>
+            
+            <div>
+                <h4 style="margin-top: 15px; margin-bottom: 5px;">Or try preset test images:</h4>
+                <div class="preset-images">
+                    <!-- Standard aspect ratio -->
+                    <img src="https://source.unsplash.com/featured/800x600?nature" class="preset-image" data-type="standard" title="Standard Image (4:3)">
+                    
+                    <!-- Very wide image -->
+                    <img src="https://source.unsplash.com/featured/1600x400?landscape" class="preset-image" data-type="wide" title="Wide Image (4:1)">
+                    
+                    <!-- Very tall image -->
+                    <img src="https://source.unsplash.com/featured/400x1600?skyscraper" class="preset-image" data-type="tall" title="Tall Image (1:4)">
+                    
+                    <!-- Very large image -->
+                    <img src="https://source.unsplash.com/featured/3000x2000?panorama" class="preset-image" data-type="large" title="Large Image (3000x2000)">
+                    
+                    <!-- Very small image -->
+                    <img src="https://source.unsplash.com/featured/200x150?icon" class="preset-image" data-type="small" title="Small Image (200x150)">
+                </div>
+            </div>
         </div>
-        <div class="out-stack" id="out-stack">
-            <div style="padding:10px">Out Stack</div>
+        
+        <div style="margin-top: 10px">
+            <span>Center Panel Width: </span>
+            <span id="center-width-display">Waiting...</span>
         </div>
     </div>
     
-    <div class="debug-output" id="debug-output">
-        Current Layout: default
+    <!-- Original Layout -->
+    <div class="tab-content active" id="original-tab">
+        <h2>Original Layout (Issue Reproduction)</h2>
+        <div class="test-container">
+            <div class="main-content-original" id="main-content-original">
+                <div class="stack-panel priority-stack">
+                    <div class="stack-header">Priority Stack</div>
+                </div>
+                
+                <div class="stack-panel in-stack" id="in-stack-original">
+                    <div class="stack-header">In Stack</div>
+                </div>
+                
+                <div class="stack-panel center-stage" id="center-stage-original">
+                    <img id="center-image-original" class="center-image-original" src="https://source.unsplash.com/featured/800x600?nature" alt="Test image">
+                </div>
+                
+                <div class="stack-panel out-stack" id="out-stack-original">
+                    <div class="stack-header">Out Stack</div>
+                </div>
+                
+                <div class="stack-panel trash-stack">
+                    <div class="stack-header">Trash Stack</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Solution 1: Grid Template -->
+    <div class="tab-content" id="solution1-tab">
+        <h2>Solution 1: Grid Template Adjustment</h2>
+        <div class="test-container">
+            <div class="main-content-solution1" id="main-content-solution1">
+                <div class="stack-panel priority-stack">
+                    <div class="stack-header">Priority Stack</div>
+                </div>
+                
+                <div class="stack-panel in-stack" id="in-stack-solution1">
+                    <div class="stack-header">In Stack</div>
+                </div>
+                
+                <div class="stack-panel center-stage" id="center-stage-solution1">
+                    <img id="center-image-solution1" class="center-image-original" src="https://source.unsplash.com/featured/800x600?nature" alt="Test image">
+                </div>
+                
+                <div class="stack-panel out-stack" id="out-stack-solution1">
+                    <div class="stack-header">Out Stack</div>
+                </div>
+                
+                <div class="stack-panel trash-stack">
+                    <div class="stack-header">Trash Stack</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Solution 2: Flexbox Centering -->
+    <div class="tab-content" id="solution2-tab">
+        <h2>Solution 2: Flexbox Centering</h2>
+        <div class="test-container">
+            <div class="main-content-solution2" id="main-content-solution2">
+                <div class="stack-panel priority-stack">
+                    <div class="stack-header">Priority Stack</div>
+                </div>
+                
+                <div class="stack-panel in-stack" id="in-stack-solution2">
+                    <div class="stack-header">In Stack</div>
+                </div>
+                
+                <div class="stack-panel center-stage" id="center-stage-solution2">
+                    <div class="center-image-container">
+                        <img id="center-image-solution2" class="center-image-solution2" src="https://source.unsplash.com/featured/800x600?nature" alt="Test image">
+                    </div>
+                </div>
+                
+                <div class="stack-panel out-stack" id="out-stack-solution2">
+                    <div class="stack-header">Out Stack</div>
+                </div>
+                
+                <div class="stack-panel trash-stack">
+                    <div class="stack-header">Trash Stack</div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Test Results Panel -->
+    <div class="test-results-panel">
+        <div class="test-header">
+            <div>
+                <label for="test-name">Test Name:</label>
+                <input type="text" id="test-name" class="test-name-input" placeholder="e.g., Wide Image with In Stack Collapsed" value="Test Case">
+            </div>
+            <button id="copy-results" class="copy-button">
+                <svg class="copy-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                </svg>
+                Copy Results
+            </button>
+        </div>
+        
+        <table class="results-table">
+            <thead>
+                <tr>
+                    <th>Metric</th>
+                    <th>Original</th>
+                    <th>Solution 1 (Grid)</th>
+                    <th>Solution 2 (Flexbox)</th>
+                </tr>
+            </thead>
+            <tbody id="results-table-body">
+                <tr>
+                    <td>Center Width</td>
+                    <td>--</td>
+                    <td>--</td>
+                    <td>--</td>
+                </tr>
+                <tr>
+                    <td>Image Visible</td>
+                    <td>--</td>
+                    <td>--</td>
+                    <td>--</td>
+                </tr>
+                <tr>
+                    <td>Aspect Ratio Preserved</td>
+                    <td>--</td>
+                    <td>--</td>
+                    <td>--</td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <div id="test-summary"></div>
+    </div>
+    
+    <div class="debug-panel" id="debug-panel">
+        Waiting for interaction...
     </div>
     
     <script>
-        // Get elements
-        const layoutContainer = document.getElementById('layout-container');
-        const inStack = document.getElementById('in-stack');
-        const outStack = document.getElementById('out-stack');
-        const debugOutput = document.getElementById('debug-output');
+        // Tab switching
+        document.querySelectorAll('.tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                // Reset active tabs
+                document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+                document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+                
+                // Set active tab
+                this.classList.add('active');
+                const tabName = this.dataset.tab;
+                document.getElementById(tabName + '-tab').classList.add('active');
+                
+                // Update measurements
+                updateMeasurements();
+            });
+        });
         
-        // Add event listeners
+        // Control buttons
         document.getElementById('toggle-in').addEventListener('click', function() {
+            const activeTab = document.querySelector('.tab.active').dataset.tab;
+            const inStack = document.getElementById('in-stack-' + activeTab);
             inStack.classList.toggle('collapsed-vertical');
-            adjustLayout();
+            adjustLayout(activeTab);
         });
         
         document.getElementById('toggle-out').addEventListener('click', function() {
+            const activeTab = document.querySelector('.tab.active').dataset.tab;
+            const outStack = document.getElementById('out-stack-' + activeTab);
             outStack.classList.toggle('collapsed-vertical');
-            adjustLayout();
+            adjustLayout(activeTab);
         });
         
         document.getElementById('reset').addEventListener('click', function() {
-            inStack.classList.remove('collapsed-vertical');
-            outStack.classList.remove('collapsed-vertical');
-            adjustLayout();
+            const activeTab = document.querySelector('.tab.active').dataset.tab;
+            document.getElementById('in-stack-' + activeTab).classList.remove('collapsed-vertical');
+            document.getElementById('out-stack-' + activeTab).classList.remove('collapsed-vertical');
+            adjustLayout(activeTab);
         });
         
-        // Adjust layout based on which stacks are collapsed
-        function adjustLayout() {
+        // Run test and generate results
+        document.getElementById('run-test').addEventListener('click', function() {
+            generateTestResults();
+        });
+        
+        // Copy results
+        document.getElementById('copy-results').addEventListener('click', function() {
+            copyTestResults();
+        });
+        
+        // Image upload handling
+        document.getElementById('image-upload').addEventListener('change', function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+            
+            const reader = new FileReader();
+            reader.onload = function(event) {
+                // Create a new image to get dimensions
+                const img = new Image();
+                img.onload = function() {
+                    // Show preview
+                    const preview = document.getElementById('image-preview');
+                    preview.src = event.target.result;
+                    preview.style.display = 'block';
+                    
+                    // Display image metadata
+                    document.getElementById('image-meta').textContent = 
+                        `Image: ${file.name} - ${img.naturalWidth}x${img.naturalHeight} pixels - ${(file.size / 1024).toFixed(1)} KB`;
+                    
+                    // Set this image in all three test layouts
+                    document.getElementById('center-image-original').src = event.target.result;
+                    document.getElementById('center-image-solution1').src = event.target.result;
+                    document.getElementById('center-image-solution2').src = event.target.result;
+                    
+                    // Give time for the images to load
+                    setTimeout(updateMeasurements, 100);
+                    
+                    // Update test name
+                    document.getElementById('test-name').value = `Test: ${file.name}`;
+                };
+                img.src = event.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+        
+        // Preset image selection
+        document.querySelectorAll('.preset-image').forEach(img => {
+            img.addEventListener('click', function() {
+                // Show as preview
+                const preview = document.getElementById('image-preview');
+                preview.src = this.src;
+                preview.style.display = 'block';
+                
+                // Get image type
+                const imageType = this.dataset.type;
+                
+                // Display image metadata
+                const metaElement = document.getElementById('image-meta');
+                metaElement.textContent = `Preset Image: ${imageType} (Loading dimensions...)`;
+                
+                // Create a new image to get dimensions
+                const dimensionCheck = new Image();
+                dimensionCheck.onload = function() {
+                    metaElement.textContent = `Preset Image: ${imageType} - ${dimensionCheck.naturalWidth}x${dimensionCheck.naturalHeight} pixels`;
+                    
+                    // Update test name
+                    document.getElementById('test-name').value = `Test: ${imageType} image`;
+                };
+                dimensionCheck.src = this.src;
+                
+                // Set this image in all three test layouts
+                document.getElementById('center-image-original').src = this.src;
+                document.getElementById('center-image-solution1').src = this.src;
+                document.getElementById('center-image-solution2').src = this.src;
+                
+                // Give time for the images to load
+                setTimeout(updateMeasurements, 100);
+            });
+        });
+        
+        function adjustLayout(tabId) {
+            const inStack = document.getElementById('in-stack-' + tabId);
+            const outStack = document.getElementById('out-stack-' + tabId);
+            const mainContent = document.getElementById('main-content-' + tabId);
+            
             // Check which ones are collapsed
             const inCollapsed = inStack.classList.contains('collapsed-vertical');
             const outCollapsed = outStack.classList.contains('collapsed-vertical');
             
-            // Calculate column template based on collapsed states
+            // Calculate column template
             let columnsTemplate;
-            if (inCollapsed && outCollapsed) {
-                columnsTemplate = '28px calc(100% - 56px) 28px';
-            } else if (inCollapsed) {
-                columnsTemplate = '28px calc(100% - 28px - 10%) 10%';
-            } else if (outCollapsed) {
-                columnsTemplate = '10% calc(100% - 28px - 10%) 28px';
-            } else {
-                columnsTemplate = '10% 80% 10%';
+            
+            if (tabId === 'original' || tabId === 'solution2') {
+                // Original calculation with percentages
+                if (inCollapsed && outCollapsed) {
+                    columnsTemplate = '28px calc(100% - 56px) 28px';
+                } else if (inCollapsed) {
+                    columnsTemplate = '28px calc(100% - 28px - 10%) 10%';
+                } else if (outCollapsed) {
+                    columnsTemplate = '10% calc(100% - 28px - 10%) 28px';
+                } else {
+                    columnsTemplate = '10% 80% 10%';
+                }
+            } else if (tabId === 'solution1') {
+                // Solution 1: Using fr units
+                if (inCollapsed && outCollapsed) {
+                    columnsTemplate = '28px minmax(0, 1fr) 28px';
+                } else if (inCollapsed) {
+                    columnsTemplate = '28px minmax(0, 1fr) 10%';
+                } else if (outCollapsed) {
+                    columnsTemplate = '10% minmax(0, 1fr) 28px';
+                } else {
+                    columnsTemplate = '10% minmax(0, 1fr) 10%';
+                }
             }
             
             // Apply new grid template
-            layoutContainer.style.gridTemplateColumns = columnsTemplate;
+            if (mainContent) {
+                mainContent.style.gridTemplateColumns = columnsTemplate;
+            }
             
-            // Calculate dimensions
-            const containerWidth = layoutContainer.offsetWidth;
-            const inWidth = inStack.offsetWidth;
-            const centerWidth = document.getElementById('center-stage').offsetWidth;
-            const outWidth = outStack.offsetWidth;
+            // Update measurements
+            updateMeasurements();
+        }
+        
+        function updateMeasurements() {
+            const activeTab = document.querySelector('.tab.active').dataset.tab;
             
-            // Update debug output
-            debugOutput.textContent = `
-Layout Configuration:
+            // Elements for the current tab
+            const inStack = document.getElementById('in-stack-' + activeTab);
+            const outStack = document.getElementById('out-stack-' + activeTab);
+            const centerStage = document.getElementById('center-stage-' + activeTab);
+            const centerImage = document.getElementById('center-image-' + activeTab);
+            const mainContent = document.getElementById('main-content-' + activeTab);
+            
+            // Check collapsed states
+            const inCollapsed = inStack?.classList.contains('collapsed-vertical');
+            const outCollapsed = outStack?.classList.contains('collapsed-vertical');
+            
+            // Measurements
+            const inWidth = inStack?.offsetWidth || 0;
+            const centerWidth = centerStage?.offsetWidth || 0;
+            const outWidth = outStack?.offsetWidth || 0;
+            const containerWidth = mainContent?.offsetWidth || 0;
+            
+            // Update center width display
+            document.getElementById('center-width-display').textContent = `${centerWidth}px`;
+            
+            // Image measurements
+            const imageNaturalWidth = centerImage?.naturalWidth || 0;
+            const imageNaturalHeight = centerImage?.naturalHeight || 0;
+            const imageDisplayWidth = centerImage?.offsetWidth || 0;
+            const imageDisplayHeight = centerImage?.offsetHeight || 0;
+            
+            // Computed styles
+            const centerStyles = centerStage ? window.getComputedStyle(centerStage) : {};
+            const imageStyles = centerImage ? window.getComputedStyle(centerImage) : {};
+            
+            // Grid template
+            const gridTemplate = mainContent?.style.gridTemplateColumns || 'Not set';
+            
+            // Calculate image scaling
+            let scaleFactor = 'N/A';
+            if (imageNaturalWidth > 0 && imageDisplayWidth > 0) {
+                scaleFactor = (imageDisplayWidth / imageNaturalWidth).toFixed(2);
+            }
+            
+            // Calculate if aspect ratio is preserved
+            let aspectRatioOriginal = 'N/A';
+            let aspectRatioDisplay = 'N/A';
+            let aspectRatioPreserved = 'N/A';
+            
+            if (imageNaturalWidth > 0 && imageNaturalHeight > 0) {
+                aspectRatioOriginal = (imageNaturalWidth / imageNaturalHeight).toFixed(2);
+                aspectRatioDisplay = (imageDisplayWidth / imageDisplayHeight).toFixed(2);
+                aspectRatioPreserved = Math.abs(aspectRatioOriginal - aspectRatioDisplay) < 0.1 ? 'Yes' : 'No';
+            }
+            
+            // Debug output
+            const debugPanel = document.getElementById('debug-panel');
+            debugPanel.textContent = `
+Layout Measurements for "${activeTab}":
+--------------------------------------
+Stack States:
 - In Stack: ${inCollapsed ? 'Collapsed' : 'Expanded'} (${inWidth}px)
-- Center: ${centerWidth}px
 - Out Stack: ${outCollapsed ? 'Collapsed' : 'Expanded'} (${outWidth}px)
+
+Width Measurements:
 - Container Width: ${containerWidth}px
-- Grid Template: ${columnsTemplate}
-- Total Width: ${inWidth + centerWidth + outWidth}px
+- In Stack Width: ${inWidth}px
+- Center Stage Width: ${centerWidth}px
+- Out Stack Width: ${outWidth}px
+- Sum of Parts: ${inWidth + centerWidth + outWidth}px
+
+Image Measurements:
+- Natural Size: ${imageNaturalWidth}x${imageNaturalHeight}
+- Display Size: ${imageDisplayWidth}x${imageDisplayHeight}
+- Scale Factor: ${scaleFactor}x
+- Aspect Ratio (Original): ${aspectRatioOriginal}
+- Aspect Ratio (Display): ${aspectRatioDisplay}
+- Aspect Ratio Preserved: ${aspectRatioPreserved}
+
+CSS Properties:
+- Grid Template: ${gridTemplate}
+- Center Stage Display: ${centerStyles.display || 'N/A'}
+- Center Stage Position: ${centerStyles.position || 'N/A'}
+- Center Stage Overflow: ${centerStyles.overflow || 'N/A'}
+- Image Display: ${imageStyles.display || 'N/A'}
+- Image Position: ${imageStyles.position || 'N/A'}
+- Image Object-Fit: ${imageStyles.objectFit || 'N/A'}
+- Image Max-Width: ${imageStyles.maxWidth || 'N/A'}
+- Image Max-Height: ${imageStyles.maxHeight || 'N/A'}
+
+Visibility:
+- Center Stage Visible: ${centerWidth > 0 ? 'Yes' : 'No'}
+- Image Visible: ${imageDisplayWidth > 0 ? 'Yes' : 'No'}
             `;
         }
         
-        // Initialize with a slight delay to ensure accurate measurements
-        setTimeout(adjustLayout, 100);
+        function generateTestResults() {
+            // Get stack states for label
+            const inCollapseState = document.getElementById('in-stack-original').classList.contains('collapsed-vertical') ? 'Collapsed' : 'Expanded';
+            const outCollapseState = document.getElementById('out-stack-original').classList.contains('collapsed-vertical') ? 'Collapsed' : 'Expanded';
+            
+            // Store test state information
+            const testStateInfo = {
+                inStack: inCollapseState,
+                outStack: outCollapseState,
+                timestamp: new Date().toLocaleString()
+            };
+            
+            // Collect results for all three layouts
+            const results = {};
+            ['original', 'solution1', 'solution2'].forEach(layout => {
+                const centerStage = document.getElementById('center-stage-' + layout);
+                const centerImage = document.getElementById('center-image-' + layout);
+                
+                // Measurements
+                const centerWidth = centerStage?.offsetWidth || 0;
+                const imageDisplayWidth = centerImage?.offsetWidth || 0;
+                const imageDisplayHeight = centerImage?.offsetHeight || 0;
+                
+                // Image natural size
+                const imageNaturalWidth = centerImage?.naturalWidth || 0;
+                const imageNaturalHeight = centerImage?.naturalHeight || 0;
+                
+                // Calculate aspect ratio preservation
+                let aspectRatioPreserved = 'N/A';
+                if (imageNaturalWidth > 0 && imageNaturalHeight > 0 && imageDisplayWidth > 0 && imageDisplayHeight > 0) {
+                    const originalRatio = imageNaturalWidth / imageNaturalHeight;
+                    const displayRatio = imageDisplayWidth / imageDisplayHeight;
+                    aspectRatioPreserved = Math.abs(originalRatio - displayRatio) < 0.1 ? 'Yes' : 'No';
+                }
+                
+                // Store results
+                results[layout] = {
+                    centerWidth: centerWidth,
+                    imageVisible: imageDisplayWidth > 0 ? 'Yes' : 'No',
+                    aspectRatioPreserved: aspectRatioPreserved
+                };
+            });
+            
+            // Update results table
+            const tableBody = document.getElementById('results-table-body');
+            tableBody.innerHTML = `
+                <tr>
+                    <td>Center Width</td>
+                    <td>${results.original.centerWidth}px</td>
+                    <td>${results.solution1.centerWidth}px</td>
+                    <td>${results.solution2.centerWidth}px</td>
+                </tr>
+                <tr>
+                    <td>Image Visible</td>
+                    <td class="${results.original.imageVisible === 'Yes' ? 'pass' : 'fail'}">${results.original.imageVisible}</td>
+                    <td class="${results.solution1.imageVisible === 'Yes' ? 'pass' : 'fail'}">${results.solution1.imageVisible}</td>
+                    <td class="${results.solution2.imageVisible === 'Yes' ? 'pass' : 'fail'}">${results.solution2.imageVisible}</td>
+                </tr>
+                <tr>
+                    <td>Aspect Ratio Preserved</td>
+                    <td class="${results.original.aspectRatioPreserved === 'Yes' ? 'pass' : 'fail'}">${results.original.aspectRatioPreserved}</td>
+                    <td class="${results.solution1.aspectRatioPreserved === 'Yes' ? 'pass' : 'fail'}">${results.solution1.aspectRatioPreserved}</td>
+                    <td class="${results.solution2.aspectRatioPreserved === 'Yes' ? 'pass' : 'fail'}">${results.solution2.aspectRatioPreserved}</td>
+                </tr>
+            `;
+            
+            // Generate summary
+            const testSummary = document.getElementById('test-summary');
+            const testName = document.getElementById('test-name').value;
+            
+            // Get current image info
+            const imageInfo = document.getElementById('image-meta').textContent || 'Unknown image';
+            
+            testSummary.innerHTML = `
+                <h3>Test Summary: ${testName}</h3>
+                <p><strong>Date/Time:</strong> ${testStateInfo.timestamp}</p>
+                <p><strong>Stack State:</strong> In Stack ${testStateInfo.inStack}, Out Stack ${testStateInfo.outStack}</p>
+                <p><strong>Image:</strong> ${imageInfo}</p>
+                <p><strong>Results:</strong></p>
+                <ul>
+                    <li><strong>Original:</strong> ${results.original.imageVisible === 'Yes' ? 'Image visible' : 'Image not visible'}, Center width: ${results.original.centerWidth}px</li>
+                    <li><strong>Solution 1 (Grid Template):</strong> ${results.solution1.imageVisible === 'Yes' ? 'Image visible' : 'Image not visible'}, Center width: ${results.solution1.centerWidth}px</li>
+                    <li><strong>Solution 2 (Flexbox):</strong> ${results.solution2.imageVisible === 'Yes' ? 'Image visible' : 'Image not visible'}, Center width: ${results.solution2.centerWidth}px</li>
+                </ul>
+            `;
+        }
+        
+        function copyTestResults() {
+            // Get the test results
+            const testName = document.getElementById('test-name').value;
+            const testSummary = document.getElementById('test-summary').innerText;
+            const debugInfo = document.getElementById('debug-panel').innerText;
+            
+            // Format the text for copy
+            const copyText = `
+TEST RESULTS: ${testName}
+====================================================
+${testSummary}
+
+DETAILED MEASUREMENTS
+====================================================
+${debugInfo}
+            `;
+            
+            // Create a temporary textarea to facilitate copying
+            const textarea = document.createElement('textarea');
+            textarea.value = copyText;
+            document.body.appendChild(textarea);
+            textarea.select();
+            document.execCommand('copy');
+            document.body.removeChild(textarea);
+            
+            // Provide feedback
+            const copyButton = document.getElementById('copy-results');
+            const originalText = copyButton.innerHTML;
+            copyButton.innerHTML = `
+                <svg class="copy-icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                </svg>
+                Copied!
+            `;
+            
+            setTimeout(() => {
+                copyButton.innerHTML = originalText;
+            }, 2000);
+        }
+        
+        // Initialize
+        window.addEventListener('load', function() {
+            // Allow time for images to load
+            setTimeout(function() {
+                // Initialize all tabs
+                ['original', 'solution1', 'solution2'].forEach(tab => {
+                    adjustLayout(tab);
+                });
+                updateMeasurements();
+            }, 500);
+        });
     </script>
 </body>
 </html>
