@@ -222,6 +222,99 @@
         .stack-panel.collapsed-horizontal .stack-content {
             display: none;
         }
+        
+        /* Swipe indicators */
+        .swipe-indicator {
+            position: absolute;
+            font-size: 48px;
+            color: white;
+            text-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .swipe-up {
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .swipe-down {
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .swipe-left {
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .swipe-right {
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        /* Swipe animations */
+        .swiping-left {
+            animation: swipeLeft 0.3s ease-out;
+        }
+        .swiping-right {
+            animation: swipeRight 0.3s ease-out;
+        }
+        .swiping-up {
+            animation: swipeUp 0.3s ease-out;
+        }
+        .swiping-down {
+            animation: swipeDown 0.3s ease-out;
+        }
+
+        @keyframes swipeLeft {
+            from { transform: translate(-50%, -50%); }
+            to { transform: translate(-150%, -50%); }
+        }
+        @keyframes swipeRight {
+            from { transform: translate(-50%, -50%); }
+            to { transform: translate(50%, -50%); }
+        }
+        @keyframes swipeUp {
+            from { transform: translate(-50%, -50%); }
+            to { transform: translate(-50%, -150%); }
+        }
+        @keyframes swipeDown {
+            from { transform: translate(-50%, -50%); }
+            to { transform: translate(-50%, 50%); }
+        }
+
+        /* Toast notification for feedback */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 12px 20px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: 1000;
+        }
+
+        .toast.success {
+            background-color: #10b981;
+        }
+
+        .toast.error {
+            background-color: #ef4444;
+        }
+
+        .toast.show {
+            opacity: 1;
+        }
     </style>
 </head>
 <body>
@@ -266,6 +359,12 @@
                 
                 <!-- Current stack indicator in center stage -->
                 <div class="current-stack-indicator">Priority</div>
+                
+                <!-- Swipe Indicators -->
+                <div class="swipe-indicator swipe-up">⬆️</div>
+                <div class="swipe-indicator swipe-down">⬇️</div>
+                <div class="swipe-indicator swipe-left">⬅️</div>
+                <div class="swipe-indicator swipe-right">➡️</div>
             </div>
             
             <!-- Out Stack (Right) -->
@@ -297,119 +396,454 @@
         </main>
     </div>
 
+    <!-- Toast for notifications -->
+    <div id="toast" class="toast">Notification message</div>
+
     <script>
-        // We'll add JavaScript in the next step
-        console.log('SlideBox core HTML/CSS loaded');
+        // Mock data structure for the stacks
+        const appState = {
+            stacks: {
+                in: [],
+                out: [],
+                priority: [],
+                trash: []
+            }
+        };
+
+        // Function to adjust layout based on which stacks are collapsed
+        function adjustLayout() {
+            // Get all stack panels
+            const inStack = document.querySelector('.in-stack');
+            const outStack = document.querySelector('.out-stack');
+            const priorityStack = document.querySelector('.priority-stack');
+            const trashStack = document.querySelector('.trash-stack');
+            
+            // Check which ones are collapsed
+            const inCollapsed = inStack.classList.contains('collapsed-vertical');
+            const outCollapsed = outStack.classList.contains('collapsed-vertical');
+            const priorityCollapsed = priorityStack.classList.contains('collapsed-horizontal');
+            const trashCollapsed = trashStack.classList.contains('collapsed-horizontal');
+            
+            // Calculate column template based on collapsed states
+            let columnsTemplate;
+            if (inCollapsed && outCollapsed) {
+                columnsTemplate = '28px calc(100% - 56px) 28px';
+            } else if (inCollapsed) {
+                // Center stage expands to the left when "in" stack is collapsed
+                columnsTemplate = '28px calc(100% - 28px - 10%) 10%';
+            } else if (outCollapsed) {
+                // Center stage expands to the right when "out" stack is collapsed
+                columnsTemplate = '10% calc(100% - 28px - 10%) 28px';
+            } else {
+                columnsTemplate = '10% 80% 10%';
+            }
+            
+            // Calculate row template based on collapsed states
+            let rowsTemplate;
+            if (priorityCollapsed && trashCollapsed) {
+                rowsTemplate = '28px calc(100% - 56px) 28px';
+            } else if (priorityCollapsed) {
+                rowsTemplate = '28px calc(100% - 28px - 110px) 110px';
+            } else if (trashCollapsed) {
+                rowsTemplate = '110px calc(100% - 28px - 110px) 28px';
+            } else {
+                rowsTemplate = 'auto 1fr auto';
+            }
+            
+            // Apply new grid template
+            document.getElementById('main-content').style.gridTemplateColumns = columnsTemplate;
+            document.getElementById('main-content').style.gridTemplateRows = rowsTemplate;
+            
+            console.log('Layout adjusted');
+        }
+
+        // Function to toggle panel collapse state
+        function toggleStackCollapse(stackName) {
+            const stackPanel = document.querySelector(`.stack-panel[data-stack="${stackName}"]`);
+            if (!stackPanel) return;
+            
+            // Check if it's horizontal or vertical
+            const isHorizontal = stackPanel.classList.contains('horizontal-stack');
+            
+            // Toggle appropriate class based on orientation
+            if (isHorizontal) {
+                stackPanel.classList.toggle('collapsed-horizontal');
+            } else {
+                stackPanel.classList.toggle('collapsed-vertical');
+            }
+            
+            // Adjust the overall layout
+            adjustLayout();
+            console.log(`Toggled ${stackName} stack: ${isHorizontal ? 'horizontal' : 'vertical'}`);
+        }
+
+        // Toast notification function
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast ${type}`;
+            toast.classList.add('show');
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+            
+            console.log(`Toast: ${message}`);
+        }
+
+        // Function to handle a completed swipe
+        function handleSwipe(direction) {
+            const centerImage = document.querySelector('.center-image');
+            const targetStack = direction;
+            
+            console.log(`Handling swipe: ${direction}`);
+            
+            // Apply animation class based on direction
+            switch(direction) {
+                case 'in':
+                    centerImage.classList.add('swiping-left');
+                    break;
+                case 'out':
+                    centerImage.classList.add('swiping-right');
+                    break;
+                case 'priority':
+                    centerImage.classList.add('swiping-up');
+                    break;
+                case 'trash':
+                    centerImage.classList.add('swiping-down');
+                    break;
+            }
+            
+            // Get selected thumbnail
+            const selectedThumb = document.querySelector('.thumbnail.selected');
+            if (!selectedThumb) {
+                centerImage.classList.remove('swiping-left', 'swiping-right', 'swiping-up', 'swiping-down');
+                return;
+            }
+            
+            // Get source stack
+            const sourceStack = selectedThumb.closest('.stack-panel').dataset.stack;
+            
+            // Wait for animation to complete
+            setTimeout(() => {
+                // Remove animation classes
+                centerImage.classList.remove('swiping-left', 'swiping-right', 'swiping-up', 'swiping-down');
+                
+                // Move the thumbnail to the target stack
+                const sourceContainer = document.querySelector(`.thumbnail-container[data-stack="${sourceStack}"]`);
+                const targetContainer = document.querySelector(`.thumbnail-container[data-stack="${targetStack}"]`);
+                
+                if (!targetContainer) {
+                    console.error(`Target container not found: ${targetStack}`);
+                    return;
+                }
+                
+                // Clone the thumbnail and add to target stack
+                const newThumb = selectedThumb.cloneNode(true);
+                newThumb.classList.remove('selected');
+                targetContainer.appendChild(newThumb);
+                
+                // Remove from source stack
+                selectedThumb.remove();
+                
+                // Update stack counts
+                updateStackCounts();
+                
+                // Add click handler to the new thumbnail
+                newThumb.addEventListener('click', function() {
+                    const allThumbs = document.querySelectorAll('.thumbnail');
+                    allThumbs.forEach(t => t.classList.remove('selected'));
+                    this.classList.add('selected');
+                    
+                    const centerImage = document.querySelector('.center-image');
+                    centerImage.src = this.src.replace('140x140', '800x600');
+                    centerImage.alt = this.alt;
+                    
+                    const stackPanel = this.closest('.stack-panel');
+                    const stackName = stackPanel.dataset.stack;
+                    document.querySelector('.current-stack-indicator').textContent = 
+                        stackName.charAt(0).toUpperCase() + stackName.slice(1);
+                });
+                
+                // Select another image if available
+                const remainingThumbs = sourceContainer.querySelectorAll('.thumbnail');
+                if (remainingThumbs.length > 0) {
+                    remainingThumbs[0].click();
+                } else {
+                    // Find another stack with images
+                    for (const stack of ['in', 'priority', 'out', 'trash']) {
+                        const container = document.querySelector(`.thumbnail-container[data-stack="${stack}"]`);
+                        const thumbs = container.querySelectorAll('.thumbnail');
+                        if (thumbs.length > 0) {
+                            thumbs[0].click();
+                            break;
+                        }
+                    }
+                }
+                
+                showToast(`Moved to ${targetStack}`);
+            }, 300);
+        }
+
+        // Function to update stack counts
+        function updateStackCounts() {
+            const stacks = ['in', 'out', 'priority', 'trash'];
+            stacks.forEach(stack => {
+                const container = document.querySelector(`.thumbnail-container[data-stack="${stack}"]`);
+                const count = container.querySelectorAll('.thumbnail').length;
+                document.querySelector(`.stack-count[data-stack="${stack}"]`).textContent = count;
+            });
+        }
+
+        // Function to setup swipe gestures
+        function setupGestureHandling() {
+            const centerStage = document.querySelector('.center-stage');
+            let touchStartX = 0;
+            let touchStartY = 0;
+            let touchEndX = 0;
+            let touchEndY = 0;
+            
+            // Touch events for mobile
+            centerStage.addEventListener('touchstart', function(e) {
+                touchStartX = e.touches[0].clientX;
+                touchStartY = e.touches[0].clientY;
+                console.log(`Touch start: ${touchStartX}, ${touchStartY}`);
+            });
+            
+            centerStage.addEventListener('touchmove', function(e) {
+                touchEndX = e.touches[0].clientX;
+                touchEndY = e.touches[0].clientY;
+                
+                // Calculate delta
+                const deltaX = touchEndX - touchStartX;
+                const deltaY = touchEndY - touchStartY;
+                
+                // Hide all indicators first
+                document.querySelectorAll('.swipe-indicator').forEach(indicator => {
+                    indicator.style.opacity = '0';
+                });
+                
+                // Show appropriate indicator based on direction
+                const minSwipeDistance = 50;
+                
+                if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > minSwipeDistance) {
+                    // Horizontal swipe
+                    if (deltaX > 0) {
+                        document.querySelector('.swipe-right').style.opacity = '1';
+                    } else {
+                        document.querySelector('.swipe-left').style.opacity = '1';
+                    }
+                } else if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > minSwipeDistance) {
+                    // Vertical swipe
+                    if (deltaY > 0) {
+                        document.querySelector('.swipe-down').style.opacity = '1';
+                    } else {
+                        document.querySelector('.swipe-up').style.opacity = '1';
+                    }
+                }
+            });
+            
+            centerStage.addEventListener('touchend', function(e) {
+                // Hide all indicators
+                document.querySelectorAll('.swipe-indicator').forEach(indicator => {
+                    indicator.style.opacity = '0';
+                });
+                
+                const deltaX = touchEndX - touchStartX;
+                const deltaY = touchEndY - touchStartY;
+                
+                // Minimum swipe distance
+                const minSwipeDistance = 100;
+                
+                // Process swipe
+                if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > minSwipeDistance) {
+                    // Horizontal swipe
+                    if (deltaX > 0) {
+                        console.log('Swipe right: out');
+                        handleSwipe('out');
+                    } else {
+                        console.log('Swipe left: in');
+                        handleSwipe('in');
+                    }
+                } else if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > minSwipeDistance) {
+                    // Vertical swipe
+                    if (deltaY > 0) {
+                        console.log('Swipe down: trash');
+                        handleSwipe('trash');
+                    } else {
+                        console.log('Swipe up: priority');
+                        handleSwipe('priority');
+                    }
+                }
+            });
+            
+            // Mouse events for desktop
+            let isDragging = false;
+            let dragStartX = 0;
+            let dragStartY = 0;
+            
+            centerStage.addEventListener('mousedown', function(e) {
+                // Only proceed if it's the main button (left-click)
+                if (e.button !== 0) return;
+                
+                isDragging = true;
+                dragStartX = e.clientX;
+                dragStartY = e.clientY;
+                console.log(`Mouse down: ${dragStartX}, ${dragStartY}`);
+            });
+            
+            centerStage.addEventListener('mousemove', function(e) {
+                if (!isDragging) return;
+                
+                const deltaX = e.clientX - dragStartX;
+                const deltaY = e.clientY - dragStartY;
+                
+                // Hide all indicators first
+                document.querySelectorAll('.swipe-indicator').forEach(indicator => {
+                    indicator.style.opacity = '0';
+                });
+                
+                // Show appropriate indicator based on direction
+                const minDragDistance = 50;
+                
+                if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > minDragDistance) {
+                    // Horizontal drag
+                    if (deltaX > 0) {
+                        document.querySelector('.swipe-right').style.opacity = '1';
+                    } else {
+                        document.querySelector('.swipe-left').style.opacity = '1';
+                    }
+                } else if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > minDragDistance) {
+                    // Vertical drag
+                    if (deltaY > 0) {
+                        document.querySelector('.swipe-down').style.opacity = '1';
+                    } else {
+                        document.querySelector('.swipe-up').style.opacity = '1';
+                    }
+                }
+            });
+            
+            centerStage.addEventListener('mouseup', function(e) {
+                if (!isDragging) return;
+                
+                // Hide all indicators
+                document.querySelectorAll('.swipe-indicator').forEach(indicator => {
+                    indicator.style.opacity = '0';
+                });
+                
+                const deltaX = e.clientX - dragStartX;
+                const deltaY = e.clientY - dragStartY;
+                
+                // Minimum drag distance
+                const minDragDistance = 100;
+                
+                // Process swipe
+                if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > minDragDistance) {
+                    // Horizontal drag
+                    if (deltaX > 0) {
+                        console.log('Mouse swipe right: out');
+                        handleSwipe('out');
+                    } else {
+                        console.log('Mouse swipe left: in');
+                        handleSwipe('in');
+                    }
+                } else if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > minDragDistance) {
+                    // Vertical drag
+                    if (deltaY > 0) {
+                        console.log('Mouse swipe down: trash');
+                        handleSwipe('trash');
+                    } else {
+                        console.log('Mouse swipe up: priority');
+                        handleSwipe('priority');
+                    }
+                }
+                
+                isDragging = false;
+            });
+            
+            centerStage.addEventListener('mouseleave', function() {
+                if (isDragging) {
+                    isDragging = false;
+                    
+                    // Hide all indicators
+                    document.querySelectorAll('.swipe-indicator').forEach(indicator => {
+                        indicator.style.opacity = '0';
+                    });
+                }
+            });
+            
+            // Keyboard controls
+            document.addEventListener('keydown', function(e) {
+                switch (e.key) {
+                    case 'ArrowUp':
+                        console.log('Key up: priority');
+                        handleSwipe('priority');
+                        break;
+                    case 'ArrowDown':
+                        console.log('Key down: trash');
+                        handleSwipe('trash');
+                        break;
+                    case 'ArrowLeft':
+                        console.log('Key left: in');
+                        handleSwipe('in');
+                        break;
+                    case 'ArrowRight':
+                        console.log('Key right: out');
+                        handleSwipe('out');
+                        break;
+                }
+            });
+            
+            console.log('Gesture handling set up');
+        }
+
+        // Function to initialize the interface
+        function initInterface() {
+            // Set up click handlers for stack count pills (collapse/expand)
+            const stackCounts = document.querySelectorAll('.stack-count');
+            stackCounts.forEach(countElement => {
+                countElement.addEventListener('click', function() {
+                    const stackName = this.dataset.stack;
+                    toggleStackCollapse(stackName);
+                });
+            });
+            
+            // Set up click handlers for thumbnails
+            const thumbnails = document.querySelectorAll('.thumbnail');
+            thumbnails.forEach(thumbnail => {
+                thumbnail.addEventListener('click', function() {
+                    // Remove selection from all thumbnails
+                    thumbnails.forEach(t => t.classList.remove('selected'));
+                    
+                    // Add selection to clicked thumbnail
+                    this.classList.add('selected');
+                    
+                    // Update center image
+                    const centerImage = document.querySelector('.center-image');
+                    centerImage.src = this.src.replace('140x140', '800x600');
+                    centerImage.alt = this.alt;
+                    
+                    // Update stack indicator
+                    const stackPanel = this.closest('.stack-panel');
+                    const stackName = stackPanel.dataset.stack;
+                    document.querySelector('.current-stack-indicator').textContent = 
+                        stackName.charAt(0).toUpperCase() + stackName.slice(1);
+                    
+                    console.log(`Selected image: ${this.alt} from ${stackName} stack`);
+                });
+            });
+            
+            // Initialize counts
+            updateStackCounts();
+            
+            // Set up gesture handling
+            setupGestureHandling();
+            
+            console.log('SlideBox interface initialized');
+        }
+
+        // Initialize the interface when the DOM is loaded
+        document.addEventListener('DOMContentLoaded', initInterface);
     </script>
-    <script>
-    // Function to adjust layout based on which stacks are collapsed
-    function adjustLayout() {
-        // Get all stack panels
-        const inStack = document.querySelector('.in-stack');
-        const outStack = document.querySelector('.out-stack');
-        const priorityStack = document.querySelector('.priority-stack');
-        const trashStack = document.querySelector('.trash-stack');
-        
-        // Check which ones are collapsed
-        const inCollapsed = inStack.classList.contains('collapsed-vertical');
-        const outCollapsed = outStack.classList.contains('collapsed-vertical');
-        const priorityCollapsed = priorityStack.classList.contains('collapsed-horizontal');
-        const trashCollapsed = trashStack.classList.contains('collapsed-horizontal');
-        
-        // Calculate column template based on collapsed states
-        let columnsTemplate;
-        if (inCollapsed && outCollapsed) {
-            columnsTemplate = '28px calc(100% - 56px) 28px';
-        } else if (inCollapsed) {
-            // Center stage expands to the left when "in" stack is collapsed
-            columnsTemplate = '28px calc(100% - 28px - 10%) 10%';
-        } else if (outCollapsed) {
-            // Center stage expands to the right when "out" stack is collapsed
-            columnsTemplate = '10% calc(100% - 28px - 10%) 28px';
-        } else {
-            columnsTemplate = '10% 80% 10%';
-        }
-        
-        // Calculate row template based on collapsed states
-        let rowsTemplate;
-        if (priorityCollapsed && trashCollapsed) {
-            rowsTemplate = '28px calc(100% - 56px) 28px';
-        } else if (priorityCollapsed) {
-            rowsTemplate = '28px calc(100% - 28px - 110px) 110px';
-        } else if (trashCollapsed) {
-            rowsTemplate = '110px calc(100% - 28px - 110px) 28px';
-        } else {
-            rowsTemplate = 'auto 1fr auto';
-        }
-        
-        // Apply new grid template
-        document.getElementById('main-content').style.gridTemplateColumns = columnsTemplate;
-        document.getElementById('main-content').style.gridTemplateRows = rowsTemplate;
-        
-        console.log('Layout adjusted');
-    }
-
-    // Function to toggle panel collapse state
-    function toggleStackCollapse(stackName) {
-        const stackPanel = document.querySelector(`.stack-panel[data-stack="${stackName}"]`);
-        if (!stackPanel) return;
-        
-        // Check if it's horizontal or vertical
-        const isHorizontal = stackPanel.classList.contains('horizontal-stack');
-        
-        // Toggle appropriate class based on orientation
-        if (isHorizontal) {
-            stackPanel.classList.toggle('collapsed-horizontal');
-        } else {
-            stackPanel.classList.toggle('collapsed-vertical');
-        }
-        
-        // Adjust the overall layout
-        adjustLayout();
-        console.log(`Toggled ${stackName} stack: ${isHorizontal ? 'horizontal' : 'vertical'}`);
-    }
-
-    // Function to initialize the interface
-    function initInterface() {
-        // Set up click handlers for stack count pills (collapse/expand)
-        const stackCounts = document.querySelectorAll('.stack-count');
-        stackCounts.forEach(countElement => {
-            countElement.addEventListener('click', function() {
-                const stackName = this.dataset.stack;
-                toggleStackCollapse(stackName);
-            });
-        });
-        
-        // Set up click handlers for thumbnails
-        const thumbnails = document.querySelectorAll('.thumbnail');
-        thumbnails.forEach(thumbnail => {
-            thumbnail.addEventListener('click', function() {
-                // Remove selection from all thumbnails
-                thumbnails.forEach(t => t.classList.remove('selected'));
-                
-                // Add selection to clicked thumbnail
-                this.classList.add('selected');
-                
-                // Update center image
-                const centerImage = document.querySelector('.center-image');
-                centerImage.src = this.src.replace('140x140', '800x600');
-                centerImage.alt = this.alt;
-                
-                // Update stack indicator
-                const stackPanel = this.closest('.stack-panel');
-                const stackName = stackPanel.dataset.stack;
-                document.querySelector('.current-stack-indicator').textContent = 
-                    stackName.charAt(0).toUpperCase() + stackName.slice(1);
-                
-                console.log(`Selected image: ${this.alt} from ${stackName} stack`);
-            });
-        });
-        
-        console.log('SlideBox interface initialized');
-    }
-
-    // Initialize the interface when the DOM is loaded
-    document.addEventListener('DOMContentLoaded', initInterface);
-</script>
 </body>
 </html>
