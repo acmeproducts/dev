@@ -301,5 +301,115 @@
         // We'll add JavaScript in the next step
         console.log('SlideBox core HTML/CSS loaded');
     </script>
+    <script>
+    // Function to adjust layout based on which stacks are collapsed
+    function adjustLayout() {
+        // Get all stack panels
+        const inStack = document.querySelector('.in-stack');
+        const outStack = document.querySelector('.out-stack');
+        const priorityStack = document.querySelector('.priority-stack');
+        const trashStack = document.querySelector('.trash-stack');
+        
+        // Check which ones are collapsed
+        const inCollapsed = inStack.classList.contains('collapsed-vertical');
+        const outCollapsed = outStack.classList.contains('collapsed-vertical');
+        const priorityCollapsed = priorityStack.classList.contains('collapsed-horizontal');
+        const trashCollapsed = trashStack.classList.contains('collapsed-horizontal');
+        
+        // Calculate column template based on collapsed states
+        let columnsTemplate;
+        if (inCollapsed && outCollapsed) {
+            columnsTemplate = '28px calc(100% - 56px) 28px';
+        } else if (inCollapsed) {
+            // Center stage expands to the left when "in" stack is collapsed
+            columnsTemplate = '28px calc(100% - 28px - 10%) 10%';
+        } else if (outCollapsed) {
+            // Center stage expands to the right when "out" stack is collapsed
+            columnsTemplate = '10% calc(100% - 28px - 10%) 28px';
+        } else {
+            columnsTemplate = '10% 80% 10%';
+        }
+        
+        // Calculate row template based on collapsed states
+        let rowsTemplate;
+        if (priorityCollapsed && trashCollapsed) {
+            rowsTemplate = '28px calc(100% - 56px) 28px';
+        } else if (priorityCollapsed) {
+            rowsTemplate = '28px calc(100% - 28px - 110px) 110px';
+        } else if (trashCollapsed) {
+            rowsTemplate = '110px calc(100% - 28px - 110px) 28px';
+        } else {
+            rowsTemplate = 'auto 1fr auto';
+        }
+        
+        // Apply new grid template
+        document.getElementById('main-content').style.gridTemplateColumns = columnsTemplate;
+        document.getElementById('main-content').style.gridTemplateRows = rowsTemplate;
+        
+        console.log('Layout adjusted');
+    }
+
+    // Function to toggle panel collapse state
+    function toggleStackCollapse(stackName) {
+        const stackPanel = document.querySelector(`.stack-panel[data-stack="${stackName}"]`);
+        if (!stackPanel) return;
+        
+        // Check if it's horizontal or vertical
+        const isHorizontal = stackPanel.classList.contains('horizontal-stack');
+        
+        // Toggle appropriate class based on orientation
+        if (isHorizontal) {
+            stackPanel.classList.toggle('collapsed-horizontal');
+        } else {
+            stackPanel.classList.toggle('collapsed-vertical');
+        }
+        
+        // Adjust the overall layout
+        adjustLayout();
+        console.log(`Toggled ${stackName} stack: ${isHorizontal ? 'horizontal' : 'vertical'}`);
+    }
+
+    // Function to initialize the interface
+    function initInterface() {
+        // Set up click handlers for stack count pills (collapse/expand)
+        const stackCounts = document.querySelectorAll('.stack-count');
+        stackCounts.forEach(countElement => {
+            countElement.addEventListener('click', function() {
+                const stackName = this.dataset.stack;
+                toggleStackCollapse(stackName);
+            });
+        });
+        
+        // Set up click handlers for thumbnails
+        const thumbnails = document.querySelectorAll('.thumbnail');
+        thumbnails.forEach(thumbnail => {
+            thumbnail.addEventListener('click', function() {
+                // Remove selection from all thumbnails
+                thumbnails.forEach(t => t.classList.remove('selected'));
+                
+                // Add selection to clicked thumbnail
+                this.classList.add('selected');
+                
+                // Update center image
+                const centerImage = document.querySelector('.center-image');
+                centerImage.src = this.src.replace('140x140', '800x600');
+                centerImage.alt = this.alt;
+                
+                // Update stack indicator
+                const stackPanel = this.closest('.stack-panel');
+                const stackName = stackPanel.dataset.stack;
+                document.querySelector('.current-stack-indicator').textContent = 
+                    stackName.charAt(0).toUpperCase() + stackName.slice(1);
+                
+                console.log(`Selected image: ${this.alt} from ${stackName} stack`);
+            });
+        });
+        
+        console.log('SlideBox interface initialized');
+    }
+
+    // Initialize the interface when the DOM is loaded
+    document.addEventListener('DOMContentLoaded', initInterface);
+</script>
 </body>
 </html>
