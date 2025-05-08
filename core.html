@@ -1,0 +1,1292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SlideBox v18 - Grid Mode</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        /* Base styles */
+        body, html {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            overflow: hidden;
+        }
+        
+        /* Main layout grid - No header */
+        .app-container {
+            display: grid;
+            height: 100vh;
+            grid-template-rows: 1fr;
+            grid-template-columns: 100%;
+        }
+        
+        /* Main content area */
+        .main-content {
+            display: grid;
+            grid-template-columns: 10% 80% 10%;
+            grid-template-rows: auto 1fr auto;
+            grid-template-areas:
+                "priority priority priority"
+                "in center out"
+                "trash trash trash";
+            height: 100%;
+            gap: 1px;
+            background-color: #f3f4f6;
+            transition: all 0.3s ease;
+        }
+        
+        /* Stack panels */
+        .stack-panel {
+            background-color: #fffbeb;
+            border: 1px solid #fbbf24;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+        
+        /* Horizontal stack headers (Priority, Trash) */
+        .horizontal-stack .stack-header {
+            padding: 6px 10px;
+            background-color: #fef3c7;
+            border-bottom: 1px solid #fbbf24;
+            height: 28px;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+        }
+        
+        /* Vertical stack headers (In, Out) */
+        .vertical-stack .stack-header {
+            padding: 6px 10px;
+            background-color: #fef3c7;
+            border-bottom: 1px solid #fbbf24;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .stack-title {
+            font-size: 12px;
+            font-weight: 500;
+            color: #4b5563;
+            cursor: pointer;
+        }
+        
+        /* Horizontal stack title */
+        .horizontal-stack .stack-title {
+            margin-right: 8px;
+        }
+        
+        /* Vertical stack title */
+        .vertical-stack .stack-title {
+            margin-bottom: 4px;
+        }
+        
+        /* Stack count pill - serves as collapse toggle */
+        .stack-count {
+            font-size: 10px;
+            padding: 1px 6px;
+            background-color: #f3f4f6;
+            border-radius: 10px;
+            color: #6b7280;
+            min-width: 40px;
+            text-align: center;
+            cursor: pointer;
+            border: 1px solid #d1d5db;
+            transition: background-color 0.2s;
+        }
+        
+        .stack-count:hover {
+            background-color: #e5e7eb;
+        }
+        
+        .stack-content {
+            flex: 1;
+            overflow: auto;
+            position: relative;
+        }
+        
+        /* Stack-specific styles */
+        .priority-stack {
+            grid-area: priority;
+            max-height: 110px;
+        }
+        
+        .in-stack {
+            grid-area: in;
+        }
+        
+        .center-stage {
+            grid-area: center;
+            position: relative;
+        }
+        
+        .out-stack {
+            grid-area: out;
+        }
+        
+        .trash-stack {
+            grid-area: trash;
+            max-height: 110px;
+            position: sticky;
+            bottom: 0;
+            z-index: 10;
+        }
+        
+        /* Thumbnail styles */
+        .thumbnail-container {
+            display: flex;
+            padding: 4px;
+            gap: 4px;
+        }
+        
+        .vertical-thumbnails {
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .horizontal-thumbnails {
+            flex-direction: row;
+            align-items: center;
+        }
+        
+        .thumbnail {
+            width: 70px;
+            height: 70px;
+            object-fit: cover;
+            border: 2px solid transparent;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        
+        .thumbnail.selected {
+            border-color: #f59e0b;
+        }
+        
+        /* Center stage image */
+        .center-image {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            max-height: 100%;
+            max-width: 100%;
+        }
+        
+        /* Empty state message */
+        .empty-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #6b7280;
+            font-size: 20px;
+            text-align: center;
+            display: none;
+        }
+        
+        /* Current stack indicator in center stage */
+        .current-stack-indicator {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background-color: rgba(0, 0, 0, 0.3);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            pointer-events: none;
+        }
+        
+        /* Collapsible states */
+        .stack-panel.collapsed-horizontal {
+            max-height: 28px;
+        }
+        
+        .stack-panel.collapsed-vertical {
+            max-width: 28px;
+        }
+        
+        /* Vertical stack collapsed state */
+        .stack-panel.collapsed-vertical .stack-header {
+            transform: rotate(0deg);
+            padding: 10px 2px;
+            writing-mode: inherit;
+            height: auto;
+        }
+        
+        .horizontal-stack.collapsed-horizontal .stack-count,
+        .vertical-stack.collapsed-vertical .stack-count {
+            display: block;
+            margin-top: 0;
+            position: relative;
+            z-index: 5;
+        }
+        
+        .stack-panel.collapsed-vertical .stack-content,
+        .stack-panel.collapsed-horizontal .stack-content {
+            display: none;
+        }
+        
+        /* Swipe indicators */
+        .swipe-indicator {
+            position: absolute;
+            font-size: 48px;
+            color: white;
+            text-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .swipe-up {
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .swipe-down {
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .swipe-left {
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .swipe-right {
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        /* Swipe animations */
+        .swiping-left {
+            animation: swipeLeft 0.3s ease-out;
+        }
+        .swiping-right {
+            animation: swipeRight 0.3s ease-out;
+        }
+        .swiping-up {
+            animation: swipeUp 0.3s ease-out;
+        }
+        .swiping-down {
+            animation: swipeDown 0.3s ease-out;
+        }
+
+        @keyframes swipeLeft {
+            from { transform: translate(-50%, -50%); }
+            to { transform: translate(-150%, -50%); }
+        }
+        @keyframes swipeRight {
+            from { transform: translate(-50%, -50%); }
+            to { transform: translate(50%, -50%); }
+        }
+        @keyframes swipeUp {
+            from { transform: translate(-50%, -50%); }
+            to { transform: translate(-50%, -150%); }
+        }
+        @keyframes swipeDown {
+            from { transform: translate(-50%, -50%); }
+            to { transform: translate(-50%, 50%); }
+        }
+
+        /* Toast notification for feedback */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 12px 20px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: 1000;
+        }
+
+        .toast.success {
+            background-color: #10b981;
+        }
+
+        .toast.error {
+            background-color: #ef4444;
+        }
+
+        .toast.info {
+            background-color: #3b82f6;
+        }
+
+        .toast.show {
+            opacity: 1;
+        }
+        
+        /* Image zoom controls */
+        .zoom-control {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(255, 255, 255, 0.8);
+            border-radius: 8px;
+            padding: 8px 12px;
+            display: flex;
+            align-items: center;
+            z-index: 10;
+        }
+        
+        /* Grid View Styles */
+        .grid-view {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: white;
+            z-index: 50;
+            padding: 20px;
+            display: none;
+            flex-direction: column;
+            overflow: auto;
+        }
+        
+        .grid-view.active {
+            display: flex;
+        }
+        
+        .grid-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 16px;
+            border-bottom: 1px solid #e5e7eb;
+            margin-bottom: 16px;
+        }
+        
+        .grid-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #4b5563;
+        }
+        
+        .grid-actions {
+            display: flex;
+            gap: 8px;
+        }
+        
+        .grid-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 16px;
+            flex: 1;
+            overflow: auto;
+        }
+        
+        .grid-item {
+            position: relative;
+            aspect-ratio: 1;
+            border-radius: 8px;
+            overflow: hidden;
+            cursor: pointer;
+            border: 2px solid transparent;
+        }
+        
+        .grid-item.selected {
+            border-color: #3b82f6;
+        }
+        
+        .grid-image {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .grid-selection-tools {
+            padding: 16px 0;
+            display: flex;
+            gap: 8px;
+            justify-content: space-between;
+            align-items: center;
+            border-top: 1px solid #e5e7eb;
+            margin-top: 16px;
+        }
+        
+        .selection-count {
+            font-size: 14px;
+            color: #6b7280;
+        }
+        
+        /* Modal styles for bulk actions */
+        .modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.5);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+        
+        .modal.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+        
+        .modal-content {
+            background-color: white;
+            border-radius: 8px;
+            padding: 24px;
+            width: 90%;
+            max-width: 500px;
+        }
+        
+        .modal-header {
+            margin-bottom: 16px;
+        }
+        
+        .modal-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #4b5563;
+        }
+        
+        .modal-body {
+            margin-bottom: 24px;
+        }
+        
+        .modal-footer {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <main id="main-content" class="main-content">
+            <!-- Priority Stack (Top) -->
+            <div class="stack-panel priority-stack horizontal-stack" data-stack="priority">
+                <div class="stack-header">
+                    <h2 class="stack-title" data-stack="priority">Priority</h2>
+                    <span class="stack-count" data-stack="priority">3</span>
+                </div>
+                <div class="stack-content">
+                    <div class="thumbnail-container horizontal-thumbnails" data-stack="priority">
+                        <img src="https://placehold.co/140x140/ffd700/000000?text=Photo+1" class="thumbnail" alt="Photo 1" data-id="1">
+                        <img src="https://placehold.co/140x140/ff6b6b/ffffff?text=Photo+2" class="thumbnail" alt="Photo 2" data-id="2">
+                        <img src="https://placehold.co/140x140/6bff6b/000000?text=Photo+3" class="thumbnail" alt="Photo 3" data-id="3">
+                    </div>
+                </div>
+            </div>
+            
+            <!-- In Stack (Left) -->
+            <div class="stack-panel in-stack vertical-stack" data-stack="in">
+                <div class="stack-header">
+                    <h2 class="stack-title" data-stack="in">In</h2>
+                    <span class="stack-count" data-stack="in">5</span>
+                </div>
+                <div class="stack-content">
+                    <div class="thumbnail-container vertical-thumbnails" data-stack="in">
+                        <img src="https://placehold.co/140x140/6b6bff/ffffff?text=Photo+4" class="thumbnail selected" alt="Photo 4" data-id="4">
+                        <img src="https://placehold.co/140x140/ff6bff/ffffff?text=Photo+5" class="thumbnail" alt="Photo 5" data-id="5">
+                        <img src="https://placehold.co/140x140/6bffff/000000?text=Photo+6" class="thumbnail" alt="Photo 6" data-id="6">
+                        <img src="https://placehold.co/140x140/ffff6b/000000?text=Photo+7" class="thumbnail" alt="Photo 7" data-id="7">
+                        <img src="https://placehold.co/140x140/cccccc/000000?text=Photo+8" class="thumbnail" alt="Photo 8" data-id="8">
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Center Stage -->
+            <div class="stack-panel center-stage">
+                <!-- Zoom control -->
+                <div class="zoom-control">
+                    <span class="mr-2 text-sm">Zoom:</span>
+                    <input type="range" id="image-zoom" min="50" max="150" value="100" class="w-24">
+                    <span id="zoom-value" class="ml-2 text-sm">100%</span>
+                </div>
+                
+                <!-- Main image -->
+                <img src="https://placehold.co/800x600/6b6bff/ffffff?text=Photo+4" class="center-image" alt="Photo 4" data-id="4">
+                
+                <!-- Empty state message -->
+                <div class="empty-message" id="empty-message">That's all for today</div>
+                
+                <!-- Current stack indicator in center stage -->
+                <div class="current-stack-indicator">In</div>
+                
+                <!-- Swipe Indicators -->
+                <div class="swipe-indicator swipe-up">⬆️</div>
+                <div class="swipe-indicator swipe-down">⬇️</div>
+                <div class="swipe-indicator swipe-left">⬅️</div>
+                <div class="swipe-indicator swipe-right">➡️</div>
+            </div>
+            
+            <!-- Out Stack (Right) -->
+            <div class="stack-panel out-stack vertical-stack" data-stack="out">
+                <div class="stack-header">
+                    <h2 class="stack-title" data-stack="out">Out</h2>
+                    <span class="stack-count" data-stack="out">2</span>
+                </div>
+                <div class="stack-content">
+                    <div class="thumbnail-container vertical-thumbnails" data-stack="out">
+                        <img src="https://placehold.co/140x140/ff9e6b/ffffff?text=Photo+9" class="thumbnail" alt="Photo 9" data-id="9">
+                        <img src="https://placehold.co/140x140/6b9eff/ffffff?text=Photo+10" class="thumbnail" alt="Photo 10" data-id="10">
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Trash Stack (Bottom) -->
+            <div class="stack-panel trash-stack horizontal-stack" data-stack="trash">
+                <div class="stack-header">
+                    <h2 class="stack-title" data-stack="trash">Trash</h2>
+                    <span class="stack-count" data-stack="trash">1</span>
+                </div>
+                <div class="stack-content">
+                    <div class="thumbnail-container horizontal-thumbnails" data-stack="trash">
+                        <img src="https://placehold.co/140x140/888888/ffffff?text=Photo+11" class="thumbnail" alt="Photo 11" data-id="11">
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Grid View -->
+        <div id="grid-view" class="grid-view">
+            <div class="grid-header">
+                <h2 id="grid-title" class="grid-title">Priority</h2>
+                <div class="grid-actions">
+                    <button id="close-grid" class="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300">Back to Stacks</button>
+                </div>
+            </div>
+
+            <div id="grid-container" class="grid-container">
+                <!-- Grid items will be dynamically populated -->
+            </div>
+
+            <div class="grid-selection-tools">
+                <div id="selection-count" class="selection-count">0 selected</div>
+                <div class="flex gap-2">
+                    <button id="move-selected" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed" disabled>Move</button>
+                    <button id="delete-selected" class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50 disabled:cursor-not-allowed" disabled>Delete</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Move Modal -->
+        <div id="move-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 class="modal-title">Move to Stack</h3>
+                </div>
+                <div class="modal-body">
+                    <div class="space-y-2">
+                        <button class="move-option w-full text-left px-4 py-2 rounded hover:bg-gray-100" data-stack="priority">Priority</button>
+                        <button class="move-option w-full text-left px-4 py-2 rounded hover:bg-gray-100" data-stack="in">In</button>
+                        <button class="move-option w-full text-left px-4 py-2 rounded hover:bg-gray-100" data-stack="out">Out</button>
+                        <button class="move-option w-full text-left px-4 py-2 rounded hover:bg-gray-100" data-stack="trash">Trash</button>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button id="cancel-move" class="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Delete Confirmation Modal -->
+        <div id="delete-modal" class="modal">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h3 class="modal-title">Confirm Delete</h3>
+                </div>
+                <div class="modal-body">
+                    <p>Are you sure you want to move the selected items to Trash?</p>
+                </div>
+                <div class="modal-footer">
+                    <button id="cancel-delete" class="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300">Cancel</button>
+                    <button id="confirm-delete" class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600">Move to Trash</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast for notifications -->
+    <div id="toast" class="toast">Notification message</div>
+
+    <script>
+        // Function to adjust layout based on which stacks are collapsed
+        function adjustLayout() {
+            // Get all stack panels
+            const inStack = document.querySelector('.in-stack');
+            const outStack = document.querySelector('.out-stack');
+            const priorityStack = document.querySelector('.priority-stack');
+            const trashStack = document.querySelector('.trash-stack');
+            
+            // Check which ones are collapsed
+            const inCollapsed = inStack.classList.contains('collapsed-vertical');
+            const outCollapsed = outStack.classList.contains('collapsed-vertical');
+            const priorityCollapsed = priorityStack.classList.contains('collapsed-horizontal');
+            const trashCollapsed = trashStack.classList.contains('collapsed-horizontal');
+            
+            // Calculate column template based on collapsed states
+            let columnsTemplate;
+            if (inCollapsed && outCollapsed) {
+                columnsTemplate = '28px calc(100% - 56px) 28px';
+            } else if (inCollapsed) {
+                // Center stage expands to the left when "in" stack is collapsed
+                columnsTemplate = '28px calc(100% - 28px - 10%) 10%';
+            } else if (outCollapsed) {
+                // Center stage expands to the right when "out" stack is collapsed
+                columnsTemplate = '10% calc(100% - 28px - 10%) 28px';
+            } else {
+                columnsTemplate = '10% 80% 10%';
+            }
+            
+            // Calculate row template based on collapsed states
+            let rowsTemplate;
+            if (priorityCollapsed && trashCollapsed) {
+                rowsTemplate = '28px calc(100% - 56px) 28px';
+            } else if (priorityCollapsed) {
+                rowsTemplate = '28px calc(100% - 28px - 110px) 110px';
+            } else if (trashCollapsed) {
+                rowsTemplate = '110px calc(100% - 28px - 110px) 28px';
+            } else {
+                rowsTemplate = 'auto 1fr auto';
+            }
+            
+            // Apply new grid template
+            document.getElementById('main-content').style.gridTemplateColumns = columnsTemplate;
+            document.getElementById('main-content').style.gridTemplateRows = rowsTemplate;
+            
+            console.log('Layout adjusted');
+        }
+
+        // Function to toggle panel collapse state
+        function toggleStackCollapse(stackName) {
+            const stackPanel = document.querySelector(`.stack-panel[data-stack="${stackName}"]`);
+            if (!stackPanel) return;
+            
+            // Check if it's horizontal or vertical
+            const isHorizontal = stackPanel.classList.contains('horizontal-stack');
+            
+            // Toggle appropriate class based on orientation
+            if (isHorizontal) {
+                stackPanel.classList.toggle('collapsed-horizontal');
+            } else {
+                stackPanel.classList.toggle('collapsed-vertical');
+            }
+            
+            // Adjust the overall layout
+            adjustLayout();
+            console.log(`Toggled ${stackName} stack: ${isHorizontal ? 'horizontal' : 'vertical'}`);
+        }
+
+        // Toast notification function
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast ${type}`;
+            toast.classList.add('show');
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+            
+            console.log(`Toast: ${message}`);
+        }
+        
+        // Function to apply zoom level
+        function applyZoom(level) {
+            const centerImage = document.querySelector('.center-image');
+            const scale = level / 100;
+            centerImage.style.transform = `translate(-50%, -50%) scale(${scale})`;
+        }
+
+        // Function to handle a completed swipe
+        function handleSwipe(direction) {
+            const selectedThumb = document.querySelector('.thumbnail.selected');
+            if (!selectedThumb) {
+                showToast("No image selected", "error");
+                return;
+            }
+            
+            const centerImage = document.querySelector('.center-image');
+            const targetStack = direction;
+            
+            console.log(`Handling swipe: ${direction}`);
+            
+            // Apply animation class based on direction
+            switch(direction) {
+                case 'in':
+                    centerImage.classList.add('swiping-left');
+                    break;
+                case 'out':
+                    centerImage.classList.add('swiping-right');
+                    break;
+                case 'priority':
+                    centerImage.classList.add('swiping-up');
+                    break;
+                case 'trash':
+                    centerImage.classList.add('swiping-down');
+                    break;
+            }
+            
+            // Get source stack
+            const sourceStack = selectedThumb.closest('.stack-panel').dataset.stack;
+            
+            // Skip if trying to move to the same stack
+            if (sourceStack === targetStack) {
+                centerImage.classList.remove('swiping-left', 'swiping-right', 'swiping-up', 'swiping-down');
+                showToast("Image is already in this stack", "info");
+                return;
+            }
+            
+            // Wait for animation to complete
+            setTimeout(() => {
+                // Remove animation classes
+                centerImage.classList.remove('swiping-left', 'swiping-right', 'swiping-up', 'swiping-down');
+                
+                // Get target container
+                const targetContainer = document.querySelector(`.thumbnail-container[data-stack="${targetStack}"]`);
+                
+                if (!targetContainer) {
+                    console.error(`Target container not found: ${targetStack}`);
+                    return;
+                }
+                
+                // Remove selected thumbnail from source
+                selectedThumb.remove();
+                
+                // Clone the thumbnail 
+                const newThumb = selectedThumb.cloneNode(true);
+                newThumb.classList.remove('selected');
+                
+                // Insert at position 1 (beginning of container)
+                if (targetContainer.firstChild) {
+                    targetContainer.insertBefore(newThumb, targetContainer.firstChild);
+                } else {
+                    targetContainer.appendChild(newThumb);
+                }
+                
+                // Update click handler for the new thumbnail
+                newThumb.addEventListener('click', function() {
+                    selectThumbnail(this);
+                });
+                
+                // Update stack counts
+                updateStackCounts();
+                
+                // Find a new image to display (from any stack, prioritizing 'in')
+                const firstInThumb = document.querySelector('.thumbnail-container[data-stack="in"] .thumbnail');
+                const anyThumb = firstInThumb || 
+                                document.querySelector('.thumbnail-container[data-stack="priority"] .thumbnail') || 
+                                document.querySelector('.thumbnail-container[data-stack="out"] .thumbnail') ||
+                                document.querySelector('.thumbnail-container[data-stack="trash"] .thumbnail');
+                                
+                if (anyThumb) {
+                    selectThumbnail(anyThumb);
+                } else {
+                    // If all stacks are empty, show empty message
+                    document.getElementById('empty-message').style.display = 'block';
+                    document.querySelector('.center-image').style.display = 'none';
+                    document.querySelector('.current-stack-indicator').textContent = '';
+                }
+                
+                showToast(`Moved to ${targetStack}`);
+            }, 300);
+        }
+        
+        // Function to select a thumbnail and display it
+        function selectThumbnail(thumbnail) {
+            // Deselect all thumbnails
+            document.querySelectorAll('.thumbnail').forEach(thumb => {
+                thumb.classList.remove('selected');
+            });
+            
+            // Select this thumbnail
+            thumbnail.classList.add('selected');
+            
+            // Hide empty message if visible
+            document.getElementById('empty-message').style.display = 'none';
+            document.querySelector('.center-image').style.display = 'block';
+            
+            // Update center image
+            const centerImage = document.querySelector('.center-image');
+            centerImage.src = thumbnail.src.replace('140x140', '800x600');
+            centerImage.alt = thumbnail.alt;
+            centerImage.dataset.id = thumbnail.dataset.id;
+            
+            // Update stack indicator
+            const stackPanel = thumbnail.closest('.stack-panel');
+            const stackName = stackPanel.dataset.stack;
+            document.querySelector('.current-stack-indicator').textContent = 
+                stackName.charAt(0).toUpperCase() + stackName.slice(1);
+                
+            console.log(`Selected image: ${thumbnail.alt} from ${stackName} stack`);
+        }
+
+        // Function to update stack counts
+        function updateStackCounts() {
+            const stacks = ['in', 'out', 'priority', 'trash'];
+            stacks.forEach(stack => {
+                const container = document.querySelector(`.thumbnail-container[data-stack="${stack}"]`);
+                const count = container.querySelectorAll('.thumbnail').length;
+                document.querySelector(`.stack-count[data-stack="${stack}"]`).textContent = count;
+            });
+        }
+
+        // Function to setup swipe gestures
+        function setupGestureHandling() {
+            const centerStage = document.querySelector('.center-stage');
+            let touchStartX = 0;
+            let touchStartY = 0;
+            let touchEndX = 0;
+            let touchEndY = 0;
+            
+            // Touch events for mobile
+            centerStage.addEventListener('touchstart', function(e) {
+                touchStartX = e.touches[0].clientX;
+                touchStartY = e.touches[0].clientY;
+                console.log(`Touch start: ${touchStartX}, ${touchStartY}`);
+            });
+            
+            centerStage.addEventListener('touchmove', function(e) {
+                touchEndX = e.touches[0].clientX;
+                touchEndY = e.touches[0].clientY;
+                
+                // Calculate delta
+                const deltaX = touchEndX - touchStartX;
+                const deltaY = touchEndY - touchStartY;
+                
+                // Hide all indicators first
+                document.querySelectorAll('.swipe-indicator').forEach(indicator => {
+                    indicator.style.opacity = '0';
+                });
+                
+                // Show appropriate indicator based on direction
+                const minSwipeDistance = 50;
+                
+                if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > minSwipeDistance) {
+                    // Horizontal swipe
+                    if (deltaX > 0) {
+                        document.querySelector('.swipe-right').style.opacity = '1';
+                    } else {
+                        document.querySelector('.swipe-left').style.opacity = '1';
+                    }
+                } else if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > minSwipeDistance) {
+                    // Vertical swipe
+                    if (deltaY > 0) {
+                        document.querySelector('.swipe-down').style.opacity = '1';
+                    } else {
+                        document.querySelector('.swipe-up').style.opacity = '1';
+                    }
+                }
+            });
+            
+            centerStage.addEventListener('touchend', function(e) {
+                // Hide all indicators
+                document.querySelectorAll('.swipe-indicator').forEach(indicator => {
+                    indicator.style.opacity = '0';
+                });
+                
+                const deltaX = touchEndX - touchStartX;
+                const deltaY = touchEndY - touchStartY;
+                
+                // Minimum swipe distance
+                const minSwipeDistance = 100;
+                
+                // Process swipe
+                if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > minSwipeDistance) {
+                    // Horizontal swipe
+                    if (deltaX > 0) {
+                        console.log('Swipe right: out');
+                        handleSwipe('out');
+                    } else {
+                        console.log('Swipe left: in');
+                        handleSwipe('in');
+                    }
+                } else if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > minSwipeDistance) {
+                    // Vertical swipe
+                    if (deltaY > 0) {
+                        console.log('Swipe down: trash');
+                        handleSwipe('trash');
+                    } else {
+                        console.log('Swipe up: priority');
+                        handleSwipe('priority');
+                    }
+                }
+            });
+            
+            // Mouse events for desktop
+            let isDragging = false;
+            let dragStartX = 0;
+            let dragStartY = 0;
+            
+            centerStage.addEventListener('mousedown', function(e) {
+                // Don't handle mouse events on controls
+                if (e.target.closest('.zoom-control')) return;
+                
+                // Only proceed if it's the main button (left-click)
+                if (e.button !== 0) return;
+                
+                isDragging = true;
+                dragStartX = e.clientX;
+                dragStartY = e.clientY;
+                console.log(`Mouse down: ${dragStartX}, ${dragStartY}`);
+            });
+            
+            centerStage.addEventListener('mousemove', function(e) {
+                if (!isDragging) return;
+                
+                const deltaX = e.clientX - dragStartX;
+                const deltaY = e.clientY - dragStartY;
+                
+                // Hide all indicators first
+                document.querySelectorAll('.swipe-indicator').forEach(indicator => {
+                    indicator.style.opacity = '0';
+                });
+                
+                // Show appropriate indicator based on direction
+                const minDragDistance = 50;
+                
+                if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > minDragDistance) {
+                    // Horizontal drag
+                    if (deltaX > 0) {
+                        document.querySelector('.swipe-right').style.opacity = '1';
+                    } else {
+                        document.querySelector('.swipe-left').style.opacity = '1';
+                    }
+                } else if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > minDragDistance) {
+                    // Vertical drag
+                    if (deltaY > 0) {
+                        document.querySelector('.swipe-down').style.opacity = '1';
+                    } else {
+                        document.querySelector('.swipe-up').style.opacity = '1';
+                    }
+                }
+            });
+            
+            centerStage.addEventListener('mouseup', function(e) {
+                if (!isDragging) return;
+                
+                // Hide all indicators
+                document.querySelectorAll('.swipe-indicator').forEach(indicator => {
+                    indicator.style.opacity = '0';
+                });
+                
+                const deltaX = e.clientX - dragStartX;
+                const deltaY = e.clientY - dragStartY;
+                
+                // Minimum drag distance
+                const minDragDistance = 100;
+                
+                // Process swipe
+                if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > minDragDistance) {
+                    // Horizontal drag
+                    if (deltaX > 0) {
+                        console.log('Mouse swipe right: out');
+                        handleSwipe('out');
+                    } else {
+                        console.log('Mouse swipe left: in');
+                        handleSwipe('in');
+                    }
+                } else if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > minDragDistance) {
+                    // Vertical drag
+                    if (deltaY > 0) {
+                        console.log('Mouse swipe down: trash');
+                        handleSwipe('trash');
+                    } else {
+                        console.log('Mouse swipe up: priority');
+                        handleSwipe('priority');
+                    }
+                }
+                
+                isDragging = false;
+            });
+            
+            centerStage.addEventListener('mouseleave', function() {
+                if (isDragging) {
+                    isDragging = false;
+                    
+                    // Hide all indicators
+                    document.querySelectorAll('.swipe-indicator').forEach(indicator => {
+                        indicator.style.opacity = '0';
+                    });
+                }
+            });
+            
+            // Keyboard controls
+            document.addEventListener('keydown', function(e) {
+                // Don't handle keyboard events when typing in inputs
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+                
+                switch (e.key) {
+                    case 'ArrowUp':
+                        console.log('Key up: priority');
+                        handleSwipe('priority');
+                        break;
+                    case 'ArrowDown':
+                        console.log('Key down: trash');
+                        handleSwipe('trash');
+                        break;
+                    case 'ArrowLeft':
+                        console.log('Key left: in');
+                        handleSwipe('in');
+                        break;
+                    case 'ArrowRight':
+                        console.log('Key right: out');
+                        handleSwipe('out');
+                        break;
+                }
+            });
+            
+            console.log('Gesture handling set up');
+        }
+
+        // Grid View Functions
+        function openGridView(stack) {
+            const gridView = document.getElementById('grid-view');
+            const gridTitle = document.getElementById('grid-title');
+            const gridContainer = document.getElementById('grid-container');
+            
+            // Set grid title
+            gridTitle.textContent = stack.charAt(0).toUpperCase() + stack.slice(1);
+            
+            // Clear grid container
+            gridContainer.innerHTML = '';
+            
+            // Get all thumbnails from the stack
+            const thumbnails = document.querySelectorAll(`.thumbnail-container[data-stack="${stack}"] .thumbnail`);
+            
+            // Add each thumbnail to the grid
+            thumbnails.forEach(thumb => {
+                const gridItem = document.createElement('div');
+                gridItem.className = 'grid-item';
+                gridItem.dataset.id = thumb.dataset.id;
+                
+                const gridImage = document.createElement('img');
+                gridImage.className = 'grid-image';
+                gridImage.src = thumb.src.replace('140x140', '300x300');
+                gridImage.alt = thumb.alt;
+                
+                gridItem.appendChild(gridImage);
+                gridContainer.appendChild(gridItem);
+                
+                // Add click handler
+                gridItem.addEventListener('click', function() {
+                    toggleGridSelection(this);
+                });
+            });
+            
+            // Show grid view
+            gridView.classList.add('active');
+            
+            // Reset selection
+            clearGridSelection();
+            
+            console.log(`Opened grid view for stack: ${stack}`);
+        }
+        
+        function closeGridView() {
+            const gridView = document.getElementById('grid-view');
+            gridView.classList.remove('active');
+            console.log('Closed grid view');
+        }
+        
+        function toggleGridSelection(gridItem) {
+            gridItem.classList.toggle('selected');
+            updateSelectionCount();
+        }
+        
+        function clearGridSelection() {
+            document.querySelectorAll('.grid-item.selected').forEach(item => {
+                item.classList.remove('selected');
+            });
+            updateSelectionCount();
+        }
+        
+        function updateSelectionCount() {
+            const count = document.querySelectorAll('.grid-item.selected').length;
+            document.getElementById('selection-count').textContent = `${count} selected`;
+            
+            // Enable/disable action buttons based on selection
+            document.getElementById('move-selected').disabled = count === 0;
+            document.getElementById('delete-selected').disabled = count === 0;
+        }
+        
+        function showMoveModal() {
+            document.getElementById('move-modal').classList.add('active');
+        }
+        
+        function hideMoveModal() {
+            document.getElementById('move-modal').classList.remove('active');
+        }
+        
+        function showDeleteModal() {
+            document.getElementById('delete-modal').classList.add('active');
+        }
+        
+        function hideDeleteModal() {
+            document.getElementById('delete-modal').classList.remove('active');
+        }
+        
+        function moveSelectedItems(targetStack) {
+            const selectedItems = document.querySelectorAll('.grid-item.selected');
+            const currentStack = document.getElementById('grid-title').textContent.toLowerCase();
+            
+            if (selectedItems.length === 0) {
+                showToast('No items selected', 'error');
+                return;
+            }
+            
+            // Get source and target containers
+            const sourceContainer = document.querySelector(`.thumbnail-container[data-stack="${currentStack}"]`);
+            const targetContainer = document.querySelector(`.thumbnail-container[data-stack="${targetStack}"]`);
+            
+            if (!sourceContainer || !targetContainer) {
+                console.error('Stack containers not found');
+                return;
+            }
+            
+            // Move each selected item
+            selectedItems.forEach(item => {
+                const id = item.dataset.id;
+                
+                // Remove from grid
+                item.remove();
+                
+                // Find and remove from source stack
+                const sourceThumb = sourceContainer.querySelector(`.thumbnail[data-id="${id}"]`);
+                if (sourceThumb) {
+                    sourceThumb.remove();
+                }
+                
+                // Create new thumbnail for target stack
+                const newThumb = document.createElement('img');
+                newThumb.className = 'thumbnail';
+                newThumb.src = item.querySelector('.grid-image').src.replace('300x300', '140x140');
+                newThumb.alt = item.querySelector('.grid-image').alt;
+                newThumb.dataset.id = id;
+                
+                // Add click handler
+                newThumb.addEventListener('click', function() {
+                    selectThumbnail(this);
+                });
+                
+                // Add to target stack (at the beginning)
+                if (targetContainer.firstChild) {
+                    targetContainer.insertBefore(newThumb, targetContainer.firstChild);
+                } else {
+                    targetContainer.appendChild(newThumb);
+                }
+            });
+            
+            // Update stack counts
+            updateStackCounts();
+            
+            // Show toast
+            showToast(`Moved ${selectedItems.length} items to ${targetStack}`, 'success');
+            
+            // Hide modal
+            hideMoveModal();
+            
+            // Close grid if no more items
+            if (document.querySelectorAll('.grid-item').length === 0) {
+                closeGridView();
+            }
+        }
+        
+        function deleteSelectedItems() {
+            // This actually moves items to trash
+            moveSelectedItems('trash');
+            hideDeleteModal();
+        }
+
+        // Function to initialize the interface
+        function initInterface() {
+            // Set up click handlers for stack count pills (collapse/expand)
+            const stackCounts = document.querySelectorAll('.stack-count');
+            stackCounts.forEach(countElement => {
+                countElement.addEventListener('click', function() {
+                    const stackName = this.dataset.stack;
+                    toggleStackCollapse(stackName);
+                });
+            });
+            
+            // Set up click handlers for thumbnails
+            const thumbnails = document.querySelectorAll('.thumbnail');
+            thumbnails.forEach(thumbnail => {
+                thumbnail.addEventListener('click', function() {
+                    selectThumbnail(this);
+                });
+            });
+            
+            // Set up click handlers for stack titles (open grid view)
+            const stackTitles = document.querySelectorAll('.stack-title');
+            stackTitles.forEach(title => {
+                title.addEventListener('click', function() {
+                    const stackName = this.dataset.stack;
+                    openGridView(stackName);
+                });
+            });
+            
+            // Grid view event handlers
+            document.getElementById('close-grid').addEventListener('click', closeGridView);
+            document.getElementById('move-selected').addEventListener('click', showMoveModal);
+            document.getElementById('delete-selected').addEventListener('click', showDeleteModal);
+            
+            // Move modal event handlers
+            document.getElementById('cancel-move').addEventListener('click', hideMoveModal);
+            document.querySelectorAll('.move-option').forEach(option => {
+                option.addEventListener('click', function() {
+                    const targetStack = this.dataset.stack;
+                    moveSelectedItems(targetStack);
+                });
+            });
+            
+            // Delete modal event handlers
+            document.getElementById('cancel-delete').addEventListener('click', hideDeleteModal);
+            document.getElementById('confirm-delete').addEventListener('click', deleteSelectedItems);
+            
+            // Initialize counts
+            updateStackCounts();
+            
+            // Set up gesture handling
+            setupGestureHandling();
+            
+            // Zoom control
+            document.getElementById('image-zoom').addEventListener('input', function() {
+                const level = parseInt(this.value);
+                document.getElementById('zoom-value').textContent = `${level}%`;
+                applyZoom(level);
+            });
+            
+            // Default select first thumbnail in IN stack
+            const firstInThumb = document.querySelector('.thumbnail-container[data-stack="in"] .thumbnail');
+            if (firstInThumb) {
+                selectThumbnail(firstInThumb);
+            }
+            
+            console.log('SlideBox interface initialized');
+        }
+
+        // Initialize the interface when the DOM is loaded
+        document.addEventListener('DOMContentLoaded', initInterface);
+    </script>
+</body>
+</html>
