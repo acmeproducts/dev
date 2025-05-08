@@ -1,0 +1,1632 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SlideBox v18 - Five Panel + Metadata</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <style>
+        /* Base styles */
+        body, html {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            overflow: hidden;
+        }
+        
+        /* Main layout grid - No header */
+        .app-container {
+            display: grid;
+            height: 100vh;
+            grid-template-rows: 1fr;
+            grid-template-columns: 100%;
+        }
+        
+        /* Main content area */
+        .main-content {
+            display: grid;
+            grid-template-columns: 10% 80% 10%;
+            grid-template-rows: auto 1fr auto;
+            grid-template-areas:
+                "priority priority priority"
+                "in center out"
+                "trash trash trash";
+            height: 100%;
+            gap: 1px;
+            background-color: #f3f4f6;
+            transition: all 0.3s ease;
+        }
+        
+        /* Stack panels */
+        .stack-panel {
+            background-color: #fffbeb;
+            border: 1px solid #fbbf24;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            position: relative;
+            transition: all 0.3s ease;
+        }
+        
+        /* Horizontal stack headers (Priority, Trash) */
+        .horizontal-stack .stack-header {
+            padding: 6px 10px;
+            background-color: #fef3c7;
+            border-bottom: 1px solid #fbbf24;
+            height: 28px;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+        }
+        
+        /* Vertical stack headers (In, Out) */
+        .vertical-stack .stack-header {
+            padding: 6px 10px;
+            background-color: #fef3c7;
+            border-bottom: 1px solid #fbbf24;
+            flex-shrink: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .stack-title {
+            font-size: 12px;
+            font-weight: 500;
+            color: #4b5563;
+            cursor: pointer;
+        }
+        
+        /* Horizontal stack title */
+        .horizontal-stack .stack-title {
+            margin-right: 8px;
+        }
+        
+        /* Vertical stack title */
+        .vertical-stack .stack-title {
+            margin-bottom: 4px;
+        }
+        
+        /* Stack count pill - serves as collapse toggle */
+        .stack-count {
+            font-size: 10px;
+            padding: 1px 6px;
+            background-color: #f3f4f6;
+            border-radius: 10px;
+            color: #6b7280;
+            min-width: 40px;
+            text-align: center;
+            cursor: pointer;
+            border: 1px solid #d1d5db;
+            transition: background-color 0.2s;
+        }
+        
+        .stack-count:hover {
+            background-color: #e5e7eb;
+        }
+        
+        .stack-content {
+            flex: 1;
+            overflow: auto;
+            position: relative;
+        }
+        
+        /* Stack-specific styles */
+        .priority-stack {
+            grid-area: priority;
+            max-height: 110px;
+        }
+        
+        .in-stack {
+            grid-area: in;
+        }
+        
+        .center-stage {
+            grid-area: center;
+            position: relative;
+        }
+        
+        .out-stack {
+            grid-area: out;
+        }
+        
+        .trash-stack {
+            grid-area: trash;
+            max-height: 110px;
+            position: sticky;
+            bottom: 0;
+            z-index: 10;
+        }
+        
+        /* Thumbnail styles */
+        .thumbnail-container {
+            display: flex;
+            padding: 4px;
+            gap: 4px;
+        }
+        
+        .vertical-thumbnails {
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .horizontal-thumbnails {
+            flex-direction: row;
+            align-items: center;
+        }
+        
+        .thumbnail {
+            width: 70px;
+            height: 70px;
+            object-fit: cover;
+            border: 2px solid transparent;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        
+        .thumbnail.selected {
+            border-color: #f59e0b;
+        }
+        
+        /* Center stage image */
+        .center-image {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            max-height: 100%;
+            max-width: 100%;
+        }
+        
+        /* Empty state message */
+        .empty-message {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #6b7280;
+            font-size: 20px;
+            text-align: center;
+            display: none;
+        }
+        
+        /* Current stack indicator in center stage */
+        .current-stack-indicator {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background-color: rgba(0, 0, 0, 0.3);
+            color: white;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-size: 12px;
+            pointer-events: none;
+        }
+        
+        /* Collapsible states */
+        .stack-panel.collapsed-horizontal {
+            max-height: 28px;
+        }
+        
+        .stack-panel.collapsed-vertical {
+            max-width: 28px;
+        }
+        
+        /* Vertical stack collapsed state */
+        .stack-panel.collapsed-vertical .stack-header {
+            transform: rotate(0deg);
+            padding: 10px 2px;
+            writing-mode: inherit;
+            height: auto;
+        }
+        
+        .horizontal-stack.collapsed-horizontal .stack-count,
+        .vertical-stack.collapsed-vertical .stack-count {
+            display: block;
+            margin-top: 0;
+            position: relative;
+            z-index: 5;
+        }
+        
+        .stack-panel.collapsed-vertical .stack-content,
+        .stack-panel.collapsed-horizontal .stack-content {
+            display: none;
+        }
+        
+        /* Swipe indicators */
+        .swipe-indicator {
+            position: absolute;
+            font-size: 48px;
+            color: white;
+            text-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+
+        .swipe-up {
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .swipe-down {
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        .swipe-left {
+            left: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        .swipe-right {
+            right: 20px;
+            top: 50%;
+            transform: translateY(-50%);
+        }
+
+        /* Swipe animations */
+        .swiping-left {
+            animation: swipeLeft 0.3s ease-out;
+        }
+        .swiping-right {
+            animation: swipeRight 0.3s ease-out;
+        }
+        .swiping-up {
+            animation: swipeUp 0.3s ease-out;
+        }
+        .swiping-down {
+            animation: swipeDown 0.3s ease-out;
+        }
+
+        @keyframes swipeLeft {
+            from { transform: translate(-50%, -50%); }
+            to { transform: translate(-150%, -50%); }
+        }
+        @keyframes swipeRight {
+            from { transform: translate(-50%, -50%); }
+            to { transform: translate(50%, -50%); }
+        }
+        @keyframes swipeUp {
+            from { transform: translate(-50%, -50%); }
+            to { transform: translate(-50%, -150%); }
+        }
+        @keyframes swipeDown {
+            from { transform: translate(-50%, -50%); }
+            to { transform: translate(-50%, 50%); }
+        }
+
+        /* Toast notification for feedback */
+        .toast {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 12px 20px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+            z-index: 1000;
+        }
+
+        .toast.success {
+            background-color: #10b981;
+        }
+
+        .toast.error {
+            background-color: #ef4444;
+        }
+
+        .toast.show {
+            opacity: 1;
+        }
+        
+        /* Image zoom controls */
+        .zoom-control {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background-color: rgba(255, 255, 255, 0.8);
+            border-radius: 8px;
+            padding: 8px 12px;
+            display: flex;
+            align-items: center;
+            z-index: 10;
+        }
+        
+        /* Metadata panel trigger tab */
+        .metadata-trigger {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            background-color: rgba(254, 243, 199, 0.6);
+            border: 1px solid rgba(251, 191, 36, 0.6);
+            border-radius: 50%;
+            width: 30px;
+            height: 30px;
+            cursor: pointer;
+            z-index: 19;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.3s ease;
+        }
+        
+        /* Metadata panel */
+        .metadata-panel {
+            position: absolute;
+            left: 10%;
+            right: 10%;
+            bottom: 0;
+            height: 0;
+            background-color: rgba(255, 255, 255, 0.9);
+            transition: height 0.3s ease;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+            border-top: 1px solid #fbbf24;
+            border-left: 1px solid #fbbf24;
+            border-right: 1px solid #fbbf24;
+            border-top-left-radius: 12px;
+            border-top-right-radius: 12px;
+            box-shadow: 0 -2px 8px rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(5px);
+            z-index: 18;
+        }
+        
+        .metadata-panel.expanded {
+            height: 50%;
+        }
+        
+        .metadata-header {
+            padding: 8px 12px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #fbbf24;
+            background-color: rgba(254, 243, 199, 0.9);
+        }
+        
+        .metadata-title {
+            font-weight: 500;
+            font-size: 14px;
+            color: #4b5563;
+        }
+        
+        .close-button {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .close-button:hover {
+            background-color: rgba(243, 244, 246, 0.8);
+        }
+        
+        .metadata-tabs {
+            display: flex;
+            border-bottom: 1px solid #fbbf24;
+            background-color: rgba(255, 251, 235, 0.8);
+        }
+        
+        .metadata-tab {
+            padding: 8px 12px;
+            font-size: 12px;
+            cursor: pointer;
+            border-bottom: 2px solid transparent;
+            color: #6b7280;
+        }
+        
+        .metadata-tab.active {
+            border-bottom-color: #f59e0b;
+            color: #4b5563;
+            font-weight: 500;
+        }
+        
+        .metadata-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px;
+            background-color: rgba(255, 251, 235, 0.8);
+        }
+        
+        .metadata-section {
+            display: none;
+            height: 100%;
+            overflow-y: auto;
+        }
+        
+        .metadata-section.active {
+            display: block;
+        }
+        
+        /* Tags */
+        .tag {
+            display: inline-flex;
+            align-items: center;
+            background-color: #fee4a6;
+            border-radius: 12px;
+            padding: 2px 8px;
+            margin: 2px;
+            font-size: 12px;
+        }
+        
+        .tag-remove {
+            margin-left: 4px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        
+        .add-tag {
+            background-color: #f3f4f6;
+            border: 1px dashed #9ca3af;
+            cursor: pointer;
+        }
+        
+        /* Custom metadata fields */
+        .metadata-field {
+            display: flex;
+            margin-bottom: 8px;
+            font-size: 12px;
+        }
+        
+        .field-label {
+            width: 90px;
+            color: #6b7280;
+            flex-shrink: 0;
+        }
+        
+        .field-value {
+            color: #1f2937;
+            flex: 1;
+            word-break: break-word;
+        }
+        
+        /* Filename link style */
+        .filename-link {
+            color: #3b82f6;
+            text-decoration: underline;
+            cursor: pointer;
+        }
+        
+        .filename-link:hover {
+            color: #2563eb;
+        }
+        
+        /* Notes */
+        .notes-textarea {
+            width: 100%;
+            min-height: 100px;
+            padding: 8px;
+            margin-bottom: 12px;
+            border: 1px solid #e5e7eb;
+            border-radius: 4px;
+            font-size: 12px;
+            resize: vertical;
+        }
+        
+        .save-button {
+            background-color: #f59e0b;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            border: none;
+            margin-bottom: 16px;
+            width: 100%;
+            display: block;
+        }
+        
+        .save-button:hover {
+            background-color: #d97706;
+        }
+        
+        /* Rating stars */
+        .rating-container {
+            margin-bottom: 12px;
+        }
+        
+        .rating-label {
+            display: block;
+            margin-bottom: 4px;
+            font-weight: 500;
+            font-size: 12px;
+            color: #4b5563;
+        }
+        
+        .star-rating {
+            display: flex;
+            gap: 5px;
+        }
+        
+        .star {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            color: #d1d5db;
+        }
+        
+        .star.active {
+            color: #f59e0b;
+        }
+    </style>
+</head>
+<body>
+    <div class="app-container">
+        <main id="main-content" class="main-content">
+            <!-- Priority Stack (Top) -->
+            <div class="stack-panel priority-stack horizontal-stack" data-stack="priority">
+                <div class="stack-header">
+                    <h2 class="stack-title" data-stack="priority">Priority</h2>
+                    <span class="stack-count" data-stack="priority">3</span>
+                </div>
+                <div class="stack-content">
+                    <div class="thumbnail-container horizontal-thumbnails" data-stack="priority">
+                        <img src="https://source.unsplash.com/random/140x140?abstract" class="thumbnail" alt="Abstract">
+                        <img src="https://source.unsplash.com/random/140x140?colorful" class="thumbnail" alt="Colorful Art">
+                        <img src="https://source.unsplash.com/random/140x140?sunset" class="thumbnail" alt="Sunset">
+                    </div>
+                </div>
+            </div>
+            
+            <!-- In Stack (Left) -->
+            <div class="stack-panel in-stack vertical-stack" data-stack="in">
+                <div class="stack-header">
+                    <h2 class="stack-title" data-stack="in">In</h2>
+                    <span class="stack-count" data-stack="in">5</span>
+                </div>
+                <div class="stack-content">
+                    <div class="thumbnail-container vertical-thumbnails" data-stack="in">
+                        <img src="https://source.unsplash.com/random/140x140?digital" class="thumbnail selected" alt="Digital">
+                        <img src="https://source.unsplash.com/random/140x140?landscape" class="thumbnail" alt="Landscape">
+                        <img src="https://source.unsplash.com/random/140x140?fantasy" class="thumbnail" alt="Fantasy">
+                        <img src="https://source.unsplash.com/random/140x140?nature" class="thumbnail" alt="Nature">
+                        <img src="https://source.unsplash.com/random/140x140?people" class="thumbnail" alt="People">
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Center Stage -->
+            <div class="stack-panel center-stage">
+                <!-- Zoom control -->
+                <div class="zoom-control">
+                    <span class="mr-2 text-sm">Zoom:</span>
+                    <input type="range" id="image-zoom" min="50" max="150" value="100" class="w-24">
+                    <span id="zoom-value" class="ml-2 text-sm">100%</span>
+                </div>
+                
+                <!-- Main image -->
+                <img src="https://source.unsplash.com/random/800x600?digital" class="center-image" alt="Digital">
+                
+                <!-- Empty state message -->
+                <div class="empty-message" id="empty-message">That's all for today</div>
+                
+                <!-- Current stack indicator in center stage -->
+                <div class="current-stack-indicator">In</div>
+                
+                <!-- Metadata trigger -->
+                <div class="metadata-trigger" id="metadata-trigger">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-amber-700" viewBox="0 0 20 20" fill="currentColor">
+                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd" />
+                    </svg>
+                </div>
+                
+                <!-- Swipe Indicators -->
+                <div class="swipe-indicator swipe-up">⬆️</div>
+                <div class="swipe-indicator swipe-down">⬇️</div>
+                <div class="swipe-indicator swipe-left">⬅️</div>
+                <div class="swipe-indicator swipe-right">➡️</div>
+                
+                <!-- Metadata Panel -->
+                <div class="metadata-panel" id="metadata-panel">
+                    <div class="metadata-header">
+                        <h3 class="metadata-title">Image Details</h3>
+                        <div class="close-button" id="close-metadata">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-500" viewBox="0 0 20 20" fill="currentColor">
+                                <path fill-rule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clip-rule="evenodd" />
+                            </svg>
+                        </div>
+                    </div>
+                    
+                    <div class="metadata-tabs">
+                        <div class="metadata-tab active" data-tab="details">Details</div>
+                        <div class="metadata-tab" data-tab="tags">Tags</div>
+                        <div class="metadata-tab" data-tab="notes">Notes</div>
+                        <div class="metadata-tab" data-tab="custom">Custom</div>
+                    </div>
+                    
+                    <div class="metadata-content">
+                        <!-- Details Section -->
+                        <div class="metadata-section active" id="details-section">
+                            <div class="metadata-field">
+                                <div class="field-label">Filename:</div>
+                                <div class="field-value" id="filename-value">
+                                    <span id="filename-text">Digital.jpg</span>
+                                </div>
+                            </div>
+                            <div class="metadata-field">
+                                <div class="field-label">Size:</div>
+                                <div class="field-value" id="filesize-value">2.1 MB</div>
+                            </div>
+                            <div class="metadata-field">
+                                <div class="field-label">Dimensions:</div>
+                                <div class="field-value" id="dimensions-value">1920x1080 px</div>
+                            </div>
+                            <div class="metadata-field">
+                                <div class="field-label">Created:</div>
+                                <div class="field-value" id="created-value">May 7, 2025</div>
+                            </div>
+                            <div class="metadata-field">
+                                <div class="field-label">Type:</div>
+                                <div class="field-value" id="type-value">JPEG Image</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Tags Section -->
+                        <div class="metadata-section" id="tags-section">
+                            <div id="tags-container" class="flex flex-wrap mb-3">
+                                <div class="tag">
+                                    digital
+                                    <span class="tag-remove" data-tag="digital">×</span>
+                                </div>
+                                <div class="tag">
+                                    art
+                                    <span class="tag-remove" data-tag="art">×</span>
+                                </div>
+                                <div class="tag add-tag" id="add-tag-button">+ Add</div>
+                            </div>
+                            
+                            <div class="text-xs mt-4">
+                                <div class="font-medium mb-1 text-gray-700">Session Tags:</div>
+                                <div id="session-tags" class="flex flex-wrap">
+                                    <div class="tag bg-amber-50 text-amber-700">digital</div>
+                                    <div class="tag bg-amber-50 text-amber-700">art</div>
+                                    <div class="tag bg-amber-50 text-amber-700">landscape</div>
+                                    <div class="tag bg-amber-50 text-amber-700">nature</div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Notes Section -->
+                        <div class="metadata-section" id="notes-section">
+                            <textarea id="notes-textarea" class="notes-textarea" placeholder="Add notes about this image...">This is a digital art piece with vibrant colors.</textarea>
+                            
+                            <button id="save-notes" class="save-button">Save Notes</button>
+                            
+                            <div class="rating-container">
+                                <div class="rating-label">Quality Rating:</div>
+                                <div class="star-rating" id="quality-rating">
+                                    <svg class="star active" data-rating="1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                    </svg>
+                                    <svg class="star active" data-rating="2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                    </svg>
+                                    <svg class="star active" data-rating="3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                    </svg>
+                                    <svg class="star active" data-rating="4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                    </svg>
+                                    <svg class="star" data-rating="5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                    </svg>
+                                </div>
+                            </div>
+                            
+                            <div class="rating-container">
+                                <div class="rating-label">Content Rating:</div>
+                                <div class="star-rating" id="content-rating">
+                                    <svg class="star active" data-rating="1" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                    </svg>
+                                    <svg class="star active" data-rating="2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                    </svg>
+                                    <svg class="star active" data-rating="3" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                    </svg>
+                                    <svg class="star active" data-rating="4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                    </svg>
+                                    <svg class="star active" data-rating="5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Custom Section -->
+                        <div class="metadata-section" id="custom-section">
+                            <div class="metadata-field">
+                                <div class="field-label">Creator:</div>
+                                <div class="field-value">Jane Doe</div>
+                            </div>
+                            <div class="metadata-field">
+                                <div class="field-label">Software:</div>
+                                <div class="field-value">Photoshop</div>
+                            </div>
+                            <div class="metadata-field">
+                                <div class="field-label">Copyright:</div>
+                                <div class="field-value">© 2025 Example Studio</div>
+                            </div>
+                            <div class="text-xs text-gray-500 mt-4">
+                                <p>Custom metadata is extracted from PNG files when available.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Out Stack (Right) -->
+            <div class="stack-panel out-stack vertical-stack" data-stack="out">
+                <div class="stack-header">
+                    <h2 class="stack-title" data-stack="out">Out</h2>
+                    <span class="stack-count" data-stack="out">2</span>
+                </div>
+                <div class="stack-content">
+                    <div class="thumbnail-container vertical-thumbnails" data-stack="out">
+                        <img src="https://source.unsplash.com/random/140x140?art" class="thumbnail" alt="Art">
+                        <img src="https://source.unsplash.com/random/140x140?painting" class="thumbnail" alt="Painting">
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Trash Stack (Bottom) -->
+            <div class="stack-panel trash-stack horizontal-stack" data-stack="trash">
+                <div class="stack-header">
+                    <h2 class="stack-title" data-stack="trash">Trash</h2>
+                    <span class="stack-count" data-stack="trash">1</span>
+                </div>
+                <div class="stack-content">
+                    <div class="thumbnail-container horizontal-thumbnails" data-stack="trash">
+                        <img src="https://source.unsplash.com/random/140x140?sketch" class="thumbnail" alt="Sketch">
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Toast for notifications -->
+    <div id="toast" class="toast">Notification message</div>
+
+    <script>
+        // Mock data with image metadata (simulating database/AppData)
+        const mockImageData = {
+            'Digital': {
+                tags: ['digital', 'art'],
+                notes: 'This is a digital art piece with vibrant colors.',
+                qualityRating: 4,
+                contentRating: 5,
+                size: '2.1 MB',
+                dimensions: '1920x1080 px',
+                created: 'May 7, 2025',
+                type: 'JPEG Image',
+                custom: {
+                    creator: 'Jane Doe',
+                    software: 'Photoshop',
+                    copyright: '© 2025 Example Studio'
+                }
+            },
+            'Landscape': {
+                tags: ['landscape', 'nature'],
+                notes: 'Beautiful mountain landscape at sunset.',
+                qualityRating: 5,
+                contentRating: 4,
+                size: '3.4 MB',
+                dimensions: '2048x1365 px',
+                created: 'May 5, 2025',
+                type: 'JPEG Image',
+                custom: {}
+            },
+            'Fantasy': {
+                tags: ['fantasy', 'illustration'],
+                notes: 'Fantasy world illustration with magical elements.',
+                qualityRating: 4,
+                contentRating: 5,
+                size: '2.8 MB',
+                dimensions: '1920x1080 px',
+                created: 'May 4, 2025',
+                type: 'JPEG Image',
+                custom: {}
+            },
+            'Nature': {
+                tags: ['nature', 'forest', 'green'],
+                notes: 'Forest scene with sunlight through trees.',
+                qualityRating: 4,
+                contentRating: 3,
+                size: '2.5 MB',
+                dimensions: '1800x1200 px',
+                created: 'May 3, 2025',
+                type: 'JPEG Image',
+                custom: {}
+            },
+            'People': {
+                tags: ['people', 'portrait'],
+                notes: 'Portrait of a person in natural lighting.',
+                qualityRating: 3,
+                contentRating: 4,
+                size: '1.9 MB',
+                dimensions: '1600x1067 px',
+                created: 'May 2, 2025',
+                type: 'JPEG Image',
+                custom: {}
+            },
+            'Abstract': {
+                tags: ['abstract', 'colorful'],
+                notes: 'Abstract art with bold colors and shapes.',
+                qualityRating: 4,
+                contentRating: 4,
+                size: '2.3 MB',
+                dimensions: '1920x1080 px',
+                created: 'May 1, 2025',
+                type: 'JPEG Image',
+                custom: {}
+            },
+            'Colorful Art': {
+                tags: ['art', 'colorful', 'vibrant'],
+                notes: 'Colorful artwork with dynamic patterns.',
+                qualityRating: 5,
+                contentRating: 5,
+                size: '2.7 MB',
+                dimensions: '2000x2000 px',
+                created: 'April 30, 2025',
+                type: 'JPEG Image',
+                custom: {}
+            },
+            'Sunset': {
+                tags: ['sunset', 'landscape', 'nature'],
+                notes: 'Beautiful sunset over the ocean.',
+                qualityRating: 5,
+                contentRating: 4,
+                size: '3.1 MB',
+                dimensions: '2048x1365 px',
+                created: 'April 29, 2025',
+                type: 'JPEG Image',
+                custom: {}
+            },
+            'Art': {
+                tags: ['art', 'painting'],
+                notes: 'Artistic composition with various elements.',
+                qualityRating: 4,
+                contentRating: 3,
+                size: '2.4 MB',
+                dimensions: '1800x1200 px',
+                created: 'April 28, 2025',
+                type: 'JPEG Image',
+                custom: {}
+            },
+            'Painting': {
+                tags: ['painting', 'traditional', 'art'],
+                notes: 'Traditional painting with detailed brushwork.',
+                qualityRating: 4,
+                contentRating: 4,
+                size: '2.6 MB',
+                dimensions: '1920x1280 px',
+                created: 'April 27, 2025',
+                type: 'JPEG Image',
+                custom: {}
+            },
+            'Sketch': {
+                tags: ['sketch', 'drawing', 'art'],
+                notes: 'Simple sketch drawing with pencil.',
+                qualityRating: 3,
+                contentRating: 3,
+                size: '1.5 MB',
+                dimensions: '1200x900 px',
+                created: 'April 26, 2025',
+                type: 'JPEG Image',
+                custom: {}
+            }
+        };
+
+        // Function to adjust layout based on which stacks are collapsed
+        function adjustLayout() {
+            // Get all stack panels
+            const inStack = document.querySelector('.in-stack');
+            const outStack = document.querySelector('.out-stack');
+            const priorityStack = document.querySelector('.priority-stack');
+            const trashStack = document.querySelector('.trash-stack');
+            
+            // Check which ones are collapsed
+            const inCollapsed = inStack.classList.contains('collapsed-vertical');
+            const outCollapsed = outStack.classList.contains('collapsed-vertical');
+            const priorityCollapsed = priorityStack.classList.contains('collapsed-horizontal');
+            const trashCollapsed = trashStack.classList.contains('collapsed-horizontal');
+            
+            // Calculate column template based on collapsed states
+            let columnsTemplate;
+            if (inCollapsed && outCollapsed) {
+                columnsTemplate = '28px calc(100% - 56px) 28px';
+            } else if (inCollapsed) {
+                // Center stage expands to the left when "in" stack is collapsed
+                columnsTemplate = '28px calc(100% - 28px - 10%) 10%';
+            } else if (outCollapsed) {
+                // Center stage expands to the right when "out" stack is collapsed
+                columnsTemplate = '10% calc(100% - 28px - 10%) 28px';
+            } else {
+                columnsTemplate = '10% 80% 10%';
+            }
+            
+            // Calculate row template based on collapsed states
+            let rowsTemplate;
+            if (priorityCollapsed && trashCollapsed) {
+                rowsTemplate = '28px calc(100% - 56px) 28px';
+            } else if (priorityCollapsed) {
+                rowsTemplate = '28px calc(100% - 28px - 110px) 110px';
+            } else if (trashCollapsed) {
+                rowsTemplate = '110px calc(100% - 28px - 110px) 28px';
+            } else {
+                rowsTemplate = 'auto 1fr auto';
+            }
+            
+            // Apply new grid template
+            document.getElementById('main-content').style.gridTemplateColumns = columnsTemplate;
+            document.getElementById('main-content').style.gridTemplateRows = rowsTemplate;
+            
+            console.log('Layout adjusted');
+        }
+
+        // Function to toggle panel collapse state
+        function toggleStackCollapse(stackName) {
+            const stackPanel = document.querySelector(`.stack-panel[data-stack="${stackName}"]`);
+            if (!stackPanel) return;
+            
+            // Check if it's horizontal or vertical
+            const isHorizontal = stackPanel.classList.contains('horizontal-stack');
+            
+            // Toggle appropriate class based on orientation
+            if (isHorizontal) {
+                stackPanel.classList.toggle('collapsed-horizontal');
+            } else {
+                stackPanel.classList.toggle('collapsed-vertical');
+            }
+            
+            // Adjust the overall layout
+            adjustLayout();
+            console.log(`Toggled ${stackName} stack: ${isHorizontal ? 'horizontal' : 'vertical'}`);
+        }
+
+        // Toast notification function
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            toast.textContent = message;
+            toast.className = `toast ${type}`;
+            toast.classList.add('show');
+            
+            setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+            
+            console.log(`Toast: ${message}`);
+        }
+
+        // Function to update metadata panel with image data
+        function updateMetadataPanel(imageName) {
+            const data = mockImageData[imageName] || {};
+            
+            // Update details tab
+            document.getElementById('filename-text').textContent = imageName + '.jpg';
+            document.getElementById('filesize-value').textContent = data.size || '-';
+            document.getElementById('dimensions-value').textContent = data.dimensions || '-';
+            document.getElementById('created-value').textContent = data.created || '-';
+            document.getElementById('type-value').textContent = data.type || '-';
+            
+            // Update tags tab
+            const tagsContainer = document.getElementById('tags-container');
+            // Remove all tags except the add button
+            const addTagButton = document.getElementById('add-tag-button');
+            tagsContainer.innerHTML = '';
+            tagsContainer.appendChild(addTagButton);
+            
+            // Add tags
+            if (data.tags && data.tags.length) {
+                data.tags.forEach(tag => {
+                    const tagElement = document.createElement('div');
+                    tagElement.className = 'tag';
+                    tagElement.innerHTML = `
+                        ${tag}
+                        <span class="tag-remove" data-tag="${tag}">×</span>
+                    `;
+                    
+                    // Add click handler for tag removal
+                    tagElement.querySelector('.tag-remove').addEventListener('click', function() {
+                        removeTag(imageName, tag);
+                    });
+                    
+                    tagsContainer.insertBefore(tagElement, addTagButton);
+                });
+            }
+            
+            // Update notes
+            document.getElementById('notes-textarea').value = data.notes || '';
+            
+            // Update ratings
+            updateRatingStars('quality-rating', data.qualityRating || 0);
+            updateRatingStars('content-rating', data.contentRating || 0);
+            
+            // Update custom tab
+            const customSection = document.getElementById('custom-section');
+            customSection.innerHTML = '';
+            
+            if (data.custom && Object.keys(data.custom).length) {
+                Object.entries(data.custom).forEach(([key, value]) => {
+                    const field = document.createElement('div');
+                    field.className = 'metadata-field';
+                    field.innerHTML = `
+                        <div class="field-label">${key}:</div>
+                        <div class="field-value">${value}</div>
+                    `;
+                    customSection.appendChild(field);
+                });
+            } else {
+                customSection.innerHTML = `
+                    <div class="metadata-field">
+                        <div class="field-label">No custom metadata available</div>
+                    </div>
+                    <div class="text-xs text-gray-500 mt-4">
+                        <p>Custom metadata is extracted from PNG files when available.</p>
+                    </div>
+                `;
+            }
+        }
+        
+        // Function to update rating stars
+        function updateRatingStars(containerId, rating) {
+            const stars = document.querySelectorAll(`#${containerId} .star`);
+            stars.forEach((star, index) => {
+                if (index < rating) {
+                    star.classList.add('active');
+                } else {
+                    star.classList.remove('active');
+                }
+            });
+        }
+        
+        // Function to remove a tag
+        function removeTag(imageName, tag) {
+            if (mockImageData[imageName]) {
+                mockImageData[imageName].tags = mockImageData[imageName].tags.filter(t => t !== tag);
+                updateMetadataPanel(imageName);
+                showToast(`Removed tag: ${tag}`);
+            }
+        }
+        
+        // Function to apply zoom level
+        function applyZoom(level) {
+            const centerImage = document.querySelector('.center-image');
+            const scale = level / 100;
+            centerImage.style.transform = `translate(-50%, -50%) scale(${scale})`;
+        }
+
+        // Function to handle a completed swipe
+        function handleSwipe(direction) {
+            // Check if IN stack is empty first
+            const inContainer = document.querySelector('.thumbnail-container[data-stack="in"]');
+            if (inContainer.querySelectorAll('.thumbnail').length === 0) {
+                // Show empty state and disable swipes
+                document.getElementById('empty-message').style.display = 'block';
+                document.querySelector('.center-image').style.display = 'none';
+                document.querySelector('.current-stack-indicator').textContent = '';
+                showToast("That's all for today", "info");
+                return;
+            }
+            
+            const centerImage = document.querySelector('.center-image');
+            const targetStack = direction;
+            
+            console.log(`Handling swipe: ${direction}`);
+            
+            // Apply animation class based on direction
+            switch(direction) {
+                case 'in':
+                    centerImage.classList.add('swiping-left');
+                    break;
+                case 'out':
+                    centerImage.classList.add('swiping-right');
+                    break;
+                case 'priority':
+                    centerImage.classList.add('swiping-up');
+                    break;
+                case 'trash':
+                    centerImage.classList.add('swiping-down');
+                    break;
+            }
+            
+            // Get selected thumbnail
+            const selectedThumb = document.querySelector('.thumbnail.selected');
+            if (!selectedThumb) {
+                centerImage.classList.remove('swiping-left', 'swiping-right', 'swiping-up', 'swiping-down');
+                return;
+            }
+            
+            // Get source stack
+            const sourceStack = selectedThumb.closest('.stack-panel').dataset.stack;
+            
+            // Wait for animation to complete
+            setTimeout(() => {
+                // Remove animation classes
+                centerImage.classList.remove('swiping-left', 'swiping-right', 'swiping-up', 'swiping-down');
+                
+                // Get target container
+                const targetContainer = document.querySelector(`.thumbnail-container[data-stack="${targetStack}"]`);
+                
+                if (!targetContainer) {
+                    console.error(`Target container not found: ${targetStack}`);
+                    return;
+                }
+                
+                // Remove selected thumbnail from source
+                selectedThumb.remove();
+                
+                // Clone the thumbnail 
+                const newThumb = selectedThumb.cloneNode(true);
+                newThumb.classList.remove('selected');
+                
+                // Insert at position 1 (beginning of container)
+                if (targetContainer.firstChild) {
+                    targetContainer.insertBefore(newThumb, targetContainer.firstChild);
+                } else {
+                    targetContainer.appendChild(newThumb);
+                }
+                
+                // Update click handler for the new thumbnail
+                newThumb.addEventListener('click', function() {
+                    selectThumbnail(this);
+                });
+                
+                // Update stack counts
+                updateStackCounts();
+                
+                // Always select the first thumbnail from IN stack
+                const firstInThumb = document.querySelector('.thumbnail-container[data-stack="in"] .thumbnail');
+                if (firstInThumb) {
+                    selectThumbnail(firstInThumb);
+                } else {
+                    // If IN stack is empty, show empty message
+                    document.getElementById('empty-message').style.display = 'block';
+                    document.querySelector('.center-image').style.display = 'none';
+                    document.querySelector('.current-stack-indicator').textContent = '';
+                }
+                
+                showToast(`Moved to ${targetStack}`);
+            }, 300);
+        }
+        
+        // Function to select a thumbnail and display it
+        function selectThumbnail(thumbnail) {
+            // Deselect all thumbnails
+            document.querySelectorAll('.thumbnail').forEach(thumb => {
+                thumb.classList.remove('selected');
+            });
+            
+            // Select this thumbnail
+            thumbnail.classList.add('selected');
+            
+            // Hide empty message if visible
+            document.getElementById('empty-message').style.display = 'none';
+            document.querySelector('.center-image').style.display = 'block';
+            
+            // Update center image
+            const centerImage = document.querySelector('.center-image');
+            centerImage.src = thumbnail.src.replace('140x140', '800x600');
+            centerImage.alt = thumbnail.alt;
+            
+            // Update stack indicator
+            const stackPanel = thumbnail.closest('.stack-panel');
+            const stackName = stackPanel.dataset.stack;
+            document.querySelector('.current-stack-indicator').textContent = 
+                stackName.charAt(0).toUpperCase() + stackName.slice(1);
+                
+            // Update metadata panel
+            updateMetadataPanel(thumbnail.alt);
+            
+            console.log(`Selected image: ${thumbnail.alt} from ${stackName} stack`);
+        }
+
+        // Function to update stack counts
+        function updateStackCounts() {
+            const stacks = ['in', 'out', 'priority', 'trash'];
+            stacks.forEach(stack => {
+                const container = document.querySelector(`.thumbnail-container[data-stack="${stack}"]`);
+                const count = container.querySelectorAll('.thumbnail').length;
+                document.querySelector(`.stack-count[data-stack="${stack}"]`).textContent = count;
+            });
+        }
+
+        // Function to setup swipe gestures
+        function setupGestureHandling() {
+            const centerStage = document.querySelector('.center-stage');
+            let touchStartX = 0;
+            let touchStartY = 0;
+            let touchEndX = 0;
+            let touchEndY = 0;
+            
+            // Touch events for mobile
+            centerStage.addEventListener('touchstart', function(e) {
+                // Don't handle touch events on the metadata panel or trigger
+                if (e.target.closest('.metadata-panel') || e.target.closest('.metadata-trigger')) return;
+                
+                touchStartX = e.touches[0].clientX;
+                touchStartY = e.touches[0].clientY;
+                console.log(`Touch start: ${touchStartX}, ${touchStartY}`);
+            });
+            
+            centerStage.addEventListener('touchmove', function(e) {
+                // Don't handle touch events on the metadata panel or trigger
+                if (e.target.closest('.metadata-panel') || e.target.closest('.metadata-trigger')) return;
+                
+                touchEndX = e.touches[0].clientX;
+                touchEndY = e.touches[0].clientY;
+                
+                // Calculate delta
+                const deltaX = touchEndX - touchStartX;
+                const deltaY = touchEndY - touchStartY;
+                
+                // Hide all indicators first
+                document.querySelectorAll('.swipe-indicator').forEach(indicator => {
+                    indicator.style.opacity = '0';
+                });
+                
+                // Show appropriate indicator based on direction
+                const minSwipeDistance = 50;
+                
+                if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > minSwipeDistance) {
+                    // Horizontal swipe
+                    if (deltaX > 0) {
+                        document.querySelector('.swipe-right').style.opacity = '1';
+                    } else {
+                        document.querySelector('.swipe-left').style.opacity = '1';
+                    }
+                } else if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > minSwipeDistance) {
+                    // Vertical swipe
+                    if (deltaY > 0) {
+                        document.querySelector('.swipe-down').style.opacity = '1';
+                    } else {
+                        document.querySelector('.swipe-up').style.opacity = '1';
+                    }
+                }
+            });
+            
+            centerStage.addEventListener('touchend', function(e) {
+                // Don't handle touch events on the metadata panel or trigger
+                if (e.target.closest('.metadata-panel') || e.target.closest('.metadata-trigger')) return;
+                
+                // Hide all indicators
+                document.querySelectorAll('.swipe-indicator').forEach(indicator => {
+                    indicator.style.opacity = '0';
+                });
+                
+                const deltaX = touchEndX - touchStartX;
+                const deltaY = touchEndY - touchStartY;
+                
+                // Minimum swipe distance
+                const minSwipeDistance = 100;
+                
+                // Process swipe
+                if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > minSwipeDistance) {
+                    // Horizontal swipe
+                    if (deltaX > 0) {
+                        console.log('Swipe right: out');
+                        handleSwipe('out');
+                    } else {
+                        console.log('Swipe left: in');
+                        handleSwipe('in');
+                    }
+                } else if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > minSwipeDistance) {
+                    // Vertical swipe
+                    if (deltaY > 0) {
+                        console.log('Swipe down: trash');
+                        handleSwipe('trash');
+                    } else {
+                        console.log('Swipe up: priority');
+                        handleSwipe('priority');
+                    }
+                }
+            });
+            
+            // Mouse events for desktop
+            let isDragging = false;
+            let dragStartX = 0;
+            let dragStartY = 0;
+            
+            centerStage.addEventListener('mousedown', function(e) {
+                // Don't handle mouse events on the metadata panel, trigger, or zoom control
+                if (e.target.closest('.metadata-panel') || 
+                    e.target.closest('.metadata-trigger') || 
+                    e.target.closest('.zoom-control')) return;
+                
+                // Only proceed if it's the main button (left-click)
+                if (e.button !== 0) return;
+                
+                isDragging = true;
+                dragStartX = e.clientX;
+                dragStartY = e.clientY;
+                console.log(`Mouse down: ${dragStartX}, ${dragStartY}`);
+            });
+            
+            centerStage.addEventListener('mousemove', function(e) {
+                if (!isDragging) return;
+                
+                const deltaX = e.clientX - dragStartX;
+                const deltaY = e.clientY - dragStartY;
+                
+                // Hide all indicators first
+                document.querySelectorAll('.swipe-indicator').forEach(indicator => {
+                    indicator.style.opacity = '0';
+                });
+                
+                // Show appropriate indicator based on direction
+                const minDragDistance = 50;
+                
+                if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > minDragDistance) {
+                    // Horizontal drag
+                    if (deltaX > 0) {
+                        document.querySelector('.swipe-right').style.opacity = '1';
+                    } else {
+                        document.querySelector('.swipe-left').style.opacity = '1';
+                    }
+                } else if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > minDragDistance) {
+                    // Vertical drag
+                    if (deltaY > 0) {
+                        document.querySelector('.swipe-down').style.opacity = '1';
+                    } else {
+                        document.querySelector('.swipe-up').style.opacity = '1';
+                    }
+                }
+            });
+            
+            centerStage.addEventListener('mouseup', function(e) {
+                if (!isDragging) return;
+                
+                // Hide all indicators
+                document.querySelectorAll('.swipe-indicator').forEach(indicator => {
+                    indicator.style.opacity = '0';
+                });
+                
+                const deltaX = e.clientX - dragStartX;
+                const deltaY = e.clientY - dragStartY;
+                
+                // Minimum drag distance
+                const minDragDistance = 100;
+                
+                // Process swipe
+                if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > minDragDistance) {
+                    // Horizontal drag
+                    if (deltaX > 0) {
+                        console.log('Mouse swipe right: out');
+                        handleSwipe('out');
+                    } else {
+                        console.log('Mouse swipe left: in');
+                        handleSwipe('in');
+                    }
+                } else if (Math.abs(deltaY) > Math.abs(deltaX) && Math.abs(deltaY) > minDragDistance) {
+                    // Vertical drag
+                    if (deltaY > 0) {
+                        console.log('Mouse swipe down: trash');
+                        handleSwipe('trash');
+                    } else {
+                        console.log('Mouse swipe up: priority');
+                        handleSwipe('priority');
+                    }
+                }
+                
+                isDragging = false;
+            });
+            
+            centerStage.addEventListener('mouseleave', function() {
+                if (isDragging) {
+                    isDragging = false;
+                    
+                    // Hide all indicators
+                    document.querySelectorAll('.swipe-indicator').forEach(indicator => {
+                        indicator.style.opacity = '0';
+                    });
+                }
+            });
+            
+            // Keyboard controls
+            document.addEventListener('keydown', function(e) {
+                // Don't handle keyboard events when typing in inputs
+                if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+                
+                switch (e.key) {
+                    case 'ArrowUp':
+                        console.log('Key up: priority');
+                        handleSwipe('priority');
+                        break;
+                    case 'ArrowDown':
+                        console.log('Key down: trash');
+                        handleSwipe('trash');
+                        break;
+                    case 'ArrowLeft':
+                        console.log('Key left: in');
+                        handleSwipe('in');
+                        break;
+                    case 'ArrowRight':
+                        console.log('Key right: out');
+                        handleSwipe('out');
+                        break;
+                }
+            });
+            
+            console.log('Gesture handling set up');
+        }
+        
+        // Function to set up metadata panel events
+        function setupMetadataPanel() {
+            // Metadata trigger click
+            document.getElementById('metadata-trigger').addEventListener('click', function() {
+                const panel = document.getElementById('metadata-panel');
+                panel.classList.toggle('expanded');
+                
+                if (panel.classList.contains('expanded')) {
+                    this.style.opacity = '0';
+                } else {
+                    setTimeout(() => {
+                        this.style.opacity = '1';
+                    }, 300);
+                }
+            });
+            
+            // Close button
+            document.getElementById('close-metadata').addEventListener('click', function() {
+                const panel = document.getElementById('metadata-panel');
+                panel.classList.remove('expanded');
+                
+                setTimeout(() => {
+                    document.getElementById('metadata-trigger').style.opacity = '1';
+                }, 300);
+            });
+            
+            // Tab switching
+            const tabs = document.querySelectorAll('.metadata-tab');
+            tabs.forEach(tab => {
+                tab.addEventListener('click', function() {
+                    // Remove active class from all tabs and sections
+                    tabs.forEach(t => t.classList.remove('active'));
+                    document.querySelectorAll('.metadata-section').forEach(s => s.classList.remove('active'));
+                    
+                    // Add active class to clicked tab
+                    this.classList.add('active');
+                    
+                    // Show corresponding section
+                    const tabName = this.dataset.tab;
+                    document.getElementById(`${tabName}-section`).classList.add('active');
+                });
+            });
+            
+            // Save notes button
+            document.getElementById('save-notes').addEventListener('click', function() {
+                const notes = document.getElementById('notes-textarea').value;
+                const selectedThumb = document.querySelector('.thumbnail.selected');
+                
+                if (selectedThumb) {
+                    const imageName = selectedThumb.alt;
+                    if (mockImageData[imageName]) {
+                        mockImageData[imageName].notes = notes;
+                        showToast('Notes saved');
+                    }
+                }
+            });
+            
+            // Rating stars
+            const setupRatingStars = (containerId) => {
+                const stars = document.querySelectorAll(`#${containerId} .star`);
+                stars.forEach(star => {
+                    star.addEventListener('click', function() {
+                        const rating = parseInt(this.dataset.rating);
+                        const selectedThumb = document.querySelector('.thumbnail.selected');
+                        
+                        if (selectedThumb) {
+                            const imageName = selectedThumb.alt;
+                            if (mockImageData[imageName]) {
+                                if (containerId === 'quality-rating') {
+                                    mockImageData[imageName].qualityRating = rating;
+                                } else {
+                                    mockImageData[imageName].contentRating = rating;
+                                }
+                                
+                                // Update stars
+                                updateRatingStars(containerId, rating);
+                                showToast(`${containerId === 'quality-rating' ? 'Quality' : 'Content'} rating updated`);
+                            }
+                        }
+                    });
+                });
+            };
+            
+            setupRatingStars('quality-rating');
+            setupRatingStars('content-rating');
+            
+            // Add tag button
+            document.getElementById('add-tag-button').addEventListener('click', function() {
+                const selectedThumb = document.querySelector('.thumbnail.selected');
+                if (selectedThumb) {
+                    const imageName = selectedThumb.alt;
+                    
+                    // Prompt for new tag
+                    const newTag = prompt('Enter new tag:');
+                    if (newTag && newTag.trim()) {
+                        // Add to image data
+                        if (!mockImageData[imageName]) {
+                            mockImageData[imageName] = { tags: [] };
+                        }
+                        
+                        if (!mockImageData[imageName].tags) {
+                            mockImageData[imageName].tags = [];
+                        }
+                        
+                        // Check if tag already exists
+                        if (!mockImageData[imageName].tags.includes(newTag)) {
+                            mockImageData[imageName].tags.push(newTag);
+                            updateMetadataPanel(imageName);
+                            showToast(`Added tag: ${newTag}`);
+                        }
+                    }
+                }
+            });
+            
+            // Zoom slider
+            document.getElementById('image-zoom').addEventListener('input', function() {
+                const level = parseInt(this.value);
+                document.getElementById('zoom-value').textContent = `${level}%`;
+                applyZoom(level);
+            });
+        }
+
+        // Function to initialize the interface
+        function initInterface() {
+            // Set up click handlers for stack count pills (collapse/expand)
+            const stackCounts = document.querySelectorAll('.stack-count');
+            stackCounts.forEach(countElement => {
+                countElement.addEventListener('click', function() {
+                    const stackName = this.dataset.stack;
+                    toggleStackCollapse(stackName);
+                });
+            });
+            
+            // Set up click handlers for thumbnails
+            const thumbnails = document.querySelectorAll('.thumbnail');
+            thumbnails.forEach(thumbnail => {
+                thumbnail.addEventListener('click', function() {
+                    selectThumbnail(this);
+                });
+            });
+            
+            // Initialize metadata panel
+            setupMetadataPanel();
+            
+            // Initialize counts
+            updateStackCounts();
+            
+            // Set up gesture handling
+            setupGestureHandling();
+            
+            // Default select first thumbnail in IN stack
+            const firstInThumb = document.querySelector('.thumbnail-container[data-stack="in"] .thumbnail');
+            if (firstInThumb) {
+                selectThumbnail(firstInThumb);
+            }
+            
+            console.log('SlideBox interface initialized');
+        }
+
+        // Initialize the interface when the DOM is loaded
+        document.addEventListener('DOMContentLoaded', initInterface);
+    </script>
+</body>
+</html>
