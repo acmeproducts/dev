@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Noisy Lines with Ambient Sound</title>
+    <style>
+        body { margin: 0; overflow: hidden; }
+        canvas { display: block; }
+        #debug { position: fixed; top: 10px; left: 10px; background: rgba(255, 255, 255, 0.8); padding: 10px; border: 1px solid #000; }
+    </style>
+</head>
+<body>
+    <canvas id="webgl-canvas"></canvas>
+    <div id="audio-permission-message" style="display: none; position: fixed; top: 10px; left: 10px; background: #fff; padding: 10px; border: 1px solid #000;">
+        Please allow microphone access to hear the ambient sound.
+    </div>
+    <div id="debug"></div>
+    <script>
+        // Initialize Three.js scene, camera, and renderer
+        const scene = new THREE.Scene();
+        const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+        const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('webgl-canvas') });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+
+        // Create stats for debugging
+        const stats = new Stats();
+        document.body.appendChild(stats.domElement);
+
+        // Initialize Web Audio API
+        let audioContext;
+        let analyser;
+        let dataArray;
+
+        // Function to start capturing audio
+        async function startAudio() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                const source = audioContext.createMediaStreamSource(stream);
+                analyser = audioContext.createAnalyser();
+                analyser.fftSize = 2048;
+                source.connect(analyser);
+                dataArray = new Uint8Array(analyser.frequencyBinCount);
+                document.getElementById('audio-permission-message').style.display = 'none';
+                document.getElementById('debug').innerText += 'Microphone access granted.\n';
+            } catch (error) {
+                console.error('Error accessing microphone:', error);
+                document.getElementById('audio-permission-message').innerText = 'Microphone access denied. Please check your settings.';
+                document.getElementById('audio-permission-message').style.display = 'block';
+                document.getElementById('debug').innerText += 'Error accessing microphone: ' + error.message + '\n';
+            }
+        }
+
+        // Create the noise lines
+        const geometry = new THREE.BufferGeometry();
+        const vertices = [];
+        const numPoints = 1000;
+
+        for (let i = 0; i < numPoints; i++) {
+            vertices.push(Math.random() * 2 - 1, Math.random() * 2 - 1, Math.random() * 2 - 1);
+        }
+
+        geometry.setAttribute('position', new THREE.Float32BufferAttribute(vertices, 3));
+
+        const material = new THREE.LineBasicMaterial({ color: 0xffffff });
+        const line = new THREE.Line(geometry, material);
+        scene.add(line);
+
+        camera.position.z = 5;
+
+        // Animation loop
+        function animate() {
+            requestAnimationFrame(animate);
+            stats.update();
+
+            if (analyser) {
+                analyser.getByteFrequencyData(dataArray);
+
+                // Modify the vertices based on audio data
+                const positions = geometry.attributes.position.array;
+                for (let i = 0; i < numPoints; i++) {
+                    const index = i * 3;
+                    positions[index] += (dataArray[i % dataArray.length] / 128 - 0.5) * 0.01;
+                    positions[index + 1] += (dataArray[(i + 1) % dataArray.length] / 128 - 0.5) * 0.01;
+                    positions[index + 2] += (dataArray[(i + 2) % dataArray.length] / 128 - 0.5) * 0.01;
+                }
+
+                geometry.attributes.position.needsUpdate = true;
+            }
+
+            renderer.render(scene, camera);
+        }
+
+        // Load Three.js and Stats.js
+        function loadScript(url, callback) {
+            const script = document.createElement('script');
+            script.src = url;
+            script.onload = callback;
+            script.onerror = () => {
+                document.getElementById('debug').innerText += 'Failed to load script: ' + url + '\n';
+            };
+            document.head.appendChild(script);
+        }
+
+        loadScript('https://cdn.jsdelivr.net/npm/three@0.140.0/build/three.min.js', () => {
+            document.getElementById('debug').innerText += 'Three.js loaded.\n';
+            loadScript('https://cdn.jsdelivr.net/npm/three@0.140.0/examples/js/libs/stats.min.js', () => {
+                document.getElementById('debug').innerText += 'Stats.js loaded.\n';
+                startAudio().then(() => {
+                    animate();
+                });
+            });
+        });
+
+        // Handle window resize
+        window.addEventListener('resize', () => {
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+            renderer.setSize(width, height);
+            camera.aspect = width / height;
+            camera.updateProjectionMatrix();
+        });
+    </script>
+</body>
+</html>
