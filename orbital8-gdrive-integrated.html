@@ -45,9 +45,6 @@
                            file.modifiedTime ? new Date(file.modifiedTime).toLocaleString() : 'Unknown';
                 elements.detailDate.textContent = date;
                 
-                // Size - removed per user request
-                elements.detailSize.textContent = '';
-                
                 // Tags
                 this.populateTags(file);
                 
@@ -177,67 +174,6 @@
                 });
             }
         };
-        
-        // ===== Haptic Feedback =====
-        function triggerHaptic() {
-            if (appState.hapticEnabled) {
-                // Try multiple haptic methods for better compatibility
-                if (navigator.vibrate) {
-                    navigator.vibrate([100, 30, 100]); // Pattern for more noticeable feedback
-                } else if (window.navigator && window.navigator.vibrate) {
-                    window.navigator.vibrate([100, 30, 100]);
-                } else if ('vibrate' in navigator) {
-                    navigator.vibrate(100);
-                }
-                
-                // Fallback audio feedback if vibration not supported
-                if (!('vibrate' in navigator)) {
-                    try {
-                        const audioContext = new (window.AudioContext || window.webkitAudioContext)();
-                        const oscillator = audioContext.createOscillator();
-                        const gainNode = audioContext.createGain();
-                        
-                        oscillator.connect(gainNode);
-                        gainNode.connect(audioContext.destination);
-                        
-                        oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
-                        gainNode.gain.setValueAtTime(0.1, audioContext.currentTime);
-                        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.1);
-                        
-                        oscillator.start(audioContext.currentTime);
-                        oscillator.stop(audioContext.currentTime + 0.1);
-                    } catch (e) {
-                        console.log('Haptic feedback not available');
-                    }
-                }
-            }
-        }
-        
-        function setupHapticToggle() {
-            elements.hapticToggle.addEventListener('click', () => {
-                appState.hapticEnabled = !appState.hapticEnabled;
-                elements.hapticToggle.classList.toggle('active', appState.hapticEnabled);
-                
-                if (appState.hapticEnabled) {
-                    triggerHaptic();
-                }
-            });
-        }
-        
-        function setupVisualCueControls() {
-            elements.cueIntensity.addEventListener('input', () => {
-                const value = parseInt(elements.cueIntensity.value);
-                appState.visualCueIntensity = value;
-                
-                const labels = ['Low', 'Medium', 'High'];
-                elements.cueIntensityValue.textContent = labels[value - 1];
-                
-                // Update CSS custom properties for edge glow intensity
-                const appContainer = elements.appContainer;
-                appContainer.classList.remove('glow-low', 'glow-medium', 'glow-high');
-                appContainer.classList.add(`glow-${labels[value - 1].toLowerCase()}`);
-            });
-        }
 
         * {
             box-sizing: border-box;
@@ -398,9 +334,9 @@
         
         .folder-title {
             color: white;
-            font-size: 28px;
+            font-size: 24px;
             font-weight: 600;
-            margin-bottom: 20px;
+            margin-bottom: 16px;
             text-align: center;
             text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
         }
@@ -415,8 +351,8 @@
         .folder-item {
             display: flex;
             align-items: center;
-            padding: 16px 20px;
-            margin-bottom: 12px;
+            padding: 12px 16px;
+            margin-bottom: 8px;
             background: rgba(255, 255, 255, 0.05);
             border: 1px solid rgba(255, 255, 255, 0.1);
             border-radius: 12px;
@@ -432,9 +368,9 @@
         }
         
         .folder-icon {
-            width: 24px;
-            height: 24px;
-            margin-right: 16px;
+            width: 20px;
+            height: 20px;
+            margin-right: 12px;
             color: var(--app-accent);
         }
         
@@ -444,123 +380,12 @@
         
         .folder-name {
             font-weight: 500;
-            margin-bottom: 4px;
-            font-size: 16px;
+            margin-bottom: 2px;
         }
         
         .folder-date {
-            font-size: 14px;
+            font-size: 12px;
             color: rgba(255, 255, 255, 0.6);
-        }
-        
-        /* Visual Cue Intensity Controls */
-        .visual-cue-controls {
-            margin-bottom: 20px;
-            padding: 16px;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 12px;
-        }
-        
-        .visual-cue-title {
-            color: var(--app-accent);
-            font-size: 14px;
-            font-weight: 600;
-            margin-bottom: 12px;
-            text-align: center;
-        }
-        
-        .cue-intensity-group {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 12px;
-        }
-        
-        .cue-intensity-label {
-            color: rgba(255, 255, 255, 0.7);
-            font-size: 13px;
-            min-width: 40px;
-        }
-        
-        .cue-intensity-slider {
-            flex: 1;
-            max-width: 150px;
-        }
-        
-        .cue-intensity-value {
-            color: var(--app-accent);
-            font-size: 13px;
-            font-weight: 500;
-            min-width: 60px;
-            text-align: center;
-        }
-        
-        /* Haptic Controls */
-        .haptic-controls {
-            margin-bottom: 20px;
-            padding: 16px;
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 12px;
-        }
-        
-        .haptic-title {
-            color: var(--app-accent);
-            font-size: 14px;
-            font-weight: 600;
-            margin-bottom: 8px;
-            text-align: center;
-        }
-        
-        .haptic-toggle-group {
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            gap: 12px;
-            margin-bottom: 8px;
-        }
-        
-        .haptic-toggle {
-            background: rgba(255, 255, 255, 0.1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 20px;
-            padding: 8px 16px;
-            font-size: 14px;
-            color: white;
-            cursor: pointer;
-            transition: all 0.3s ease;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        
-        .haptic-toggle:hover {
-            background: rgba(255, 255, 255, 0.2);
-        }
-        
-        .haptic-toggle.active {
-            background: rgba(245, 158, 11, 0.3);
-            border-color: rgba(245, 158, 11, 0.5);
-        }
-        
-        .haptic-indicator {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-            background: rgba(255, 255, 255, 0.5);
-            transition: background 0.2s ease;
-        }
-        
-        .haptic-toggle.active .haptic-indicator {
-            background: var(--app-accent);
-        }
-        
-        .haptic-instructions {
-            color: rgba(255, 255, 255, 0.6);
-            font-size: 11px;
-            text-align: center;
-            line-height: 1.3;
         }
         
         .folder-loading {
@@ -696,19 +521,17 @@
             background: rgba(255, 255, 255, 0.1);
             backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 25px;
-            padding: 12px 16px;
-            font-size: 14px;
+            border-radius: 20px;
+            padding: 8px 12px;
+            font-size: 11px;
             color: white;
             cursor: pointer;
             transition: all 0.3s ease;
             z-index: 15;
             display: flex;
             align-items: center;
-            gap: 8px;
-            opacity: 0.8;
-            min-height: 44px;
-            min-width: 80px;
+            gap: 6px;
+            opacity: 0.7;
         }
         
         .back-button:hover {
@@ -724,19 +547,17 @@
             background: rgba(255, 255, 255, 0.1);
             backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.2);
-            border-radius: 25px;
-            padding: 12px 16px;
-            font-size: 14px;
+            border-radius: 20px;
+            padding: 8px 12px;
+            font-size: 11px;
             color: white;
             cursor: pointer;
             transition: all 0.3s ease;
             z-index: 15;
             display: flex;
             align-items: center;
-            gap: 8px;
-            opacity: 0.8;
-            min-height: 44px;
-            min-width: 80px;
+            gap: 6px;
+            opacity: 0.7;
         }
         
         .details-button:hover {
@@ -780,12 +601,12 @@
             pointer-events: auto;
         }
         
-        /* ===== Progressive Edge Glow System (Variable Intensity) ===== */
+        /* ===== Progressive Edge Glow System ===== */
         .edge-glow {
             position: absolute;
             background: linear-gradient(90deg, 
                 transparent 0%, 
-                rgba(245, 158, 11, var(--glow-intensity, 0.3)) 50%, 
+                rgba(245, 158, 11, 0.3) 50%, 
                 transparent 100%);
             opacity: 0;
             transition: opacity 0.2s ease;
@@ -796,9 +617,9 @@
             top: 0;
             left: 0;
             right: 0;
-            height: var(--glow-reach, 8px);
+            height: 8px;
             background: linear-gradient(180deg, 
-                rgba(245, 158, 11, var(--glow-intensity, 0.4)) 0%, 
+                rgba(245, 158, 11, 0.4) 0%, 
                 transparent 100%);
         }
         
@@ -806,9 +627,9 @@
             bottom: 0;
             left: 0;
             right: 0;
-            height: var(--glow-reach, 8px);
+            height: 8px;
             background: linear-gradient(0deg, 
-                rgba(245, 158, 11, var(--glow-intensity, 0.4)) 0%, 
+                rgba(245, 158, 11, 0.4) 0%, 
                 transparent 100%);
         }
         
@@ -816,9 +637,9 @@
             top: 0;
             left: 0;
             bottom: 0;
-            width: var(--glow-reach, 8px);
+            width: 8px;
             background: linear-gradient(90deg, 
-                rgba(245, 158, 11, var(--glow-intensity, 0.4)) 0%, 
+                rgba(245, 158, 11, 0.4) 0%, 
                 transparent 100%);
         }
         
@@ -826,30 +647,14 @@
             top: 0;
             right: 0;
             bottom: 0;
-            width: var(--glow-reach, 8px);
+            width: 8px;
             background: linear-gradient(270deg, 
-                rgba(245, 158, 11, var(--glow-intensity, 0.4)) 0%, 
+                rgba(245, 158, 11, 0.4) 0%, 
                 transparent 100%);
         }
         
         .edge-glow.active {
             opacity: 1;
-        }
-        
-        /* Intensity levels */
-        .app-container.glow-low {
-            --glow-intensity: 0.2;
-            --glow-reach: 6px;
-        }
-        
-        .app-container.glow-medium {
-            --glow-intensity: 0.4;
-            --glow-reach: 12px;
-        }
-        
-        .app-container.glow-high {
-            --glow-intensity: 0.7;
-            --glow-reach: 20px;
         }
         
         /* ===== Enhanced ProxTab Pill Counters (Restored Original Size) ===== */
@@ -879,6 +684,7 @@
             font-weight: 700;
             background: rgba(255, 255, 255, 0.9);
             opacity: 1;
+            border: 3px solid black;
         }
         
         .pill-counter:hover {
@@ -894,59 +700,21 @@
         }
         
         .pill-counter.bottom {
-            bottom: 60px; /* Moved up to avoid gesture bar */
+            bottom: 60px;
             left: 50%;
             transform: translateX(-50%);
         }
         
         .pill-counter.left {
-            left: 15px; /* Slightly inward */
+            left: 10px;
             top: 50%;
             transform: translateY(-50%);
         }
         
         .pill-counter.right {
-            right: 15px; /* Slightly inward */
+            right: 10px;
             top: 50%;
             transform: translateY(-50%);
-        }
-        
-        /* Active ProxTab styling */
-        .pill-counter.active {
-            font-weight: 700;
-            background: rgba(255, 255, 255, 0.9);
-            opacity: 1;
-            border: 3px solid #000;
-            box-shadow: 0 0 10px rgba(0, 0, 0, 0.3);
-        }
-        
-        /* ProxTab thumbnail popup */
-        .proxtab-popup {
-            position: fixed;
-            background: rgba(0, 0, 0, 0.9);
-            backdrop-filter: blur(10px);
-            border-radius: 12px;
-            padding: 12px;
-            z-index: 20;
-            display: flex;
-            gap: 8px;
-            opacity: 0;
-            transform: scale(0.8);
-            transition: all 0.2s ease;
-            pointer-events: none;
-        }
-        
-        .proxtab-popup.show {
-            opacity: 1;
-            transform: scale(1);
-        }
-        
-        .popup-thumbnail {
-            width: 60px;
-            height: 60px;
-            object-fit: cover;
-            border-radius: 8px;
-            border: 2px solid rgba(255, 255, 255, 0.3);
         }
         
         /* ===== Enhanced Triple Ripple + Glow Effects ===== */
@@ -1709,6 +1477,20 @@
                 padding: 10px 16px;
             }
         }
+        
+        /* ===== Mobile Design Improvements ===== */
+        @media screen and (max-width: 767px) {
+            .back-button, .details-button {
+                font-size: 16px;
+                padding: 12px 20px;
+                border-radius: 25px;
+                min-width: 80px;
+            }
+            
+            .pill-counter.bottom {
+                bottom: 80px; /* Extra space for gesture bar */
+            }
+        }
     </style>
 </head>
 <body>
@@ -1729,31 +1511,6 @@
     <div class="folder-screen hidden" id="folder-screen">
         <div class="folder-card">
             <h2 class="folder-title">Select a Folder</h2>
-            
-            <!-- Haptic Controls -->
-            <div class="haptic-controls">
-                <div class="haptic-title">Haptic Feedback</div>
-                <div class="haptic-toggle-group">
-                    <div class="haptic-toggle" id="haptic-toggle">
-                        <div class="haptic-indicator"></div>
-                        <span>Haptic Feedback</span>
-                    </div>
-                </div>
-                <div class="haptic-instructions">
-                    Provides tactile feedback when swiping images between stacks
-                </div>
-            </div>
-            
-            <!-- Visual Cue Intensity -->
-            <div class="visual-cue-controls">
-                <div class="visual-cue-title">Visual Swipe Cues</div>
-                <div class="cue-intensity-group">
-                    <span class="cue-intensity-label">Low</span>
-                    <input type="range" id="cue-intensity" class="cue-intensity-slider" min="1" max="3" value="1">
-                    <span class="cue-intensity-label">High</span>
-                    <span class="cue-intensity-value" id="cue-intensity-value">Low</span>
-                </div>
-            </div>
             
             <div class="folder-list" id="folder-list">
                 <div class="folder-loading">
@@ -1817,13 +1574,6 @@
         
         <!-- Toast Notification -->
         <div id="toast" class="toast"></div>
-        
-        <!-- ProxTab Thumbnail Popup -->
-        <div id="proxtab-popup" class="proxtab-popup">
-            <img class="popup-thumbnail" id="popup-thumb-1" alt="Preview">
-            <img class="popup-thumbnail" id="popup-thumb-2" alt="Preview">  
-            <img class="popup-thumbnail" id="popup-thumb-3" alt="Preview">
-        </div>
     </div>
     
     <!-- Include CloudStorageModule -->
@@ -2366,10 +2116,6 @@
                         <span class="details-label">Date:</span>
                         <span class="details-value" id="detail-date"></span>
                     </div>
-                    <div class="details-item">
-                        <span class="details-label">Size:</span>
-                        <span class="details-value" id="detail-size"></span>
-                    </div>
                 </div>
                 
                 <div class="details-section">
@@ -2405,8 +2151,6 @@
             dragCurrent: { x: 0, y: 0 },
             velocity: { x: 0, y: 0 },
             lastDragTime: 0,
-            hapticEnabled: false,
-            visualCueIntensity: 1, // 1=low, 2=medium, 3=high
             // Enhanced Pinch Zoom State
             isPinching: false,
             initialDistance: 0,
@@ -2419,10 +2163,7 @@
             grid: { stack: null, selected: [] },
             tags: new Set(),
             // Performance optimization
-            imageCache: new Map(),
-            // ProxTab interaction
-            longPressTimer: null,
-            longPressThreshold: 800
+            imageCache: new Map()
         };
         
         // ===== DOM Elements =====
@@ -2439,9 +2180,6 @@
             folderList: document.getElementById('folder-list'),
             refreshFolders: document.getElementById('refresh-folders'),
             logout: document.getElementById('logout'),
-            hapticToggle: document.getElementById('haptic-toggle'),
-            cueIntensity: document.getElementById('cue-intensity'),
-            cueIntensityValue: document.getElementById('cue-intensity-value'),
             backButton: document.getElementById('back-button'),
             detailsButton: document.getElementById('details-button'),
             imageViewport: document.getElementById('image-viewport'),
@@ -2489,16 +2227,10 @@
             detailsClose: document.getElementById('details-close'),
             detailFilename: document.getElementById('detail-filename'),
             detailDate: document.getElementById('detail-date'),
-            detailSize: document.getElementById('detail-size'),
             detailTags: document.getElementById('detail-tags'),
             metadataTable: document.getElementById('metadata-table'),
             metadataSection: document.getElementById('metadata-section'),
-            copyFilename: document.getElementById('copy-filename'),
-            // ProxTab popup elements
-            proxtabPopup: document.getElementById('proxtab-popup'),
-            popupThumb1: document.getElementById('popup-thumb-1'),
-            popupThumb2: document.getElementById('popup-thumb-2'),
-            popupThumb3: document.getElementById('popup-thumb-3')
+            copyFilename: document.getElementById('copy-filename')
         };
         
         // ===== Utility Functions =====
@@ -2568,16 +2300,17 @@
                 });
             },
             
-            // Preload images for performance
-            preloadImages: function(files, maxPreload = 20) {
-                const imagesToPreload = files.slice(0, maxPreload);
-                
-                imagesToPreload.forEach(file => {
+            // Preload all images for better grid performance
+            preloadAllImages: async function() {
+                const preloadPromises = appState.imageFiles.map(async (file) => {
                     if (!appState.imageCache.has(file.id)) {
-                        const preloadImg = new Image();
-                        this.setImageSrc(preloadImg, file);
+                        const tempImg = new Image();
+                        await this.setImageSrc(tempImg, file);
                     }
                 });
+                
+                await Promise.all(preloadPromises);
+                console.log(`Preloaded ${appState.imageFiles.length} images`);
             }
         };
         
@@ -2718,47 +2451,24 @@
                         appProperties: file.appProperties || {}
                     }));
                     
+                    // Update loading message for preloading
+                    elements.loadingMessage.textContent = 'Preloading images for faster performance...';
+                    
                     // Organize into stacks
                     stackManager.updateStacks();
                     appState.currentImageIndex = 0;
                     appState.currentStack = 'in';
                     
-                    // Preload images for all stacks for better grid performance
-                    STACK_TYPES.forEach(stack => {
-                        utils.preloadImages(appState.stacks[stack], 10);
-                    });
+                    // Preload all images for better performance
+                    await utils.preloadAllImages();
                     
                     // Wait a moment then show app
                     setTimeout(() => {
                         utils.showScreen('app-container');
-                        
-                        // Find first available image and set current stack accordingly
-                        let firstStack = 'in';
-                        let firstImageIndex = -1;
-                        
-                        // Check stacks in order: in, out, priority, trash
-                        for (const stack of STACK_TYPES) {
-                            if (appState.stacks[stack].length > 0) {
-                                firstStack = stack;
-                                const firstImage = appState.stacks[stack][0];
-                                firstImageIndex = appState.imageFiles.findIndex(f => f.id === firstImage.id);
-                                break;
-                            }
-                        }
-                        
-                        if (firstImageIndex !== -1) {
-                            appState.currentStack = firstStack;
-                            appState.currentImageIndex = firstImageIndex;
-                            imageViewer.displayCurrentImage();
-                        } else {
-                            // No images found, show empty state
-                            elements.emptyState.classList.remove('hidden');
-                            elements.centerImage.src = '';
-                            elements.centerImage.alt = 'No images found';
-                        }
-                        
+                        // Display first image from "In" stack (default active)
+                        imageViewer.displayTopImageFromStack('in');
                         updateActiveProxTab();
-                    }, 1000);
+                    }, 500);
                     
                 } catch (error) {
                     console.error('Error loading folder:', error);
@@ -2990,7 +2700,7 @@
             }
         };
         
-        // ===== Enhanced ProxTab Management =====
+        // ===== ProxTab Management =====
         function updateActiveProxTab() {
             Object.values(elements.pillCounters).forEach(pill => {
                 pill.classList.remove('active');
@@ -3003,107 +2713,26 @@
         
         function setupProxTabClicks() {
             Object.entries(elements.pillCounters).forEach(([stackName, pill]) => {
-                // Enhanced click handler
                 pill.addEventListener('click', (e) => {
                     e.stopPropagation();
-                    handleProxTabClick(stackName);
+                    
+                    // If clicking the currently active proxtab, open grid mode
+                    if (appState.currentStack === stackName) {
+                        gridView.open(stackName);
+                        acknowledgePillCounter(stackName);
+                        return;
+                    }
+                    
+                    // If clicking an inactive proxtab, activate it and show top image
+                    appState.currentStack = stackName;
+                    updateActiveProxTab();
+                    imageViewer.displayTopImageFromStack(stackName);
+                    acknowledgePillCounter(stackName);
                 });
-                
-                // Long press handler
-                let longPressTimer = null;
-                
-                pill.addEventListener('mousedown', (e) => {
-                    if (stackName !== appState.currentStack) {
-                        longPressTimer = setTimeout(() => {
-                            showThumbnailPopup(stackName, e.clientX, e.clientY);
-                        }, appState.longPressThreshold);
-                    }
-                });
-                
-                pill.addEventListener('touchstart', (e) => {
-                    if (stackName !== appState.currentStack) {
-                        longPressTimer = setTimeout(() => {
-                            const touch = e.touches[0];
-                            showThumbnailPopup(stackName, touch.clientX, touch.clientY);
-                        }, appState.longPressThreshold);
-                    }
-                }, { passive: true });
-                
-                const clearLongPress = () => {
-                    if (longPressTimer) {
-                        clearTimeout(longPressTimer);
-                        longPressTimer = null;
-                    }
-                };
-                
-                pill.addEventListener('mouseup', clearLongPress);
-                pill.addEventListener('mouseleave', clearLongPress);
-                pill.addEventListener('touchend', clearLongPress);
-                pill.addEventListener('touchcancel', clearLongPress);
             });
         }
         
-        function handleProxTabClick(stackName) {
-            if (stackName === appState.currentStack) {
-                // Clicking active ProxTab opens grid mode
-                gridView.open(stackName);
-            } else {
-                // Clicking inactive ProxTab activates it and shows top image
-                appState.currentStack = stackName;
-                updateActiveProxTab();
-                imageViewer.displayTopImageFromStack(stackName);
-            }
-            
-            triggerHaptic();
-        }
-        
-        function showThumbnailPopup(stackName, x, y) {
-            const stackImages = appState.stacks[stackName];
-            if (stackImages.length === 0) return;
-            
-            // Get up to 3 images from the stack
-            const imagesToShow = stackImages.slice(0, 3);
-            const thumbnails = [elements.popupThumb1, elements.popupThumb2, elements.popupThumb3];
-            
-            // Reset all thumbnails
-            thumbnails.forEach((thumb, index) => {
-                if (index < imagesToShow.length) {
-                    utils.setImageSrc(thumb, imagesToShow[index]);
-                    thumb.style.display = 'block';
-                } else {
-                    thumb.style.display = 'none';
-                }
-            });
-            
-            // Position popup
-            const popup = elements.proxtabPopup;
-            popup.style.left = `${x}px`;
-            popup.style.top = `${y - 100}px`; // Above the touch point
-            
-            // Keep popup in viewport
-            const rect = popup.getBoundingClientRect();
-            if (rect.right > window.innerWidth) {
-                popup.style.left = `${window.innerWidth - rect.width - 10}px`;
-            }
-            if (rect.left < 0) {
-                popup.style.left = '10px';
-            }
-            if (rect.top < 0) {
-                popup.style.top = `${y + 50}px`; // Below the touch point
-            }
-            
-            // Show popup
-            popup.classList.add('show');
-            
-            // Hide after 3 seconds
-            setTimeout(() => {
-                popup.classList.remove('show');
-            }, 3000);
-            
-            triggerHaptic();
-        }
-        
-        // ===== Enhanced Triple Ripple + Glow Effect with Variable Intensity =====
+        // ===== Enhanced Triple Ripple + Glow Effect =====
         function acknowledgePillCounter(stackName) {
             const pill = elements.pillCounters[stackName];
             if (pill) {
@@ -3111,19 +2740,12 @@
                 pill.offsetHeight;
                 pill.classList.add('triple-ripple');
                 
-                // Adjust animation intensity based on visual cue setting
-                const intensity = appState.visualCueIntensity;
-                pill.style.setProperty('--ripple-scale', intensity === 1 ? '1.5' : intensity === 2 ? '2.0' : '2.5');
-                pill.style.setProperty('--glow-intensity', intensity === 1 ? '0.3' : intensity === 2 ? '0.6' : '1.0');
-                
                 setTimeout(() => {
                     pill.classList.add('glow-effect');
                 }, 100);
                 
                 setTimeout(() => {
                     pill.classList.remove('triple-ripple', 'glow-effect');
-                    pill.style.removeProperty('--ripple-scale');
-                    pill.style.removeProperty('--glow-intensity');
                 }, 3000);
             }
         }
@@ -3185,16 +2807,22 @@
                 // Get sorted files for this stack
                 const sortedFiles = stackManager.sortFiles(appState.stacks[stack], stackManager.currentSort);
                 
-                sortedFiles.forEach(async (file) => {
+                sortedFiles.forEach((file) => {
                     const div = document.createElement('div');
                     div.className = 'grid-item';
                     div.dataset.fileId = file.id;
                     
                     const img = document.createElement('img');
                     img.className = 'grid-image';
-                    img.loading = 'lazy';
                     
-                    await utils.setImageSrc(img, file);
+                    // Use preloaded images from cache
+                    if (appState.imageCache.has(file.id)) {
+                        img.src = appState.imageCache.get(file.id);
+                        img.alt = file.name || 'Image';
+                    } else {
+                        // Fallback if not preloaded
+                        utils.setImageSrc(img, file);
+                    }
                     
                     div.addEventListener('click', e => {
                         e.stopPropagation();
@@ -3707,7 +3335,6 @@
             const currentStack = stackManager.getFileMetadata(currentImage).slideboxStack;
             
             acknowledgePillCounter(targetStack);
-            triggerHaptic();
             
             if (currentStack === targetStack) {
                 const currentStackArray = appState.stacks[currentStack];
@@ -3786,13 +3413,6 @@
             elements.authButton.addEventListener('click', () => authManager.authenticate());
             elements.refreshFolders.addEventListener('click', () => folderManager.loadFolders());
             elements.logout.addEventListener('click', () => authManager.logout());
-            
-            // Setup controls
-            setupHapticToggle();
-            setupVisualCueControls();
-            
-            // Initialize visual cue intensity
-            elements.appContainer.classList.add('glow-low'); // Default
             
             // Navigation
             elements.backButton.addEventListener('click', () => {
