@@ -1,0 +1,3784 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no, maximum-scale=1.0">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Orbital8 V8 - Production Ready</title>
+    <style>
+        :root {
+            --app-accent: #f59e0b;
+        }
+
+        * { box-sizing: border-box; }
+        
+        body, html {
+            margin: 0; padding: 0; height: 100%;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            overflow: hidden; background: #000;
+            overscroll-behavior: none; touch-action: none;
+        }
+        
+        /* ===== Splash Screen ===== */
+        .splash-screen {
+            position: fixed; inset: 0;
+            background: linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 50%, #0f0f0f 100%);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 2000; transition: opacity 0.5s ease;
+        }
+        
+        .splash-screen.hidden { opacity: 0; pointer-events: none; }
+        
+        .splash-logo {
+            font-size: 64px; font-weight: 800; color: var(--app-accent);
+            text-shadow: 0 4px 8px rgba(245, 158, 11, 0.3);
+            margin-bottom: 16px; letter-spacing: -2px;
+        }
+        
+        .splash-version {
+            font-size: 18px; font-weight: 500; color: rgba(255, 255, 255, 0.7);
+            margin-bottom: 40px; letter-spacing: 1px;
+        }
+        
+        .splash-loading {
+            display: flex; align-items: center; gap: 12px;
+            color: rgba(255, 255, 255, 0.6); font-size: 16px;
+        }
+        
+        .splash-spinner {
+            width: 24px; height: 24px; border: 3px solid rgba(245, 158, 11, 0.3);
+            border-radius: 50%; border-top-color: var(--app-accent);
+            animation: spin 1s linear infinite;
+        }
+        
+        .splash-features {
+            position: absolute; bottom: 40px; text-align: center;
+            color: rgba(255, 255, 255, 0.4); font-size: 14px;
+        }
+        
+        .feature-list {
+            display: flex; gap: 24px; margin-top: 12px;
+            flex-wrap: wrap; justify-content: center;
+        }
+        
+        .feature-item {
+            display: flex; align-items: center; gap: 6px;
+        }
+        
+        .feature-icon {
+            width: 16px; height: 16px; color: var(--app-accent);
+        }
+
+        /* ===== Screen Styles ===== */
+        .screen {
+            position: fixed; inset: 0;
+            background: linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 100%);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 1000;
+        }
+        
+        .screen.hidden { display: none; }
+        
+        .card {
+            background: rgba(255, 255, 255, 0.1); backdrop-filter: blur(20px);
+            border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 20px;
+            padding: 40px; text-align: center; max-width: 500px; width: 90%;
+        }
+        
+        .title {
+            color: white; font-size: 24px; font-weight: 600; margin-bottom: 16px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+        }
+        
+        .subtitle {
+            color: rgba(255, 255, 255, 0.7); font-size: 16px; margin-bottom: 24px;
+        }
+        
+        .input {
+            width: 100%; padding: 12px 16px;
+            border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 12px;
+            background: rgba(255, 255, 255, 0.1); color: white;
+            font-size: 14px; margin-bottom: 16px; backdrop-filter: blur(10px);
+        }
+        
+        .input::placeholder { color: rgba(255, 255, 255, 0.5); }
+        .input:focus {
+            outline: none; border-color: var(--app-accent);
+            box-shadow: 0 0 0 2px rgba(245, 158, 11, 0.2);
+        }
+        
+        .button {
+            background: linear-gradient(45deg, var(--app-accent), #d97706);
+            border: none; border-radius: 15px; color: white;
+            font-size: 18px; font-weight: 600; padding: 16px 32px;
+            cursor: pointer; transition: all 0.3s ease;
+            box-shadow: 0 4px 20px rgba(245, 158, 11, 0.4);
+            width: 100%; margin-bottom: 16px;
+        }
+        
+        .button:hover:not(:disabled) {
+            transform: translateY(-2px);
+            box-shadow: 0 6px 25px rgba(245, 158, 11, 0.6);
+        }
+        
+        .button:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+        
+        .status {
+            padding: 12px; border-radius: 8px; margin-top: 16px;
+            font-size: 14px; font-weight: 500;
+        }
+        
+        .status.success {
+            background: rgba(16, 185, 129, 0.2); color: #10b981;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+        
+        .status.error {
+            background: rgba(239, 68, 68, 0.2); color: #ef4444;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+        
+        .status.info {
+            background: rgba(59, 130, 246, 0.2); color: #3b82f6;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+        
+        /* ===== Folder List ===== */
+        .folder-list {
+            flex: 1; overflow-y: auto; margin-bottom: 20px; max-height: 400px;
+        }
+        
+        .folder-item {
+            display: flex; align-items: center; padding: 12px 16px; margin-bottom: 8px;
+            background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px; cursor: pointer; transition: all 0.2s ease; color: white;
+        }
+        
+        .folder-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(245, 158, 11, 0.3); transform: translateY(-1px);
+        }
+        
+        .folder-icon {
+            width: 20px; height: 20px; margin-right: 12px; color: var(--app-accent);
+        }
+        
+        .folder-info { flex: 1; }
+        .folder-name { font-weight: 500; margin-bottom: 2px; }
+        .folder-date { font-size: 12px; color: rgba(255, 255, 255, 0.6); }
+        
+        .folder-loading {
+            display: flex; align-items: center; justify-content: center;
+            padding: 40px; color: rgba(255, 255, 255, 0.7);
+        }
+        
+        .spinner {
+            width: 20px; height: 20px; border: 2px solid rgba(245, 158, 11, 0.3);
+            border-radius: 50%; border-top-color: var(--app-accent);
+            animation: spin 1s linear infinite; margin-right: 12px;
+        }
+        
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        .folder-actions { display: flex; gap: 12px; }
+        
+        .folder-button {
+            flex: 1; padding: 12px 24px;
+            border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 12px;
+            background: rgba(255, 255, 255, 0.1); color: white;
+            font-size: 14px; cursor: pointer; transition: all 0.2s ease;
+            backdrop-filter: blur(10px);
+        }
+        
+        .folder-button:hover {
+            background: rgba(255, 255, 255, 0.2); transform: translateY(-1px);
+        }
+        
+        .folder-button.danger {
+            border-color: rgba(239, 68, 68, 0.3); color: #ef4444;
+        }
+        
+        .folder-button.danger:hover { background: rgba(239, 68, 68, 0.1); }
+        
+        /* ===== Loading Screen ===== */
+        .loading-counter {
+            color: var(--app-accent); font-size: 48px; font-weight: 700;
+            margin: 20px 0; text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8);
+        }
+        
+        .loading-message {
+            color: rgba(255, 255, 255, 0.7); font-size: 16px; margin-bottom: 20px;
+        }
+        
+        .loading-progress {
+            width: 100%; height: 6px; background: rgba(255, 255, 255, 0.2);
+            border-radius: 3px; overflow: hidden; margin-bottom: 20px;
+        }
+        
+        .loading-progress-bar {
+            height: 100%; background: linear-gradient(45deg, var(--app-accent), #d97706);
+            border-radius: 3px; transition: width 0.3s ease; width: 0%;
+        }
+        
+        .debug-log {
+            width: 100%; max-width: 500px; height: 200px;
+            background: rgba(0, 0, 0, 0.7); border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 8px; padding: 12px; margin-top: 20px;
+            overflow-y: auto; font-family: monospace; font-size: 12px;
+            color: rgba(255, 255, 255, 0.8);
+        }
+        
+        .debug-info { color: #3b82f6; }
+        .debug-success { color: #10b981; }
+        .debug-error { color: #ef4444; }
+        .debug-warning { color: #f59e0b; }
+        
+        /* ===== Main App ===== */
+        .app-container {
+            position: relative; width: 100vw; height: 100vh;
+            background: linear-gradient(135deg, #0f0f0f 0%, #1a1a1a 100%);
+            overflow: hidden;
+        }
+        
+        .nav-button {
+            position: absolute; top: 20px; background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px; padding: 8px 12px; font-size: 11px;
+            color: white; cursor: pointer; transition: all 0.3s ease;
+            z-index: 15; display: flex; align-items: center; gap: 6px; opacity: 0.7;
+        }
+        
+        .nav-button:hover { opacity: 1; background: rgba(255, 255, 255, 0.2); }
+        .nav-button.back { left: 20px; }
+        .nav-button.details { right: 20px; }
+        
+        .image-viewport {
+            position: absolute; inset: 0; display: flex;
+            align-items: center; justify-content: center; z-index: 1; overflow: hidden;
+        }
+        
+        .center-image {
+            max-width: 100vw; max-height: 100vh; width: auto; height: auto;
+            object-fit: contain; user-select: none; pointer-events: none;
+            transition: all 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94), opacity 0.2s ease;
+            transform-origin: center center; cursor: grab;
+        }
+        
+        .center-image.dragging { filter: brightness(0.9); cursor: grabbing; }
+        .center-image.zoomable { pointer-events: auto; }
+        
+        .edge-glow {
+            position: absolute; opacity: 0; transition: opacity 0.2s ease; z-index: 2;
+        }
+        
+        .edge-glow.top {
+            top: 0; left: 0; right: 0; height: 8px;
+            background: linear-gradient(180deg, rgba(245, 158, 11, 0.4) 0%, transparent 100%);
+        }
+        
+        .edge-glow.bottom {
+            bottom: 0; left: 0; right: 0; height: 8px;
+            background: linear-gradient(0deg, rgba(245, 158, 11, 0.4) 0%, transparent 100%);
+        }
+        
+        .edge-glow.left {
+            top: 0; left: 0; bottom: 0; width: 8px;
+            background: linear-gradient(90deg, rgba(245, 158, 11, 0.4) 0%, transparent 100%);
+        }
+        
+        .edge-glow.right {
+            top: 0; right: 0; bottom: 0; width: 8px;
+            background: linear-gradient(270deg, rgba(245, 158, 11, 0.4) 0%, transparent 100%);
+        }
+        
+        .edge-glow.active { opacity: 1; }
+        
+        /* ===== Pill Counters ===== */
+        .pill-counter {
+            position: fixed; backdrop-filter: blur(10px); border-radius: 20px;
+            padding: 12px 20px; font-size: 18px; font-weight: 500; color: black;
+            opacity: 0; transition: all 0.3s ease; cursor: pointer; z-index: 10;
+            min-width: 50px; text-align: center;
+        }
+        
+        .pill-counter.visible { opacity: 0.9; }
+        .pill-counter.active {
+            font-weight: 700; background: white; opacity: 1; border: 3px solid black;
+        }
+        
+        .pill-counter:not(.active) { background: rgba(128, 128, 128, 0.4); border: none; }
+        .pill-counter:hover { opacity: 1; transform: scale(1.05); }
+        
+        .pill-counter.top { top: 10px; left: 50%; transform: translateX(-50%); }
+        .pill-counter.bottom { bottom: 60px; left: 50%; transform: translateX(-50%); }
+        .pill-counter.left { left: 10px; top: 50%; transform: translateY(-50%); }
+        .pill-counter.right { right: 10px; top: 50%; transform: translateY(-50%); }
+        
+        /* ===== Ripple Effects ===== */
+        .pill-counter::before, .pill-counter::after {
+            content: ''; position: absolute; border: 2px solid rgba(245, 158, 11, 0.8);
+            border-radius: 16px; opacity: 0; pointer-events: none; z-index: -1;
+        }
+        
+        .pill-counter.triple-ripple::before { animation: tripleRipple1 1.5s ease-out; }
+        .pill-counter.triple-ripple::after { animation: tripleRipple2 1.5s ease-out 0.2s; }
+        .pill-counter.triple-ripple { animation: tripleRipple3 1.5s ease-out 0.4s; }
+        
+        .pill-counter.glow-effect {
+            box-shadow: 0 0 25px rgba(245, 158, 11, 0.8), 0 0 50px rgba(245, 158, 11, 0.6);
+            animation: sustainedGlow 1s ease-out 1.5s;
+        }
+        
+        @keyframes tripleRipple1 {
+            0% { opacity: 0.9; transform: scale(1); top: -4px; left: -4px; right: -4px; bottom: -4px; }
+            100% { opacity: 0; transform: scale(2); top: -20px; left: -20px; right: -20px; bottom: -20px; }
+        }
+        
+        @keyframes tripleRipple2 {
+            0% { opacity: 0.7; transform: scale(1); top: -6px; left: -6px; right: -6px; bottom: -6px; }
+            100% { opacity: 0; transform: scale(2.5); top: -30px; left: -30px; right: -30px; bottom: -30px; }
+        }
+        
+        @keyframes tripleRipple3 {
+            0% { box-shadow: 0 0 10px rgba(245, 158, 11, 0.5); }
+            50% { box-shadow: 0 0 20px rgba(245, 158, 11, 0.8); }
+            100% { box-shadow: 0 0 15px rgba(245, 158, 11, 0.6); }
+        }
+        
+        @keyframes sustainedGlow {
+            0% { box-shadow: 0 0 25px rgba(245, 158, 11, 0.8), 0 0 50px rgba(245, 158, 11, 0.6); }
+            50% { box-shadow: 0 0 35px rgba(245, 158, 11, 1), 0 0 70px rgba(245, 158, 11, 0.8); }
+            100% { box-shadow: 0 0 10px rgba(245, 158, 11, 0.4); }
+        }
+        
+        /* ===== Empty State ===== */
+        .empty-state {
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            text-align: center; color: rgba(255, 255, 255, 0.7);
+            font-size: 18px; font-weight: 300; text-shadow: 0 2px 4px rgba(0, 0, 0, 0.8); z-index: 5;
+        }
+        
+        .empty-message { margin-bottom: 20px; font-size: 24px; font-weight: 400; }
+        
+        .new-images-button {
+            background: rgba(245, 158, 11, 0.2); border: 1px solid rgba(245, 158, 11, 0.4);
+            border-radius: 20px; padding: 12px 24px; color: white;
+            font-size: 16px; cursor: pointer; transition: all 0.2s ease;
+        }
+        
+        .new-images-button:hover {
+            background: rgba(245, 158, 11, 0.4); transform: translateY(-2px);
+        }
+        
+        /* ===== Grid Modal ===== */
+        .modal {
+            position: fixed; inset: 0; background-color: rgba(0, 0, 0, 0.5);
+            display: flex; align-items: center; justify-content: center; z-index: 50;
+        }
+        
+        .modal.hidden { display: none !important; }
+        
+        .modal-content {
+            background: white; border-radius: 8px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            width: 100%; height: 100%; max-width: 1152px; max-height: 90vh;
+            margin: 16px; display: flex; flex-direction: column;
+        }
+        
+        .modal-header {
+            position: sticky; top: 0; background: white; z-index: 10;
+            border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .modal-header-main {
+            padding: 16px; border-bottom: 1px solid #f3f4f6;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        
+        .modal-header-left { display: flex; align-items: center; gap: 12px; }
+        
+        .modal-title {
+            font-size: 20px; font-weight: 500; color: #1f2937; line-height: 1.5;
+        }
+        
+        .select-all-btn {
+            background-color: #e5e7eb; color: #4b5563; padding: 2px 8px;
+            border-radius: 9999px; font-size: 14px; font-weight: 500;
+            display: inline-block; min-width: 36px; text-align: center;
+            cursor: pointer; transition: background-color 0.2s;
+        }
+        
+        .select-all-btn:hover { background-color: #d1d5db; }
+        
+        .close-btn {
+            color: #6b7280; transition: all 0.2s; cursor: pointer;
+            background: transparent; border: none; border-radius: 6px;
+            padding: 4px; display: flex; align-items: center; justify-content: center;
+        }
+        
+        .close-btn:hover { color: #374151; background: rgba(0, 0, 0, 0.05); }
+        .close-btn svg { width: 24px; height: 24px; }
+        
+        .selection-info-row {
+            padding: 8px 16px; border-bottom: 1px solid #f3f4f6;
+            min-height: 48px; display: flex; align-items: center;
+        }
+        
+        .selection-info { display: flex; align-items: center; gap: 8px; }
+        
+        .selection-count {
+            background-color: #dbeafe; color: #1e40af; padding: 4px 12px;
+            border-radius: 9999px; font-size: 14px;
+            display: flex; align-items: center; gap: 8px;
+        }
+        
+        .deselect-all-btn {
+            margin-left: 4px; transition: all 0.2s; cursor: pointer;
+            background: transparent; border: none; border-radius: 4px;
+            padding: 2px; display: flex; align-items: center; justify-content: center;
+        }
+        
+        .deselect-all-btn:hover { color: #1e3a8a; background: rgba(0, 0, 0, 0.05); }
+        .deselect-all-btn svg { width: 16px; height: 16px; }
+        
+        .controls-row {
+            padding: 12px 16px; border-bottom: 1px solid #f3f4f6;
+            display: flex; flex-wrap: wrap; gap: 16px;
+            align-items: center; justify-content: space-between;
+        }
+        
+        .grid-controls { display: flex; align-items: center; gap: 16px; }
+        .control-group { display: flex; align-items: center; }
+        .control-label { margin-right: 8px; font-size: 14px; color: #4b5563; }
+        .grid-slider { width: 96px; }
+        .grid-value { margin-left: 8px; font-size: 14px; color: #4b5563; }
+        
+        .grid-select {
+            padding: 4px 8px; border: 1px solid #d1d5db; border-radius: 4px;
+            font-size: 14px; color: #4b5563; background: white;
+        }
+        
+        .action-buttons { display: flex; gap: 8px; }
+        
+        .btn {
+            padding: 4px 12px; border-radius: 6px; font-size: 14px;
+            font-weight: 500; cursor: pointer; transition: all 0.2s;
+            border: none; outline: none;
+        }
+        
+        .btn-primary { background-color: #3b82f6; color: white; }
+        .btn-primary:hover { background-color: #2563eb; }
+        .btn-danger { background-color: #ef4444; color: white; }
+        .btn-danger:hover { background-color: #dc2626; }
+        .btn-secondary { background-color: #e5e7eb; color: #4b5563; }
+        .btn-secondary:hover { background-color: #d1d5db; }
+        
+        .grid-content { flex: 1; overflow-y: auto; padding: 16px; }
+        
+        .grid-container {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 16px;
+        }
+        
+        .grid-item {
+            position: relative; aspect-ratio: 1; overflow: hidden;
+            border-radius: 8px; cursor: pointer;
+        }
+        
+        .grid-image { width: 100%; height: 100%; object-fit: cover; }
+        .grid-item.selected { box-shadow: 0 0 0 4px #3b82f6; }
+        .btn.hidden { display: none; }
+        
+        /* ===== Action Modals ===== */
+        .action-modal { max-width: 448px; padding: 24px; }
+        
+        .action-title {
+            font-size: 18px; font-weight: 500; color: #1f2937; margin-bottom: 16px;
+        }
+        
+        .action-buttons-row {
+            display: flex; justify-content: flex-end; gap: 8px; margin-top: 16px;
+        }
+        
+        .move-options {
+            display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px;
+        }
+        
+        .move-option {
+            width: 100%; text-align: left; padding: 8px 16px; border-radius: 6px;
+            border: none; background: transparent; cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .move-option:hover { background-color: #f3f4f6; }
+        
+        .tag-input-group { margin-bottom: 16px; }
+        
+        .tag-input-label {
+            display: block; font-size: 14px; font-weight: 500;
+            color: #374151; margin-bottom: 4px;
+        }
+        
+        .tag-input {
+            width: 100%; padding: 8px 12px; border: 1px solid #d1d5db;
+            border-radius: 6px; font-size: 14px; outline: none;
+        }
+        
+        .tag-input:focus {
+            border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        
+        .tag-suggestions {
+            display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 16px;
+        }
+        
+        .tag-suggestion {
+            background-color: #e5e7eb; color: #374151; padding: 4px 8px;
+            border-radius: 6px; font-size: 12px; cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .tag-suggestion:hover { background-color: #d1d5db; }
+        .delete-message { color: #4b5563; margin-bottom: 16px; }
+        
+        /* ===== Details Modal ===== */
+        .details-modal-content { max-width: 700px; max-height: 85vh; }
+        
+        .details-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 16px; border-bottom: 1px solid #e5e7eb;
+        }
+        
+        .details-title { font-size: 18px; font-weight: 500; color: #1f2937; }
+        
+        .tab-nav {
+            display: flex; border-bottom: 1px solid #e5e7eb; background: #f8fafc;
+        }
+        
+        .tab-button {
+            flex: 1; padding: 16px; border: none; background: transparent;
+            color: #6b7280; font-size: 14px; font-weight: 500; cursor: pointer;
+            transition: all 0.2s; border-bottom: 2px solid transparent;
+        }
+        
+        .tab-button:hover { color: #374151; background: rgba(0, 0, 0, 0.02); }
+        .tab-button.active { color: #3b82f6; border-bottom-color: #3b82f6; background: white; }
+        
+        .details-content { flex: 1; overflow-y: auto; overflow-x: hidden; }
+        .tab-content { display: none; padding: 20px; }
+        .tab-content.active { display: block; }
+        
+        .info-section { margin-bottom: 20px; }
+        
+        .info-item {
+            display: flex; align-items: center; margin-bottom: 12px; gap: 12px;
+        }
+        
+        .info-label {
+            font-size: 14px; color: #6b7280; min-width: 80px; font-weight: 500;
+        }
+        
+        .info-value {
+            font-size: 14px; color: #374151; flex: 1; word-break: break-word;
+        }
+        
+        .info-link { color: #3b82f6; text-decoration: none; }
+        .info-link:hover { text-decoration: underline; }
+        
+        .tags-section { margin-bottom: 20px; }
+        
+        .tags-container {
+            display: flex; flex-wrap: wrap; gap: 8px;
+            margin-bottom: 16px; min-height: 40px;
+        }
+        
+        .tag-item {
+            display: inline-flex; align-items: center;
+            background: #dbeafe; color: #1e40af; padding: 4px 8px;
+            border-radius: 12px; font-size: 12px; gap: 6px;
+        }
+        
+        .tag-remove {
+            background: transparent; border: none; color: #1e40af; cursor: pointer;
+            font-size: 14px; line-height: 1; padding: 0; width: 16px; height: 16px;
+            display: flex; align-items: center; justify-content: center;
+            border-radius: 50%; transition: background-color 0.2s;
+        }
+        
+        .tag-remove:hover { background: rgba(59, 130, 246, 0.1); }
+        
+        .add-tag-btn {
+            background: #f3f4f6; border: 1px dashed #d1d5db; border-radius: 12px;
+            padding: 4px 12px; font-size: 12px; color: #6b7280; cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .add-tag-btn:hover { background: #e5e7eb; color: #374151; }
+        
+        .notes-section { margin-bottom: 24px; }
+        
+        .notes-textarea {
+            width: 100%; min-height: 120px; padding: 12px;
+            border: 1px solid #d1d5db; border-radius: 6px; font-size: 14px;
+            font-family: inherit; resize: vertical; outline: none;
+        }
+        
+        .notes-textarea:focus {
+            border-color: #3b82f6; box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+        }
+        
+        .rating-section { margin-bottom: 20px; }
+        
+        .rating-label {
+            font-size: 14px; font-weight: 500; color: #374151; margin-bottom: 8px;
+        }
+        
+        .star-rating { display: flex; gap: 4px; }
+        
+        .star {
+            width: 24px; height: 24px; cursor: pointer; color: #d1d5db;
+            transition: color 0.2s;
+        }
+        
+        .star:hover, .star.active { color: #fbbf24; }
+        
+        /* ===== Enhanced Metadata Table ===== */
+        .metadata-table {
+            width: 100%; border-collapse: collapse; border: 2px solid #374151;
+            margin-top: 12px; max-height: 400px; overflow-y: auto; display: block;
+        }
+        
+        .metadata-table thead, .metadata-table tbody { display: table; width: 100%; table-layout: fixed; }
+        
+        .metadata-table thead {
+            background: #f9fafb; position: sticky; top: 0; z-index: 1;
+        }
+        
+        .metadata-table th, .metadata-table td {
+            padding: 12px; border: 1px solid #d1d5db; vertical-align: top;
+            word-wrap: break-word; overflow-wrap: break-word;
+        }
+        
+        .metadata-table th {
+            font-weight: 600; color: #374151; background: #f9fafb;
+            text-align: left; border-bottom: 2px solid #374151;
+        }
+        
+        .metadata-table .key-cell {
+            font-weight: 500; color: #374151; width: 30%; 
+            background: #f9fafb; border-right: 2px solid #d1d5db;
+        }
+        
+        .metadata-table .value-cell {
+            color: #6b7280; width: 70%; position: relative;
+            word-break: break-all; white-space: pre-wrap;
+        }
+        
+        .copy-button {
+            background: #3b82f6; color: white; border: none; border-radius: 4px;
+            padding: 4px 8px; font-size: 11px; cursor: pointer;
+            transition: all 0.2s; margin-left: 8px; vertical-align: top;
+            font-weight: 500;
+        }
+        
+        .copy-button:hover { background: #2563eb; transform: translateY(-1px); }
+        
+        .copy-button:active { transform: translateY(0); }
+        
+        /* ===== Toast ===== */
+        .toast {
+            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8); color: white; padding: 12px 20px;
+            border-radius: 8px; font-size: 14px; font-weight: 500; z-index: 1000;
+            opacity: 0; transition: opacity 0.3s ease; backdrop-filter: blur(10px);
+        }
+        
+        .toast.show { opacity: 1; }
+        .toast.success { background: rgba(16, 185, 129, 0.9); }
+        .toast.info { background: rgba(59, 130, 246, 0.9); }
+        .toast.error { background: rgba(239, 68, 68, 0.9); }
+        
+        .hidden { display: none !important; }
+        
+        @media screen and (min-width: 768px) {
+            .image-viewport { top: -10vh; }
+            .pill-counter { font-size: 16px; padding: 8px 16px; min-width: 40px; }
+            .nav-button { font-size: 14px; padding: 10px 16px; }
+        }
+        
+        @media screen and (max-width: 767px) {
+            .nav-button { font-size: 16px; padding: 12px 20px; border-radius: 25px; min-width: 80px; }
+            .pill-counter.bottom { bottom: 80px; }
+            
+            /* Mobile splash screen adjustments */
+            .splash-logo { font-size: 48px; }
+            .splash-version { font-size: 16px; margin-bottom: 32px; }
+            .splash-features { bottom: 20px; padding: 0 20px; }
+            .feature-list { gap: 16px; }
+            .feature-item { font-size: 12px; }
+            .feature-icon { width: 14px; height: 14px; }
+        }
+        
+        @media screen and (max-width: 480px) {
+            .splash-logo { font-size: 40px; letter-spacing: -1px; }
+            .splash-version { font-size: 14px; }
+            .splash-loading { font-size: 14px; }
+            .feature-list { flex-direction: column; gap: 8px; }
+        }
+    </style>
+</head>
+<body>
+    <!-- Splash Screen -->
+    <div class="splash-screen" id="splash-screen">
+        <div class="splash-logo">ORBITAL8</div>
+        <div class="splash-version">V8 • Production Ready</div>
+        <div class="splash-loading">
+            <div class="splash-spinner"></div>
+            <span>Initializing application...</span>
+        </div>
+        <div class="splash-features">
+            <div>Advanced Image Management • Google Drive Integration • AI Metadata Extraction</div>
+            <div class="feature-list">
+                <div class="feature-item">
+                    <svg class="feature-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"/>
+                    </svg>
+                    Smart Organization
+                </div>
+                <div class="feature-item">
+                    <svg class="feature-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.994 1.994 0 013 12V7a4 4 0 014-4z"/>
+                    </svg>
+                    Tagging System
+                </div>
+                <div class="feature-item">
+                    <svg class="feature-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/>
+                    </svg>
+                    Gesture Controls
+                </div>
+                <div class="feature-item">
+                    <svg class="feature-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/>
+                    </svg>
+                    Analytics
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Authentication Screen -->
+    <div class="screen" id="auth-screen">
+        <div class="card">
+            <h1 class="title" style="font-size: 32px;">Orbital8 V8</h1>
+            <p class="subtitle">Connect to Google Drive</p>
+            <input type="password" id="client-secret" class="input" placeholder="Enter Google Client Secret">
+            <button class="button" id="auth-button">Connect Drive</button>
+            <div id="auth-status" class="status info">Enter your client secret to continue</div>
+            <div style="margin-top: 16px; font-size: 12px; color: rgba(255, 255, 255, 0.5); text-align: center;">
+                If nothing happens, open browser console (F12) for debug info
+            </div>
+        </div>
+    </div>
+    
+    <!-- Folder Selection Screen -->
+    <div class="screen hidden" id="folder-screen">
+        <div class="card" style="max-height: 80vh; display: flex; flex-direction: column;">
+            <h2 class="title">Select a Folder</h2>
+            <div class="folder-list" id="folder-list">
+                <div class="folder-loading">
+                    <div class="spinner"></div>
+                    <span>Loading folders...</span>
+                </div>
+            </div>
+            <div class="folder-actions">
+                <button class="folder-button" id="refresh-folders">Refresh</button>
+                <button class="folder-button danger" id="logout">Disconnect</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Loading Screen -->
+    <div class="screen hidden" id="loading-screen" style="z-index: 1500;">
+        <div class="card">
+            <h2 class="title">Loading Images</h2>
+            <div class="loading-counter" id="loading-counter">0</div>
+            <div class="loading-message" id="loading-message">Processing files...</div>
+            <div class="loading-progress">
+                <div class="loading-progress-bar" id="loading-progress-bar"></div>
+            </div>
+            <div class="debug-log" id="debug-log"></div>
+        </div>
+    </div>
+    
+    <!-- Main App Container -->
+    <div class="app-container hidden" id="app-container">
+        <div class="nav-button back" id="back-button">← Folders</div>
+        <div class="nav-button details" id="details-button">Details →</div>
+        
+        <div class="image-viewport" id="image-viewport">
+            <img class="center-image zoomable" id="center-image" alt="Select a folder to start" />
+        </div>
+        
+        <div class="edge-glow top" id="edge-top"></div>
+        <div class="edge-glow bottom" id="edge-bottom"></div>
+        <div class="edge-glow left" id="edge-left"></div>
+        <div class="edge-glow right" id="edge-right"></div>
+        
+        <div class="pill-counter top" id="pill-priority" data-stack="priority">0</div>
+        <div class="pill-counter bottom" id="pill-trash" data-stack="trash">0</div>
+        <div class="pill-counter left active" id="pill-in" data-stack="in">0</div>
+        <div class="pill-counter right" id="pill-out" data-stack="out">0</div>
+        
+        <div class="empty-state hidden" id="empty-state">
+            <div class="empty-message">No more images in this stack</div>
+            <button class="new-images-button" id="select-another-stack-btn">Select Another Stack</button>
+            <button class="new-images-button" id="select-another-folder-btn" style="margin-top: 12px;">Choose Different Folder</button>
+        </div>
+        
+        <div id="toast" class="toast"></div>
+    </div>
+    
+    <!-- Grid Modal -->
+    <div id="grid-modal" class="modal hidden">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-header-main">
+                    <div class="modal-header-left">
+                        <h2 id="grid-title" class="modal-title">Grid View</h2>
+                        <button id="select-all-btn" class="select-all-btn">0</button>
+                    </div>
+                    <button id="close-grid" class="close-btn">
+                        <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="selection-info-row">
+                    <div class="selection-info">
+                        <span class="selection-count">
+                            <span id="selection-text">0 selected</span>
+                            <button id="deselect-all-btn" class="deselect-all-btn">
+                                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                                </svg>
+                            </button>
+                        </span>
+                    </div>
+                </div>
+                <div class="controls-row">
+                    <div class="grid-controls">
+                        <div class="control-group">
+                            <span class="control-label">Grid Size:</span>
+                            <input type="range" id="grid-size" class="grid-slider" min="1" max="10" value="4">
+                            <span id="grid-size-value" class="grid-value">4</span>
+                        </div>
+                        <div class="control-group">
+                            <span class="control-label">Sort:</span>
+                            <select id="grid-sort" class="grid-select">
+                                <option value="date-desc">Date (newest first)</option>
+                                <option value="date-asc">Date (oldest first)</option>
+                                <option value="name-asc">Name (A-Z)</option>
+                                <option value="name-desc">Name (Z-A)</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="action-buttons">
+                        <button id="tag-selected" class="btn btn-primary hidden">Tag</button>
+                        <button id="move-selected" class="btn btn-primary hidden">Move</button>
+                        <button id="delete-selected" class="btn btn-danger hidden">Delete</button>
+                    </div>
+                </div>
+            </div>
+            <div class="grid-content">
+                <div id="grid-container" class="grid-container"></div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Action Modals -->
+    <div id="move-modal" class="modal hidden">
+        <div class="modal-content action-modal">
+            <h3 class="action-title">Move to Stack</h3>
+            <div class="move-options">
+                <button class="move-option" data-stack="in">In</button>
+                <button class="move-option" data-stack="out">Out</button>
+                <button class="move-option" data-stack="priority">Priority</button>
+                <button class="move-option" data-stack="trash">Trash</button>
+            </div>
+            <div class="action-buttons-row">
+                <button id="cancel-move" class="btn btn-secondary">Cancel</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="tag-modal" class="modal hidden">
+        <div class="modal-content action-modal">
+            <h3 class="action-title">Add Tags</h3>
+            <div class="tag-input-group">
+                <label for="tag-input" class="tag-input-label">Enter tags (comma separated)</label>
+                <input type="text" id="tag-input" class="tag-input" placeholder="nature, landscape, vacation">
+            </div>
+            <div id="tag-suggestions" class="tag-suggestions"></div>
+            <div class="action-buttons-row">
+                <button id="cancel-tag" class="btn btn-secondary">Cancel</button>
+                <button id="apply-tag" class="btn btn-primary">Apply</button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="delete-modal" class="modal hidden">
+        <div class="modal-content action-modal">
+            <h3 class="action-title">Confirm Delete</h3>
+            <p id="delete-message" class="delete-message">Are you sure you want to move the selected images to Trash?</p>
+            <div class="action-buttons-row">
+                <button id="cancel-delete" class="btn btn-secondary">Cancel</button>
+                <button id="confirm-delete" class="btn btn-danger">Confirm</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Details Modal -->
+    <div id="details-modal" class="modal hidden">
+        <div class="modal-content details-modal-content">
+            <div class="details-header">
+                <h3 class="details-title">Image Details</h3>
+                <button id="details-close" class="close-btn">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            
+            <div class="tab-nav">
+                <button class="tab-button active" data-tab="info">Info</button>
+                <button class="tab-button" data-tab="metadata">Metadata</button>
+                <button class="tab-button" data-tab="tags">Tags</button>
+                <button class="tab-button" data-tab="notes">Notes</button>
+            </div>
+            
+            <div class="details-content">
+                <div id="tab-info" class="tab-content active">
+                    <div class="info-section">
+                        <div class="info-item">
+                            <span class="info-label">Filename:</span>
+                            <a id="detail-filename-link" class="info-value info-link" href="#" target="_blank">
+                                <span id="detail-filename"></span>
+                            </a>
+                        </div>
+                        <div class="info-item">
+                            <span class="info-label">Date:</span>
+                            <span class="info-value" id="detail-date"></span>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="tab-metadata" class="tab-content">
+                    <div id="no-metadata-message" class="text-gray-500 italic text-sm">No metadata available for this image.</div>
+                    <table class="metadata-table hidden" id="metadata-table">
+                        <thead>
+                            <tr>
+                                <th style="width: 30%;">Field</th>
+                                <th style="width: 70%;">Value</th>
+                            </tr>
+                        </thead>
+                        <tbody id="metadata-table-body">
+                        </tbody>
+                    </table>
+                </div>
+                
+                <div id="tab-tags" class="tab-content">
+                    <div class="tags-section">
+                        <div class="tags-container" id="detail-tags"></div>
+                    </div>
+                </div>
+                
+                <div id="tab-notes" class="tab-content">
+                    <div class="notes-section">
+                        <label for="detail-notes" class="info-label">Notes:</label>
+                        <textarea id="detail-notes" class="notes-textarea" placeholder="Add your notes here..."></textarea>
+                    </div>
+                    
+                    <div class="rating-section">
+                        <div class="rating-label">Quality Rating:</div>
+                        <div class="star-rating" id="quality-rating">
+                            <svg class="star" data-rating="1" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                            </svg>
+                            <svg class="star" data-rating="2" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                            </svg>
+                            <svg class="star" data-rating="3" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                            </svg>
+                            <svg class="star" data-rating="4" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                            </svg>
+                            <svg class="star" data-rating="5" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                            </svg>
+                        </div>
+                    </div>
+                    
+                    <div class="rating-section">
+                        <div class="rating-label">Content Rating:</div>
+                        <div class="star-rating" id="content-rating">
+                            <svg class="star" data-rating="1" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                            </svg>
+                            <svg class="star" data-rating="2" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                            </svg>
+                            <svg class="star" data-rating="3" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                            </svg>
+                            <svg class="star" data-rating="4" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                            </svg>
+                            <svg class="star" data-rating="5" fill="currentColor" viewBox="0 0 24 24">
+                                <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/>
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ===== ORBITAL8 V8 - PRODUCTION READY =====
+        // Advanced Image Management System with Google Drive Integration
+        // Features: Smart Organization, Gesture Controls, AI Metadata Extraction, Tagging System
+        // Built with: Vanilla JS, Modern CSS, Progressive Web App Architecture
+        // Version: 8.0.0 - Production Ready Release
+        
+        // ===== Core Configuration =====
+        const STACK_TYPES = ['in', 'out', 'priority', 'trash'];
+        const PRIORITY_METADATA_FIELDS = ['Project_ID', 'prompt', 'Model', 'Seed', 'Negative_Prompt', 'API_Call', 'Global_Hash', 'Height', 'Width', 'Steps', 'Cfg_Scale'];
+        const COPYABLE_METADATA_FIELDS = ['prompt', 'Seed', 'Negative_Prompt', 'API_Call', 'Global_Hash'];
+
+        // ===== Enhanced Error Handler =====
+        class ErrorHandler {
+            static async withErrorHandling(operation, context = '') {
+                try {
+                    return await operation();
+                } catch (error) {
+                    console.error(`Error in ${context}:`, error);
+                    ToastManager.show(`Error: ${error.message}`, 'error');
+                    throw error;
+                }
+            }
+            
+            static handleAsyncError(promise, context = '') {
+                return promise.catch(error => {
+                    console.error(`Async error in ${context}:`, error);
+                    ToastManager.show(`Error: ${error.message}`, 'error');
+                });
+            }
+        }
+
+        // ===== Unified State Management =====
+        class AppStateManager {
+            constructor() {
+                this.state = {
+                    cloudStorage: null,
+                    metadataManager: null,
+                    modalManager: null,
+                    currentFolder: { id: null, name: '' },
+                    imageFiles: [],
+                    currentImageIndex: 0,
+                    currentStack: 'in',
+                    stacks: { in: [], out: [], priority: [], trash: [] },
+                    ui: {
+                        isDragging: false,
+                        isPinching: false,
+                        currentScale: 1,
+                        maxScale: 4,
+                        minScale: 0.3,
+                        panOffset: { x: 0, y: 0 }
+                    },
+                    grid: { stack: null, selected: [] },
+                    globalTags: new Set(),
+                    imageCache: new Map(),
+                    loadingProgress: { current: 0, total: 0 }
+                };
+                
+                this.listeners = new Map();
+            }
+            
+            setState(updates) {
+                const oldState = { ...this.state };
+                if (typeof updates === 'function') {
+                    updates = updates(this.state);
+                }
+                Object.assign(this.state, updates);
+                
+                // Notify listeners
+                this.listeners.forEach((callback, key) => {
+                    try {
+                        callback(this.state, oldState);
+                    } catch (error) {
+                        console.error(`Error in state listener ${key}:`, error);
+                    }
+                });
+            }
+            
+            subscribe(key, callback) {
+                this.listeners.set(key, callback);
+                return () => this.listeners.delete(key);
+            }
+
+            getCurrentFile() {
+                const { imageFiles, currentImageIndex } = this.state;
+                return imageFiles[currentImageIndex] || null;
+            }
+
+            getCurrentStackFiles() {
+                const { stacks, currentStack } = this.state;
+                return stacks[currentStack] || [];
+            }
+        }
+
+        // ===== Google Drive API Client =====
+        class GoogleDriveApiClient {
+            constructor(provider) {
+                this.provider = provider;
+                this.baseUrl = 'https://www.googleapis.com/drive/v3';
+            }
+
+            async request(endpoint, options = {}) {
+                const url = `${this.baseUrl}${endpoint}`;
+                const headers = {
+                    'Authorization': `Bearer ${this.provider.accessToken}`,
+                    'Content-Type': 'application/json',
+                    ...options.headers
+                };
+
+                let response = await fetch(url, { ...options, headers });
+
+                // Handle token refresh automatically
+                if (response.status === 401 && this.provider.refreshToken) {
+                    try {
+                        await this.provider.refreshAccessToken();
+                        headers['Authorization'] = `Bearer ${this.provider.accessToken}`;
+                        response = await fetch(url, { ...options, headers });
+                    } catch (refreshError) {
+                        this.provider.isAuthenticated = false;
+                        this.provider.clearStoredCredentials();
+                        throw new Error('Authentication expired. Please reconnect.');
+                    }
+                }
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`API call failed: ${response.status} ${response.statusText} - ${errorText}`);
+                }
+
+                return await response.json();
+            }
+
+            async getFolders() {
+                const query = "mimeType='application/vnd.google-apps.folder'";
+                const fields = 'files(id,name,createdTime,modifiedTime)';
+                const response = await this.request(`/files?q=${encodeURIComponent(query)}&fields=${fields}&orderBy=modifiedTime%20desc`);
+                return response.files.map(folder => ({
+                    id: folder.id,
+                    name: folder.name,
+                    type: 'folder',
+                    createdTime: folder.createdTime,
+                    modifiedTime: folder.modifiedTime
+                }));
+            }
+
+            async getFiles(folderId, pageToken = null) {
+                const query = `'${folderId}' in parents and trashed=false and (mimeType contains 'image/')`;
+                const fields = 'files(id,name,mimeType,size,createdTime,modifiedTime,thumbnailLink,webContentLink,appProperties),nextPageToken';
+                let url = `/files?q=${encodeURIComponent(query)}&fields=${fields}&pageSize=100`;
+                
+                if (pageToken) url += `&pageToken=${pageToken}`;
+                return this.request(url);
+            }
+
+            async updateFile(fileId, updates) {
+                return this.request(`/files/${fileId}`, {
+                    method: 'PATCH',
+                    body: JSON.stringify(updates)
+                });
+            }
+
+            async downloadFile(fileId) {
+                const url = `${this.baseUrl}/files/${fileId}?alt=media`;
+                const headers = { 'Authorization': `Bearer ${this.provider.accessToken}` };
+                
+                const response = await fetch(url, { headers });
+                if (!response.ok) {
+                    throw new Error(`Download failed: ${response.status} ${response.statusText}`);
+                }
+                
+                return await response.arrayBuffer();
+            }
+
+            async trashFile(fileId) {
+                return this.updateFile(fileId, { trashed: true });
+            }
+        }
+
+        // ===== Enhanced Google Drive Provider =====
+        class GoogleDriveProvider {
+            constructor() {
+                this.name = 'googledrive';
+                this.isAuthenticated = false;
+                this.clientId = '567988062464-fa6c1ovesqeudqs5398vv4mbo6q068p9.apps.googleusercontent.com';
+                this.redirectUri = window.location.origin + window.location.pathname;
+                this.scope = 'https://www.googleapis.com/auth/drive';
+                this.accessToken = null;
+                this.refreshToken = null; 
+                this.clientSecret = null;
+                this.apiClient = new GoogleDriveApiClient(this);
+                this.loadStoredCredentials();
+            }
+            
+            loadStoredCredentials() {
+                this.accessToken = localStorage.getItem('google_access_token');
+                this.refreshToken = localStorage.getItem('google_refresh_token');
+                this.clientSecret = localStorage.getItem('google_client_secret');
+                this.isAuthenticated = !!(this.accessToken && this.refreshToken && this.clientSecret);
+            }
+            
+            storeCredentials() {
+                if (this.accessToken) localStorage.setItem('google_access_token', this.accessToken);
+                if (this.refreshToken) localStorage.setItem('google_refresh_token', this.refreshToken);
+                if (this.clientSecret) localStorage.setItem('google_client_secret', this.clientSecret);
+            }
+            
+            clearStoredCredentials() {
+                localStorage.removeItem('google_access_token');
+                localStorage.removeItem('google_refresh_token');
+                localStorage.removeItem('google_client_secret');
+            }
+            
+            async authenticate(clientSecret) {
+                if (clientSecret) {
+                    this.clientSecret = clientSecret;
+                    this.storeCredentials();
+                }
+                
+                if (!this.clientSecret) {
+                    throw new Error('Client secret is required for Google Drive authentication');
+                }
+                
+                // Check existing tokens first
+                if (this.accessToken && this.refreshToken) {
+                    try {
+                        await this.apiClient.request('/files?pageSize=1');
+                        this.isAuthenticated = true;
+                        return true;
+                    } catch (error) {
+                        DebugLogger.log('Existing tokens invalid, starting fresh authentication', 'warning');
+                    }
+                }
+                
+                return new Promise((resolve, reject) => {
+                    const authUrl = this.buildAuthUrl();
+                    const popup = window.open(authUrl, 'google-auth', 'width=500,height=600,scrollbars=yes,resizable=yes');
+                    
+                    if (!popup) {
+                        reject(new Error('Popup blocked by browser'));
+                        return;
+                    }
+                    
+                    const checkClosed = setInterval(() => {
+                        if (popup.closed) {
+                            clearInterval(checkClosed);
+                            reject(new Error('Authentication cancelled'));
+                        }
+                    }, 1000);
+                    
+                    const messageHandler = async (event) => {
+                        if (event.origin !== window.location.origin) return;
+                        
+                        if (event.data.type === 'GOOGLE_AUTH_SUCCESS') {
+                            clearInterval(checkClosed);
+                            window.removeEventListener('message', messageHandler);
+                            popup.close();
+                            
+                            try {
+                                await this.exchangeCodeForTokens(event.data.code);
+                                this.isAuthenticated = true;
+                                resolve(true);
+                            } catch (error) {
+                                reject(error);
+                            }
+                        } else if (event.data.type === 'GOOGLE_AUTH_ERROR') {
+                            clearInterval(checkClosed);
+                            window.removeEventListener('message', messageHandler);
+                            popup.close();
+                            reject(new Error(event.data.error));
+                        }
+                    };
+                    
+                    window.addEventListener('message', messageHandler);
+                });
+            }
+            
+            buildAuthUrl() {
+                const params = new URLSearchParams({
+                    client_id: this.clientId,
+                    redirect_uri: this.redirectUri,
+                    response_type: 'code',
+                    scope: this.scope,
+                    access_type: 'offline',
+                    prompt: 'consent'
+                });
+                return `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+            }
+            
+            async exchangeCodeForTokens(code) {
+                const response = await fetch('https://oauth2.googleapis.com/token', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({
+                        client_id: this.clientId,
+                        client_secret: this.clientSecret,
+                        code: code,
+                        grant_type: 'authorization_code',
+                        redirect_uri: this.redirectUri
+                    })
+                });
+                
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw new Error(`Token exchange failed: ${response.status} - ${errorText}`);
+                }
+                
+                const tokens = await response.json();
+                this.accessToken = tokens.access_token;
+                this.refreshToken = tokens.refresh_token;
+                this.storeCredentials();
+            }
+            
+            async refreshAccessToken() {
+                if (!this.refreshToken || !this.clientSecret) {
+                    throw new Error('No refresh token or client secret available');
+                }
+                
+                const response = await fetch('https://oauth2.googleapis.com/token', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({
+                        client_id: this.clientId,
+                        client_secret: this.clientSecret,
+                        refresh_token: this.refreshToken,
+                        grant_type: 'refresh_token'
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to refresh access token');
+                }
+                
+                const tokens = await response.json();
+                this.accessToken = tokens.access_token;
+                this.storeCredentials();
+                return this.accessToken;
+            }
+
+            async getFolders() {
+                return this.apiClient.getFolders();
+            }
+
+            async getFiles(folderId) {
+                DebugLogger.log(`Starting file scan for folder ID: ${folderId}`, 'info');
+                
+                const allFiles = [];
+                let nextPageToken = null;
+                let totalFiles = 0;
+                
+                do {
+                    const response = await this.apiClient.getFiles(folderId, nextPageToken);
+                    
+                    const files = response.files
+                        .filter(file => file.mimeType && file.mimeType.startsWith('image/'))
+                        .map(file => ({
+                            id: file.id,
+                            name: file.name,
+                            type: 'file',
+                            mimeType: file.mimeType,
+                            size: file.size ? parseInt(file.size) : 0,
+                            createdTime: file.createdTime,
+                            modifiedTime: file.modifiedTime,
+                            thumbnailLink: file.thumbnailLink,
+                            downloadUrl: file.webContentLink,
+                            appProperties: file.appProperties || {}
+                        }));
+                    
+                    allFiles.push(...files);
+                    totalFiles += files.length;
+                    nextPageToken = response.nextPageToken;
+                    
+                    DebugLogger.log(`Retrieved ${files.length} files (${totalFiles} total so far)`, 'info');
+                    
+                } while (nextPageToken);
+                
+                DebugLogger.log(`Found ${totalFiles} image files total`, 'success');
+                return { folders: [], files: allFiles };
+            }
+
+            async downloadFileContent(fileId, filename) {
+                DebugLogger.log(`Downloading binary content for ${filename}`, 'info');
+                const arrayBuffer = await this.apiClient.downloadFile(fileId);
+                DebugLogger.log(`Downloaded ${(arrayBuffer.byteLength / 1024).toFixed(1)}KB binary data`, 'success');
+                return arrayBuffer;
+            }
+
+            async updateFileProperties(fileId, properties) {
+                await this.apiClient.updateFile(fileId, { appProperties: properties });
+                return true;
+            }
+
+            async deleteFile(fileId) {
+                await this.apiClient.trashFile(fileId);
+                return true;
+            }
+            
+            async disconnect() {
+                this.isAuthenticated = false;
+                this.accessToken = null;
+                this.refreshToken = null;
+                this.clientSecret = null;
+                this.clearStoredCredentials();
+            }
+        }
+
+        // ===== Unified Metadata Manager =====
+        class UnifiedMetadataManager {
+            constructor(cloudStorage) {
+                this.cloudStorage = cloudStorage;
+                this.extractor = new MetadataExtractor();
+                this.cache = new Map();
+            }
+
+            async getMetadata(file) {
+                if (this.cache.has(file.id)) {
+                    return this.cache.get(file.id);
+                }
+
+                const metadata = {
+                    core: {
+                        id: file.id,
+                        name: file.name,
+                        mimeType: file.mimeType,
+                        size: file.size,
+                        created: file.createdTime,
+                        modified: file.modifiedTime
+                    },
+                    
+                    app: {
+                        stack: file.appProperties?.slideboxStack || 'in',
+                        tags: file.appProperties?.slideboxTags ? file.appProperties.slideboxTags.split(',').filter(t => t.trim()) : [],
+                        notes: file.appProperties?.notes || '',
+                        qualityRating: parseInt(file.appProperties?.qualityRating) || 0,
+                        contentRating: parseInt(file.appProperties?.contentRating) || 0
+                    },
+                    
+                    extracted: file.extractedMetadata || {}
+                };
+
+                this.cache.set(file.id, metadata);
+                return metadata;
+            }
+
+            async updateMetadata(fileId, updates) {
+                const { stack, tags, notes, ratings, extracted } = updates;
+                
+                const appProperties = {};
+                
+                if (stack !== undefined) appProperties.slideboxStack = stack;
+                if (tags !== undefined) appProperties.slideboxTags = Array.isArray(tags) ? tags.join(',') : tags;
+                if (notes !== undefined) appProperties.notes = notes;
+                if (ratings?.quality !== undefined) appProperties.qualityRating = ratings.quality;
+                if (ratings?.content !== undefined) appProperties.contentRating = ratings.content;
+                
+                // Handle large text fields (like prompts) with chunking
+                if (extracted?.prompt) {
+                    const chunks = this.chunkLargeText(extracted.prompt);
+                    chunks.forEach((chunk, i) => {
+                        appProperties[`prompt${i}`] = chunk;
+                    });
+                }
+
+                await this.cloudStorage.updateFileProperties(fileId, appProperties);
+                
+                // Update cache
+                if (this.cache.has(fileId)) {
+                    const cached = this.cache.get(fileId);
+                    if (stack !== undefined) cached.app.stack = stack;
+                    if (tags !== undefined) cached.app.tags = Array.isArray(tags) ? tags : tags.split(',').filter(t => t.trim());
+                    if (notes !== undefined) cached.app.notes = notes;
+                    if (ratings?.quality !== undefined) cached.app.qualityRating = ratings.quality;
+                    if (ratings?.content !== undefined) cached.app.contentRating = ratings.content;
+                    if (extracted) Object.assign(cached.extracted, extracted);
+                }
+            }
+
+            chunkLargeText(text, maxSize = 120) {
+                const chunks = [];
+                for (let i = 0; i < text.length; i += maxSize) {
+                    chunks.push(text.slice(i, i + maxSize));
+                }
+                return chunks;
+            }
+
+            reconstructChunkedText(props, prefix) {
+                let result = '';
+                let index = 0;
+                while (props[`${prefix}${index}`]) {
+                    result += props[`${prefix}${index}`];
+                    index++;
+                }
+                return result;
+            }
+
+            async extractMetadataFromFile(file) {
+                // Check if metadata already exists in appProperties
+                const hasExistingMetadata = file.appProperties && Object.keys(file.appProperties).some(key => 
+                    !['slideboxStack', 'slideboxTags', 'qualityRating', 'contentRating', 'notes'].includes(key)
+                );
+
+                if (hasExistingMetadata) {
+                    DebugLogger.log(`Loading existing metadata from appProperties`, 'info');
+                    
+                    const extractedMetadata = {};
+                    Object.entries(file.appProperties).forEach(([key, value]) => {
+                        if (!['slideboxStack', 'slideboxTags', 'qualityRating', 'contentRating', 'notes'].includes(key)) {
+                            extractedMetadata[key] = value;
+                        }
+                    });
+                    
+                    return extractedMetadata;
+                }
+
+                if (file.mimeType === 'image/png') {
+                    DebugLogger.log(`Extracting NEW metadata from PNG file`, 'info');
+                    
+                    try {
+                        const arrayBuffer = await this.cloudStorage.downloadFileContent(file.id, file.name);
+                        const metadata = await this.extractor.extractImageMetadata(arrayBuffer, file.mimeType, file.name);
+                        
+                        if (Object.keys(metadata).length > 0) {
+                            // Store in Google Drive appProperties
+                            const updatedProperties = { ...file.appProperties, ...metadata };
+                            await this.cloudStorage.updateFileProperties(file.id, updatedProperties);
+                            
+                            DebugLogger.log(`Extracted and stored ${Object.keys(metadata).length} metadata fields`, 'success');
+                            return metadata;
+                        } else {
+                            DebugLogger.log(`No extractable metadata found in PNG`, 'info');
+                        }
+                    } catch (error) {
+                        DebugLogger.log(`Failed to extract metadata: ${error.message}`, 'error');
+                    }
+                } else {
+                    DebugLogger.log(`Skipping non-PNG file (${file.mimeType})`, 'info');
+                }
+
+                return {};
+            }
+
+            extractAllMetadata(file) {
+                const metadata = {};
+                
+                // From extracted metadata (embedded in image)
+                if (file.extractedMetadata && typeof file.extractedMetadata === 'object') {
+                    Object.entries(file.extractedMetadata).forEach(([key, value]) => {
+                        if (value && String(value).trim()) {
+                            metadata[key] = value;
+                        }
+                    });
+                }
+                
+                // From appProperties (fallback)
+                if (file.appProperties && typeof file.appProperties === 'object') {
+                    Object.entries(file.appProperties).forEach(([key, value]) => {
+                        if (!['slideboxStack', 'slideboxTags', 'qualityRating', 'contentRating', 'notes'].includes(key) && 
+                            value && String(value).trim() && !metadata[key]) {
+                            metadata[key] = value;
+                        }
+                    });
+                }
+                
+                return metadata;
+            }
+        }
+
+        // ===== Enhanced Metadata Extractor =====
+        class MetadataExtractor {
+            constructor(options = {}) {
+                this.options = {
+                    priorityFields: PRIORITY_METADATA_FIELDS,
+                    copyableFields: COPYABLE_METADATA_FIELDS,
+                    maxChunkSize: 65536,
+                    ...options
+                };
+            }
+
+            async extractImageMetadata(arrayBuffer, mimeType, filename = '') {
+                const metadata = {};
+                try {
+                    if (mimeType === "image/png") {
+                        Object.assign(metadata, this.extractPNGMetadata(arrayBuffer, filename));
+                    } else {
+                        console.warn(`Metadata extraction not supported for ${mimeType}`);
+                    }
+                } catch (error) {
+                    console.error('Error extracting metadata:', error);
+                    DebugLogger.log(`ERROR: Metadata extraction failed for ${filename}: ${error.message}`, 'error');
+                }
+                return metadata;
+            }
+
+            extractPNGMetadata(buffer, filename = '') {
+                const metadata = {};
+                const view = new DataView(buffer);
+                
+                DebugLogger.log(`Starting PNG metadata extraction for ${filename}`, 'info');
+                DebugLogger.log(`File size: ${(buffer.byteLength / 1024).toFixed(1)}KB`, 'info');
+                
+                // PNG header validation
+                const expectedHeader = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
+                for (let i = 0; i < 8; i++) {
+                    if (view.getUint8(i) !== expectedHeader[i]) {
+                        DebugLogger.log(`ERROR: Invalid PNG header in ${filename}`, 'error');
+                        return {};
+                    }
+                }
+                DebugLogger.log(`Valid PNG header confirmed`, 'success');
+                
+                let pos = 8; // Skip PNG header
+                let chunkCount = 0;
+                let textChunks = 0;
+                
+                try {
+                    while (pos < buffer.byteLength - 12) {
+                        chunkCount++;
+                        const chunkLength = view.getUint32(pos, false); // Length is big-endian
+                        pos += 4;
+                        
+                        // Get chunk type as string
+                        let chunkType = '';
+                        for (let i = 0; i < 4; i++) {
+                            chunkType += String.fromCharCode(view.getUint8(pos + i));
+                        }
+                        pos += 4;
+                        
+                        if (chunkLength > this.options.maxChunkSize) {
+                            DebugLogger.log(`WARNING: Skipping large chunk ${chunkType} (${chunkLength} bytes)`, 'warning');
+                            pos += chunkLength + 4; // Skip chunk data and CRC
+                            continue;
+                        }
+                        
+                        // Process tEXt chunks
+                        if (chunkType === 'tEXt') {
+                            textChunks++;
+                            DebugLogger.log(`Found tEXt chunk #${textChunks} (${chunkLength} bytes)`, 'info');
+                            
+                            try {
+                                // tEXt chunks: Keyword\0Value
+                                let keyword = '';
+                                let value = '';
+                                let nullFound = false;
+                                
+                                for (let i = 0; i < chunkLength; i++) {
+                                    const byte = view.getUint8(pos + i);
+                                    
+                                    if (!nullFound) {
+                                        if (byte === 0) {
+                                            nullFound = true;
+                                        } else {
+                                            keyword += String.fromCharCode(byte);
+                                        }
+                                    } else {
+                                        value += String.fromCharCode(byte);
+                                    }
+                                }
+                                
+                                if (keyword && value) {
+                                    metadata[keyword] = value;
+                                    DebugLogger.log(`Extracted ${keyword}: ${value.length > 50 ? value.substring(0, 50) + '...' : value}`, 'success');
+                                }
+                            } catch (decodeError) {
+                                DebugLogger.log(`Failed to decode tEXt chunk: ${decodeError.message}`, 'error');
+                            }
+                        } else if (chunkType === 'IHDR') {
+                            // Extract dimensions from IHDR
+                            const width = view.getUint32(pos, false);
+                            const height = view.getUint32(pos + 4, false);
+                            metadata['Width'] = width.toString();
+                            metadata['Height'] = height.toString();
+                            DebugLogger.log(`Image dimensions: ${width}x${height}`, 'success');
+                        }
+                        
+                        // Skip chunk data and CRC
+                        pos += chunkLength + 4;
+                    }
+                } catch (error) {
+                    DebugLogger.log(`PNG parsing error at position ${pos}: ${error.message}`, 'error');
+                }
+                
+                const metadataCount = Object.keys(metadata).length;
+                DebugLogger.log(`Extraction complete - found ${metadataCount} metadata fields from ${textChunks} tEXt chunks out of ${chunkCount} total chunks`, 'success');
+                
+                if (metadataCount > 0) {
+                    DebugLogger.log(`Metadata fields: ${Object.keys(metadata).join(', ')}`, 'info');
+                }
+                
+                return metadata;
+            }
+        }
+
+        // ===== Unified Modal Manager =====
+        class UnifiedModalManager {
+            constructor(stateManager) {
+                this.stateManager = stateManager;
+                this.activeModals = new Set();
+                this.modalStack = [];
+                this.setupGlobalListeners();
+            }
+
+            setupGlobalListeners() {
+                // ESC key handling
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape' && this.modalStack.length > 0) {
+                        this.closeLast();
+                    }
+                });
+
+                // Click outside to close
+                document.addEventListener('click', (e) => {
+                    if (e.target.classList.contains('modal')) {
+                        this.closeLast();
+                    }
+                });
+            }
+
+            show(modalId, options = {}) {
+                const modal = document.getElementById(modalId);
+                if (!modal) {
+                    console.error(`Modal ${modalId} not found`);
+                    return;
+                }
+
+                // Close previous modal if not stacking
+                if (!options.stack && this.modalStack.length > 0) {
+                    this.closeLast();
+                }
+
+                modal.classList.remove('hidden');
+                this.activeModals.add(modalId);
+                this.modalStack.push(modalId);
+
+                // Trigger setup callback if provided
+                if (options.onShow) {
+                    options.onShow(modal);
+                }
+
+                // Auto-focus first input
+                const firstInput = modal.querySelector('input, textarea, button');
+                if (firstInput) {
+                    firstInput.focus();
+                }
+
+                return modal;
+            }
+
+            hide(modalId) {
+                const modal = document.getElementById(modalId);
+                if (!modal) return;
+
+                modal.classList.add('hidden');
+                this.activeModals.delete(modalId);
+                
+                const index = this.modalStack.indexOf(modalId);
+                if (index > -1) {
+                    this.modalStack.splice(index, 1);
+                }
+
+                // Trigger cleanup callback
+                const cleanupEvent = new CustomEvent('modalClosed', { detail: { modalId } });
+                modal.dispatchEvent(cleanupEvent);
+            }
+
+            closeLast() {
+                if (this.modalStack.length > 0) {
+                    const lastModal = this.modalStack[this.modalStack.length - 1];
+                    this.hide(lastModal);
+                }
+            }
+
+            closeAll() {
+                [...this.activeModals].forEach(modalId => this.hide(modalId));
+            }
+
+            isOpen(modalId) {
+                return this.activeModals.has(modalId);
+            }
+
+            // Specific modal handlers
+            showMoveModal(selectedFiles) {
+                return this.show('move-modal', {
+                    onShow: (modal) => {
+                        modal.querySelectorAll('.move-option').forEach(option => {
+                            option.onclick = () => this.handleMove(selectedFiles, option.dataset.stack);
+                        });
+                    }
+                });
+            }
+
+            showTagModal(selectedFiles) {
+                return this.show('tag-modal', {
+                    onShow: (modal) => {
+                        const input = modal.querySelector('#tag-input');
+                        input.value = '';
+                        
+                        this.populateTagSuggestions(modal);
+                        
+                        modal.querySelector('#apply-tag').onclick = () => {
+                            this.handleAddTags(selectedFiles, input.value);
+                        };
+                    }
+                });
+            }
+
+            showDeleteModal(selectedFiles) {
+                const isTrashStack = this.stateManager.state.grid.stack === 'trash';
+                return this.show('delete-modal', {
+                    onShow: (modal) => {
+                        const message = modal.querySelector('#delete-message');
+                        const confirmBtn = modal.querySelector('#confirm-delete');
+                        
+                        if (isTrashStack) {
+                            message.textContent = `Permanently delete ${selectedFiles.length} file(s)?`;
+                            confirmBtn.textContent = 'Delete Forever';
+                        } else {
+                            message.textContent = `Move ${selectedFiles.length} file(s) to trash?`;
+                            confirmBtn.textContent = 'Move to Trash';
+                        }
+                        
+                        confirmBtn.onclick = () => this.handleDelete(selectedFiles, isTrashStack);
+                    }
+                });
+            }
+
+            async handleMove(selectedFiles, targetStack) {
+                try {
+                    await Promise.all(selectedFiles.map(fileId => 
+                        this.stateManager.state.metadataManager.updateMetadata(fileId, { stack: targetStack })
+                    ));
+                    
+                    // Update state
+                    this.updateFileStacks(selectedFiles, targetStack);
+                    
+                    ToastManager.show(`Moved ${selectedFiles.length} files to ${targetStack}`);
+                    this.hide('move-modal');
+                    this.refreshCurrentView();
+                } catch (error) {
+                    ToastManager.show('Failed to move files', 'error');
+                }
+            }
+
+            async handleAddTags(selectedFiles, tagString) {
+                const tags = tagString.split(',').map(t => t.trim()).filter(t => t);
+                if (tags.length === 0) {
+                    this.hide('tag-modal');
+                    return;
+                }
+
+                try {
+                    for (const fileId of selectedFiles) {
+                        await TagManager.addTagsToFile(fileId, tags, this.stateManager);
+                    }
+                    
+                    ToastManager.show(`Added tags to ${selectedFiles.length} files`);
+                    this.hide('tag-modal');
+                } catch (error) {
+                    ToastManager.show('Failed to add tags', 'error');
+                }
+            }
+
+            async handleDelete(selectedFiles, permanent) {
+                try {
+                    if (permanent) {
+                        await Promise.all(selectedFiles.map(fileId => 
+                            this.stateManager.state.cloudStorage.deleteFile(fileId)
+                        ));
+                        
+                        // Remove from state completely
+                        this.removeFilesFromState(selectedFiles);
+                    } else {
+                        await Promise.all(selectedFiles.map(fileId => 
+                            this.stateManager.state.metadataManager.updateMetadata(fileId, { stack: 'trash' })
+                        ));
+                        
+                        this.updateFileStacks(selectedFiles, 'trash');
+                    }
+                    
+                    ToastManager.show(`${permanent ? 'Deleted' : 'Moved to trash'} ${selectedFiles.length} files`);
+                    this.hide('delete-modal');
+                    this.refreshCurrentView();
+                } catch (error) {
+                    ToastManager.show('Failed to delete files', 'error');
+                }
+            }
+
+            updateFileStacks(fileIds, targetStack) {
+                const state = this.stateManager.state;
+                
+                fileIds.forEach(fileId => {
+                    // Remove from current stacks
+                    STACK_TYPES.forEach(stackName => {
+                        const index = state.stacks[stackName].findIndex(f => f.id === fileId);
+                        if (index !== -1) {
+                            const file = state.stacks[stackName].splice(index, 1)[0];
+                            // Update the file's metadata
+                            if (file.appProperties) {
+                                file.appProperties.slideboxStack = targetStack;
+                            }
+                            // Add to target stack
+                            state.stacks[targetStack].unshift(file);
+                        }
+                    });
+                });
+                
+                StackManager.updateCounts(this.stateManager);
+            }
+
+            removeFilesFromState(fileIds) {
+                const state = this.stateManager.state;
+                
+                fileIds.forEach(fileId => {
+                    // Remove from imageFiles
+                    const fileIndex = state.imageFiles.findIndex(f => f.id === fileId);
+                    if (fileIndex !== -1) {
+                        state.imageFiles.splice(fileIndex, 1);
+                    }
+                    
+                    // Remove from all stacks
+                    STACK_TYPES.forEach(stackName => {
+                        const index = state.stacks[stackName].findIndex(f => f.id === fileId);
+                        if (index !== -1) {
+                            state.stacks[stackName].splice(index, 1);
+                        }
+                    });
+                });
+                
+                StackManager.updateCounts(this.stateManager);
+            }
+
+            refreshCurrentView() {
+                if (this.stateManager.state.grid.stack) {
+                    GridView.populate(this.stateManager.state.grid.stack, this.stateManager);
+                    GridView.updateSelectionUI(this.stateManager);
+                }
+                
+                // Clear selections
+                this.stateManager.setState({
+                    grid: { ...this.stateManager.state.grid, selected: [] }
+                });
+            }
+
+            populateTagSuggestions(modal) {
+                const suggestions = modal.querySelector('#tag-suggestions');
+                suggestions.innerHTML = '';
+                
+                [...this.stateManager.state.globalTags].forEach(tag => {
+                    const btn = document.createElement('button');
+                    btn.className = 'tag-suggestion';
+                    btn.textContent = tag;
+                    btn.onclick = () => {
+                        const input = modal.querySelector('#tag-input');
+                        input.value += (input.value ? ', ' : '') + tag;
+                    };
+                    suggestions.appendChild(btn);
+                });
+            }
+        }
+
+        // ===== Centralized Tag Manager (Details as Source of Truth) =====
+        class TagManager {
+            static async addTagsToFile(fileId, newTags, stateManager) {
+                const file = stateManager.state.imageFiles.find(f => f.id === fileId);
+                if (!file) throw new Error('File not found');
+
+                const metadata = await stateManager.state.metadataManager.getMetadata(file);
+                const currentTags = metadata.app.tags || [];
+                const allTags = [...new Set([...currentTags, ...newTags])];
+                
+                // Update global tags
+                newTags.forEach(tag => stateManager.state.globalTags.add(tag));
+                
+                // Update file metadata
+                await stateManager.state.metadataManager.updateMetadata(fileId, { tags: allTags });
+                
+                // Update file object
+                file.appProperties = file.appProperties || {};
+                file.appProperties.slideboxTags = allTags.join(',');
+                
+                return allTags;
+            }
+
+            static async removeTagFromFile(fileId, tagToRemove, stateManager) {
+                const file = stateManager.state.imageFiles.find(f => f.id === fileId);
+                if (!file) throw new Error('File not found');
+
+                const metadata = await stateManager.state.metadataManager.getMetadata(file);
+                const currentTags = metadata.app.tags || [];
+                const newTags = currentTags.filter(tag => tag !== tagToRemove);
+                
+                await stateManager.state.metadataManager.updateMetadata(fileId, { tags: newTags });
+                
+                file.appProperties = file.appProperties || {};
+                file.appProperties.slideboxTags = newTags.join(',');
+                
+                return newTags;
+            }
+
+            static getFileTags(file) {
+                return file.appProperties?.slideboxTags ? 
+                    file.appProperties.slideboxTags.split(',').filter(t => t.trim()) : [];
+            }
+
+            static getFileStack(file) {
+                return file.appProperties?.slideboxStack || 'in';
+            }
+        }
+
+        // ===== Utility Managers =====
+        class DebugLogger {
+            static log(message, type = 'info') {
+                const debugLog = document.getElementById('debug-log');
+                if (!debugLog) return;
+                
+                const timestamp = new Date().toLocaleTimeString();
+                const line = document.createElement('div');
+                line.className = `debug-${type}`;
+                line.textContent = `[${timestamp}] ${message}`;
+                
+                debugLog.appendChild(line);
+                debugLog.scrollTop = debugLog.scrollHeight;
+            }
+        }
+
+        class ToastManager {
+            static show(message, type = 'success') {
+                const toast = document.getElementById('toast');
+                if (!toast) return;
+                
+                toast.textContent = message;
+                toast.className = `toast ${type} show`;
+                setTimeout(() => { toast.classList.remove('show'); }, 3000);
+            }
+        }
+
+        class LoadingManager {
+            static updateProgress(current, total) {
+                const counter = document.getElementById('loading-counter');
+                const message = document.getElementById('loading-message');
+                const progressBar = document.getElementById('loading-progress-bar');
+                
+                if (counter) counter.textContent = current;
+                if (message) {
+                    message.textContent = total ? 
+                        `Processing ${current} of ${total} images...` : 
+                        `Found ${current} images`;
+                }
+                
+                if (total > 0 && progressBar) {
+                    const percentage = (current / total) * 100;
+                    progressBar.style.width = `${percentage}%`;
+                }
+            }
+        }
+
+        class ImageCacheManager {
+            constructor() {
+                this.cache = new Map();
+                this.db = null;
+            }
+
+            async init() {
+                return new Promise((resolve, reject) => {
+                    const request = indexedDB.open('Orbital8Cache', 1);
+                    request.onerror = () => reject(request.error);
+                    request.onsuccess = () => {
+                        this.db = request.result;
+                        resolve();
+                    };
+                    request.onupgradeneeded = (event) => {
+                        const db = event.target.result;
+                        if (!db.objectStoreNames.contains('thumbnails')) {
+                            db.createObjectStore('thumbnails', { keyPath: 'id' });
+                        }
+                    };
+                });
+            }
+
+            async setImageSrc(img, file) {
+                let imageUrl = this.cache.get(file.id);
+                
+                if (!imageUrl) {
+                    imageUrl = await this.getCachedThumbnail(file.id);
+                    
+                    if (!imageUrl) {
+                        imageUrl = file.thumbnailLink ? file.thumbnailLink.replace('=s220', '=s1000') : file.downloadUrl;
+                        
+                        if (imageUrl) {
+                            this.cache.set(file.id, imageUrl);
+                            await this.cacheThumbnail(file.id, imageUrl);
+                        }
+                    } else {
+                        this.cache.set(file.id, imageUrl);
+                    }
+                }
+                
+                if (imageUrl) {
+                    img.src = imageUrl;
+                } else {
+                    img.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="150" height="150" viewBox="0 0 150 150" fill="none"%3E%3Crect width="150" height="150" fill="%23E5E7EB"/%3E%3Cpath d="M65 60H85V90H65V60Z" fill="%239CA3AF"/%3E%3Ccircle cx="75" cy="45" r="10" fill="%239CA3AF"/%3E%3C/svg%3E';
+                }
+                
+                img.alt = file.name || 'Image';
+                img.loading = 'lazy';
+                
+                return new Promise((resolve) => {
+                    img.onload = () => resolve();
+                    img.onerror = () => {
+                        img.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="150" height="150" viewBox="0 0 150 150" fill="none"%3E%3Crect width="150" height="150" fill="%23E5E7EB"/%3E%3Cpath d="M65 60H85V90H65V60Z" fill="%239CA3AF"/%3E%3Ccircle cx="75" cy="45" r="10" fill="%239CA3AF"/%3E%3C/svg%3E';
+                        img.alt = 'Image not available';
+                        resolve();
+                    };
+                });
+            }
+
+            async cacheThumbnail(fileId, url) {
+                if (!this.db) return;
+                try {
+                    const transaction = this.db.transaction(['thumbnails'], 'readwrite');
+                    const store = transaction.objectStore('thumbnails');
+                    await store.put({ id: fileId, url, timestamp: Date.now() });
+                } catch (error) {
+                    console.warn('Failed to cache thumbnail:', error);
+                }
+            }
+            
+            async getCachedThumbnail(fileId) {
+                if (!this.db) return null;
+                try {
+                    const transaction = this.db.transaction(['thumbnails'], 'readonly');
+                    const store = transaction.objectStore('thumbnails');
+                    const result = await store.get(fileId);
+                    if (result && (Date.now() - result.timestamp < 24 * 60 * 60 * 1000)) {
+                        return result.url;
+                    }
+                } catch (error) {
+                    console.warn('Failed to get cached thumbnail:', error);
+                }
+                return null;
+            }
+        }
+
+        // ===== Stack Management =====
+        class StackManager {
+            static currentSort = 'date-desc';
+            
+            static sortFiles(files, sortOrder) {
+                const sorted = [...files];
+                
+                switch (sortOrder) {
+                    case 'date-desc':
+                        return sorted.sort((a, b) => new Date(b.modifiedTime || b.createdTime) - new Date(a.modifiedTime || a.createdTime));
+                    case 'date-asc':
+                        return sorted.sort((a, b) => new Date(a.modifiedTime || a.createdTime) - new Date(b.modifiedTime || b.createdTime));
+                    case 'name-asc':
+                        return sorted.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+                    case 'name-desc':
+                        return sorted.sort((a, b) => (b.name || '').localeCompare(a.name || ''));
+                    default:
+                        return sorted;
+                }
+            }
+            
+            static updateStacks(stateManager) {
+                const state = stateManager.state;
+                
+                // Clear all stacks
+                STACK_TYPES.forEach(stack => { state.stacks[stack] = []; });
+                
+                // Organize files into stacks
+                state.imageFiles.forEach(file => {
+                    const stack = TagManager.getFileStack(file);
+                    
+                    if (STACK_TYPES.includes(stack)) {
+                        state.stacks[stack].push(file);
+                    } else {
+                        state.stacks.in.push(file);
+                    }
+                });
+                
+                // Sort each stack
+                STACK_TYPES.forEach(stack => {
+                    state.stacks[stack] = this.sortFiles(state.stacks[stack], this.currentSort);
+                });
+                
+                this.updateCounts(stateManager);
+            }
+            
+            static updateCounts(stateManager) {
+                const state = stateManager.state;
+                
+                STACK_TYPES.forEach(stack => {
+                    const count = state.stacks[stack].length;
+                    const countElements = document.querySelectorAll(`[data-stack="${stack}"]`);
+                    countElements.forEach(el => {
+                        if (el.classList.contains('pill-counter')) {
+                            el.textContent = count > 999 ? '999+' : count;
+                            if (count > 0) {
+                                el.classList.add('visible');
+                            } else {
+                                el.classList.remove('visible');
+                            }
+                        }
+                    });
+                });
+                
+                // Update grid modal select all button
+                const selectAllBtn = document.getElementById('select-all-btn');
+                if (state.grid.stack && selectAllBtn) {
+                    selectAllBtn.textContent = state.stacks[state.grid.stack].length;
+                }
+            }
+        }
+
+        // ===== Image Viewer =====
+        class ImageViewer {
+            static async displayCurrentImage(stateManager) {
+                const state = stateManager.state;
+                const centerImage = document.getElementById('center-image');
+                const emptyState = document.getElementById('empty-state');
+                
+                if (state.imageFiles.length === 0 || state.currentImageIndex < 0 || state.currentImageIndex >= state.imageFiles.length) {
+                    centerImage.src = '';
+                    centerImage.alt = 'No image selected';
+                    emptyState.classList.remove('hidden');
+                    return;
+                }
+                
+                emptyState.classList.add('hidden');
+                const currentFile = state.imageFiles[state.currentImageIndex];
+                
+                if (!currentFile) {
+                    centerImage.src = '';
+                    centerImage.alt = 'Image not available';
+                    ToastManager.show('Error: Image not available', 'error');
+                    return;
+                }
+                
+                await stateManager.state.imageCacheManager.setImageSrc(centerImage, currentFile);
+                
+                // Reset transform
+                stateManager.setState({
+                    ui: { ...state.ui, currentScale: 1, panOffset: { x: 0, y: 0 } }
+                });
+                this.applyTransform(stateManager);
+                
+                StackManager.updateCounts(stateManager);
+            }
+            
+            static async displayTopImageFromStack(stackName, stateManager) {
+                const state = stateManager.state;
+                const centerImage = document.getElementById('center-image');
+                const emptyState = document.getElementById('empty-state');
+                
+                if (state.stacks[stackName].length === 0) {
+                    centerImage.style.opacity = '0';
+                    setTimeout(() => {
+                        centerImage.src = '';
+                        centerImage.alt = 'No images in this stack';
+                        this.updateEmptyStateButtons(stateManager);
+                        emptyState.classList.remove('hidden');
+                        centerImage.style.opacity = '1';
+                    }, 200);
+                    return;
+                }
+                
+                emptyState.classList.add('hidden');
+                const topImage = state.stacks[stackName][0];
+                const imageIndex = state.imageFiles.findIndex(f => f.id === topImage.id);
+                
+                if (imageIndex !== -1) {
+                    stateManager.setState({
+                        currentImageIndex: imageIndex,
+                        currentStack: stackName
+                    });
+                    await this.displayCurrentImage(stateManager);
+                    this.updateActiveProxTab(stateManager);
+                }
+            }
+            
+            static applyTransform(stateManager) {
+                const { currentScale, panOffset } = stateManager.state.ui;
+                const centerImage = document.getElementById('center-image');
+                const transform = `scale(${currentScale}) translate(${panOffset.x}px, ${panOffset.y}px)`;
+                centerImage.style.transform = transform;
+            }
+            
+            static async moveToNextImage(stateManager) {
+                const state = stateManager.state;
+                if (state.imageFiles.length === 0) return;
+                
+                const activeStackImages = state.stacks[state.currentStack];
+                if (activeStackImages.length > 0) {
+                    const currentImageInStack = activeStackImages.find(img => img.id === state.imageFiles[state.currentImageIndex].id);
+                    if (currentImageInStack) {
+                        const currentIndexInStack = activeStackImages.indexOf(currentImageInStack);
+                        const nextIndexInStack = (currentIndexInStack + 1) % activeStackImages.length;
+                        const nextImageInStack = activeStackImages[nextIndexInStack];
+                        const nextGlobalIndex = state.imageFiles.findIndex(img => img.id === nextImageInStack.id);
+                        if (nextGlobalIndex !== -1) {
+                            stateManager.setState({ currentImageIndex: nextGlobalIndex });
+                        }
+                    } else {
+                        if (activeStackImages.length > 0) {
+                            const firstImageInStack = activeStackImages[0];
+                            const firstGlobalIndex = state.imageFiles.findIndex(img => img.id === firstImageInStack.id);
+                            if (firstGlobalIndex !== -1) {
+                                stateManager.setState({ currentImageIndex: firstGlobalIndex });
+                            }
+                        }
+                    }
+                    await this.displayCurrentImage(stateManager);
+                } else {
+                    const centerImage = document.getElementById('center-image');
+                    const emptyState = document.getElementById('empty-state');
+                    centerImage.style.opacity = '0';
+                    setTimeout(() => {
+                        centerImage.src = '';
+                        centerImage.alt = 'No images in this stack';
+                        this.updateEmptyStateButtons(stateManager);
+                        emptyState.classList.remove('hidden');
+                        centerImage.style.opacity = '1';
+                    }, 200);
+                }
+            }
+
+            static updateActiveProxTab(stateManager) {
+                const currentStack = stateManager.state.currentStack;
+                
+                document.querySelectorAll('.pill-counter').forEach(pill => {
+                    pill.classList.remove('active');
+                });
+                
+                const activePill = document.getElementById(`pill-${currentStack}`);
+                if (activePill) {
+                    activePill.classList.add('active');
+                }
+            }
+
+            static updateEmptyStateButtons(stateManager) {
+                const state = stateManager.state;
+                const stacksWithImages = STACK_TYPES.filter(stack => state.stacks[stack].length > 0);
+                const hasOtherStacks = stacksWithImages.some(stack => stack !== state.currentStack);
+                
+                const selectAnotherStackBtn = document.getElementById('select-another-stack-btn');
+                const selectAnotherFolderBtn = document.getElementById('select-another-folder-btn');
+                
+                if (hasOtherStacks) {
+                    selectAnotherStackBtn.style.display = 'block';
+                    selectAnotherFolderBtn.style.display = 'none';
+                } else {
+                    selectAnotherStackBtn.style.display = 'none';
+                    selectAnotherFolderBtn.style.display = 'block';
+                }
+            }
+        }
+
+        // ===== Grid View =====
+        class GridView {
+            static open(stack, stateManager) {
+                const gridModal = document.getElementById('grid-modal');
+                const gridTitle = document.getElementById('grid-title');
+                const selectAllBtn = document.getElementById('select-all-btn');
+                
+                gridModal.classList.remove('hidden');
+                const stackNames = { 'in': 'In', 'out': 'Out', 'priority': 'Priority', 'trash': 'Trash' };
+                gridTitle.textContent = stackNames[stack] || stack;
+                selectAllBtn.textContent = stateManager.state.stacks[stack].length;
+                
+                stateManager.setState({
+                    grid: { stack, selected: [] }
+                });
+                
+                this.updateSelectionUI(stateManager);
+                this.populate(stack, stateManager);
+            }
+            
+            static close(stateManager) {
+                const gridModal = document.getElementById('grid-modal');
+                const selectedImages = stateManager.state.grid.selected;
+                const hasSelection = selectedImages.length === 1;
+                
+                gridModal.classList.add('hidden');
+                
+                if (hasSelection) {
+                    const selectedFileId = selectedImages[0];
+                    const selectedIndex = stateManager.state.imageFiles.findIndex(f => f.id === selectedFileId);
+                    if (selectedIndex !== -1) {
+                        stateManager.setState({ currentImageIndex: selectedIndex });
+                        
+                        const currentStackImages = stateManager.state.stacks[stateManager.state.currentStack];
+                        const stackIndex = currentStackImages.findIndex(f => f.id === selectedFileId);
+                        
+                        if (stackIndex !== -1) {
+                            const reorderedStack = [
+                                ...currentStackImages.slice(stackIndex),
+                                ...currentStackImages.slice(0, stackIndex)
+                            ];
+                            stateManager.setState({
+                                stacks: { ...stateManager.state.stacks, [stateManager.state.currentStack]: reorderedStack }
+                            });
+                        }
+                        
+                        ImageViewer.displayCurrentImage(stateManager);
+                    }
+                } else {
+                    ImageViewer.displayTopImageFromStack(stateManager.state.currentStack, stateManager);
+                }
+                
+                stateManager.setState({
+                    grid: { stack: null, selected: [] }
+                });
+            }
+            
+            static populate(stack, stateManager) {
+                const container = document.getElementById('grid-container');
+                const gridSize = document.getElementById('grid-size');
+                
+                container.innerHTML = '';
+                container.style.gridTemplateColumns = `repeat(${gridSize.value}, 1fr)`;
+                
+                const sortedFiles = StackManager.sortFiles(stateManager.state.stacks[stack], StackManager.currentSort);
+                
+                sortedFiles.forEach((file) => {
+                    const div = document.createElement('div');
+                    div.className = 'grid-item';
+                    div.dataset.fileId = file.id;
+                    
+                    const img = document.createElement('img');
+                    img.className = 'grid-image';
+                    
+                    stateManager.state.imageCacheManager.setImageSrc(img, file);
+                    
+                    div.addEventListener('click', e => {
+                        e.stopPropagation();
+                        
+                        if (stateManager.state.grid.selected.length === 1 && 
+                            stateManager.state.grid.selected[0] === file.id && 
+                            gridSize.value === '1') {
+                            const imageUrl = stateManager.state.imageCache.get(file.id) || file.thumbnailLink || file.downloadUrl;
+                            if (imageUrl) {
+                                window.open(imageUrl, '_blank');
+                            }
+                            return;
+                        }
+                        
+                        this.toggleSelection(e, file.id, stateManager);
+                    });
+                    
+                    div.appendChild(img);
+                    container.appendChild(div);
+                });
+            }
+            
+            static toggleSelection(e, fileId, stateManager) {
+                const gridItem = e.currentTarget;
+                const selected = [...stateManager.state.grid.selected];
+                const index = selected.indexOf(fileId);
+                
+                if (index === -1) {
+                    selected.push(fileId);
+                    gridItem.classList.add('selected');
+                } else {
+                    selected.splice(index, 1);
+                    gridItem.classList.remove('selected');
+                }
+                
+                stateManager.setState({
+                    grid: { ...stateManager.state.grid, selected }
+                });
+                
+                this.updateSelectionUI(stateManager);
+                
+                if (selected.length === 1 && document.getElementById('grid-size').value === '1') {
+                    this.focusOnSelectedItem(selected[0]);
+                }
+            }
+            
+            static focusOnSelectedItem(fileId) {
+                const selectedItem = document.querySelector(`.grid-item[data-file-id="${fileId}"]`);
+                if (selectedItem) {
+                    selectedItem.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            }
+            
+            static updateSelectionUI(stateManager) {
+                const count = stateManager.state.grid.selected.length;
+                const selectionText = document.getElementById('selection-text');
+                const buttons = ['tag-selected', 'move-selected', 'delete-selected'];
+                
+                if (selectionText) {
+                    selectionText.textContent = `${count} selected`;
+                }
+                
+                buttons.forEach(btnId => {
+                    const btn = document.getElementById(btnId);
+                    if (btn) btn.classList.toggle('hidden', count === 0);
+                });
+            }
+            
+            static selectAll(stateManager) {
+                const gridItems = document.querySelectorAll('#grid-container .grid-item');
+                const selected = [];
+                
+                gridItems.forEach(item => {
+                    const fileId = item.dataset.fileId;
+                    if (fileId) {
+                        selected.push(fileId);
+                        item.classList.add('selected');
+                    }
+                });
+                
+                stateManager.setState({
+                    grid: { ...stateManager.state.grid, selected }
+                });
+                
+                this.updateSelectionUI(stateManager);
+            }
+            
+            static deselectAll(stateManager) {
+                document.querySelectorAll('#grid-container .grid-item').forEach(item => 
+                    item.classList.remove('selected')
+                );
+                
+                stateManager.setState({
+                    grid: { ...stateManager.state.grid, selected: [] }
+                });
+                
+                this.updateSelectionUI(stateManager);
+            }
+        }
+
+        // ===== Details Modal (Central Tag Management) =====
+        class DetailsModal {
+            static currentTab = 'info';
+            
+            static show(stateManager) {
+                const currentFile = stateManager.getCurrentFile();
+                if (!currentFile) return;
+                
+                this.populateAllTabs(currentFile, stateManager);
+                const modal = document.getElementById('details-modal');
+                modal.classList.remove('hidden');
+                this.switchTab('info');
+            }
+            
+            static hide() {
+                const modal = document.getElementById('details-modal');
+                modal.classList.add('hidden');
+            }
+            
+            static switchTab(tabName) {
+                document.querySelectorAll('.tab-button').forEach(btn => {
+                    btn.classList.toggle('active', btn.dataset.tab === tabName);
+                });
+                
+                document.querySelectorAll('.tab-content').forEach(content => {
+                    content.classList.toggle('active', content.id === `tab-${tabName}`);
+                });
+                
+                this.currentTab = tabName;
+            }
+            
+            static populateAllTabs(file, stateManager) {
+                this.populateInfoTab(file);
+                this.populateMetadataTab(file, stateManager);
+                this.populateTagsTab(file, stateManager);
+                this.populateNotesTab(file, stateManager);
+            }
+            
+            static populateInfoTab(file) {
+                const filename = file.name || 'Unknown';
+                const detailFilename = document.getElementById('detail-filename');
+                const detailFilenameLink = document.getElementById('detail-filename-link');
+                const detailDate = document.getElementById('detail-date');
+                
+                if (detailFilename) detailFilename.textContent = filename;
+                
+                if (detailFilenameLink) {
+                    if (file.downloadUrl) {
+                        detailFilenameLink.href = file.downloadUrl;
+                        detailFilenameLink.style.display = 'inline';
+                    } else {
+                        detailFilenameLink.href = '#';
+                        detailFilenameLink.style.display = 'none';
+                    }
+                }
+                
+                const date = file.modifiedTime ? new Date(file.modifiedTime).toLocaleString() : 
+                           file.createdTime ? new Date(file.createdTime).toLocaleString() : 'Unknown';
+                if (detailDate) detailDate.textContent = date;
+            }
+            
+            static populateMetadataTab(file, stateManager) {
+                const noMetadataMessage = document.getElementById('no-metadata-message');
+                const metadataTable = document.getElementById('metadata-table');
+                const metadataTableBody = document.getElementById('metadata-table-body');
+                
+                const allMetadata = stateManager.state.metadataManager.extractAllMetadata(file);
+                
+                if (Object.keys(allMetadata).length === 0) {
+                    if (noMetadataMessage) noMetadataMessage.style.display = 'block';
+                    if (metadataTable) metadataTable.classList.add('hidden');
+                    return;
+                }
+                
+                if (noMetadataMessage) noMetadataMessage.style.display = 'none';
+                if (metadataTable) metadataTable.classList.remove('hidden');
+                if (metadataTableBody) metadataTableBody.innerHTML = '';
+                
+                // Show priority fields first
+                PRIORITY_METADATA_FIELDS.forEach(field => {
+                    if (allMetadata[field]) {
+                        const needsCopyButton = COPYABLE_METADATA_FIELDS.includes(field);
+                        this.addMetadataRow(field, allMetadata[field], needsCopyButton);
+                    }
+                });
+                
+                // Show other fields
+                Object.entries(allMetadata).forEach(([key, value]) => {
+                    if (!PRIORITY_METADATA_FIELDS.includes(key) && value) {
+                        this.addMetadataRow(key, value, false);
+                    }
+                });
+            }
+            
+            static addMetadataRow(key, value, needsCopyButton = false) {
+                const metadataTableBody = document.getElementById('metadata-table-body');
+                if (!metadataTableBody) return;
+                
+                const row = document.createElement('tr');
+                
+                const keyCell = document.createElement('td');
+                keyCell.className = 'key-cell';
+                keyCell.textContent = key.replace(/_/g, ' ');
+                
+                const valueCell = document.createElement('td');
+                valueCell.className = 'value-cell';
+                
+                let formattedValue = String(value);
+                if (formattedValue.length > 100) {
+                    formattedValue = formattedValue.replace(/,(?=\s)/g, ',\n').replace(/\s+/g, ' ').trim();
+                }
+                valueCell.textContent = formattedValue;
+                
+                if (needsCopyButton) {
+                    const copyButton = document.createElement('button');
+                    copyButton.className = 'copy-button';
+                    copyButton.textContent = 'Copy';
+                    copyButton.dataset.value = String(value);
+                    copyButton.addEventListener('click', () => this.copyToClipboard(String(value)));
+                    valueCell.appendChild(copyButton);
+                }
+                
+                row.appendChild(keyCell);
+                row.appendChild(valueCell);
+                metadataTableBody.appendChild(row);
+            }
+            
+            static populateTagsTab(file, stateManager) {
+                const detailTags = document.getElementById('detail-tags');
+                if (!detailTags) return;
+                
+                const tags = TagManager.getFileTags(file);
+                
+                detailTags.innerHTML = '';
+                
+                // Display existing tags
+                tags.forEach(tag => {
+                    const tagElement = document.createElement('div');
+                    tagElement.className = 'tag-item';
+                    tagElement.innerHTML = `
+                        <span>${tag}</span>
+                        <button class="tag-remove" data-tag="${tag}">×</button>
+                    `;
+                    detailTags.appendChild(tagElement);
+                });
+                
+                // Add tag button
+                const addButton = document.createElement('div');
+                addButton.className = 'add-tag-btn';
+                addButton.textContent = '+ Add Tag';
+                addButton.addEventListener('click', () => this.showAddTagInput(file, stateManager));
+                detailTags.appendChild(addButton);
+                
+                // Remove tag handlers
+                detailTags.querySelectorAll('.tag-remove').forEach(btn => {
+                    btn.addEventListener('click', (e) => {
+                        const tagToRemove = e.target.dataset.tag;
+                        this.removeTag(file, tagToRemove, stateManager);
+                    });
+                });
+            }
+            
+            static showAddTagInput(file, stateManager) {
+                const detailTags = document.getElementById('detail-tags');
+                const addButton = detailTags.querySelector('.add-tag-btn');
+                
+                const input = document.createElement('input');
+                input.type = 'text';
+                input.className = 'tag-input';
+                input.placeholder = 'Enter tag name';
+                input.style.marginLeft = '8px';
+                
+                addButton.parentNode.insertBefore(input, addButton);
+                input.focus();
+                
+                input.addEventListener('keydown', async (e) => {
+                    if (e.key === 'Enter') {
+                        const tagName = input.value.trim();
+                        if (tagName) {
+                            try {
+                                await TagManager.addTagsToFile(file.id, [tagName], stateManager);
+                                this.populateTagsTab(file, stateManager);
+                                ToastManager.show(`Added tag: ${tagName}`);
+                            } catch (error) {
+                                console.error('Error adding tag:', error);
+                                ToastManager.show('Failed to add tag', 'error');
+                            }
+                        }
+                    } else if (e.key === 'Escape') {
+                        input.remove();
+                    }
+                });
+                
+                input.addEventListener('blur', () => {
+                    setTimeout(() => input.remove(), 100);
+                });
+            }
+            
+            static async removeTag(file, tagToRemove, stateManager) {
+                try {
+                    await TagManager.removeTagFromFile(file.id, tagToRemove, stateManager);
+                    this.populateTagsTab(file, stateManager);
+                    ToastManager.show(`Removed tag: ${tagToRemove}`);
+                } catch (error) {
+                    console.error('Error removing tag:', error);
+                    ToastManager.show('Failed to remove tag', 'error');
+                }
+            }
+            
+            static populateNotesTab(file, stateManager) {
+                const detailNotes = document.getElementById('detail-notes');
+                const qualityRating = document.getElementById('quality-rating');
+                const contentRating = document.getElementById('content-rating');
+                
+                if (detailNotes) {
+                    detailNotes.value = file.notes || '';
+                    
+                    // Remove old event listener and add new one
+                    const newNotesTextarea = detailNotes.cloneNode(true);
+                    detailNotes.parentNode.replaceChild(newNotesTextarea, detailNotes);
+                    
+                    newNotesTextarea.addEventListener('blur', async () => {
+                        const newNotes = newNotesTextarea.value;
+                        file.notes = newNotes;
+                        
+                        try {
+                            await stateManager.state.metadataManager.updateMetadata(file.id, { notes: newNotes });
+                            ToastManager.show('Notes saved');
+                        } catch (error) {
+                            console.error('Error saving notes:', error);
+                            ToastManager.show('Failed to save notes', 'error');
+                        }
+                    });
+                }
+                
+                if (qualityRating) {
+                    this.setupStarRating(qualityRating, file.qualityRating || 0, async (rating) => {
+                        file.qualityRating = rating;
+                        
+                        try {
+                            await stateManager.state.metadataManager.updateMetadata(file.id, { 
+                                ratings: { quality: rating } 
+                            });
+                            ToastManager.show('Quality rating saved');
+                        } catch (error) {
+                            console.error('Error saving quality rating:', error);
+                            ToastManager.show('Failed to save rating', 'error');
+                        }
+                    });
+                }
+                
+                if (contentRating) {
+                    this.setupStarRating(contentRating, file.contentRating || 0, async (rating) => {
+                        file.contentRating = rating;
+                        
+                        try {
+                            await stateManager.state.metadataManager.updateMetadata(file.id, { 
+                                ratings: { content: rating } 
+                            });
+                            ToastManager.show('Content rating saved');
+                        } catch (error) {
+                            console.error('Error saving content rating:', error);
+                            ToastManager.show('Failed to save rating', 'error');
+                        }
+                    });
+                }
+            }
+            
+            static setupStarRating(container, currentRating, onRatingChange) {
+                const stars = container.querySelectorAll('.star');
+                
+                // Set initial state
+                stars.forEach((star, index) => {
+                    star.classList.toggle('active', index < currentRating);
+                });
+                
+                // Replace with new handlers
+                stars.forEach((star, index) => {
+                    const newClickHandler = () => {
+                        const newRating = index + 1;
+                        stars.forEach((s, i) => {
+                            s.classList.toggle('active', i < newRating);
+                        });
+                        onRatingChange(newRating);
+                    };
+                    
+                    // Clone to remove old event listeners
+                    star.replaceWith(star.cloneNode(true));
+                    const newStar = container.querySelectorAll('.star')[index];
+                    newStar.addEventListener('click', newClickHandler);
+                    
+                    newStar.addEventListener('mouseenter', () => {
+                        stars.forEach((s, i) => {
+                            s.style.color = i <= index ? '#fbbf24' : '#d1d5db';
+                        });
+                    });
+                    
+                    newStar.addEventListener('mouseleave', () => {
+                        stars.forEach((s, i) => {
+                            s.style.color = s.classList.contains('active') ? '#fbbf24' : '#d1d5db';
+                        });
+                    });
+                });
+            }
+            
+            static copyToClipboard(text) {
+                navigator.clipboard.writeText(text).then(() => {
+                    ToastManager.show('Copied to clipboard');
+                }).catch(() => {
+                    // Fallback for older browsers
+                    const textArea = document.createElement('textarea');
+                    textArea.value = text;
+                    document.body.appendChild(textArea);
+                    textArea.select();
+                    document.execCommand('copy');
+                    document.body.removeChild(textArea);
+                    ToastManager.show('Copied to clipboard');
+                });
+            }
+        }
+
+        // ===== Authentication Manager =====
+        class AuthManager {
+            static async authenticate(stateManager) {
+                const clientSecret = document.getElementById('client-secret').value.trim();
+                const authButton = document.getElementById('auth-button');
+                
+                if (!clientSecret) {
+                    this.setStatus('Please enter client secret', 'error');
+                    return;
+                }
+                
+                try {
+                    authButton.disabled = true;
+                    authButton.textContent = 'Connecting...';
+                    this.setStatus('Connecting to Google Drive...', 'info');
+                    
+                    const success = await stateManager.state.cloudStorage.authenticate(clientSecret);
+                    
+                    if (success) {
+                        this.setStatus('✅ Connected to Google Drive!', 'success');
+                        document.getElementById('client-secret').value = '';
+                        
+                        setTimeout(() => {
+                            ScreenManager.showScreen('folder-screen');
+                            FolderManager.loadFolders(stateManager);
+                        }, 1000);
+                    } else {
+                        this.setStatus('Authentication failed - no success response', 'error');
+                    }
+                } catch (error) {
+                    console.error('Authentication error:', error);
+                    this.setStatus(`Authentication failed: ${error.message}`, 'error');
+                } finally {
+                    authButton.disabled = false;
+                    authButton.textContent = 'Connect Drive';
+                }
+            }
+            
+            static setStatus(message, type) {
+                const authStatus = document.getElementById('auth-status');
+                if (authStatus) {
+                    authStatus.textContent = message;
+                    authStatus.className = `status ${type}`;
+                }
+            }
+            
+            static logout(stateManager) {
+                stateManager.state.cloudStorage.disconnect();
+                ScreenManager.showScreen('auth-screen');
+                const clientSecret = document.getElementById('client-secret');
+                if (clientSecret) clientSecret.value = '';
+                this.setStatus('Enter your client secret to continue', 'info');
+            }
+        }
+
+        // ===== Folder Manager =====
+        class FolderManager {
+            static async loadFolders(stateManager) {
+                const folderList = document.getElementById('folder-list');
+                if (!folderList) return;
+                
+                folderList.innerHTML = `
+                    <div class="folder-loading">
+                        <div class="spinner"></div>
+                        <span>Loading folders...</span>
+                    </div>
+                `;
+                
+                try {
+                    const folders = await stateManager.state.cloudStorage.getFolders();
+                    
+                    if (folders.length === 0) {
+                        folderList.innerHTML = `
+                            <div class="folder-loading">
+                                <span>No folders found in your Drive</span>
+                            </div>
+                        `;
+                        return;
+                    }
+                    
+                    folderList.innerHTML = '';
+                    
+                    folders.forEach(folder => {
+                        const div = document.createElement('div');
+                        div.className = 'folder-item';
+                        div.innerHTML = `
+                            <svg class="folder-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"></path>
+                            </svg>
+                            <div class="folder-info">
+                                <div class="folder-name">${folder.name}</div>
+                                <div class="folder-date">${new Date(folder.modifiedTime).toLocaleDateString()}</div>
+                            </div>
+                        `;
+                        
+                        div.addEventListener('click', () => this.selectFolder(folder, stateManager));
+                        folderList.appendChild(div);
+                    });
+                } catch (error) {
+                    console.error('Error loading folders:', error);
+                    folderList.innerHTML = `
+                        <div class="folder-loading">
+                            <span>Error loading folders. Please try again.</span>
+                        </div>
+                    `;
+                }
+            }
+            
+            static async selectFolder(folder, stateManager) {
+                stateManager.setState({
+                    currentFolder: { id: folder.id, name: folder.name }
+                });
+                
+                ScreenManager.showScreen('loading-screen');
+                LoadingManager.updateProgress(0, 0);
+                
+                // Clear debug log
+                const debugLog = document.getElementById('debug-log');
+                if (debugLog) debugLog.innerHTML = '';
+                DebugLogger.log(`Starting folder scan: ${folder.name}`, 'info');
+                
+                try {
+                    const result = await stateManager.state.cloudStorage.getFiles(folder.id);
+                    const files = result.files || [];
+                    
+                    if (files.length === 0) {
+                        DebugLogger.log('No images found in this folder', 'warning');
+                        ToastManager.show('No images found in this folder');
+                        setTimeout(() => ScreenManager.showScreen('folder-screen'), 2000);
+                        return;
+                    }
+                    
+                    DebugLogger.log(`Found ${files.length} image files to process`, 'success');
+                    LoadingManager.updateProgress(files.length, files.length);
+                    
+                    // Process files with metadata extraction
+                    const processedFiles = [];
+                    let extractedCount = 0;
+                    let loadedCount = 0;
+                    let skippedCount = 0;
+                    
+                    for (let i = 0; i < files.length; i++) {
+                        const file = files[i];
+                        DebugLogger.log(`Processing file ${i + 1}/${files.length}: ${file.name}`, 'info');
+                        
+                        const imageFile = {
+                            ...file,
+                            extractedMetadata: {},
+                            qualityRating: parseInt(file.appProperties?.qualityRating) || 0,
+                            contentRating: parseInt(file.appProperties?.contentRating) || 0,
+                            notes: file.appProperties?.notes || ''
+                        };
+                        
+                        // Extract metadata
+                        try {
+                            const extractedMetadata = await stateManager.state.metadataManager.extractMetadataFromFile(file);
+                            imageFile.extractedMetadata = extractedMetadata;
+                            
+                            if (Object.keys(extractedMetadata).length > 0) {
+                                if (file.appProperties && Object.keys(file.appProperties).some(key => 
+                                    !['slideboxStack', 'slideboxTags', 'qualityRating', 'contentRating', 'notes'].includes(key)
+                                )) {
+                                    loadedCount++;
+                                } else {
+                                    extractedCount++;
+                                }
+                            } else {
+                                skippedCount++;
+                            }
+                        } catch (error) {
+                            DebugLogger.log(`Processing failed: ${error.message}`, 'error');
+                            skippedCount++;
+                        }
+                        
+                        processedFiles.push(imageFile);
+                        LoadingManager.updateProgress(i + 1, files.length);
+                    }
+                    
+                    // Update state
+                    stateManager.setState({
+                        imageFiles: processedFiles,
+                        currentImageIndex: 0,
+                        currentStack: 'in'
+                    });
+                    
+                    // Organize into stacks
+                    StackManager.updateStacks(stateManager);
+                    
+                    // Background caching
+                    this.backgroundCacheImages(stateManager);
+                    
+                    setTimeout(() => {
+                        ScreenManager.showScreen('app-container');
+                        ImageViewer.displayTopImageFromStack('in', stateManager);
+                        ImageViewer.updateActiveProxTab(stateManager);
+                        
+                        const totalProcessed = loadedCount + extractedCount;
+                        DebugLogger.log(`Loading complete - ${totalProcessed} files processed (${extractedCount} new extractions, ${loadedCount} from cache, ${skippedCount} skipped)`, 'success');
+                        
+                        if (extractedCount > 0 && loadedCount > 0) {
+                            ToastManager.show(`Loaded ${files.length} images (${extractedCount} new extractions, ${loadedCount} from cache)`);
+                        } else if (extractedCount > 0) {
+                            ToastManager.show(`Loaded ${files.length} images with new metadata extraction`);
+                        } else {
+                            ToastManager.show(`Loaded ${files.length} images from cached metadata`);
+                        }
+                    }, 500);
+                    
+                } catch (error) {
+                    console.error('Error loading folder:', error);
+                    DebugLogger.log(`Folder loading failed: ${error.message}`, 'error');
+                    ToastManager.show('Error loading images from folder', 'error');
+                    setTimeout(() => ScreenManager.showScreen('folder-screen'), 2000);
+                }
+            }
+            
+            static async backgroundCacheImages(stateManager) {
+                DebugLogger.log('Starting background image caching', 'info');
+                const priorityFiles = [];
+                
+                // Get first 3 from each stack
+                STACK_TYPES.forEach(stackName => {
+                    const stackFiles = stateManager.state.stacks[stackName].slice(0, 3);
+                    priorityFiles.push(...stackFiles);
+                });
+                
+                // Cache priority files first
+                for (const file of priorityFiles) {
+                    if (!stateManager.state.imageCache.has(file.id)) {
+                        const img = new Image();
+                        await stateManager.state.imageCacheManager.setImageSrc(img, file);
+                    }
+                }
+                
+                // Cache remaining files in chunks
+                const remainingFiles = stateManager.state.imageFiles.filter(f => !priorityFiles.includes(f));
+                const chunkSize = 10;
+                
+                for (let i = 0; i < remainingFiles.length; i += chunkSize) {
+                    const chunk = remainingFiles.slice(i, i + chunkSize);
+                    
+                    await Promise.all(chunk.map(async (file) => {
+                        if (!stateManager.state.imageCache.has(file.id)) {
+                            const img = new Image();
+                            await stateManager.state.imageCacheManager.setImageSrc(img, file);
+                        }
+                    }));
+                    
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
+            }
+        }
+
+        // ===== Screen Management =====
+        class ScreenManager {
+            static showScreen(screenId) {
+                const screens = ['splash-screen', 'auth-screen', 'folder-screen', 'loading-screen', 'app-container'];
+                screens.forEach(id => {
+                    const screen = document.getElementById(id);
+                    if (screen) {
+                        screen.classList.toggle('hidden', id !== screenId);
+                    }
+                });
+            }
+
+            static hideSplashScreen() {
+                const splashScreen = document.getElementById('splash-screen');
+                if (splashScreen) {
+                    splashScreen.classList.add('hidden');
+                    setTimeout(() => {
+                        splashScreen.style.display = 'none';
+                    }, 500); // Wait for fade transition
+                }
+            }
+        }
+
+        // ===== Gesture System =====
+        class GestureSystem {
+            constructor(stateManager) {
+                this.stateManager = stateManager;
+                this.startPos = { x: 0, y: 0 };
+                this.currentPos = { x: 0, y: 0 };
+                this.lastTime = 0;
+                this.velocityHistory = [];
+                this.gestureStarted = false;
+                this.setupListeners();
+            }
+
+            setupListeners() {
+                const imageViewport = document.getElementById('image-viewport');
+                
+                imageViewport.addEventListener('mousedown', (e) => this.handleStart(e));
+                document.addEventListener('mousemove', (e) => this.handleMove(e));
+                document.addEventListener('mouseup', (e) => this.handleEnd(e));
+                
+                imageViewport.addEventListener('touchstart', (e) => this.handleStart(e), { passive: false });
+                document.addEventListener('touchmove', (e) => this.handleMove(e), { passive: false });
+                document.addEventListener('touchend', (e) => this.handleEnd(e), { passive: false });
+            }
+
+            handleStart(e) {
+                if (this.stateManager.state.imageFiles.length === 0) return;
+                
+                if (e.touches && (e.touches.length > 1 || this.stateManager.state.ui.isPinching)) return;
+                
+                if (this.stateManager.state.ui.currentScale > 1.1) return;
+                
+                e.preventDefault();
+                const point = e.touches ? e.touches[0] : e;
+                
+                this.startPos = { x: point.clientX, y: point.clientY };
+                this.currentPos = { x: point.clientX, y: point.clientY };
+                this.lastTime = Date.now();
+                this.velocityHistory = [];
+                this.gestureStarted = false;
+                
+                this.stateManager.setState({
+                    ui: { ...this.stateManager.state.ui, isDragging: true }
+                });
+                
+                const centerImage = document.getElementById('center-image');
+                centerImage.classList.add('dragging');
+            }
+
+            handleMove(e) {
+                if (!this.stateManager.state.ui.isDragging || this.stateManager.state.imageFiles.length === 0) return;
+                
+                if (e.touches && e.touches.length > 1) {
+                    this.stateManager.setState({
+                        ui: { ...this.stateManager.state.ui, isDragging: false }
+                    });
+                    document.getElementById('center-image').classList.remove('dragging');
+                    this.hideAllEdgeGlows();
+                    return;
+                }
+                
+                e.preventDefault();
+                const point = e.touches ? e.touches[0] : e;
+                const now = Date.now();
+                
+                this.currentPos = { x: point.clientX, y: point.clientY };
+                
+                const deltaX = this.currentPos.x - this.startPos.x;
+                const deltaY = this.currentPos.y - this.startPos.y;
+                const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+                
+                const timeDelta = now - this.lastTime;
+                if (timeDelta > 0) {
+                    const velX = deltaX / timeDelta;
+                    const velY = deltaY / timeDelta;
+                    this.velocityHistory.push({ x: velX, y: velY, time: now });
+                    
+                    this.velocityHistory = this.velocityHistory.filter(v => now - v.time < 100);
+                }
+                
+                if (distance > 30) {
+                    this.gestureStarted = true;
+                    const direction = this.determineSwipeDirection(deltaX, deltaY);
+                    if (direction) {
+                        this.hideAllEdgeGlows();
+                        this.showEdgeGlow(direction);
+                    }
+                } else {
+                    this.hideAllEdgeGlows();
+                }
+                
+                this.lastTime = now;
+            }
+
+            handleEnd(e) {
+                if (!this.stateManager.state.ui.isDragging) return;
+                
+                e.preventDefault();
+                this.stateManager.setState({
+                    ui: { ...this.stateManager.state.ui, isDragging: false }
+                });
+                document.getElementById('center-image').classList.remove('dragging');
+                
+                if (!this.gestureStarted) {
+                    this.hideAllEdgeGlows();
+                    return;
+                }
+                
+                const deltaX = this.currentPos.x - this.startPos.x;
+                const deltaY = this.currentPos.y - this.startPos.y;
+                const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+                
+                let avgVel = { x: 0, y: 0 };
+                if (this.velocityHistory.length > 0) {
+                    avgVel = this.velocityHistory.reduce((acc, v) => ({
+                        x: acc.x + v.x,
+                        y: acc.y + v.y
+                    }), { x: 0, y: 0 });
+                    avgVel.x /= this.velocityHistory.length;
+                    avgVel.y /= this.velocityHistory.length;
+                }
+                
+                const velocity = Math.sqrt(avgVel.x * avgVel.x + avgVel.y * avgVel.y);
+                
+                if (distance > 80 && velocity > 0.5) {
+                    const direction = this.determineSwipeDirection(deltaX, deltaY);
+                    const targetStack = this.directionToStack(direction);
+                    if (targetStack && direction) {
+                        this.executeFlick(targetStack);
+                        return;
+                    }
+                }
+                
+                this.hideAllEdgeGlows();
+            }
+
+            determineSwipeDirection(deltaX, deltaY) {
+                if (Math.abs(deltaX) > Math.abs(deltaY)) {
+                    return deltaX > 0 ? 'right' : 'left';
+                } else {
+                    return deltaY > 0 ? 'bottom' : 'top';
+                }
+            }
+
+            directionToStack(direction) {
+                const mapping = {
+                    'top': 'priority',
+                    'bottom': 'trash',
+                    'left': 'in',
+                    'right': 'out'
+                };
+                return mapping[direction];
+            }
+
+            async executeFlick(targetStack) {
+                const currentFile = this.stateManager.getCurrentFile();
+                const currentStack = TagManager.getFileStack(currentFile);
+                
+                this.acknowledgePillCounter(targetStack);
+                
+                if (currentStack === targetStack) {
+                    // Move to end of current stack
+                    const currentStackArray = this.stateManager.state.stacks[currentStack];
+                    const index = currentStackArray.findIndex(img => img.id === currentFile.id);
+                    if (index > -1) {
+                        const file = currentStackArray.splice(index, 1)[0];
+                        currentStackArray.push(file);
+                    }
+                    
+                    if (this.stateManager.getCurrentStackFiles().length === 0) {
+                        this.showEmptyStack();
+                    } else {
+                        ImageViewer.moveToNextImage(this.stateManager);
+                    }
+                    
+                    StackManager.updateCounts(this.stateManager);
+                    this.hideAllEdgeGlows();
+                    return;
+                }
+                
+                try {
+                    await this.stateManager.state.metadataManager.updateMetadata(currentFile.id, { stack: targetStack });
+                    
+                    // Update file object
+                    currentFile.appProperties = currentFile.appProperties || {};
+                    currentFile.appProperties.slideboxStack = targetStack;
+                    
+                    // Move file between stacks
+                    const fromStack = this.stateManager.state.stacks[currentStack];
+                    const toStack = this.stateManager.state.stacks[targetStack];
+                    const index = fromStack.findIndex(f => f.id === currentFile.id);
+                    
+                    if (index !== -1) {
+                        const file = fromStack.splice(index, 1)[0];
+                        toStack.unshift(file);
+                    }
+                    
+                    if (this.stateManager.getCurrentStackFiles().length === 0) {
+                        this.showEmptyStack();
+                    } else {
+                        ImageViewer.moveToNextImage(this.stateManager);
+                    }
+                    
+                    StackManager.updateCounts(this.stateManager);
+                    this.hideAllEdgeGlows();
+                } catch (error) {
+                    ToastManager.show(`Error moving image: ${error.message}`, 'error');
+                    this.hideAllEdgeGlows();
+                }
+            }
+
+            acknowledgePillCounter(stackName) {
+                const pill = document.getElementById(`pill-${stackName}`);
+                if (pill) {
+                    pill.classList.remove('triple-ripple', 'glow-effect');
+                    pill.offsetHeight;
+                    pill.classList.add('triple-ripple');
+                    
+                    setTimeout(() => {
+                        pill.classList.add('glow-effect');
+                    }, 100);
+                    
+                    setTimeout(() => {
+                        pill.classList.remove('triple-ripple', 'glow-effect');
+                    }, 3000);
+                }
+            }
+
+            showEmptyStack() {
+                const centerImage = document.getElementById('center-image');
+                const emptyState = document.getElementById('empty-state');
+                
+                centerImage.style.opacity = '0';
+                setTimeout(() => {
+                    centerImage.src = '';
+                    centerImage.alt = 'No images in this stack';
+                    ImageViewer.updateEmptyStateButtons(this.stateManager);
+                    emptyState.classList.remove('hidden');
+                    centerImage.style.opacity = '1';
+                }, 200);
+            }
+
+            showEdgeGlow(direction) {
+                const edge = document.getElementById(`edge-${direction}`);
+                if (edge) {
+                    edge.classList.add('active');
+                }
+            }
+
+            hideAllEdgeGlows() {
+                ['top', 'bottom', 'left', 'right'].forEach(direction => {
+                    const edge = document.getElementById(`edge-${direction}`);
+                    if (edge) {
+                        edge.classList.remove('active');
+                    }
+                });
+            }
+        }
+
+        // ===== OAuth Handler =====
+        if (window.location.search.includes('code=') || window.location.search.includes('error=')) {
+            const urlParams = new URLSearchParams(window.location.search);
+            const code = urlParams.get('code');
+            const error = urlParams.get('error');
+            
+            if (window.opener) {
+                if (error) {
+                    window.opener.postMessage({ type: 'GOOGLE_AUTH_ERROR', error: error }, window.location.origin);
+                } else if (code) {
+                    window.opener.postMessage({ type: 'GOOGLE_AUTH_SUCCESS', code: code }, window.location.origin);
+                }
+                window.close();
+            }
+        }
+
+        // ===== Application Initialization =====
+        async function safeInitializeElements() {
+            const requiredElements = [
+                'splash-screen', 'auth-screen', 'folder-screen', 'loading-screen', 'app-container',
+                'client-secret', 'auth-button', 'auth-status', 'center-image'
+            ];
+            
+            const missing = requiredElements.filter(id => !document.getElementById(id));
+            if (missing.length > 0) {
+                throw new Error(`Missing required elements: ${missing.join(', ')}`);
+            }
+        }
+
+        async function initializeApp() {
+            try {
+                // 1. Check DOM readiness
+                if (document.readyState !== 'complete') {
+                    await new Promise(resolve => {
+                        if (document.readyState === 'loading') {
+                            document.addEventListener('DOMContentLoaded', resolve);
+                        } else {
+                            resolve();
+                        }
+                    });
+                }
+                
+                // 2. Initialize elements safely
+                await safeInitializeElements();
+                
+                // 3. Initialize state management
+                const stateManager = new AppStateManager();
+                
+                // 4. Initialize core services
+                await ErrorHandler.withErrorHandling(async () => {
+                    const imageCacheManager = new ImageCacheManager();
+                    await imageCacheManager.init();
+                    
+                    const cloudStorage = new GoogleDriveProvider();
+                    const metadataManager = new UnifiedMetadataManager(cloudStorage);
+                    const modalManager = new UnifiedModalManager(stateManager);
+                    
+                    stateManager.setState({
+                        cloudStorage,
+                        metadataManager,
+                        modalManager,
+                        imageCacheManager
+                    });
+                }, 'core service initialization');
+                
+                // 5. Setup event listeners
+                setupEventListeners(stateManager);
+                
+                // 6. Setup gesture system
+                new GestureSystem(stateManager);
+                
+                // 7. Check existing auth
+                if (stateManager.state.cloudStorage && stateManager.state.cloudStorage.isAuthenticated) {
+                    AuthManager.setStatus('Already connected to Google Drive', 'success');
+                    setTimeout(() => {
+                        ScreenManager.showScreen('folder-screen');
+                        FolderManager.loadFolders(stateManager);
+                    }, 1000);
+                } else {
+                    AuthManager.setStatus('Enter your client secret to continue', 'info');
+                }
+                
+                console.log('Orbital8 V7 initialized successfully');
+                
+            } catch (error) {
+                console.error('Failed to initialize app:', error);
+                document.body.innerHTML = `
+                    <div style="padding: 20px; color: red; text-align: center;">
+                        <h2>Initialization Error</h2>
+                        <p>${error.message}</p>
+                        <button onclick="location.reload()">Reload Page</button>
+                    </div>
+                `;
+            }
+        }
+
+        function setupEventListeners(stateManager) {
+            // Ensure stateManager and its state exist
+            if (!stateManager || !stateManager.state) {
+                console.error('StateManager not properly initialized');
+                return;
+            }
+
+            // Authentication
+            const authButton = document.getElementById('auth-button');
+            if (authButton) {
+                authButton.addEventListener('click', () => AuthManager.authenticate(stateManager));
+            }
+            
+            // Folders
+            const refreshFolders = document.getElementById('refresh-folders');
+            if (refreshFolders) {
+                refreshFolders.addEventListener('click', () => FolderManager.loadFolders(stateManager));
+            }
+            
+            const logout = document.getElementById('logout');
+            if (logout) {
+                logout.addEventListener('click', () => AuthManager.logout(stateManager));
+            }
+            
+            // Navigation
+            const backButton = document.getElementById('back-button');
+            if (backButton) {
+                backButton.addEventListener('click', () => {
+                    ScreenManager.showScreen('folder-screen');
+                    FolderManager.loadFolders(stateManager);
+                });
+            }
+            
+            const detailsButton = document.getElementById('details-button');
+            if (detailsButton) {
+                detailsButton.addEventListener('click', () => DetailsModal.show(stateManager));
+            }
+            
+            // Details modal
+            const detailsClose = document.getElementById('details-close');
+            if (detailsClose) {
+                detailsClose.addEventListener('click', () => DetailsModal.hide());
+            }
+            
+            // Tab switching
+            document.querySelectorAll('.tab-button').forEach(btn => {
+                btn.addEventListener('click', () => DetailsModal.switchTab(btn.dataset.tab));
+            });
+            
+            // Empty state buttons
+            const selectAnotherStackBtn = document.getElementById('select-another-stack-btn');
+            if (selectAnotherStackBtn) {
+                selectAnotherStackBtn.addEventListener('click', () => {
+                    const stacksWithImages = STACK_TYPES.filter(stack => stateManager.state.stacks[stack].length > 0);
+                    if (stacksWithImages.length > 0) {
+                        const nextStack = stacksWithImages.find(stack => stack !== stateManager.state.currentStack) || stacksWithImages[0];
+                        stateManager.setState({ currentStack: nextStack });
+                        ImageViewer.displayTopImageFromStack(nextStack, stateManager);
+                        const emptyState = document.getElementById('empty-state');
+                        if (emptyState) emptyState.classList.add('hidden');
+                    }
+                });
+            }
+            
+            const selectAnotherFolderBtn = document.getElementById('select-another-folder-btn');
+            if (selectAnotherFolderBtn) {
+                selectAnotherFolderBtn.addEventListener('click', () => {
+                    ScreenManager.showScreen('folder-screen');
+                    FolderManager.loadFolders(stateManager);
+                });
+            }
+            
+            // ProxTab clicks
+            STACK_TYPES.forEach(stackName => {
+                const pill = document.getElementById(`pill-${stackName}`);
+                if (pill) {
+                    pill.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        
+                        if (stateManager.state.currentStack === stackName) {
+                            GridView.open(stackName, stateManager);
+                            return;
+                        }
+                        
+                        stateManager.setState({ currentStack: stackName });
+                        ImageViewer.updateActiveProxTab(stateManager);
+                        ImageViewer.displayTopImageFromStack(stackName, stateManager);
+                    });
+                }
+            });
+            
+            // Grid modal
+            const closeGrid = document.getElementById('close-grid');
+            if (closeGrid) {
+                closeGrid.addEventListener('click', () => GridView.close(stateManager));
+            }
+            
+            const selectAllBtn = document.getElementById('select-all-btn');
+            if (selectAllBtn) {
+                selectAllBtn.addEventListener('click', () => GridView.selectAll(stateManager));
+            }
+            
+            const deselectAllBtn = document.getElementById('deselect-all-btn');
+            if (deselectAllBtn) {
+                deselectAllBtn.addEventListener('click', () => GridView.deselectAll(stateManager));
+            }
+            
+            // Grid controls
+            const gridSize = document.getElementById('grid-size');
+            const gridSizeValue = document.getElementById('grid-size-value');
+            if (gridSize && gridSizeValue) {
+                gridSize.addEventListener('input', () => {
+                    const value = gridSize.value;
+                    gridSizeValue.textContent = value;
+                    const container = document.getElementById('grid-container');
+                    if (container) {
+                        container.style.gridTemplateColumns = `repeat(${value}, 1fr)`;
+                    }
+                    
+                    if (stateManager.state.grid.selected.length === 1 && value === '1') {
+                        setTimeout(() => GridView.focusOnSelectedItem(stateManager.state.grid.selected[0]), 100);
+                    }
+                });
+            }
+            
+            const gridSort = document.getElementById('grid-sort');
+            if (gridSort) {
+                gridSort.addEventListener('change', () => {
+                    const sortValue = gridSort.value;
+                    StackManager.currentSort = sortValue;
+                    
+                    STACK_TYPES.forEach(stack => {
+                        const sortedFiles = StackManager.sortFiles(stateManager.state.stacks[stack], sortValue);
+                        stateManager.setState({
+                            stacks: { ...stateManager.state.stacks, [stack]: sortedFiles }
+                        });
+                    });
+                    
+                    if (stateManager.state.grid.stack) {
+                        GridView.populate(stateManager.state.grid.stack, stateManager);
+                    }
+                    
+                    if (stateManager.state.imageFiles.length > 0) {
+                        ImageViewer.displayCurrentImage(stateManager);
+                    }
+                });
+            }
+            
+            // Action buttons - with safety checks for modalManager
+            const tagSelected = document.getElementById('tag-selected');
+            if (tagSelected) {
+                tagSelected.addEventListener('click', () => {
+                    if (stateManager.state.modalManager) {
+                        stateManager.state.modalManager.showTagModal(stateManager.state.grid.selected);
+                    }
+                });
+            }
+            
+            const moveSelected = document.getElementById('move-selected');
+            if (moveSelected) {
+                moveSelected.addEventListener('click', () => {
+                    if (stateManager.state.modalManager) {
+                        stateManager.state.modalManager.showMoveModal(stateManager.state.grid.selected);
+                    }
+                });
+            }
+            
+            const deleteSelected = document.getElementById('delete-selected');
+            if (deleteSelected) {
+                deleteSelected.addEventListener('click', () => {
+                    if (stateManager.state.modalManager) {
+                        stateManager.state.modalManager.showDeleteModal(stateManager.state.grid.selected);
+                    }
+                });
+            }
+            
+            // Modal cancel buttons
+            const cancelButtons = ['cancel-move', 'cancel-tag', 'cancel-delete'];
+            cancelButtons.forEach(id => {
+                const btn = document.getElementById(id);
+                if (btn) {
+                    btn.addEventListener('click', () => {
+                        const modalId = id.replace('cancel-', '') + '-modal';
+                        if (stateManager.state.modalManager) {
+                            stateManager.state.modalManager.hide(modalId);
+                        }
+                    });
+                }
+            });
+            
+            // Global keyboard shortcuts
+            document.addEventListener('keydown', (e) => {
+                const appContainer = document.getElementById('app-container');
+                if (!appContainer || appContainer.classList.contains('hidden')) return;
+                
+                const detailsModal = document.getElementById('details-modal');
+                if (detailsModal && !detailsModal.classList.contains('hidden')) {
+                    if (e.key === 'Escape') {
+                        DetailsModal.hide();
+                    }
+                    return;
+                }
+                
+                const gridModal = document.getElementById('grid-modal');
+                if (gridModal && !gridModal.classList.contains('hidden')) {
+                    if (e.key === 'Escape') {
+                        GridView.close(stateManager);
+                    }
+                    return;
+                }
+                
+                switch (e.key) {
+                    case 'ArrowLeft':
+                    case 'ArrowRight':
+                        ImageViewer.moveToNextImage(stateManager);
+                        break;
+                    case 'Escape':
+                        ScreenManager.showScreen('folder-screen');
+                        break;
+                    case '1':
+                        stateManager.setState({ currentStack: 'in' });
+                        ImageViewer.updateActiveProxTab(stateManager);
+                        GridView.open('in', stateManager);
+                        break;
+                    case '2':
+                        stateManager.setState({ currentStack: 'out' });
+                        ImageViewer.updateActiveProxTab(stateManager);
+                        GridView.open('out', stateManager);
+                        break;
+                    case '3':
+                        stateManager.setState({ currentStack: 'priority' });
+                        ImageViewer.updateActiveProxTab(stateManager);
+                        GridView.open('priority', stateManager);
+                        break;
+                    case '4':
+                        stateManager.setState({ currentStack: 'trash' });
+                        ImageViewer.updateActiveProxTab(stateManager);
+                        GridView.open('trash', stateManager);
+                        break;
+                    case 'i':
+                    case 'I':
+                        DetailsModal.show(stateManager);
+                        break;
+                }
+            });
+        }
+
+        // Initialize app when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', initializeApp);
+        } else {
+            initializeApp();
+        }
+    </script>
+</body>
+</html>
