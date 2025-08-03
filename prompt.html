@@ -653,130 +653,23 @@
                 const elements = currentTemplates[templateName];
                 
                 for (let i = 0; i < count; i++) {
-                    let promptData = {};
+                    let prompt = `Template: ${templateName}\n`;
+                    let promptParts = [];
                     
-                    // Collect random choices for each element
                     elements.forEach(element => {
                         if (currentChoices[element] && currentChoices[element].length > 0) {
                             const randomChoice = currentChoices[element][Math.floor(Math.random() * currentChoices[element].length)];
-                            promptData[element] = randomChoice;
+                            promptParts.push(`${element}: ${randomChoice}`);
                         }
                     });
                     
-                    // Create natural language prompt
-                    let prompt = createNaturalPrompt(promptData);
+                    prompt += promptParts.join(', ');
                     allPrompts.push(prompt);
                 }
             });
             
             document.getElementById('generatedPrompts').textContent = allPrompts.join('\n\n');
             document.getElementById('promptModal').style.display = 'block';
-        }
-
-        // Create natural language prompt from data
-        function createNaturalPrompt(data) {
-            let parts = [];
-            
-            // Start with article and basic description
-            let description = "A";
-            
-            // Add age if present
-            if (data['Age']) {
-                description += ` ${data['Age']}`;
-            }
-            
-            // Add ethnicity and gender
-            if (data['Ethnicity']) {
-                description += ` ${data['Ethnicity']}`;
-            }
-            if (data['Gender']) {
-                description += ` ${data['Gender']}`;
-            }
-            
-            // Add role/occupation
-            if (data['Role/Occupation']) {
-                description += ` ${data['Role/Occupation']}`;
-            }
-            
-            parts.push(description);
-            
-            // Add physical description
-            let physicalDesc = [];
-            if (data['Body']) {
-                physicalDesc.push(`with ${data['Body']}`);
-            }
-            
-            // Add hair description
-            if (data['Hair Color'] || data['Hair Style']) {
-                let hairDesc = "";
-                if (data['Hair Color'] && data['Hair Style']) {
-                    hairDesc = `${data['Hair Color']} ${data['Hair Style']} hair`;
-                } else if (data['Hair Color']) {
-                    hairDesc = `${data['Hair Color']} hair`;
-                } else if (data['Hair Style']) {
-                    hairDesc = `${data['Hair Style']} hair`;
-                }
-                if (hairDesc) {
-                    if (physicalDesc.length > 0) {
-                        physicalDesc.push(`and ${hairDesc}`);
-                    } else {
-                        physicalDesc.push(`with ${hairDesc}`);
-                    }
-                }
-            }
-            
-            if (physicalDesc.length > 0) {
-                parts.push(physicalDesc.join(' '));
-            }
-            
-            // Add facial expression
-            if (data['Face']) {
-                parts.push(`${data['Face']}`);
-            }
-            
-            // Add clothing
-            if (data['Clothes']) {
-                parts.push(`wearing ${data['Clothes']}`);
-            }
-            
-            // Add activity and location
-            if (data['Activity'] && data['Location']) {
-                parts.push(`${data['Activity']} in ${data['Location']}`);
-            } else if (data['Activity']) {
-                parts.push(`${data['Activity']}`);
-            } else if (data['Location']) {
-                parts.push(`in ${data['Location']}`);
-            }
-            
-            // Add camera/shot details
-            let technicalDesc = [];
-            if (data['Camera Angle']) {
-                technicalDesc.push(data['Camera Angle']);
-            }
-            if (data['Shot Type']) {
-                technicalDesc.push(data['Shot Type']);
-            }
-            if (technicalDesc.length > 0) {
-                parts.push(technicalDesc.join(', '));
-            }
-            
-            // Add artistic style
-            if (data['Artistic Style']) {
-                parts.push(`${data['Artistic Style']} style`);
-            }
-            
-            // Add NSFW details
-            if (data['NSFW Details']) {
-                parts.push(data['NSFW Details']);
-            }
-            
-            // Add additional details
-            if (data['Additional Details']) {
-                parts.push(data['Additional Details']);
-            }
-            
-            // Join all parts with appropriate punctuation
-            return parts.join(', ') + '.';
         }
 
         // Close modal
