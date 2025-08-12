@@ -1,0 +1,279 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Guzheng Simulator</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400&display=swap');
+        :root {
+            --bg-color: #6D4C41; 
+            --string-color: #E0E0E0;
+            --key-bg: #ECEFF1;
+            --key-bg-active: #81C784;
+            --key-text: #37474F;
+            --key-text-active: #FFFFFF;
+        }
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: var(--bg-color);
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        #appContainer {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+        }
+        canvas {
+            width: 100%;
+            height: 100%;
+            cursor: pointer;
+            touch-action: none;
+        }
+        #startOverlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+        #startBtn {
+            padding: 1rem 2rem;
+            font-size: 1.2rem;
+            color: var(--key-bg);
+            background-color: transparent;
+            border: 1px solid var(--key-bg);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        #startBtn:hover {
+            background-color: var(--key-bg);
+            color: var(--key-text);
+        }
+    </style>
+</head>
+<body>
+    <div id="appContainer">
+        <canvas id="zenCanvas"></canvas>
+        <div id="startOverlay">
+            <button id="startBtn">Begin</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- DOM Elements ---
+            const canvas = document.getElementById('zenCanvas');
+            const ctx = canvas.getContext('2d');
+            const startOverlay = document.getElementById('startOverlay');
+            const startBtn = document.getElementById('startBtn');
+
+            // --- State ---
+            let strings = [];
+            let animationFrameId;
+            let isPlaying = false;
+            
+            // Get CSS variable values once for use in the draw function
+            const style = getComputedStyle(document.documentElement);
+            const keyBgActiveColor = style.getPropertyValue('--key-bg-active').trim();
+            const keyBgColor = style.getPropertyValue('--key-bg').trim();
+            const keyTextActiveColor = style.getPropertyValue('--key-text-active').trim();
+            const keyTextColor = style.getPropertyValue('--key-text').trim();
+            const stringColor = style.getPropertyValue('--string-color').trim();
+
+            // --- A new SoundEngine using the Karplus-Strong string synthesis algorithm ---
+            const SoundEngine = {
+                audioCtx: null, masterGain: null, isInitialized: false,
+                async init() {
+                    if (this.isInitialized) return;
+                    this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    this.masterGain = this.audioCtx.createGain();
+                    this.masterGain.gain.value = 0.8;
+                    this.masterGain.connect(this.audioCtx.destination);
+                    this.isInitialized = true;
+                },
+                playNote(freq) {
+                    if (!this.isInitialized) return;
+                    
+                    const now = this.audioCtx.currentTime;
+                    const sampleRate = this.audioCtx.sampleRate;
+                    const decayTime = 1.8; // How long the note rings out in seconds
+                    const bufferSize = sampleRate * decayTime;
+                    const buffer = this.audioCtx.createBuffer(1, bufferSize, sampleRate);
+                    const data = buffer.getChannelData(0);
+
+                    // Calculate delay line length for pitch control
+                    const delayLength = Math.floor(sampleRate / freq);
+                    const delayLine = new Float32Array(delayLength);
+                    
+                    // Populate with initial noise burst (the "pluck" sound)
+                    for (let i = 0; i < delayLength; i++) {
+                        delayLine[i] = Math.random() * 2 - 1;
+                    }
+
+                    // Apply Karplus-Strong algorithm with a simple low-pass filter
+                    let index = 0;
+                    let lastSample = 0;
+                    const filterFactor = 0.998; // Adjust for more/less damping
+                    
+                    for (let i = 0; i < bufferSize; i++) {
+                        // Simple averaging filter
+                        const currentSample = (delayLine[index] + lastSample) * 0.5 * filterFactor;
+                        lastSample = delayLine[index];
+                        delayLine[index] = currentSample;
+                        data[i] = currentSample;
+                        index = (index + 1) % delayLength;
+                    }
+
+                    // Create and play source
+                    const source = this.audioCtx.createBufferSource();
+                    source.buffer = buffer;
+                    source.connect(this.masterGain);
+                    source.start(now);
+                }
+            };
+
+            // 13-string scale, based on common Guzheng tuning (D Major Pentatonic)
+            const guzhengScale = [
+                146.83, 164.81, 185.00, 220.00, 246.94, // Low
+                293.66, 329.63, 369.99, 440.00, 493.88, // Middle
+                587.33, 659.25, 739.99 // High
+            ];
+            const fretLabels = ['5', '6', '1', '2', '3', '5', '6', 'i', 'ż', '3', '5', '6', 'i'];
+
+            // --- Core Logic ---
+            function setupCanvasAndStrings() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+                
+                const numStrings = 13;
+                strings = [];
+                const fretWidth = canvas.width * 0.18; // Slightly wider for mobile
+                const stringSpacing = canvas.height / (numStrings + 1);
+
+                for (let i = 0; i < numStrings; i++) {
+                    strings.push({
+                        y: stringSpacing * (i + 1),
+                        fretX: 0,
+                        fretY: stringSpacing * (i + 1) - stringSpacing / 2,
+                        fretWidth: fretWidth,
+                        fretHeight: stringSpacing,
+                        label: fretLabels[i],
+                        note: guzhengScale[i],
+                        amp: 0,
+                        lastStrumTime: 0
+                    });
+                }
+            }
+
+            function gameLoop() {
+                if (!isPlaying) return;
+                
+                strings.forEach(s => { s.amp *= 0.90; }); // Faster visual decay
+
+                draw();
+                animationFrameId = requestAnimationFrame(gameLoop);
+            }
+
+            function draw() {
+                // Draw wood background
+                ctx.fillStyle = '#6D4C41';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                // Draw strings and frets
+                strings.forEach(s => {
+                    // Draw Fret
+                    ctx.fillStyle = s.amp > 0.1 ? keyBgActiveColor : keyBgColor;
+                    ctx.fillRect(s.fretX, s.fretY, s.fretWidth, s.fretHeight);
+                    
+                    // Draw Fret Label
+                    ctx.fillStyle = s.amp > 0.1 ? keyTextActiveColor : keyTextColor;
+                    ctx.font = `bold ${s.fretHeight * 0.4}px Inter`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(s.label, s.fretWidth / 2, s.fretY + s.fretHeight / 2);
+
+                    // Draw String
+                    ctx.beginPath();
+                    ctx.moveTo(s.fretWidth, s.y);
+                    ctx.strokeStyle = stringColor;
+                    ctx.lineWidth = 1.5;
+                    ctx.globalAlpha = 0.8;
+
+                    for (let x = s.fretWidth; x < canvas.width; x++) {
+                        const wave = Math.sin((x - s.fretWidth) * 0.02) * Math.sin(s.amp * 8) * s.amp * 10;
+                        ctx.lineTo(x, s.y + wave);
+                    }
+                    ctx.stroke();
+                });
+                ctx.globalAlpha = 1.0;
+            }
+
+            // --- Event Handlers ---
+            function handleInteraction(x, y) {
+                if (!isPlaying) return;
+                const now = performance.now();
+                strings.forEach(s => {
+                    if (y > s.fretY && y < s.fretY + s.fretHeight && now - s.lastStrumTime > 80) {
+                        s.amp = 1;
+                        s.lastStrumTime = now;
+                        SoundEngine.playNote(s.note);
+                        if (navigator.vibrate) navigator.vibrate(10);
+                    }
+                });
+            }
+
+            canvas.addEventListener('mousedown', e => handleInteraction(e.offsetX, e.offsetY));
+            canvas.addEventListener('mousemove', e => { if (e.buttons === 1) handleInteraction(e.offsetX, e.offsetY); });
+            canvas.addEventListener('touchstart', e => {
+                e.preventDefault();
+                const rect = canvas.getBoundingClientRect();
+                for (let i = 0; i < e.touches.length; i++) {
+                    handleInteraction(e.touches[i].clientX - rect.left, e.touches[i].clientY - rect.top);
+                }
+            }, { passive: false });
+            canvas.addEventListener('touchmove', e => {
+                e.preventDefault();
+                const rect = canvas.getBoundingClientRect();
+                 for (let i = 0; i < e.touches.length; i++) {
+                    handleInteraction(e.touches[i].clientX - rect.left, e.touches[i].clientY - rect.top);
+                }
+            }, { passive: false });
+
+            startBtn.addEventListener('click', async () => {
+                if (!SoundEngine.isInitialized) await SoundEngine.init();
+                if (!isPlaying) {
+                    isPlaying = true;
+                    if(animationFrameId) cancelAnimationFrame(animationFrameId);
+                    gameLoop();
+                    startOverlay.style.opacity = '0';
+                    startOverlay.style.pointerEvents = 'none';
+                }
+    
+            });
+
+            window.addEventListener('resize', () => {
+                setupCanvasAndStrings();
+                if (isPlaying) draw();
+            });
+            
+            window.onload = function() {
+                setupCanvasAndStrings();
+                draw();
+            };
+        });
+    </script>
+</body>
+</html>
