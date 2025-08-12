@@ -1,0 +1,534 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Enhanced Particle Waves + Microphone</title>
+    <style>
+      html, body {
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+        height: 100%;
+        background: #000;
+        font-family: sans-serif;
+      }
+      #viewCanvas {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        display: block;
+      }
+      #gui {
+        position: absolute;
+        top: 10px;
+        left: 10px;
+        z-index: 10;
+        color: #fff;
+        background: rgba(0, 0, 0, 0.6);
+        padding: 10px;
+        border-radius: 4px;
+        width: 240px;
+        font-size: 12px;
+        max-height: 92vh;
+        overflow: auto;
+      }
+      #gui label {
+        display: block;
+        margin-bottom: 8px;
+      }
+      #gui input[type="range"],
+      #gui select,
+      #gui input[type="color"] {
+        width: 100%;
+        margin-top: 4px;
+        margin-bottom: 6px;
+      }
+      #gui .value { float: right; }
+      #gui button {
+        width: 100%;
+        padding: 6px 0;
+        margin-top: 8px;
+        background: #333;
+        color: #fff;
+        border: 1px solid #555;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      #fps {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        color: #fff;
+        font-size: 12px;
+        background: rgba(0, 0, 0, 0.6);
+        padding: 4px 8px;
+        border-radius: 4px;
+        z-index: 10;
+      }
+      #audioStatus {
+        display: block;
+        font-size: 11px;
+        opacity: 0.85;
+        margin-top: 6px;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="viewCanvas"></canvas>
+    <div id="gui">
+      <label>Resolution: <span class="value" id="resVal">150</span>
+        <input type="range" id="res" min="50" max="300" step="10" value="150" />
+      </label>
+      <label>Amplitude: <span class="value" id="ampVal">20</span>
+        <input type="range" id="amp" min="1" max="100" step="1" value="20" />
+      </label>
+      <label>Frequency: <span class="value" id="freqVal">1.5</span>
+        <input type="range" id="freq" min="0.1" max="10" step="0.1" value="1.5" />
+      </label>
+      <label>Point Size: <span class="value" id="sizeVal">2.0</span>
+        <input type="range" id="size" min="1" max="10" step="0.5" value="2.0" />
+      </label>
+      <label>Speed: <span class="value" id="speedVal">1.0</span>
+        <input type="range" id="speed" min="0.1" max="5" step="0.1" value="1.0" />
+      </label>
+      <label>Mode:
+        <select id="mode">
+          <option value="0">Wave</option>
+          <option value="1">Radial</option>
+          <option value="2">Noise</option>
+        </select>
+      </label>
+      <label>Color 1:
+        <input type="color" id="color1" value="#00ffff" />
+      </label>
+      <label>Color 2:
+        <input type="color" id="color2" value="#ff00ff" />
+      </label>
+      <label><input type="checkbox" id="autorotate" /> Auto Rotate</label>
+      <button id="pauseBtn">Pause</button>
+      <hr />
+      <button id="enableMicBtn">Enable Microphone</button>
+      <label>Audio Mode:
+        <select id="audioMode">
+          <option value="off">Off</option>
+          <option value="fft">Channels (FFT)</option>
+          <option value="loudness">Loudness (dB)</option>
+        </select>
+      </label>
+      <label>Sensitivity: <span class="value" id="sensVal">1.0</span>
+        <input type="range" id="sensitivity" min="0" max="4" step="0.1" value="1.0" />
+      </label>
+      <label>Smoothing: <span class="value" id="smoothVal">0.7</span>
+        <input type="range" id="smoothing" min="0" max="0.95" step="0.05" value="0.7" />
+      </label>
+      <label>Min Freq (Hz): <span class="value" id="minFVal">60</span>
+        <input type="range" id="minFreq" min="20" max="2000" step="10" value="60" />
+      </label>
+      <label>Max Freq (Hz): <span class="value" id="maxFVal">2000</span>
+        <input type="range" id="maxFreq" min="200" max="8000" step="10" value="2000" />
+      </label>
+      <span id="audioStatus">Mic: disabled</span>
+    </div>
+    <div id="fps">FPS: 0</div>
+    <script>
+      // ===== Matrix Utilities =====
+      const Mat4 = {
+        create() {
+          return new Float32Array([1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,0,1]);
+        },
+        perspective(out, fovy, aspect, near, far) {
+          const f = 1 / Math.tan(fovy / 2);
+          out[0]=f/aspect; out[1]=0; out[2]=0; out[3]=0;
+          out[4]=0; out[5]=f; out[6]=0; out[7]=0;
+          out[8]=0; out[9]=0; out[10]=(far+near)/(near-far); out[11]=-1;
+          out[12]=0; out[13]=0; out[14]=(2*far*near)/(near-far); out[15]=0;
+          return out;
+        },
+        lookAt(out, eye, center, up) {
+          let x0,x1,x2,y0,y1,y2,z0,z1,z2,len;
+          z0=eye[0]-center[0]; z1=eye[1]-center[1]; z2=eye[2]-center[2];
+          len=Math.hypot(z0,z1,z2); if(len===0){z2=1;} else {z0/=len; z1/=len; z2/=len;}
+          x0=up[1]*z2 - up[2]*z1; x1=up[2]*z0 - up[0]*z2; x2=up[0]*z1 - up[1]*z0;
+          len=Math.hypot(x0,x1,x2); if(len!==0){x0/=len; x1/=len; x2/=len;}
+          y0=z1*x2 - z2*x1; y1=z2*x0 - z0*x2; y2=z0*x1 - z1*x0;
+          out[0]=x0; out[1]=y0; out[2]=z0; out[3]=0;
+          out[4]=x1; out[5]=y1; out[6]=z1; out[7]=0;
+          out[8]=x2; out[9]=y2; out[10]=z2; out[11]=0;
+          out[12]=-(x0*eye[0]+x1*eye[1]+x2*eye[2]);
+          out[13]=-(y0*eye[0]+y1*eye[1]+y2*eye[2]);
+          out[14]=-(z0*eye[0]+z1*eye[1]+z2*eye[2]);
+          out[15]=1; return out;
+        },
+        multiply(out,a,b){
+          const a00=a[0],a01=a[1],a02=a[2],a03=a[3];
+          const a10=a[4],a11=a[5],a12=a[6],a13=a[7];
+          const a20=a[8],a21=a[9],a22=a[10],a23=a[11];
+          const a30=a[12],a31=a[13],a32=a[14],a33=a[15];
+          const b00=b[0],b01=b[1],b02=b[2],b03=b[3];
+          const b10=b[4],b11=b[5],b12=b[6],b13=b[7];
+          const b20=b[8],b21=b[9],b22=b[10],b23=b[11];
+          const b30=b[12],b31=b[13],b32=b[14],b33=b[15];
+          out[0]=a00*b00+a01*b10+a02*b20+a03*b30;
+          out[1]=a00*b01+a01*b11+a02*b21+a03*b31;
+          out[2]=a00*b02+a01*b12+a02*b22+a03*b32;
+          out[3]=a00*b03+a01*b13+a02*b23+a03*b33;
+          out[4]=a10*b00+a11*b10+a12*b20+a13*b30;
+          out[5]=a10*b01+a11*b11+a12*b21+a13*b31;
+          out[6]=a10*b02+a11*b12+a12*b22+a13*b32;
+          out[7]=a10*b03+a11*b13+a12*b23+a13*b33;
+          out[8]=a20*b00+a21*b10+a22*b20+a23*b30;
+          out[9]=a20*b01+a21*b11+a22*b21+a23*b31;
+          out[10]=a20*b02+a21*b12+a22*b22+a23*b32;
+          out[11]=a20*b03+a21*b13+a22*b23+a23*b33;
+          out[12]=a30*b00+a31*b10+a32*b20+a33*b30;
+          out[13]=a30*b01+a31*b11+a32*b21+a33*b31;
+          out[14]=a30*b02+a31*b12+a32*b22+a33*b32;
+          out[15]=a30*b03+a31*b13+a32*b23+a33*b33;
+          return out;
+        },
+      };
+
+      function parseColor(hex){
+        const n=parseInt(hex.substr(1),16);
+        return [((n>>16)&255)/255, ((n>>8)&255)/255, (n&255)/255];
+      }
+
+      // ===== UI Elements =====
+      const gui = {
+        res: document.getElementById('res'),
+        amp: document.getElementById('amp'),
+        freq: document.getElementById('freq'),
+        size: document.getElementById('size'),
+        speed: document.getElementById('speed'),
+        mode: document.getElementById('mode'),
+        color1: document.getElementById('color1'),
+        color2: document.getElementById('color2'),
+        autorotate: document.getElementById('autorotate'),
+        pauseBtn: document.getElementById('pauseBtn'),
+        resVal: document.getElementById('resVal'),
+        ampVal: document.getElementById('ampVal'),
+        freqVal: document.getElementById('freqVal'),
+        sizeVal: document.getElementById('sizeVal'),
+        speedVal: document.getElementById('speedVal'),
+        // audio
+        enableMicBtn: document.getElementById('enableMicBtn'),
+        audioMode: document.getElementById('audioMode'),
+        sensitivity: document.getElementById('sensitivity'),
+        smoothing: document.getElementById('smoothing'),
+        minFreq: document.getElementById('minFreq'),
+        maxFreq: document.getElementById('maxFreq'),
+        sensVal: document.getElementById('sensVal'),
+        smoothVal: document.getElementById('smoothVal'),
+        minFVal: document.getElementById('minFVal'),
+        maxFVal: document.getElementById('maxFVal'),
+        audioStatus: document.getElementById('audioStatus'),
+      };
+
+      // ===== Simulation State =====
+      let resolution = parseInt(gui.res.value);
+      let amplitude = parseFloat(gui.amp.value);
+      let frequency = parseFloat(gui.freq.value);
+      let pointSize = parseFloat(gui.size.value);
+      let speed = parseFloat(gui.speed.value);
+      let mode = parseInt(gui.mode.value);
+      let color1 = parseColor(gui.color1.value);
+      let color2 = parseColor(gui.color2.value);
+      let autoRotate = gui.autorotate.checked;
+      let paused = false;
+
+      // ===== Camera =====
+      let radius = 600, theta = 0, phi = Math.PI/4;
+      let isDragging=false, lastX=0, lastY=0;
+
+      // ===== FPS =====
+      const fpsDisplay = document.getElementById('fps');
+      let lastFpsTime = performance.now(), frames = 0;
+
+      // ===== Canvas =====
+      const canvas = document.getElementById('viewCanvas');
+      const ctx = canvas.getContext('2d');
+
+      // ===== Points =====
+      let basePositions;
+      let numPoints;
+
+      // ===== Audio =====
+      let audioEnabled = false;
+      let audioCtx = null;
+      let analyser = null;
+      let sourceNode = null;
+      let fftSize = 2048;
+      let freqData = null;
+      let timeData = null;
+      let sampleRate = 48000;
+      let audioMode = gui.audioMode.value; // 'off' | 'fft' | 'loudness'
+      let sensitivity = parseFloat(gui.sensitivity.value);
+      let smoothing = parseFloat(gui.smoothing.value);
+      let minFreq = parseFloat(gui.minFreq.value);
+      let maxFreq = parseFloat(gui.maxFreq.value);
+      let loudness = 0, loudnessEMA = 0, beatPulse = 0;
+
+      function hzToBin(hz){
+        const nyquist = sampleRate / 2;
+        const binCount = analyser ? analyser.frequencyBinCount : fftSize/2;
+        let bin = Math.round((hz / nyquist) * (binCount - 1));
+        if (bin < 0) bin = 0;
+        const maxBin = binCount - 1;
+        if (bin > maxBin) bin = maxBin;
+        return bin;
+      }
+
+      async function enableMic(){
+        try {
+          gui.audioStatus.textContent = 'Requesting microphone permission...';
+          const stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true }, video: false });
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          sampleRate = audioCtx.sampleRate;
+          analyser = audioCtx.createAnalyser();
+          analyser.fftSize = fftSize;
+          analyser.smoothingTimeConstant = smoothing;
+          freqData = new Uint8Array(analyser.frequencyBinCount);
+          timeData = new Uint8Array(analyser.fftSize);
+          sourceNode = audioCtx.createMediaStreamSource(stream);
+          sourceNode.connect(analyser);
+          audioEnabled = true;
+          gui.audioStatus.textContent = 'Mic: enabled @ ' + Math.round(sampleRate) + ' Hz';
+        } catch (e){
+          gui.audioStatus.textContent = 'Mic error: ' + (e && e.message ? e.message : e);
+          audioEnabled = false;
+        }
+      }
+
+      // ===== Init =====
+      generatePoints();
+      initEvents();
+      resizeCanvas();
+      window.addEventListener('resize', resizeCanvas);
+      requestAnimationFrame(animate);
+
+      function generatePoints() {
+        const half = resolution / 2;
+        const spacing = 4;
+        numPoints = resolution * resolution;
+        basePositions = new Float32Array(numPoints * 3);
+        let ptr = 0;
+        for (let i = 0; i < resolution; i++) {
+          for (let j = 0; j < resolution; j++) {
+            const x = (i - half) * spacing;
+            const z = (j - half) * spacing;
+            basePositions[ptr++] = x;
+            basePositions[ptr++] = 0;
+            basePositions[ptr++] = z;
+          }
+        }
+      }
+
+      function initEvents() {
+        // Core UI
+        gui.res.addEventListener('input', () => { resolution = parseInt(gui.res.value); gui.resVal.textContent = resolution; });
+        gui.res.addEventListener('change', generatePoints);
+        gui.amp.addEventListener('input', () => { amplitude = parseFloat(gui.amp.value); gui.ampVal.textContent = amplitude; });
+        gui.freq.addEventListener('input', () => { frequency = parseFloat(gui.freq.value); gui.freqVal.textContent = frequency.toFixed(1); });
+        gui.size.addEventListener('input', () => { pointSize = parseFloat(gui.size.value); gui.sizeVal.textContent = pointSize; });
+        gui.speed.addEventListener('input', () => { speed = parseFloat(gui.speed.value); gui.speedVal.textContent = speed.toFixed(1); });
+        gui.mode.addEventListener('change', () => { mode = parseInt(gui.mode.value); });
+        gui.color1.addEventListener('input', () => { color1 = parseColor(gui.color1.value); });
+        gui.color2.addEventListener('input', () => { color2 = parseColor(gui.color2.value); });
+        gui.autorotate.addEventListener('change', () => { autoRotate = gui.autorotate.checked; });
+        gui.pauseBtn.addEventListener('click', () => { paused = !paused; gui.pauseBtn.textContent = paused ? 'Resume' : 'Pause'; });
+
+        // Camera
+        canvas.addEventListener('mousedown', (e) => { isDragging = true; lastX = e.clientX; lastY = e.clientY; });
+        window.addEventListener('mousemove', (e) => {
+          if (!isDragging) return;
+          const dx = e.clientX - lastX;
+          const dy = e.clientY - lastY;
+          lastX = e.clientX; lastY = e.clientY;
+          theta += dx * 0.005;
+          phi -= dy * 0.005;
+          phi = Math.max(0.1, Math.min(Math.PI - 0.1, phi));
+        });
+        window.addEventListener('mouseup', () => { isDragging = false; });
+        canvas.addEventListener('wheel', (e) => {
+          e.preventDefault();
+          radius += e.deltaY * 0.5;
+          radius = Math.max(50, Math.min(3000, radius));
+        }, { passive: false });
+
+        // Audio UI
+        gui.enableMicBtn.addEventListener('click', () => {
+          if (!audioEnabled) { enableMic(); } else { gui.audioStatus.textContent = 'Mic already enabled'; }
+        });
+        gui.audioMode.addEventListener('change', () => { audioMode = gui.audioMode.value; });
+        gui.sensitivity.addEventListener('input', () => { sensitivity = parseFloat(gui.sensitivity.value); gui.sensVal.textContent = sensitivity.toFixed(1); });
+        gui.smoothing.addEventListener('input', () => {
+          smoothing = parseFloat(gui.smoothing.value);
+          gui.smoothVal.textContent = smoothing.toFixed(2);
+          if (analyser) analyser.smoothingTimeConstant = smoothing;
+        });
+        gui.minFreq.addEventListener('input', () => {
+          minFreq = parseFloat(gui.minFreq.value);
+          if (minFreq > maxFreq - 10) { minFreq = maxFreq - 10; gui.minFreq.value = minFreq; }
+          gui.minFVal.textContent = Math.round(minFreq);
+        });
+        gui.maxFreq.addEventListener('input', () => {
+          maxFreq = parseFloat(gui.maxFreq.value);
+          if (maxFreq < minFreq + 10) { maxFreq = minFreq + 10; gui.maxFreq.value = maxFreq; }
+          gui.maxFVal.textContent = Math.round(maxFreq);
+        });
+      }
+
+      function resizeCanvas() {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+      }
+
+      function updateAudio(){
+        if (!audioEnabled || !analyser) return { loud:0, pulse:0 };
+        if (audioMode === 'fft') {
+          analyser.getByteFrequencyData(freqData);
+        } else {
+          analyser.getByteTimeDomainData(timeData);
+          // RMS over time-domain (0..255 centered at 128)
+          let sumSq = 0;
+          for (let i=0;i<timeData.length;i++){
+            const v = (timeData[i]-128)/128; // -1..1
+            sumSq += v*v;
+          }
+          const rms = Math.sqrt(sumSq / timeData.length); // 0..~1
+          // Convert to approximate dBFS [-inf, 0], normalize to [0,1]
+          const db = 20 * Math.log10(rms + 1e-6);
+          // Map -60dB..0dB -> 0..1
+          let loud = (db + 60) / 60;
+          if (loud < 0) loud = 0;
+          if (loud > 1) loud = 1;
+          loudness = loud;
+          // Beat detection: EMA + deviation
+          const alpha = 0.1;
+          loudnessEMA = (1 - alpha) * loudnessEMA + alpha * loudness;
+          const dev = loudness - loudnessEMA;
+          if (dev > 0.12) { beatPulse = 1.0; } // trigger
+        }
+        // Decay pulse
+        beatPulse *= 0.90;
+        if (beatPulse < 0.001) beatPulse = 0;
+        return { loud: loudness, pulse: beatPulse };
+      }
+
+      function animate(now) {
+        if (!paused) {
+          frames++;
+          const nowTime = performance.now();
+          if (nowTime - lastFpsTime >= 1000) {
+            const fps = Math.round((frames * 1000) / (nowTime - lastFpsTime));
+            fpsDisplay.textContent = 'FPS: ' + fps;
+            lastFpsTime = nowTime;
+            frames = 0;
+          }
+        }
+
+        if (!paused) {
+          ctx.fillStyle = '#000';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+          const timeSec = now * 0.001 * speed;
+          if (autoRotate) theta += 0.001 * speed;
+
+          const view = Mat4.create();
+          const eyeX = radius * Math.sin(phi) * Math.sin(theta);
+          const eyeY = radius * Math.cos(phi);
+          const eyeZ = radius * Math.sin(phi) * Math.cos(theta);
+          Mat4.lookAt(view, [eyeX, eyeY, eyeZ], [0, 0, 0], [0, 1, 0]);
+          const proj = Mat4.create();
+          Mat4.perspective(proj, (Math.PI / 180) * 45, canvas.width / canvas.height, 1, 5000);
+          const mvp = Mat4.create();
+          Mat4.multiply(mvp, proj, view);
+
+          const r1 = color1[0], g1 = color1[1], b1 = color1[2];
+          const r2 = color2[0], g2 = color2[1], b2 = color2[2];
+
+          const audioInfo = updateAudio();
+          // Precompute bin mapping for FFT mode
+          let minBin=0, maxBin=0, binSpan=0;
+          if (audioMode === 'fft' && analyser) {
+            minBin = hzToBin(minFreq);
+            maxBin = hzToBin(maxFreq);
+            if (maxBin <= minBin) maxBin = minBin + 1;
+            binSpan = maxBin - minBin;
+          }
+
+          let idx = 0;
+          // Cache resolution for mapping indices
+          const cols = resolution;
+          const rows = resolution;
+
+          for (let i = 0; i < numPoints; i++) {
+            const x = basePositions[idx++];
+            idx++;
+            const z = basePositions[idx++];
+
+            // Base height from visual mode
+            let h;
+            if (mode === 0) {
+              h = Math.sin((x + timeSec) * frequency) + Math.sin((z + timeSec * 0.5) * frequency);
+            } else if (mode === 1) {
+              const dist = Math.hypot(x, z);
+              h = Math.sin((dist * 3 - timeSec) * frequency);
+            } else {
+              h = Math.sin((x * 0.1 + timeSec) * frequency) * Math.sin((z * 0.1 + timeSec) * frequency);
+            }
+
+            // Apply audio modulation
+            let audioMod = 0;
+            if (audioMode === 'fft' && analyser && freqData) {
+              // Determine grid position (i,j)
+              const p = i;
+              const row = Math.floor(p / cols);
+              const col = p - row * cols;
+              // Map col across [minBin, maxBin]
+              const tCol = col / (cols - 1);
+              const bin = Math.min(maxBin, Math.max(minBin, Math.floor(minBin + tCol * binSpan)));
+              const v = freqData[bin] / 255; // 0..1
+              audioMod = v * sensitivity;
+            } else if (audioMode === 'loudness') {
+              audioMod = audioInfo.loud * sensitivity;
+            }
+
+            const y = (h + audioMod) * amplitude;
+
+            // Transform to clip space
+            const px = x, py = y, pz = z;
+            const outX = mvp[0]*px + mvp[4]*py + mvp[8]*pz + mvp[12];
+            const outY = mvp[1]*px + mvp[5]*py + mvp[9]*pz + mvp[13];
+            const outZ = mvp[2]*px + mvp[6]*py + mvp[10]*pz + mvp[14];
+            const outW = mvp[3]*px + mvp[7]*py + mvp[11]*pz + mvp[15];
+            if (outW <= 0) continue;
+            const ndcX = outX / outW;
+            const ndcY = outY / outW;
+            const screenX = (ndcX * 0.5 + 0.5) * canvas.width;
+            const screenY = (1 - (ndcY * 0.5 + 0.5)) * canvas.height;
+
+            // Color mix based on height + beat pulse
+            let t = (y / (amplitude * 2)) + 0.5;
+            if (t < 0) t = 0; if (t > 1) t = 1;
+            // Slight pulse on beats by biasing toward color2
+            const pulseBias = audioInfo.pulse * 0.4;
+            t = Math.min(1, t + pulseBias);
+
+            const r = r1 * (1 - t) + r2 * t;
+            const g = g1 * (1 - t) + g2 * t;
+            const b = b1 * (1 - t) + b2 * t;
+
+            // Point size scales with height and pulses on beats
+            const size = (pointSize + Math.abs(y) / (amplitude * 0.5)) * (1 + audioInfo.pulse * 0.6);
+
+            ctx.fillStyle = 'rgb(' + Math.round(r * 255) + ',' + Math.round(g * 255) + ',' + Math.round(b * 255) + ')';
+            ctx.fillRect(screenX - size / 2, screenY - size / 2, size, size);
+          }
+        }
+        requestAnimationFrame(animate);
+      }
+    </script>
+  </body>
+</html>
