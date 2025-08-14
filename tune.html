@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Harmonic Weaving</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;700&display=swap');
+        :root { --bg-color: #010409; --text-color: #e6edf3; --btn-color: #21262d; --btn-hover: #30363d; --btn-border: #30363d; }
+        body, html { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; background-color: var(--bg-color); display: flex; justify-content: center; align-items: center; font-family: 'Inter', sans-serif; color: var(--text-color); }
+        #appContainer { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 15px; width: 100%; height: 100%; }
+        canvas { background-color: var(--bg-color); cursor: pointer; touch-action: none; border-radius: 8px; }
+        #controls { display: flex; flex-wrap: wrap; justify-content: center; gap: 10px; align-items: center; }
+        .control-btn { padding: 0.7rem 1.2rem; font-size: 0.9rem; font-weight: 500; color: var(--text-color); background-color: var(--btn-color); border: 1px solid var(--btn-border); border-radius: 8px; cursor: pointer; transition: all 0.2s ease; }
+        .control-btn:hover { background-color: var(--btn-hover); border-color: #8b949e; }
+        #importLabel { display: inline-block; padding: 0.7rem 1.2rem; font-size: 0.9rem; font-weight: 500; color: var(--text-color); background-color: var(--btn-color); border: 1px solid var(--btn-border); border-radius: 8px; cursor: pointer; transition: all 0.2s ease; }
+        #importLabel:hover { background-color: var(--btn-hover); border-color: #8b949e; }
+        #importFile { display: none; }
+    </style>
+</head>
+<body>
+    <div id="appContainer">
+        <canvas id="zenCanvas"></canvas>
+        <div id="controls">
+            <button id="startBtn" class="control-btn">Begin</button>
+            <button id="stopBtn" class="control-btn">Pause</button>
+            <button id="clearBtn" class="control-btn">New Journey</button>
+            <button id="saveBtn" class="control-btn">Save</button>
+            <button id="exportBtn" class="control-btn">Export</button>
+            <label for="importFile" id="importLabel">Import</label>
+            <input type="file" id="importFile" accept=".json">
+        </div>
+    </div>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const canvas = document.getElementById('zenCanvas');
+            const ctx = canvas.getContext('2d');
+            const startBtn = document.getElementById('startBtn');
+            const stopBtn = document.getElementById('stopBtn');
+            const clearBtn = document.getElementById('clearBtn');
+            const saveBtn = document.getElementById('saveBtn');
+            const exportBtn = document.getElementById('exportBtn');
+            const importFile = document.getElementById('importFile');
+
+            let nodes = [], connections = [], animationFrameId, isPaused = true, gameState = 'initial';
+            let interaction = { dragging: false, selectedNode: null, x: 0, y: 0 };
+            let perimeterShape = { type: 'circle', points: [] };
+
+            const SoundEngine = {
+                audioCtx: null, masterGain: null, reverbNode: null, isInitialized: false,
+                async init() { if (this.isInitialized) return; this.audioCtx = new (window.AudioContext || window.webkitAudioContext)(); this.masterGain = this.audioCtx.createGain(); this.masterGain.gain.value = 0.6; this.reverbNode = this.audioCtx.createConvolver(); const reverbTime = 2.5, sampleRate = this.audioCtx.sampleRate, length = sampleRate * reverbTime; const impulse = this.audioCtx.createBuffer(2, length, sampleRate); const left = impulse.getChannelData(0), right = impulse.getChannelData(1); for (let i = 0; i < length; i++) { const decay = Math.pow(1 - i / length, 2); left[i] = (Math.random() * 2 - 1) * decay; right[i] = (Math.random() * 2 - 1) * decay; } this.reverbNode.buffer = impulse; const dryGain = this.audioCtx.createGain(); dryGain.gain.value = 1.0; const wetGain = this.audioCtx.createGain(); wetGain.gain.value = 0.5; this.masterGain.connect(dryGain); dryGain.connect(this.audioCtx.destination); this.masterGain.connect(this.reverbNode); this.reverbNode.connect(wetGain); wetGain.connect(this.audioCtx.destination); this.isInitialized = true; },
+                playChord(freqs) { if (!this.isInitialized) return; const now = this.audioCtx.currentTime; freqs.forEach((freq, i) => { const osc = this.audioCtx.createOscillator(); const gainNode = this.audioCtx.createGain(); osc.type = 'sine'; osc.frequency.setValueAtTime(freq, now); gainNode.connect(this.masterGain); osc.connect(gainNode); const attackTime = 0.01 + i * 0.05; const decayTime = 1.5; gainNode.gain.setValueAtTime(0, now); gainNode.gain.linearRampToValueAtTime(0.5, now + attackTime); gainNode.gain.exponentialRampToValueAtTime(0.0001, now + attackTime + decayTime); osc.start(now); osc.stop(now + attackTime + decayTime + 0.1); }); }
+            };
+
+            const pentatonicFreqs = [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33, 659.25];
+            const shapes = ['circle', 'square', 'diamond'];
+            const nodeIcons = {
+                circle: (ctx, x, y, r, color) => { ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fillStyle = color; ctx.fill(); },
+                square: (ctx, x, y, r, color) => { ctx.fillStyle = color; ctx.fillRect(x - r, y - r, r * 2, r * 2); },
+                diamond: (ctx, x, y, r, color) => { ctx.fillStyle = color; ctx.beginPath(); ctx.moveTo(x, y - r); ctx.lineTo(x + r, y); ctx.lineTo(x, y + r); ctx.lineTo(x - r, y); ctx.closePath(); ctx.fill(); }
+            };
+
+            function initializeJourney() { gameState = 'initial'; isPaused = true; startBtn.textContent = "Begin"; if (animationFrameId) cancelAnimationFrame(animationFrameId); resetCycle(); draw(); }
+            function resetCycle(state = null) {
+                if (state) {
+                    loadState(state);
+                    return;
+                }
+                const numNodes = 12;
+                nodes = [];
+                connections = [];
+                const shapeType = shapes[Math.floor(Math.random() * shapes.length)];
+                generatePerimeter(shapeType);
+                for (let i = 0; i < numNodes; i++) {
+                    const randomPoint = perimeterShape.points[Math.floor(Math.random() * perimeterShape.points.length)];
+                    nodes.push({ id: i, x: randomPoint.x, y: randomPoint.y, radius: 6, color: `hsl(${i * 30}, 75%, 65%)`, note: pentatonicFreqs[i % pentatonicFreqs.length], shape: Object.keys(nodeIcons)[i % Object.keys(nodeIcons).length] });
+                }
+            }
+            
+            function generatePerimeter(shapeType) {
+                perimeterShape.type = shapeType;
+                perimeterShape.points = [];
+                const centerX = canvas.width / 2;
+                const centerY = canvas.height / 2;
+                const radius = Math.min(canvas.width, canvas.height) * 0.4;
+                const numPoints = 100;
+                for (let i = 0; i < numPoints; i++) {
+                    const angle = (i / numPoints) * Math.PI * 2;
+                    let x, y;
+                    if (shapeType === 'circle') {
+                        x = centerX + radius * Math.cos(angle);
+                        y = centerY + radius * Math.sin(angle);
+                    } else if (shapeType === 'square') {
+                        const side = Math.PI / 2;
+                        const phase = angle / side;
+                        if (phase >= 0 && phase < 1) { x = centerX + radius; y = centerY - radius + 2 * radius * phase; }
+                        else if (phase >= 1 && phase < 2) { x = centerX + radius - 2 * radius * (phase - 1); y = centerY + radius; }
+                        else if (phase >= 2 && phase < 3) { x = centerX - radius; y = centerY + radius - 2 * radius * (phase - 2); }
+                        else { x = centerX - radius + 2 * radius * (phase - 3); y = centerY - radius; }
+                    } else if (shapeType === 'diamond') {
+                        x = centerX + radius * Math.cos(angle) * (Math.abs(Math.cos(angle)) + Math.abs(Math.sin(angle)));
+                        y = centerY + radius * Math.sin(angle) * (Math.abs(Math.cos(angle)) + Math.abs(Math.sin(angle)));
+                    }
+                    perimeterShape.points.push({ x, y });
+                }
+            }
+
+            function getClosestPerimeterPoint(x, y) {
+                let closest = null;
+                let minDist = Infinity;
+                for (const p of perimeterShape.points) {
+                    const dist = Math.hypot(x - p.x, y - p.y);
+                    if (dist < minDist) {
+                        minDist = dist;
+                        closest = p;
+                    }
+                }
+                return closest;
+            }
+
+            function setupCanvas() { canvas.width = window.innerWidth; canvas.height = window.innerHeight - document.getElementById('controls').offsetHeight - 40; }
+            function gameLoop() {
+                if (isPaused) return;
+                connections.forEach(conn => {
+                    const dist = distToSegment({x: interaction.x, y: interaction.y}, conn.n1, conn.n2);
+                    if (!interaction.dragging && dist < 15 && !conn.strummed) {
+                        conn.strummed = true;
+                        SoundEngine.playChord([conn.n1.note, conn.n2.note]);
+                        if (navigator.vibrate) navigator.vibrate(20);
+                    } else if (dist > 20) {
+                        conn.strummed = false;
+                    }
+                });
+                draw();
+                animationFrameId = requestAnimationFrame(gameLoop);
+            }
+
+            function distToSegment(p, v, w) { const l2 = (v.x - w.x)**2 + (v.y - w.y)**2; if (l2 === 0) return Math.hypot(p.x - v.x, p.y - v.y); let t = ((p.x - v.x) * (w.x - v.x) + (p.y - v.y) * (w.y - v.y)) / l2; t = Math.max(0, Math.min(1, t)); return Math.hypot(p.x - (v.x + t * (w.x - v.x)), p.y - (v.y + t * (w.y - v.y))); }
+            function draw() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.strokeStyle = 'rgba(255, 255, 255, 0.1)'; ctx.lineWidth = 1;
+                ctx.beginPath(); ctx.moveTo(perimeterShape.points[0].x, perimeterShape.points[0].y);
+                for (let i = 1; i < perimeterShape.points.length; i++) { ctx.lineTo(perimeterShape.points[i].x, perimeterShape.points[i].y); }
+                ctx.closePath(); ctx.stroke();
+                connections.forEach(conn => { ctx.beginPath(); ctx.moveTo(conn.n1.x, conn.n1.y); ctx.lineTo(conn.n2.x, conn.n2.y); ctx.strokeStyle = conn.color; ctx.lineWidth = conn.strummed ? 2.5 : 1; ctx.globalAlpha = 0.7; ctx.stroke(); });
+                if (interaction.dragging && interaction.selectedNode) { ctx.beginPath(); ctx.moveTo(interaction.selectedNode.x, interaction.selectedNode.y); ctx.lineTo(interaction.x, interaction.y); ctx.strokeStyle = 'white'; ctx.lineWidth = 1; ctx.globalAlpha = 0.5; ctx.stroke(); }
+                nodes.forEach(node => { nodeIcons[node.shape](ctx, node.x, node.y, node.radius, node.color); });
+                ctx.globalAlpha = 1.0;
+            }
+
+            function handleInteractionStart(x, y) { if (isPaused) return; for (const node of nodes) { if (Math.hypot(x - node.x, y - node.y) < node.radius + 10) { interaction.dragging = true; interaction.selectedNode = node; return; } } }
+            function handleInteractionMove(x, y) { interaction.x = x; interaction.y = y; if (interaction.dragging && interaction.selectedNode) { interaction.selectedNode.x = x; interaction.selectedNode.y = y; } }
+            function handleInteractionEnd() {
+                if (interaction.dragging && interaction.selectedNode) {
+                    let droppedOnNode = null;
+                    for (const node of nodes) {
+                        if (node.id !== interaction.selectedNode.id && Math.hypot(interaction.x - node.x, interaction.y - node.y) < node.radius + 10) {
+                            droppedOnNode = node;
+                            const existing = connections.find(c => (c.n1 === node && c.n2 === interaction.selectedNode) || (c.n1 === interaction.selectedNode && c.n2 === node));
+                            if (!existing) {
+                                SoundEngine.playChord([interaction.selectedNode.note, node.note]);
+                                if (navigator.vibrate) navigator.vibrate(50);
+                                connections.push({ n1: interaction.selectedNode, n2: node, color: interaction.selectedNode.color, strummed: true });
+                            }
+                            break;
+                        }
+                    }
+                    if (!droppedOnNode) {
+                        const closestPoint = getClosestPerimeterPoint(interaction.x, interaction.y);
+                        if (Math.hypot(interaction.x - closestPoint.x, interaction.y - closestPoint.y) < 50) {
+                            interaction.selectedNode.x = closestPoint.x;
+                            interaction.selectedNode.y = closestPoint.y;
+                        }
+                    }
+                }
+                interaction.dragging = false; interaction.selectedNode = null;
+            }
+
+            function saveState() { const state = { nodes: nodes.map(n => ({id: n.id, x: n.x, y: n.y, radius: n.radius, color: n.color, note: n.note, shape: n.shape})), connections: connections.map(c => ({n1_id: c.n1.id, n2_id: c.n2.id, color: c.color})), perimeter: perimeterShape }; localStorage.setItem('harmonicWeavingState', JSON.stringify(state)); alert('State saved locally!'); }
+            function exportState() { const state = { nodes: nodes.map(n => ({id: n.id, x: n.x, y: n.y, radius: n.radius, color: n.color, note: n.note, shape: n.shape})), connections: connections.map(c => ({n1_id: c.n1.id, n2_id: c.n2.id, color: c.color})), perimeter: perimeterShape }; const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state)); const downloadAnchorNode = document.createElement('a'); downloadAnchorNode.setAttribute("href", dataStr); downloadAnchorNode.setAttribute("download", "harmonic_weaving.json"); document.body.appendChild(downloadAnchorNode); downloadAnchorNode.click(); downloadAnchorNode.remove(); }
+            function importState(event) { const file = event.target.files[0]; if (!file) return; const reader = new FileReader(); reader.onload = function(e) { const state = JSON.parse(e.target.result); loadState(state); }; reader.readAsText(file); }
+            function loadState(state) {
+                perimeterShape = state.perimeter;
+                nodes = state.nodes;
+                connections = state.connections.map(c => ({ n1: nodes.find(n => n.id === c.n1_id), n2: nodes.find(n => n.id === c.n2_id), color: c.color, strummed: false }));
+                draw();
+            }
+
+            canvas.addEventListener('mousedown', e => handleInteractionStart(e.offsetX, e.offsetY));
+            canvas.addEventListener('mousemove', e => handleInteractionMove(e.offsetX, e.offsetY));
+            canvas.addEventListener('mouseup', handleInteractionEnd);
+            canvas.addEventListener('mouseleave', handleInteractionEnd);
+            canvas.addEventListener('touchstart', e => { e.preventDefault(); const rect = canvas.getBoundingClientRect(); handleInteractionStart(e.touches[0].clientX - rect.left, e.touches[0].clientY - rect.top); }, { passive: false });
+            canvas.addEventListener('touchmove', e => { e.preventDefault(); const rect = canvas.getBoundingClientRect(); handleInteractionMove(e.touches[0].clientX - rect.left, e.touches[0].clientY - rect.top); }, { passive: false });
+            canvas.addEventListener('touchend', handleInteractionEnd);
+
+            startBtn.addEventListener('click', async () => { if (!SoundEngine.isInitialized) await SoundEngine.init(); if (gameState === 'initial' || isPaused) { isPaused = false; gameState = 'playing'; if(animationFrameId) cancelAnimationFrame(animationFrameId); if (nodes.length === 0) resetCycle(); gameLoop(); startBtn.textContent = "Resume"; } });
+            stopBtn.addEventListener('click', () => { if (gameState === 'playing') isPaused = true; startBtn.textContent = "Resume"; });
+            clearBtn.addEventListener('click', initializeJourney);
+            saveBtn.addEventListener('click', saveState);
+            exportBtn.addEventListener('click', exportState);
+            importFile.addEventListener('change', importState);
+            window.addEventListener('resize', () => { setupCanvas(); initializeJourney(); });
+
+            setupCanvas();
+            initializeJourney();
+        });
+    </script>
+</body>
+</html>
