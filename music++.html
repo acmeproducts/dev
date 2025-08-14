@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Guzheng Simulator v3</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+        :root {
+            --bg-color: #6D4C41;
+            --string-color: #E0E0E0;
+            --key-bg: #ECEFF1;
+            --key-bg-active: #81C784;
+            --key-text: #37474F;
+            --key-text-active: #FFFFFF;
+            --record-red: #E53935;
+            --control-bg: rgba(0, 0, 0, 0.4);
+            --control-text: #E0E0E0;
+        }
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: var(--bg-color);
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        #appContainer {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        canvas {
+            flex-grow: 1;
+            width: 100%;
+            cursor: pointer;
+            touch-action: none;
+        }
+        #startOverlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            transition: opacity 0.3s ease;
+        }
+        #startOverlay.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+        #startBtn {
+            padding: 1rem 2rem;
+            font-size: 1.2rem;
+            color: var(--key-bg);
+            background-color: transparent;
+            border: 1px solid var(--key-bg);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        #startBtn:hover {
+            background-color: var(--key-bg);
+            color: var(--key-text);
+        }
+        #controls-container {
+            position: absolute;
+            top: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: none; /* Initially hidden */
+            gap: 10px;
+            z-index: 50;
+            padding: 8px;
+            background-color: var(--control-bg);
+            border-radius: 50px;
+        }
+        #record-btn, #key-selector {
+            width: 40px;
+            height: 40px;
+            border: none;
+            background-color: transparent;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transition: background-color 0.2s;
+            color: var(--control-text);
+        }
+        #key-selector {
+            font-size: 1rem;
+            font-weight: bold;
+        }
+        #record-btn:hover, #key-selector:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+        .record-icon {
+            width: 18px;
+            height: 18px;
+            background-color: white;
+            border-radius: 50%;
+            transition: all 0.2s;
+        }
+        .recording .record-icon {
+            background-color: var(--record-red);
+            border-radius: 4px; /* Square shape when recording */
+            animation: pulse 1.5s infinite ease-in-out;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(229, 57, 53, 0.7); }
+            50% { transform: scale(0.9); }
+            70% { box-shadow: 0 0 0 8px rgba(229, 57, 53, 0); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(229, 57, 53, 0); }
+        }
+        #saveModal, #keyModal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #37474F;
+            color: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            z-index: 150;
+            display: none;
+            width: 90%;
+            max-width: 350px;
+        }
+        #saveModal p, #keyModal-content p {
+            margin-top: 0;
+            font-size: 1.1rem;
+        }
+        #saveModal-buttons, #keyModal-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-top: 1.5rem;
+        }
+        #keyModal-buttons {
+            flex-wrap: wrap;
+        }
+        #saveModal-buttons button, #keyModal-buttons .key-option {
+            padding: 0.7rem 1.5rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background-color 0.2s, transform 0.1s;
+        }
+        #saveModal-buttons button:active, #keyModal-buttons .key-option:active {
+            transform: scale(0.95);
+        }
+        #save-yes { background-color: #4CAF50; color: white; }
+        #save-yes:hover { background-color: #66BB6A; }
+        #save-cancel { background-color: #F44336; color: white; }
+        #save-cancel:hover { background-color: #EF5350; }
+        .key-option {
+            background-color: #424242;
+            color: white;
+            min-width: 40px;
+        }
+        .key-option:hover {
+             background-color: #616161;
+        }
+    </style>
+</head>
+<body>
+    <div id="appContainer">
+        <div id="controls-container">
+            <button id="record-btn" aria-label="Toggle Recording">
+                <div class="record-icon"></div>
+            </button>
+            <button id="key-selector">
+                <span id="current-key">D</span>
+            </button>
+        </div>
+        <canvas id="zenCanvas"></canvas>
+        <div id="startOverlay">
+            <button id="startBtn">Begin</button>
+        </div>
+    </div>
+    
+    <div id="keyModal">
+        <div id="keyModal-content">
+            <p>Select a New Key</p>
+            <div id="keyModal-buttons">
+                <div class="key-option" data-key="C">C</div>
+                <div class="key-option" data-key="D">D</div>
+                <div class="key-option" data-key="E">E</div>
+                <div class="key-option" data-key="F">F</div>
+                <div class="key-option" data-key="G">G</div>
+                <div class="key-option" data-key="A">A</div>
+                <div class="key-option" data-key="B">B</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="saveModal">
+        <p>Save your performance?</p>
+        <div id="saveModal-buttons">
+            <button id="save-yes">Save</button>
+            <button id="save-cancel">Discard</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- DOM Elements ---
+            const canvas = document.getElementById('zenCanvas');
+            const ctx = canvas.getContext('2d');
+            const startOverlay = document.getElementById('startOverlay');
+            const startBtn = document.getElementById('startBtn');
+            const controlsContainer = document.getElementById('controls-container');
+            const recordBtn = document.getElementById('record-btn');
+            const saveModal = document.getElementById('saveModal');
+            const saveYesBtn = document.getElementById('save-yes');
+            const saveCancelBtn = document.getElementById('save-cancel');
+            const keySelector = document.getElementById('key-selector');
+            const keyModal = document.getElementById('keyModal');
+            const keyModalButtons = document.getElementById('keyModal-buttons');
+            const currentKeySpan = document.getElementById('current-key');
+
+            // --- State ---
+            let strings = [];
+            let animationFrameId;
+            let isPlaying = false;
+            let mediaRecorder;
+            let recordedChunks = [];
+            let isRecording = false;
+            let isModalOpen = false;
+            
+            // --- Style Cache ---
+            const style = getComputedStyle(document.documentElement);
+            const keyBgActiveColor = style.getPropertyValue('--key-bg-active').trim();
+            const keyBgColor = style.getPropertyValue('--key-bg').trim();
+            const keyTextActiveColor = style.getPropertyValue('--key-text-active').trim();
+            const keyTextColor = style.getPropertyValue('--key-text').trim();
+            const stringColor = style.getPropertyValue('--string-color').trim();
+            const bgColor = style.getPropertyValue('--bg-color').trim();
+
+            // --- Sound Engine (Karplus-Strong, tuned for clarity) ---
+            const SoundEngine = {
+                audioCtx: null, masterGain: null, isInitialized: false,
+                async init() {
+                    if (this.isInitialized) return;
+                    this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    this.masterGain = this.audioCtx.createGain();
+                    this.masterGain.gain.value = 0.8;
+                    this.masterGain.connect(this.audioCtx.destination);
+                    this.isInitialized = true;
+                },
+                playNote(freq) {
+                    if (!this.isInitialized) return;
+                    const now = this.audioCtx.currentTime;
+                    const sampleRate = this.audioCtx.sampleRate;
+                    
+                    // **IMPROVEMENT**: Shorter decay time to reduce "reverb" effect.
+                    const decayTime = 1.6; 
+                    const bufferSize = sampleRate * decayTime;
+                    const buffer = this.audioCtx.createBuffer(1, bufferSize, sampleRate);
+                    const data = buffer.getChannelData(0);
+                    const delayLength = Math.floor(sampleRate / freq);
+                    const delayLine = new Float32Array(delayLength);
+                    
+                    for (let i = 0; i < delayLength; i++) {
+                        delayLine[i] = Math.random() * 2 - 1;
+                    }
+
+                    let index = 0;
+                    let lastSample = 0;
+                    
+                    // **IMPROVEMENT**: A constant, slightly stronger filter for a cleaner, more guitar-like pluck.
+                    const filterFactor = 0.997; 
+
+                    for (let i = 0; i < bufferSize; i++) {
+                        const currentSample = (delayLine[index] + lastSample) * 0.5 * filterFactor;
+                        lastSample = delayLine[index];
+                        delayLine[index] = currentSample;
+                        data[i] = currentSample;
+                        index = (index + 1) % delayLength;
+                    }
+                    const source = this.audioCtx.createBufferSource();
+                    source.buffer = buffer;
+                    source.connect(this.masterGain);
+                    source.start(now);
+                }
+            };
+
+            // --- Tuning and Scale Logic ---
+            const numStrings = 21;
+            let currentScaleFrequencies = [];
+            
+            const baseScaleD = [
+                73.42, 82.41, 98.00, 110.00, 123.47,       // D2, E2, G2, A2, B2
+                146.83, 164.81, 196.00, 220.00, 246.94,      // D3, E3, G3, A3, B3
+                293.66, 329.63, 392.00, 440.00, 493.88,      // D4, E4, G4, A4, B4
+                587.33, 659.25, 783.99, 880.00, 987.77,      // D5, E5, G5, A5, B5
+                1174.66                                     // D6
+            ];
+
+            const keyOffsets = {
+                'C': -2, 'D': 0, 'E': 2, 'F': 3, 'G': 5, 'A': 7, 'B': 9
+            };
+
+            function generateScale(keyNote) {
+                const semitoneShift = keyOffsets[keyNote];
+                if (semitoneShift === undefined) {
+                    console.error("Invalid key:", keyNote);
+                    return baseScaleD;
+                }
+                const transpositionFactor = Math.pow(2, semitoneShift / 12);
+                currentScaleFrequencies = baseScaleD.map(freq => freq * transpositionFactor);
+            }
+
+
+            // --- Core Drawing and Setup Logic ---
+            function setupCanvasAndStrings() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+                
+                const fretLabels = [];
+                const labelPattern = ['1', '2', '3', '5', '6'];
+                for (let i = 0; i < numStrings; i++) fretLabels.push(labelPattern[i % labelPattern.length]);
+                
+                strings = [];
+                const fretWidth = canvas.width * 0.15;
+                const stringSpacing = canvas.height / (numStrings + 1);
+
+                for (let i = 0; i < numStrings; i++) {
+                    strings.push({
+                        y: stringSpacing * (i + 1),
+                        fretX: 0, fretY: stringSpacing * (i + 1) - stringSpacing / 2,
+                        fretWidth: fretWidth, fretHeight: stringSpacing,
+                        label: fretLabels[i], noteFreq: currentScaleFrequencies[i],
+                        amp: 0, lastStrumTime: 0
+                    });
+                }
+            }
+
+            function gameLoop() {
+                if (!isPlaying) return;
+                strings.forEach(s => { s.amp *= 0.92; });
+                draw();
+                animationFrameId = requestAnimationFrame(gameLoop);
+            }
+
+            function draw() {
+                ctx.fillStyle = bgColor;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                strings.forEach(s => {
+                    ctx.fillStyle = s.amp > 0.1 ? keyBgActiveColor : keyBgColor;
+                    ctx.fillRect(s.fretX, s.fretY, s.fretWidth, s.fretHeight);
+                    
+                    ctx.fillStyle = s.amp > 0.1 ? keyTextActiveColor : keyTextColor;
+                    ctx.font = `bold ${s.fretHeight * 0.4}px Inter`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(s.label, s.fretWidth / 2, s.fretY + s.fretHeight / 2);
+
+                    ctx.beginPath();
+                    ctx.moveTo(s.fretWidth, s.y);
+                    ctx.strokeStyle = stringColor;
+                    ctx.lineWidth = 1.5;
+                    ctx.globalAlpha = 0.8;
+                    for (let x = s.fretWidth; x < canvas.width; x++) {
+                        const wave = Math.sin((x - s.fretWidth) * 0.02) * Math.sin(s.amp * 8) * s.amp * 10;
+                        ctx.lineTo(x, s.y + wave);
+                    }
+                    ctx.stroke();
+                });
+                ctx.globalAlpha = 1.0;
+            }
+
+            // --- Event Handlers ---
+            function handleInteraction(x, y) {
+                if (!isPlaying || isModalOpen) return;
+                const now = performance.now();
+                strings.forEach(s => {
+                    if (y > s.fretY && y < s.fretY + s.fretHeight && now - s.lastStrumTime > 80) {
+                        s.amp = 1;
+                        s.lastStrumTime = now;
+                        SoundEngine.playNote(s.noteFreq);
+                        if (navigator.vibrate) navigator.vibrate(5);
+                    }
+                });
+            }
+
+            canvas.addEventListener('mousedown', e => handleInteraction(e.offsetX, e.offsetY));
+            canvas.addEventListener('mousemove', e => { if (e.buttons === 1) handleInteraction(e.offsetX, e.offsetY); });
+            canvas.addEventListener('touchstart', e => {
+                e.preventDefault();
+                const rect = canvas.getBoundingClientRect();
+                for (let touch of e.touches) handleInteraction(touch.clientX - rect.left, touch.clientY - rect.top);
+            }, { passive: false });
+            canvas.addEventListener('touchmove', e => {
+                e.preventDefault();
+                const rect = canvas.getBoundingClientRect();
+                for (let touch of e.touches) handleInteraction(touch.clientX - rect.left, touch.clientY - rect.top);
+            }, { passive: false });
+            
+            startBtn.addEventListener('click', async () => {
+                await SoundEngine.init();
+                if (!isPlaying) {
+                    isPlaying = true;
+                    if(animationFrameId) cancelAnimationFrame(animationFrameId);
+                    gameLoop();
+                    startOverlay.classList.add('hidden');
+                    controlsContainer.style.display = 'flex';
+                }
+            });
+
+            // --- Controls and Modals ---
+            keySelector.addEventListener('click', () => {
+                if (isRecording) return;
+                keyModal.style.display = 'block';
+                isModalOpen = true;
+            });
+
+            keyModalButtons.addEventListener('click', (e) => {
+                const newKey = e.target.dataset.key;
+                if (newKey) {
+                    currentKeySpan.textContent = newKey;
+                    generateScale(newKey);
+                    setupCanvasAndStrings();
+                    draw();
+                }
+                keyModal.style.display = 'none';
+                isModalOpen = false;
+            });
+
+            recordBtn.addEventListener('click', () => {
+                if (!isRecording) {
+                    try {
+                        const stream = canvas.captureStream(30);
+                        const audioStream = SoundEngine.audioCtx.createMediaStreamDestination();
+                        SoundEngine.masterGain.connect(audioStream);
+                        stream.addTrack(audioStream.stream.getAudioTracks()[0]);
+
+                        mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm; codecs=vp9,opus' });
+                        recordedChunks = [];
+                        mediaRecorder.ondataavailable = e => {
+                            if (e.data.size > 0) recordedChunks.push(e.data);
+                        };
+                        mediaRecorder.start();
+                        isRecording = true;
+                        recordBtn.classList.add('recording');
+                        keySelector.disabled = true;
+                    } catch (err) {
+                        console.error('Error starting recording:', err);
+                    }
+                } else {
+                    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                        mediaRecorder.stop();
+                    }
+                    isRecording = false;
+                    recordBtn.classList.remove('recording');
+                    keySelector.disabled = false;
+                    isModalOpen = true;
+                    saveModal.style.display = 'block';
+                }
+            });
+
+            saveYesBtn.addEventListener('click', () => {
+                if (recordedChunks.length > 0) {
+                    const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = url;
+                    a.download = `guzheng-recording-${new Date().toISOString()}.webm`;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    a.remove();
+                }
+                recordedChunks = [];
+                saveModal.style.display = 'none';
+                isModalOpen = false;
+            });
+            
+            saveCancelBtn.addEventListener('click', () => {
+                recordedChunks = [];
+                saveModal.style.display = 'none';
+                isModalOpen = false;
+            });
+
+            // --- Initial Setup ---
+            window.addEventListener('resize', () => {
+                setupCanvasAndStrings();
+                if (isPlaying) draw();
+            });
+            
+            generateScale('D'); // Set initial key to D
+            setupCanvasAndStrings();
+            draw();
+        });
+    </script>
+</body>
+</html>
