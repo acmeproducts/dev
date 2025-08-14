@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Disk Surfer - Target Order</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background-color: #0c0c1e;
+            color: #ffffff;
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            text-align: center;
+        }
+        canvas {
+            display: block;
+        }
+        #top-bar {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            padding: 15px 0;
+            background: linear-gradient(to bottom, rgba(0,0,0,0.5), transparent);
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            font-size: 16px;
+            pointer-events: none;
+        }
+        #message-container {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 20px;
+            background: rgba(0, 128, 255, 0.8);
+            border-radius: 12px;
+            font-size: 24px;
+            display: none;
+            pointer-events: none;
+            max-width: 80%;
+            text-align: center;
+        }
+         #restart-button {
+            position: absolute;
+            top: 60%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-family: 'Courier New', Courier, monospace;
+            font-size: 18px;
+            transition: background-color 0.3s;
+            display: none; /* Hidden by default */
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gameCanvas"></canvas>
+    <div id="top-bar">
+        <div>Level: <span id="level-count">1</span></div>
+        <div>Target: <span id="target-count">1 / 3</span></div>
+        <div>Lives: <span id="lives-count">3</span></div>
+        <div>Nudges: <span id="nudge-count">0</span></div>
+    </div>
+    <div id="message-container">
+        <p id="message-text"></p>
+    </div>
+    <button id="restart-button">Restart Game</button>
+
+    <script>
+        // --- Basic Setup ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        const levelCountEl = document.getElementById('level-count');
+        const livesCountEl = document.getElementById('lives-count');
+        const targetCountEl = document.getElementById('target-count');
+        const nudgeCountEl = document.getElementById('nudge-count');
+        const messageContainer = document.getElementById('message-container');
+        const messageText = document.getElementById('message-text');
+        const restartButton = document.getElementById('restart-button');
+
+        let currentLevelIndex = 0;
+        let lives = 3;
+        let nudgesLeft = 0;
+        let disks = [];
+        let player = {};
+        let particles = [];
+        let projectiles = [];
+        let gameState = 'playing';
+        let animationFrame = 0;
+        let currentTargetIndex = 1;
+
+        // --- Background Gradient ---
+        const gradients = [
+            ['#0c0c1e', '#1a2a6c'], ['#2c3e50', '#fd746c'], ['#0f2027', '#203a43', '#2c5364'],
+            ['#3a1c71', '#d76d77', '#ffaf7b'], ['#141E30', '#243B55'], ['#434343', '#000000'],
+            ['#536976', '#292E49'], ['#BBD2C5', '#536976']
+        ];
+        let currentGradient = gradients[0];
+
+        // --- Game Configuration ---
+        const PLAYER_CONFIG = { radius: 4, color: '#ffdd00', trailLength: 15, hasShield: false };
+        const PHYSICS_CONFIG = { orbitExpansionRate: 0.4, launchSpeedMultiplier: 0.02, nudgeInfluence: 0.4, projectileSpeed: 2 };
+
+        // --- Pre-cooked Level Blueprints ---
+        const LEVEL_BLUEPRINTS = [
+            { // Level 1
+                disks: [
+                    { x: 0.15, y: 0.5, radius: 25, color: '#4a90e2', rotationSpeed: 0.08, type: 'normal' },
+                    { x: 0.5, y: 0.5, radius: 30, color: '#d0021b', rotationSpeed: -0.07, type: 'normal' },
+                    { x: 0.85, y: 0.5, radius: 25, type: 'enemy', emoji: '😀' }
+                ]
+            },
+            { // Level 2
+                disks: [
+                    { x: 0.1, y: 0.25, radius: 20, color: '#4a90e2', rotationSpeed: 0.06, type: 'normal' },
+                    { x: 0.4, y: 0.75, radius: 25, color: '#d0021b', rotationSpeed: 0.05, type: 'normal' },
+                    { x: 0.7, y: 0.25, radius: 20, color: '#be2edd', rotationSpeed: -0.06, type: 'normal' },
+                    { x: 0.9, y: 0.5, radius: 22, type: 'enemy', movePattern: 'vertical', moveSpeed: 0.001, emoji: '😊' }
+                ]
+            },
+            { // Level 3
+                disks: [
+                    { x: 0.1, y: 0.5, radius: 20, color: '#4a90e2', rotationSpeed: 0.08, type: 'normal' },
+                    { x: 0.5, y: 0.2, radius: 18, color: '#ff8c00', type: 'turret', firingPattern: 'single' },
+                    { x: 0.9, y: 0.7, radius: 25, type: 'enemy', movePattern: 'horizontal', moveSpeed: 0.0015, emoji: '😄' }
+                ]
+            },
+            { // Level 4
+                disks: [
+                    { x: 0.1, y: 0.5, radius: 25, color: '#4a90e2', rotationSpeed: 0.05, type: 'normal' },
+                    { x: 0.3, y: 0.2, radius: 20, color: '#cccccc', type: 'bouncy' },
+                    { x: 0.7, y: 0.5, radius: 28, color: '#20c997', rotationSpeed: -0.06, type: 'phasing' },
+                    { x: 0.9, y: 0.5, radius: 20, type: 'enemy', movePattern: 'circular', moveSpeed: 0.001, emoji: '😂' }
+                ]
+            },
+            { // Level 5
+                disks: [
+                    { x: 0.1, y: 0.5, radius: 25, color: '#4a90e2', rotationSpeed: 0.07, type: 'normal' },
+                    { x: 0.5, y: 0.2, radius: 15, color: '#ffffff', type: 'powerUp-shield' },
+                    { x: 0.6, y: 0.7, radius: 25, color: '#d0021b', rotationSpeed: -0.07, type: 'normal' },
+                    { x: 0.9, y: 0.5, radius: 22, type: 'enemy', movePattern: 'aggressive', moveSpeed: 0.5, emoji: '😎' }
+                ]
+            },
+            { // Level 6
+                disks: [
+                    { x: 0.1, y: 0.1, radius: 20, color: '#4a90e2', rotationSpeed: 0.08, type: 'normal' },
+                    { x: 0.9, y: 0.1, radius: 20, color: '#d0021b', rotationSpeed: -0.08, type: 'normal' },
+                    { x: 0.1, y: 0.9, radius: 20, color: '#20c997', rotationSpeed: 0.08, type: 'normal' },
+                    { x: 0.9, y: 0.9, radius: 20, color: '#be2edd', rotationSpeed: -0.08, type: 'normal' },
+                    { x: 0.5, y: 0.5, radius: 25, type: 'enemy', movePattern: 'circular', moveSpeed: 0.002, emoji: '😇' }
+                ]
+            },
+        ];
+
+        // --- Game Objects ---
+        function createPlayer() { return { ...PLAYER_CONFIG, x: 0, y: 0, velocityX: 0, velocityY: 0, state: 'captured', capturedDiskIndex: 0, justReleasedFrom: -1, orbitAngle: 0, orbitRadius: 0, history: [] }; }
+        function createDisk(props) { return { x: props.x, y: props.y, baseX: props.x, baseY: props.y, baseRadius: props.radius, radius: props.radius, color: props.color, rotationSpeed: props.rotationSpeed || 0, type: props.type, alpha: 1.0, movePattern: props.movePattern, moveSpeed: props.moveSpeed || 0, firingPattern: props.firingPattern, emoji: props.emoji }; }
+        function createParticle(x, y, color = '#ffffff', vy = null) { const angle = Math.random() * Math.PI * 2; const speed = Math.random() * 2 + 1; return { x, y, color, vx: Math.cos(angle) * speed, vy: vy || Math.sin(angle) * speed, life: 1.0, radius: Math.random() * 2 + 1 }; }
+        function createProjectile(x, y, targetX, targetY) { const dx = targetX - x; const dy = targetY - y; const dist = Math.sqrt(dx * dx + dy * dy); return { x, y, vx: (dx / dist) * PHYSICS_CONFIG.projectileSpeed, vy: (dy / dist) * PHYSICS_CONFIG.projectileSpeed, radius: 3, color: '#ff4d4d' }; }
+
+        // --- Game Logic ---
+        function loadLevel(levelIndex) {
+            const levelData = LEVEL_BLUEPRINTS[levelIndex % LEVEL_BLUEPRINTS.length];
+            
+            canvas.width = window.innerWidth; canvas.height = window.innerHeight;
+            disks = []; particles = []; projectiles = []; playerPowerUps = {};
+            
+            levelData.disks.forEach(d => { disks.push(createDisk({ ...d, x: canvas.width * d.x, y: canvas.height * d.y })); });
+            
+            currentTargetIndex = 1;
+            currentGradient = gradients[levelIndex % gradients.length];
+            nudgesLeft = disks.length + 1;
+            player = createPlayer();
+            resetPlayerToStart(0);
+            updateUIDisplay();
+            gameState = 'playing';
+            hideMessage();
+            restartButton.style.display = 'none';
+        }
+
+        function update() {
+            animationFrame++;
+            if (gameState !== 'playing') return;
+
+            player.history.push({x: player.x, y: player.y});
+            if (player.history.length > player.trailLength) player.history.shift();
+            for (let i = particles.length - 1; i >= 0; i--) { const p = particles[i]; p.x += p.vx; p.y += p.vy; p.life -= 0.04; if (p.life <= 0) particles.splice(i, 1); }
+            for (let i = projectiles.length - 1; i >= 0; i--) { const p = projectiles[i]; p.x += p.vx; p.y += p.vy; if (p.x < 0 || p.x > canvas.width || p.y < 0 || p.y > canvas.height) projectiles.splice(i, 1); }
+
+            disks.forEach(disk => {
+                if (disk.type === 'pulsing') disk.radius = disk.baseRadius + Math.sin(animationFrame * 0.02) * 5;
+                else if (disk.type === 'phasing') disk.alpha = 0.5 + (Math.sin(animationFrame * 0.03) + 1) / 2 * 0.5;
+                else if (disk.type === 'enemy' || disk.type === 'turret') {
+                    const moveRange = 100;
+                    if (disk.movePattern === 'vertical') disk.y = disk.baseY + Math.sin(animationFrame * disk.moveSpeed * 100) * moveRange;
+                    else if (disk.movePattern === 'horizontal') disk.x = disk.baseX + Math.sin(animationFrame * disk.moveSpeed * 100) * moveRange;
+                    else if (disk.movePattern === 'circular') { disk.x = disk.baseX + Math.cos(animationFrame * disk.moveSpeed * 100) * (moveRange / 2); disk.y = disk.baseY + Math.sin(animationFrame * disk.moveSpeed * 100) * (moveRange / 2); }
+                }
+                if (disk.type === 'enemy' && disk.behavior && player.state === 'flying') {
+                    const dx = player.x - disk.x; const dy = player.y - disk.y; const dist = Math.sqrt(dx*dx + dy*dy);
+                    const speed = 0.5;
+                    if (disk.behavior === 'aggressive' && dist < 300) { disk.x += (dx/dist) * speed; disk.y += (dy/dist) * speed; }
+                    else if (disk.behavior === 'defensive' && dist < 200) { disk.x -= (dx/dist) * speed; disk.y -= (dy/dist) * speed; }
+                }
+                if (disk.type === 'turret') {
+                    const fireRate = disk.firingPattern === 'burst' ? 10 : (disk.firingPattern === 'stream' ? 20 : 90);
+                    if (animationFrame % fireRate === 0) { projectiles.push(createProjectile(disk.x, disk.y, player.x, player.y)); }
+                }
+            });
+
+            if (player.state === 'flying') {
+                player.x += player.velocityX; player.y += player.velocityY;
+                for (let i = projectiles.length - 1; i >= 0; i--) {
+                    const p = projectiles[i];
+                    const dx = player.x - p.x; const dy = player.y - p.y;
+                    if (Math.sqrt(dx*dx + dy*dy) < player.radius + p.radius) {
+                        if (player.hasShield) { player.hasShield = false; projectiles.splice(i, 1); } 
+                        else { handleLifeLost(); return; }
+                    }
+                }
+                for (let i = disks.length - 1; i >= 0; i--) {
+                    if (i === player.justReleasedFrom) continue;
+                    const disk = disks[i];
+                    const dx = player.x - disk.x; const dy = player.y - disk.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    if (distance < disk.radius + player.radius) {
+                        if (i === currentTargetIndex) {
+                            currentTargetIndex++;
+                            if (currentTargetIndex >= disks.length) {
+                                triggerReward("Level Cleared!");
+                                gameState = 'levelComplete';
+                                setTimeout(() => { currentLevelIndex++; loadLevel(currentLevelIndex); }, 2000);
+                                break;
+                            }
+                        }
+                        if (disk.type === 'bouncy') {
+                            const normalX = dx / distance; const normalY = dy / distance; const dotProduct = player.velocityX * normalX + player.velocityY * normalY;
+                            player.velocityX -= 2 * dotProduct * normalX; player.velocityY -= 2 * dotProduct * normalY;
+                            player.justReleasedFrom = i;
+                            for (let j = 0; j < 10; j++) particles.push(createParticle(player.x, player.y, disk.color));
+                        } else if (disk.type.startsWith('powerUp')) {
+                            acquirePowerUp(disk.type.split('-')[1]);
+                            disks.splice(i, 1);
+                        } else if (disk.alpha > 0.5) {
+                            player.state = 'captured'; player.capturedDiskIndex = i; player.justReleasedFrom = -1; player.orbitRadius = 0; player.orbitAngle = Math.atan2(dy, dx); player.velocityX = 0; player.velocityY = 0;
+                            updateUIDisplay();
+                            break;
+                        }
+                    }
+                }
+            } else if (player.state === 'captured') {
+                const disk = disks[player.capturedDiskIndex]; if (!disk) return;
+                if (player.orbitRadius < disk.radius - player.radius) { player.orbitRadius += PHYSICS_CONFIG.orbitExpansionRate; }
+                player.orbitAngle += disk.rotationSpeed;
+                player.x = disk.x + Math.cos(player.orbitAngle) * player.orbitRadius; player.y = disk.y + Math.sin(player.orbitAngle) * player.orbitRadius;
+            }
+
+            if (player.x < -50 || player.x > canvas.width + 50 || player.y < -50 || player.y > canvas.height + 50) {
+                handleLifeLost();
+            }
+        }
+
+        function draw() {
+            let grad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+            const colorStops = currentGradient.length;
+            currentGradient.forEach((color, index) => { grad.addColorStop(index / (colorStops - 1), color); });
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            disks.forEach((disk, index) => {
+                ctx.globalAlpha = disk.alpha;
+                ctx.beginPath();
+                
+                if (disk.type === 'enemy') {
+                    const emojiSize = disk.radius * 1.8;
+                    ctx.font = `${emojiSize}px sans-serif`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(disk.emoji, disk.x, disk.y);
+                } else {
+                    ctx.arc(disk.x, disk.y, disk.radius, 0, Math.PI * 2);
+                    if (disk.type.startsWith('powerUp')) { ctx.fillStyle = 'rgba(255,255,255,0.2)'; } 
+                    else if (disk.type === 'bouncy' || disk.type === 'turret') { ctx.fillStyle = disk.color; } 
+                    else { ctx.fillStyle = 'transparent'; }
+                    ctx.strokeStyle = disk.color;
+                    ctx.lineWidth = 1.5; ctx.shadowColor = disk.color; ctx.shadowBlur = 10;
+                    ctx.fill(); ctx.stroke();
+                    if (disk.type === 'turret') { ctx.shadowColor = '#FFF'; ctx.shadowBlur = 20; ctx.lineWidth = 2.5; ctx.strokeStyle = '#FFF'; ctx.stroke(); }
+                    if (disk.type === 'turret') { ctx.beginPath(); ctx.arc(disk.x, disk.y, disk.radius * 0.4, 0, Math.PI * 2); ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fill(); }
+                    if (disk.type.startsWith('powerUp')) {
+                        ctx.fillStyle = '#FFF'; ctx.font = `${disk.radius}px Courier New`; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+                        const icon = disk.type === 'powerUp-shield' ? 'S' : 'N';
+                        ctx.fillText(icon, disk.x, disk.y);
+                    }
+                }
+                
+                // Pulsing target indicator
+                if (index === currentTargetIndex) {
+                    ctx.strokeStyle = `rgba(255, 255, 255, ${0.5 + Math.sin(animationFrame * 0.1) * 0.5})`;
+                    ctx.lineWidth = 3;
+                    ctx.beginPath();
+                    ctx.arc(disk.x, disk.y, disk.radius + 8, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+
+                ctx.shadowBlur = 0;
+                ctx.globalAlpha = 1.0;
+            });
+            
+            projectiles.forEach(p => { ctx.beginPath(); ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2); ctx.fillStyle = p.color; ctx.shadowColor = p.color; ctx.shadowBlur = 5; ctx.fill(); ctx.shadowBlur = 0; });
+
+            if (gameState !== 'gameOver') {
+                for (let i = 0; i < player.history.length; i++) { const pos = player.history[i]; ctx.beginPath(); ctx.arc(pos.x, pos.y, player.radius * (i / player.history.length), 0, Math.PI * 2); ctx.fillStyle = `rgba(255, 221, 0, ${i / player.history.length * 0.5})`; ctx.fill(); }
+                ctx.beginPath(); ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2); ctx.fillStyle = player.color; ctx.shadowColor = player.color; ctx.shadowBlur = 8; ctx.fill(); ctx.shadowBlur = 0;
+                if (player.hasShield) { ctx.beginPath(); ctx.arc(player.x, player.y, player.radius + 4, 0, Math.PI * 2); ctx.strokeStyle = '#00ffff'; ctx.lineWidth = 2; ctx.stroke(); }
+            }
+            particles.forEach(p => { ctx.beginPath(); ctx.arc(p.x, p.y, p.radius * p.life, 0, Math.PI * 2); ctx.fillStyle = p.color; ctx.globalAlpha = p.life; ctx.fill(); ctx.globalAlpha = 1.0; });
+        }
+
+        function gameLoop() { update(); draw(); requestAnimationFrame(gameLoop); }
+
+        function handleInteraction(e) {
+            if (gameState !== 'playing') return;
+            if (player.state === 'captured') {
+                const disk = disks[player.capturedDiskIndex]; const speed = player.orbitRadius * PHYSICS_CONFIG.launchSpeedMultiplier; const tangentAngle = player.orbitAngle + (Math.PI / 2 * Math.sign(disk.rotationSpeed)); player.velocityX = Math.cos(tangentAngle) * speed; player.velocityY = Math.sin(tangentAngle) * speed; player.justReleasedFrom = player.capturedDiskIndex; player.state = 'flying'; for (let i = 0; i < 15; i++) particles.push(createParticle(player.x));
+            } else if (player.state === 'flying' && nudgesLeft > 0) {
+                nudgesLeft--; updateUIDisplay();
+                const touchX = e.touches ? e.touches[0].clientX : e.clientX; const touchY = e.touches ? e.touches[0].clientY : e.clientY;
+                const currentSpeed = Math.sqrt(player.velocityX**2 + player.velocityY**2);
+                const nudgeDirX = player.x - touchX; const nudgeDirY = player.y - touchY; const nudgeLen = Math.sqrt(nudgeDirX**2 + nudgeDirY**2); const normNudgeX = nudgeDirX / nudgeLen; const normNudgeY = nudgeDirY / nudgeLen;
+                const normVelX = player.velocityX / currentSpeed || 0; const normVelY = player.velocityY / currentSpeed || 0;
+                const influence = PHYSICS_CONFIG.nudgeInfluence; const newDirX = normVelX * (1 - influence) + normNudgeX * influence; const newDirY = normVelY * (1 - influence) + normNudgeY * influence;
+                const newLen = Math.sqrt(newDirX**2 + newDirY**2); const finalDirX = newDirX / newLen; const finalDirY = newDirY / newLen;
+                player.velocityX = finalDirX * currentSpeed; player.velocityY = finalDirY * currentSpeed;
+                for (let i = 0; i < 5; i++) particles.push(createParticle(touchX, touchY, 'rgba(200, 200, 255, 0.8)'));
+            }
+        }
+
+        function handleLifeLost() {
+            lives--;
+            updateUIDisplay();
+            if (lives <= 0) {
+                gameState = 'gameOver';
+                showMessage("Game Over");
+                restartButton.style.display = 'block';
+            } else {
+                resetPlayerToStart(player.capturedDiskIndex); // Return to last captured disk
+            }
+        }
+
+        function acquirePowerUp(type) {
+            if (type === 'shield') player.hasShield = true;
+            else if (type === 'extraNudges') nudgesLeft += 3;
+            updateUIDisplay();
+        }
+
+        function resetPlayerToStart(diskIndex = 0) {
+            const startDisk = disks[diskIndex];
+            player.state = 'captured'; 
+            player.capturedDiskIndex = diskIndex; 
+            player.justReleasedFrom = -1; 
+            player.x = startDisk.x; 
+            player.y = startDisk.y; 
+            player.orbitRadius = 0; 
+            player.orbitAngle = 0; 
+            player.velocityX = 0; 
+            player.velocityY = 0; 
+            player.history = [];
+            projectiles = [];
+        }
+
+        function triggerReward(message) {
+            showMessage(message);
+            for (let i = 0; i < 100; i++) {
+                const x = Math.random() * canvas.width;
+                const color = ['#ffdd00', '#ffffff', '#4a90e2'][Math.floor(Math.random() * 3)];
+                particles.push(createParticle(x, 0, color, Math.random() * 2 + 1));
+            }
+        }
+
+        function updateUIDisplay() {
+            levelCountEl.textContent = (currentLevelIndex % LEVEL_BLUEPRINTS.length) + 1;
+            livesCountEl.textContent = lives;
+            targetCountEl.textContent = `${currentTargetIndex} / ${disks.length - 1}`;
+            nudgeCountEl.textContent = nudgesLeft;
+        }
+        function showMessage(text) { messageText.textContent = text; messageContainer.style.display = 'block'; }
+        function hideMessage() { messageContainer.style.display = 'none'; }
+        
+        function restartGame() {
+            currentLevelIndex = 0;
+            lives = 3;
+            loadLevel(0);
+        }
+
+        window.addEventListener('resize', () => loadLevel(currentLevelIndex));
+        canvas.addEventListener('mousedown', (e) => handleInteraction(e));
+        canvas.addEventListener('touchstart', (e) => { e.preventDefault(); handleInteraction(e); });
+        restartButton.addEventListener('click', restartGame);
+
+        loadLevel(0);
+        gameLoop();
+    </script>
+</body>
+</html>
