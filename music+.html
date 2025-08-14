@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Guzheng Simulator</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400&display=swap');
+        :root {
+            --bg-color: #6D4C41;
+            --string-color: #E0E0E0;
+            --key-bg: #ECEFF1;
+            --key-bg-active: #81C784;
+            --key-text: #37474F;
+            --key-text-active: #FFFFFF;
+            --record-red: #E53935;
+            --control-bg: rgba(0, 0, 0, 0.4);
+            --control-text: #E0E0E0;
+        }
+        body, html {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden;
+            background-color: var(--bg-color);
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        #appContainer {
+            position: relative;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+        }
+        canvas {
+            flex-grow: 1;
+            width: 100%;
+            cursor: pointer;
+            touch-action: none;
+        }
+        #startOverlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+        }
+        #startBtn {
+            padding: 1rem 2rem;
+            font-size: 1.2rem;
+            color: var(--key-bg);
+            background-color: transparent;
+            border: 1px solid var(--key-bg);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        #startBtn:hover {
+            background-color: var(--key-bg);
+            color: var(--key-text);
+        }
+        #controls-container {
+            position: absolute;
+            top: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 10px;
+            z-index: 50;
+        }
+        #record-btn {
+            width: 36px;
+            height: 36px;
+            border: none;
+            background-color: var(--control-bg);
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            transition: background-color 0.2s;
+        }
+        #record-btn:hover {
+            background-color: rgba(0, 0, 0, 0.6);
+        }
+        #record-btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        .record-icon {
+            width: 16px;
+            height: 16px;
+            background-color: white;
+            border-radius: 50%;
+            transition: all 0.2s;
+        }
+        .recording .record-icon {
+            background-color: var(--record-red);
+            animation: pulse 1.5s infinite ease-in-out;
+        }
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(0.9); }
+            100% { transform: scale(1); }
+        }
+        #saveModal {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background-color: #37474F;
+            color: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.5);
+            text-align: center;
+            z-index: 150;
+            display: none;
+        }
+        #saveModal p {
+            margin-top: 0;
+            font-size: 1.1rem;
+        }
+        #saveModal-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        #saveModal-buttons button {
+            padding: 0.5rem 1.5rem;
+            border: none;
+            border-radius: 4px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        #saveModal-buttons #save-yes {
+            background-color: #4CAF50;
+            color: white;
+        }
+        #saveModal-buttons #save-yes:hover {
+            background-color: #66BB6A;
+        }
+        #saveModal-buttons #save-cancel {
+            background-color: #F44336;
+            color: white;
+        }
+        #saveModal-buttons #save-cancel:hover {
+            background-color: #EF5350;
+        }
+        #key-selector {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            padding: 0.5rem 1rem;
+            font-size: 1rem;
+            background-color: var(--control-bg);
+            color: var(--control-text);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            z-index: 50;
+            -webkit-user-select: none;
+            user-select: none;
+        }
+        #key-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            background-color: var(--control-bg);
+            color: var(--control-text);
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+            padding: 0.5rem;
+            display: none;
+            z-index: 51;
+        }
+        #key-dropdown.show {
+            display: block;
+        }
+        #key-dropdown div {
+            padding: 0.25rem 0.5rem;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        #key-dropdown div:hover {
+            background-color: rgba(255, 255, 255, 0.2);
+        }
+    </style>
+</head>
+<body>
+    <div id="appContainer">
+        <div id="controls-container">
+            <button id="record-btn" aria-label="Toggle Recording">
+                <div class="record-icon"></div>
+            </button>
+        </div>
+        <div id="key-selector">
+            Key: <span id="current-key">D</span>
+            <div id="key-dropdown">
+                <div data-key="C">C</div>
+                <div data-key="E♭">E♭</div>
+                <div data-key="E">E</div>
+                <div data-key="F">F</div>
+                <div data-key="G">G</div>
+                <div data-key="A">A</div>
+                <div data-key="B♭">B♭</div>
+                <div data-key="B">B</div>
+            </div>
+        </div>
+        <canvas id="zenCanvas"></canvas>
+        <div id="startOverlay">
+            <button id="startBtn">Begin</button>
+        </div>
+    </div>
+    
+    <div id="saveModal">
+        <p>Do you want to save the recording?</p>
+        <div id="saveModal-buttons">
+            <button id="save-yes">Yes</button>
+            <button id="save-cancel">Cancel</button>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // --- DOM Elements ---
+            const canvas = document.getElementById('zenCanvas');
+            const ctx = canvas.getContext('2d');
+            const startOverlay = document.getElementById('startOverlay');
+            const startBtn = document.getElementById('startBtn');
+            const recordBtn = document.getElementById('record-btn');
+            const recordIcon = document.querySelector('.record-icon');
+            const saveModal = document.getElementById('saveModal');
+            const saveYesBtn = document.getElementById('save-yes');
+            const saveCancelBtn = document.getElementById('save-cancel');
+            const keySelector = document.getElementById('key-selector');
+            const keyDropdown = document.getElementById('key-dropdown');
+            const currentKeySpan = document.getElementById('current-key');
+
+            // --- State ---
+            let strings = [];
+            let animationFrameId;
+            let isPlaying = false;
+            let mediaRecorder;
+            let recordedChunks = [];
+            let isRecording = false;
+            let isModalOpen = false;
+            let isKeySelectorDragging = false;
+            const dragThreshold = 5; // Pixels to distinguish a drag from a click
+            
+            // Get CSS variable values once for use in the draw function
+            const style = getComputedStyle(document.documentElement);
+            const keyBgActiveColor = style.getPropertyValue('--key-bg-active').trim();
+            const keyBgColor = style.getPropertyValue('--key-bg').trim();
+            const keyTextActiveColor = style.getPropertyValue('--key-text-active').trim();
+            const keyTextColor = style.getPropertyValue('--key-text').trim();
+            const stringColor = style.getPropertyValue('--string-color').trim();
+            const bgColor = style.getPropertyValue('--bg-color').trim();
+
+            // --- Sound Engine (Hybrid Karplus-Strong) ---
+            const SoundEngine = {
+                audioCtx: null, masterGain: null, isInitialized: false,
+                async init() {
+                    if (this.isInitialized) return;
+                    this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+                    this.masterGain = this.audioCtx.createGain();
+                    this.masterGain.gain.value = 0.8;
+                    this.masterGain.connect(this.audioCtx.destination);
+                    this.isInitialized = true;
+                },
+                playNote(freq) {
+                    if (!this.isInitialized) return;
+                    
+                    const now = this.audioCtx.currentTime;
+                    const sampleRate = this.audioCtx.sampleRate;
+                    
+                    // The "Pluck" - a short burst of filtered noise for a crisp attack
+                    const noise = this.audioCtx.createBufferSource();
+                    const bufferSize = this.audioCtx.sampleRate * 0.05;
+                    const buffer = this.audioCtx.createBuffer(1, bufferSize, this.audioCtx.sampleRate);
+                    const data = buffer.getChannelData(0);
+                    for (let i = 0; i < bufferSize; i++) {
+                        data[i] = Math.random() * 2 - 1;
+                    }
+                    noise.buffer = buffer;
+
+                    const noiseFilter = this.audioCtx.createBiquadFilter();
+                    noiseFilter.type = 'bandpass';
+                    noiseFilter.frequency.value = freq * 2;
+                    noiseFilter.Q.value = 0.5;
+
+                    const noiseGain = this.audioCtx.createGain();
+                    noiseGain.gain.setValueAtTime(0.3, now);
+                    noiseGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.05);
+
+                    noise.connect(noiseFilter);
+                    noiseFilter.connect(noiseGain);
+                    noiseGain.connect(this.masterGain);
+                    
+                    // The "Body" of the tone - Karplus-Strong for clean resonance
+                    const delayLength = Math.floor(sampleRate / freq);
+                    const delayLine = new Float32Array(delayLength);
+                    
+                    for (let i = 0; i < delayLength; i++) {
+                        delayLine[i] = Math.random() * 2 - 1;
+                    }
+
+                    const bodyNode = this.audioCtx.createScriptProcessor(2048, 1, 1);
+                    let index = 0;
+                    bodyNode.onaudioprocess = e => {
+                        const output = e.outputBuffer.getChannelData(0);
+                        const filterFactor = 0.998;
+                        for (let i = 0; i < output.length; i++) {
+                            const currentSample = (delayLine[index] + (delayLine[(index + 1) % delayLength])) * 0.5 * filterFactor;
+                            delayLine[index] = currentSample;
+                            output[i] = currentSample;
+                            index = (index + 1) % delayLength;
+                        }
+                    };
+
+                    const bodyGain = this.audioCtx.createGain();
+                    bodyGain.gain.setValueAtTime(0.5, now);
+                    bodyGain.gain.exponentialRampToValueAtTime(0.0001, now + 1.5);
+                    
+                    bodyNode.connect(bodyGain);
+                    bodyGain.connect(this.masterGain);
+                    
+                    noise.start(now);
+                    noise.stop(now + 0.05);
+                }
+            };
+
+            // Frequency and interval data for accurate tuning
+            const A4_FREQ = 440.00;
+            const noteSemitonesFromA4 = {
+                'C': -9, 'C♯': -8, 'D': -7, 'D♯': -6, 'E♭': -6, 'E': -5, 'F': -4, 'F♯': -3, 'G': -2, 'G♯': -1, 'A': 0, 'A♯': 1, 'B♭': 1, 'B': 2
+            };
+            
+            const pentatonicScales = {
+                'C': ['C', 'D', 'E', 'G', 'A'],
+                'E♭': ['E♭', 'F', 'G', 'B♭', 'C'],
+                'E': ['E', 'F♯', 'G♯', 'B', 'C♯'],
+                'F': ['F', 'G', 'A', 'C', 'D'],
+                'G': ['G', 'A', 'B', 'D', 'E'],
+                'A': ['A', 'B', 'C♯', 'E', 'F♯'],
+                'B♭': ['B♭', 'C', 'D', 'F', 'G'],
+                'B': ['B', 'C♯', 'D♯', 'F♯', 'G♯'],
+                'D': ['D', 'E', 'F♯', 'A', 'B']
+            };
+
+            const numStrings = 21;
+            let guzhengScale = generateScale('D');
+
+            function generateScale(keyNote) {
+                const scaleNotes = pentatonicScales[keyNote];
+                let currentScale = [];
+                let noteIndex = 0;
+                let currentOctave = 2; // Start at D2
+                
+                for (let i = 0; i < numStrings; i++) {
+                    const noteName = scaleNotes[i % 5];
+                    
+                    if ((i + 1) % 5 === 0) {
+                        currentOctave++;
+                    }
+                    
+                    let freq = A4_FREQ * Math.pow(2, (noteSemitonesFromA4[noteName] + (currentOctave - 4) * 12) / 12);
+                    currentScale.push(freq);
+                }
+                return currentScale;
+            }
+
+            // --- Core Logic ---
+            function setupCanvasAndStrings() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+                
+                // New numbering based on user request
+                const fretLabels = [];
+                const labelPattern = ['1', '2', '3', '5', '6'];
+                for (let i = 0; i < numStrings; i++) {
+                    fretLabels.push(labelPattern[i % labelPattern.length]);
+                }
+                
+                strings = [];
+                const fretWidth = canvas.width * 0.18;
+                const stringSpacing = canvas.height / (numStrings + 1);
+
+                for (let i = 0; i < numStrings; i++) {
+                    const noteFreq = guzhengScale[i] || 0;
+                    strings.push({
+                        y: stringSpacing * (i + 1),
+                        fretX: 0,
+                        fretY: stringSpacing * (i + 1) - stringSpacing / 2,
+                        fretWidth: fretWidth,
+                        fretHeight: stringSpacing,
+                        label: fretLabels[i],
+                        noteFreq: noteFreq,
+                        amp: 0,
+                        lastStrumTime: 0
+                    });
+                }
+            }
+
+            function gameLoop() {
+                if (!isPlaying) return;
+                
+                strings.forEach(s => { s.amp *= 0.90; });
+                draw();
+                animationFrameId = requestAnimationFrame(gameLoop);
+            }
+
+            function draw() {
+                ctx.fillStyle = bgColor;
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                
+                strings.forEach(s => {
+                    ctx.fillStyle = s.amp > 0.1 ? keyBgActiveColor : keyBgColor;
+                    ctx.fillRect(s.fretX, s.fretY, s.fretWidth, s.fretHeight);
+                    
+                    ctx.fillStyle = s.amp > 0.1 ? keyTextActiveColor : keyTextColor;
+                    ctx.font = `bold ${s.fretHeight * 0.4}px Inter`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(s.label, s.fretWidth / 2, s.fretY + s.fretHeight / 2);
+
+                    ctx.beginPath();
+                    ctx.moveTo(s.fretWidth, s.y);
+                    ctx.strokeStyle = stringColor;
+                    ctx.lineWidth = 1.5;
+                    ctx.globalAlpha = 0.8;
+
+                    for (let x = s.fretWidth; x < canvas.width; x++) {
+                        const wave = Math.sin((x - s.fretWidth) * 0.02) * Math.sin(s.amp * 8) * s.amp * 10;
+                        ctx.lineTo(x, s.y + wave);
+                    }
+                    ctx.stroke();
+                });
+                ctx.globalAlpha = 1.0;
+            }
+
+            // --- Event Handlers ---
+            function handleInteraction(x, y) {
+                if (!isPlaying || isModalOpen) return;
+                const now = performance.now();
+                const debounceTime = 80; // Minimum time between strums on the same string
+                strings.forEach(s => {
+                    if (y > s.fretY && y < s.fretY + s.fretHeight && now - s.lastStrumTime > debounceTime) {
+                        s.amp = 1;
+                        s.lastStrumTime = now;
+                        SoundEngine.playNote(s.noteFreq);
+                        if (navigator.vibrate) navigator.vibrate(10);
+                    }
+                });
+            }
+
+            canvas.addEventListener('mousedown', e => handleInteraction(e.offsetX, e.offsetY));
+            canvas.addEventListener('mousemove', e => { if (e.buttons === 1) handleInteraction(e.offsetX, e.offsetY); });
+            canvas.addEventListener('touchstart', e => {
+                e.preventDefault();
+                const rect = canvas.getBoundingClientRect();
+                for (let i = 0; i < e.touches.length; i++) {
+                    handleInteraction(e.touches[i].clientX - rect.left, e.touches[i].clientY - rect.top);
+                }
+            }, { passive: false });
+            canvas.addEventListener('touchmove', e => {
+                e.preventDefault();
+                const rect = canvas.getBoundingClientRect();
+                for (let i = 0; i < e.touches.length; i++) {
+                    handleInteraction(e.touches[i].clientX - rect.left, e.touches[i].clientY - rect.top);
+                }
+            }, { passive: false });
+
+            // Key Selector Drag & Click functionality
+            keySelector.addEventListener('click', (e) => {
+                keyDropdown.classList.toggle('show');
+            });
+            keyDropdown.addEventListener('click', (e) => {
+                const newKey = e.target.dataset.key;
+                if (newKey) {
+                    currentKeySpan.textContent = newKey;
+                    guzhengScale = generateScale(newKey);
+                    setupCanvasAndStrings();
+                    draw();
+                    keyDropdown.classList.remove('show');
+                }
+            });
+
+
+            // Recording Controls
+            recordBtn.addEventListener('click', () => {
+                if (!isRecording) {
+                    try {
+                        const stream = canvas.captureStream(30);
+                        const audioStream = SoundEngine.audioCtx.createMediaStreamDestination();
+                        SoundEngine.masterGain.connect(audioStream);
+                        stream.addTrack(audioStream.stream.getAudioTracks()[0]);
+
+                        mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm; codecs=vp9,opus' });
+                        recordedChunks = [];
+                        mediaRecorder.ondataavailable = e => {
+                            if (e.data.size > 0) recordedChunks.push(e.data);
+                        };
+                        mediaRecorder.start();
+                        isRecording = true;
+                        recordBtn.classList.add('recording');
+                    } catch (err) {
+                        console.error('Error starting recording:', err);
+                    }
+                } else {
+                    if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                        mediaRecorder.stop();
+                    }
+                    isRecording = false;
+                    recordBtn.classList.remove('recording');
+                    isModalOpen = true;
+                    saveModal.style.display = 'block';
+                }
+            });
+
+            saveYesBtn.addEventListener('click', () => {
+                if (recordedChunks.length > 0) {
+                    const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.href = url;
+                    a.download = `guzheng-recording-${Date.now()}.webm`;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    a.remove();
+                }
+                saveModal.style.display = 'none';
+                isModalOpen = false;
+            });
+
+            saveCancelBtn.addEventListener('click', () => {
+                recordedChunks = [];
+                saveModal.style.display = 'none';
+                isModalOpen = false;
+            });
+
+            startBtn.addEventListener('click', async () => {
+                if (!SoundEngine.isInitialized) await SoundEngine.init();
+                if (!isPlaying) {
+                    isPlaying = true;
+                    if(animationFrameId) cancelAnimationFrame(animationFrameId);
+                    gameLoop();
+                    startOverlay.style.opacity = '0';
+                    startOverlay.style.pointerEvents = 'none';
+                }
+            });
+
+            window.addEventListener('resize', () => {
+                setupCanvasAndStrings();
+                if (isPlaying) draw();
+            });
+            
+            window.onload = function() {
+                setupCanvasAndStrings();
+                draw();
+            };
+        });
+    </script>
+</body>
+</html>
