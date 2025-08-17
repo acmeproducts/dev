@@ -68,7 +68,13 @@
   .warn{background:#7c2d12}
 </style>
 </head>
-<body>
+<body><button id="pat-button" style="position: fixed; top: 10px; right: 10px; z-index: 1000;">PAT</button>
+<div id="pat-modal" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:white; padding:20px; border:1px solid #ccc; z-index:2000;">
+<label for="pat-input">Enter Personal Access Token:</label><br/>
+<input id="pat-input" style="width:100%; margin: 10px 0;" type="password"/><br/>
+<button onclick="savePAT()">Save</button>
+<button onclick="closePATModal()">Cancel</button>
+</div>
 <div class="wrap">
 <div>
 <h1>GitHub Tablet Editor</h1>
@@ -555,5 +561,73 @@
   })();
 })();
 </script>
-</body>
+<script>
+function openPATModal() {
+  document.getElementById('pat-modal').style.display = 'block';
+}
+
+function closePATModal() {
+  document.getElementById('pat-modal').style.display = 'none';
+}
+
+function savePAT() {
+  const token = document.getElementById('pat-input').value;
+  if (token) {
+    localStorage.setItem('github_pat', token);
+    closePATModal();
+    alert('PAT saved in local storage.');
+    triggerRepoLoad();
+  }
+}
+
+function getPAT() {
+  return localStorage.getItem('github_pat') || '';
+}
+
+function triggerRepoLoad() {
+  const userInput = document.getElementById("user");
+  if (userInput && userInput.value) {
+    loadRepos(userInput.value);
+  }
+}
+
+document.getElementById('pat-button').addEventListener('click', openPATModal);
+
+document.addEventListener("DOMContentLoaded", function () {
+  const userInput = document.getElementById("user");
+  const repoSelect = document.getElementById("repo");
+
+  function loadRepos(username) {
+    const token = getPAT();
+    if (!token) return;
+
+    fetch(`https://api.github.com/users/${username}/repos`, {
+      headers: { Authorization: "token " + token }
+    })
+      .then(response => response.json())
+      .then(repos => {
+        repoSelect.innerHTML = "";
+        repos.forEach(repo => {
+          const option = document.createElement("option");
+          option.value = repo.name;
+          option.textContent = repo.name;
+          repoSelect.appendChild(option);
+        });
+        if (repos.length) {
+          repoSelect.dispatchEvent(new Event("change"));
+        }
+      })
+      .catch(() => {
+        repoSelect.innerHTML = "<option disabled>Error loading repos</option>";
+      });
+  }
+
+  window.loadRepos = loadRepos;
+  window.triggerRepoLoad = triggerRepoLoad;
+
+  if (getPAT()) {
+    triggerRepoLoad();
+  }
+});
+</script></body>
 </html>
