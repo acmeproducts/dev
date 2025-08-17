@@ -1,0 +1,559 @@
+<!DOCTYPE html>
+
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>GitHub Tablet Editor — v7</title>
+<style>
+  :root{
+    --gap:12px;--pad:12px;--border:1px solid #d0d7de;--radius:10px;
+    --bg:#f6f8fa;--fg:#24292f;--muted:#57606a;--accent:#0969da;--ok:#1a7f37;--err:#d1242f;
+    --mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial}
+  .wrap{height:100vh;display:flex;flex-direction:column;gap:var(--gap);padding:var(--pad);overflow:hidden}
+  h1{margin:0 0 4px 0;font-size:18px}
+  .muted{color:var(--muted);font-size:12px}
+  .card{background:#fff;border:var(--border);border-radius:var(--radius);padding:var(--pad)}
+  .row{display:flex;flex-wrap:wrap;gap:var(--gap);align-items:center}
+  label{font-size:12px;color:var(--muted);display:block;margin-bottom:4px}
+  input[type=text],input[type=search],select{padding:10px 12px;border:var(--border);border-radius:8px;background:#fff;min-width:200px}
+  button{padding:10px 14px;border:var(--border);border-radius:8px;background:#fff;font-weight:600;cursor:pointer}
+  button.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+  .icon{padding:6px 8px}
+  /* Inline dropdown for omni search */
+  .omni-wrap{position:relative}
+  .omni-list{
+    position:absolute; top:100%; left:0; right:0; z-index:50;
+    background:#fff; border:var(--border); border-radius:8px; margin-top:6px;
+    max-height:45vh; overflow:auto; display:none;
+  }
+  .omni-item{padding:8px 12px; border-bottom:var(--border); font-family:var(--mono); font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer}
+  .omni-item:last-child{border-bottom:none}
+  .omni-item:hover{background:#f0f3f6}
+  /* Panes */
+  .grid{display:grid;grid-template-columns:1fr;gap:var(--gap);height:calc(100vh - 230px)}
+  @media (orientation:landscape) and (min-width:900px){
+    .grid{grid-template-columns:1fr 1fr;height:calc(100vh - 200px)}
+  }
+  .pane{display:flex;flex-direction:column;min-height:0}
+  .pane .header{display:flex;align-items:center;justify-content:space-between}
+  .chev{font-weight:700;cursor:pointer;border:none;background:transparent;font-size:18px;line-height:1}
+  .textarea-wrap{display:flex;flex-direction:column;gap:8px;min-height:0;flex:1}
+  textarea{width:100%;height:40vh;border:var(--border);border-radius:8px;font-family:var(--mono);font-size:13px;line-height:1.35;resize:vertical;min-height:10lh;max-height:60vh;overflow:auto}
+  .controls{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+  .center{display:flex;justify-content:center}
+  .collapsed .textarea-wrap{display:none}
+  .collapsed .header-title::after{content:" (collapsed)"; color:var(--muted); font-weight:400; font-size:12px}
+  .row-gap{display:grid;gap:var(--gap)}
+  /* Modals */
+  .modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.35);padding:20px;z-index:9990}
+  .modal.open{display:flex}
+  .panel{background:#fff;border:var(--border);border-radius:10px;overflow:auto;padding:16px}
+  #diffModal .panel{width:50vw;height:50vh;max-width:800px;min-width:320px}
+  @media (max-width:800px){ #diffModal .panel{width:90vw;height:60vh} }
+  #commitModal .panel{max-width:95vw;max-height:90vh}
+  #pasteModal .panel{max-width:95vw;max-height:90vh}
+  .panel header{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+  .panel header h2{margin:0;font-size:16px}
+  .panel header button{border:none;background:transparent;font-weight:700;font-size:18px;cursor:pointer}
+  pre.diff{background:#0b1021;color:#e6edf3;padding:12px;border-radius:8px;overflow:auto}
+  .status-ok{color:var(--ok)} .status-err{color:var(--err)}
+  /* Toast */
+  .toast-wrap{position:fixed;left:50%;bottom:16px;transform:translateX(-50%);display:grid;gap:8px;z-index:9999}
+  .toast{background:#111827;color:#fff;padding:10px 14px;border-radius:10px;box-shadow:0 6px 24px rgba(0,0,0,.2);font-size:14px}
+  .warn{background:#7c2d12}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div>
+<h1>GitHub Tablet Editor</h1>
+<div class="muted">Filename header, robust paste, preview, normalized diff, commit message includes filename.</div>
+</div>
+<div class="card" id="repoCard">
+<div class="row">
+<div>
+<label for="userInput">User</label>
+<input id="userInput" type="text" value="acmeproducts"/>
+</div>
+<div>
+<label for="repoSelect">Repository</label>
+<select disabled="" id="repoSelect"><option>Loading…</option></select>
+</div>
+<div class="omni-wrap" style="flex:1; min-width:240px">
+<label for="searchInput">Omni Search</label>
+<input autocomplete="off" id="searchInput" placeholder="Type to search files…" type="search"/>
+<div aria-label="File results" class="omni-list" id="omniList" role="listbox"></div>
+</div>
+</div>
+</div>
+<div class="grid">
+<!-- Original -->
+<div class="pane card collapsed" id="paneOriginal">
+<div class="header">
+<strong class="header-title" id="originalTitle">(no file selected)</strong>
+<button class="chev" id="chevOriginal" title="Toggle" type="button">►</button>
+</div>
+<div class="textarea-wrap">
+<textarea id="originalBox" readonly=""></textarea>
+</div>
+<div class="center controls">
+<button id="copyOriginal" type="button">Copy</button>
+<button id="previewOriginal" type="button">Preview</button>
+</div>
+</div>
+<!-- Updated -->
+<div class="pane card" id="paneUpdated">
+<div class="header">
+<strong class="header-title">Updated</strong>
+<button class="chev" id="chevUpdated" title="Toggle" type="button">▼</button>
+</div>
+<div class="row-gap">
+<div class="center controls">
+<button id="pasteBtn" type="button">Paste</button>
+<button id="diffBtn" type="button">Diff</button>
+<button class="primary" id="commitBtn" type="button">Commit</button>
+</div>
+<div class="textarea-wrap">
+<textarea id="updatedBox" placeholder="Paste updated content here…"></textarea>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Commit Modal -->
+<div aria-label="Commit status" aria-modal="true" class="modal" id="commitModal" role="dialog">
+<div class="panel">
+<header>
+<h2>Commit Status</h2>
+<button id="commitClose" title="Close" type="button">X</button>
+</header>
+<ol id="commitSteps"></ol>
+</div>
+</div>
+<!-- Diff Modal -->
+<div aria-label="Diff view" aria-modal="true" class="modal" id="diffModal" role="dialog">
+<div class="panel">
+<header>
+<h2>Diff Preview</h2>
+<button id="diffClose" title="Close" type="button">X</button>
+</header>
+<pre class="diff" id="diffOutput"></pre>
+</div>
+</div>
+<!-- Paste Fallback Modal -->
+<div aria-label="Paste content" aria-modal="true" class="modal" id="pasteModal" role="dialog">
+<div class="panel">
+<header>
+<h2>Paste Content</h2>
+<button id="pasteClose" title="Close" type="button">X</button>
+</header>
+<div class="muted" style="margin-bottom:8px">Clipboard read not permitted. Paste here and confirm.</div>
+<textarea id="pasteArea" style="width:70vw;max-width:90vw;height:40vh"></textarea>
+<div class="center" style="margin-top:10px">
+<button class="primary" id="pasteConfirm" type="button">Use This Content</button>
+</div>
+</div>
+</div>
+<!-- Toasts -->
+<div aria-atomic="true" aria-live="polite" class="toast-wrap" id="toasts"></div>
+<script>
+(() => {
+  const GITHUB_TOKEN = "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";
+  const DEFAULT_USER = "acmeproducts";
+  const DEFAULT_REPO_HINT = "stuff";
+
+  // Elements
+  const userInput = document.getElementById('userInput');
+  const repoSelect = document.getElementById('repoSelect');
+  const searchInput = document.getElementById('searchInput');
+  const omniList = document.getElementById('omniList');
+
+  const paneOriginal = document.getElementById('paneOriginal');
+  const chevOriginal = document.getElementById('chevOriginal');
+  const originalTitle = document.getElementById('originalTitle');
+  const originalBox = document.getElementById('originalBox');
+  const copyOriginalBtn = document.getElementById('copyOriginal');
+  const previewOriginalBtn = document.getElementById('previewOriginal');
+
+  const paneUpdated = document.getElementById('paneUpdated');
+  const chevUpdated = document.getElementById('chevUpdated');
+  const updatedBox = document.getElementById('updatedBox');
+  const pasteBtn = document.getElementById('pasteBtn');
+  const diffBtn = document.getElementById('diffBtn');
+  const commitBtn = document.getElementById('commitBtn');
+
+  const commitModal = document.getElementById('commitModal');
+  const commitClose = document.getElementById('commitClose');
+  const commitSteps = document.getElementById('commitSteps');
+  const diffModal = document.getElementById('diffModal');
+  const diffClose = document.getElementById('diffClose');
+  const diffOutput = document.getElementById('diffOutput');
+  const pasteModal = document.getElementById('pasteModal');
+  const pasteClose = document.getElementById('pasteClose');
+  const pasteArea = document.getElementById('pasteArea');
+  const pasteConfirm = document.getElementById('pasteConfirm');
+  const toasts = document.getElementById('toasts');
+
+  // State
+  let currentUser = DEFAULT_USER;
+  let currentRepo = null;
+  let repoDefaultBranch = 'main';
+  let treeCache = []; // {path, sha}
+  let currentPath = null;
+  let currentSha = null;
+
+  // Helpers
+  const headers = () => ({
+    "Authorization": "token " + GITHUB_TOKEN,
+    "Accept": "application/vnd.github.v3+json"
+  });
+
+  const isSecure = window.isSecureContext;
+
+  function toast(msg, ms=2200, cls=''){
+    const div = document.createElement('div');
+    div.className = 'toast' + (cls ? ' '+cls : '');
+    div.textContent = msg;
+    toasts.appendChild(div);
+    setTimeout(()=>{ div.remove(); }, ms);
+  }
+
+  function setPaneCollapsed(el, chev, collapsed){
+    el.classList.toggle('collapsed', collapsed);
+    chev.innerHTML = collapsed ? '&#9658;' : '&#9660;';
+  }
+
+  function b64EncodeUnicode(str){
+    const bytes = new TextEncoder().encode(str);
+    let bin=''; bytes.forEach(b=>bin+=String.fromCharCode(b));
+    return btoa(bin);
+  }
+  function b64DecodeUnicode(b64){
+    const bin = atob(b64);
+    const bytes = new Uint8Array(bin.length);
+    for (let i=0;i<bin.length;i++) bytes[i]=bin.charCodeAt(i);
+    return new TextDecoder().decode(bytes);
+  }
+
+  // Canonicalization for diff
+  function canonicalize(text){
+    if(text == null) return '';
+    // Remove BOM
+    if(text.charCodeAt(0) === 0xFEFF) text = text.slice(1);
+    // Normalize newlines
+    text = text.replace(/\\r\\n/g, '\\n').replace(/\\r/g, '\\n');
+    // Trim trailing whitespace per line
+    text = text.split('\\n').map(l => l.replace(/[\\t ]+$/,'')).join('\\n');
+    return text;
+  }
+
+  // Diff (line-based LCS)
+  function diffLines(a, b) {
+    const A = a.split(/\\n/), B = b.split(/\\n/);
+    const n=A.length, m=B.length;
+    const dp = Array.from({length:n+1}, ()=>Array(m+1).fill(0));
+    for (let i=n-1;i>=0;i--) for (let j=m-1;j>=0;j--) dp[i][j] = A[i]===B[j] ? dp[i+1][j+1]+1 : Math.max(dp[i+1][j], dp[i][j+1]);
+    const ops=[]; let i=0,j=0;
+    while(i<n && j<m){
+      if(A[i]===B[j]){ ops.push({t:'ctx',s:A[i]}); i++; j++; }
+      else if(dp[i+1][j]>=dp[i][j+1]){ ops.push({t:'del',s:A[i++]}); }
+      else{ ops.push({t:'add',s:B[j++]}); }
+    }
+    while(i<n) ops.push({t:'del',s:A[i++]});
+    while(j<m) ops.push({t:'add',s:B[j++]});
+    return ops;
+  }
+  function renderUnifiedDiff(a,b,path){
+    const A = canonicalize(a);
+    const B = canonicalize(b);
+    if(A === B) return `--- a/${path}\\n+++ b/${path}\\n (no changes)\\n`;
+    const ops = diffLines(A,B);
+    let out = `--- a/${path}\\n+++ b/${path}\\n`;
+    for(const o of ops){
+      if(o.t==='ctx') out += ' ' + o.s + '\\n';
+      if(o.t==='add') out += '+' + o.s + '\\n';
+      if(o.t==='del') out += '-' + o.s + '\\n';
+    }
+    return out;
+  }
+
+  // API
+  async function fetchReposForIdentity(identity){
+    const collected = new Map();
+    async function tryFetch(url){
+      const res = await fetch(url, {headers: headers()});
+      if(!res.ok) throw new Error(String(res.status));
+      const data = await res.json();
+      for(const r of data){
+        if(r.owner && r.owner.login && r.owner.login.toLowerCase() === identity.toLowerCase()){
+          if(!collected.has(r.name)) collected.set(r.name, r);
+        }
+      }
+    }
+    const tasks = [];
+    tasks.push(tryFetch(`https://api.github.com/users/${encodeURIComponent(identity)}/repos?per_page=100&type=owner&sort=updated`).catch(()=>{}));
+    tasks.push(tryFetch(`https://api.github.com/orgs/${encodeURIComponent(identity)}/repos?per_page=100&type=all&sort=updated`).catch(()=>{}));
+    tasks.push((async ()=>{
+      const res = await fetch(`https://api.github.com/user/repos?per_page=100&sort=updated`, {headers: headers()});
+      if(!res.ok) return;
+      const data = await res.json();
+      for(const r of data){
+        if(r.owner && r.owner.login && r.owner.login.toLowerCase() === identity.toLowerCase()){
+          if(!collected.has(r.name)) collected.set(r.name, r);
+        }
+      }
+    })().catch(()=>{}));
+    await Promise.all(tasks);
+    return Array.from(collected.values()).sort((a,b)=> new Date(b.updated_at) - new Date(a.updated_at));
+  }
+  async function fetchRepoInfo(user, repo){
+    const url = `https://api.github.com/repos/${encodeURIComponent(user)}/${encodeURIComponent(repo)}`;
+    const res = await fetch(url,{headers:headers()});
+    if(!res.ok) throw new Error('Failed to fetch repo info: '+res.status);
+    return res.json();
+  }
+  async function fetchRepoTree(user, repo, branch){
+    const url = `https://api.github.com/repos/${encodeURIComponent(user)}/${encodeURIComponent(repo)}/git/trees/${encodeURIComponent(branch)}?recursive=1`;
+    const res = await fetch(url,{headers:headers()});
+    if(!res.ok) throw new Error('Failed to fetch tree: '+res.status);
+    const data = await res.json();
+    if(!data.tree) throw new Error('Invalid tree response');
+    return data.tree.filter(e=>e.type==='blob').map(e=>({path:e.path,sha:e.sha}));
+  }
+  async function fetchFileContent(user, repo, path, ref){
+    const url = `https://api.github.com/repos/${encodeURIComponent(user)}/${encodeURIComponent(repo)}/contents/${encodeURIComponent(path)}${ref?`?ref=${encodeURIComponent(ref)}`:''}`;
+    const res = await fetch(url,{headers:headers()});
+    if(!res.ok) throw new Error('Failed to fetch content: '+res.status);
+    const data = await res.json();
+    const content = b64DecodeUnicode((data.content||'').replace(/\\n/g,''));
+    return {content, sha:data.sha, path:data.path};
+  }
+  async function putFileContent(user, repo, path, message, newContent, branch, sha){
+    const url = `https://api.github.com/repos/${encodeURIComponent(user)}/${encodeURIComponent(repo)}/contents/${encodeURIComponent(path)}`;
+    const payload = {message, content:b64EncodeUnicode(newContent), sha, branch};
+    const res = await fetch(url,{
+      method:'PUT', headers:{...headers(),'Content-Type':'application/json'}, body:JSON.stringify(payload)
+    });
+    if(!res.ok){ const t = await res.text(); throw new Error('Commit failed: '+res.status+' '+t); }
+    return res.json();
+  }
+
+  // Omni list handling
+  function hideOmni(){ omniList.style.display='none'; }
+  function showOmni(){ omniList.style.display='block'; }
+  function clearOmni(){ omniList.innerHTML=''; }
+
+  function filterResultsInline(){
+    const q=(searchInput.value||'').toLowerCase().trim();
+    clearOmni();
+    if(!q){ hideOmni(); return; }
+    let items = treeCache.filter(e=> e.path.toLowerCase().includes(q));
+    items = items.slice().sort((a,b)=>{
+      const qa = a.path.toLowerCase().endsWith(q) ? 0 : a.path.length;
+      const qb = b.path.toLowerCase().endsWith(q) ? 0 : b.path.length;
+      return qa - qb;
+    }).slice(0,300);
+    if(!items.length){ hideOmni(); return; }
+    for(const it of items){
+      const div=document.createElement('div');
+      div.className='omni-item'; div.textContent=it.path; div.title=it.path;
+      div.addEventListener('click',()=>{ onSelectPath(it.path); hideOmni(); });
+      omniList.appendChild(div);
+    }
+    showOmni();
+  }
+
+  async function onSelectPath(path){
+    try{
+      const {content, sha} = await fetchFileContent(currentUser, currentRepo, path, repoDefaultBranch);
+      currentPath = path; currentSha=sha;
+      originalTitle.textContent = path;
+      originalBox.value = content;
+      updatedBox.value = '';
+      setPaneCollapsed(paneOriginal, chevOriginal, true);
+      toast('File loaded');
+    }catch(e){ alert(e.message||String(e)); }
+  }
+
+  async function refreshRepoContext(){
+    currentUser = userInput.value.trim();
+    currentRepo = repoSelect.value.trim();
+    if(!currentUser){ toast('User required', 2500, 'warn'); throw new Error('User required'); }
+    if(!currentRepo){ toast('Select a repository', 2500, 'warn'); throw new Error('Repository required'); }
+    const info = await fetchRepoInfo(currentUser, currentRepo);
+    repoDefaultBranch = info.default_branch || 'main';
+    treeCache = await fetchRepoTree(currentUser, currentRepo, repoDefaultBranch);
+    hideOmni(); clearOmni(); searchInput.value='';
+    currentPath=null; currentSha=null; originalBox.value=''; updatedBox.value=''; originalTitle.textContent='(no file selected)';
+  }
+
+  async function populateRepos(identity, prefer){
+    repoSelect.disabled = true;
+    repoSelect.innerHTML = '<option>Loading…</option>';
+    try{
+      const repos = await fetchReposForIdentity(identity);
+      repoSelect.innerHTML = '';
+      if(!repos.length){
+        const opt = document.createElement('option');
+        opt.value = ''; opt.textContent = 'No repositories found'; repoSelect.appendChild(opt);
+        toast('No repositories found for '+identity, 3500, 'warn');
+      } else {
+        for(const r of repos){
+          const opt = document.createElement('option');
+          opt.value = r.name; opt.textContent = r.name;
+          if(prefer && r.name.toLowerCase()===prefer.toLowerCase()) opt.selected = true;
+          repoSelect.appendChild(opt);
+        }
+      }
+    }catch(e){
+      repoSelect.innerHTML = '<option value="">Error loading repos</option>';
+      toast('Error loading repositories', 3500, 'warn');
+      console.error(e);
+    }finally{
+      repoSelect.disabled = false;
+    }
+  }
+
+  // Clipboard helpers
+  async function robustCopy(text){
+    try{
+      await navigator.clipboard.writeText(text);
+      toast('Copied');
+    }catch{
+      const ta=document.createElement('textarea'); ta.value=text; ta.style.position='fixed'; ta.style.top='-1000px'; document.body.appendChild(ta);
+      ta.focus(); ta.select(); document.execCommand('copy'); ta.remove();
+      toast('Copied');
+    }
+  }
+
+  async function robustPaste(){
+    if(isSecure){
+      try{
+        const t = await navigator.clipboard.readText();
+        return t;
+      }catch{
+        return await modalPaste();
+      }
+    } else {
+      return await modalPaste();
+    }
+  }
+  function modalPaste(){
+    pasteArea.value='';
+    pasteModal.classList.add('open');
+    return new Promise((resolve)=>{
+      function cleanup(){
+        pasteModal.classList.remove('open');
+        pasteConfirm.removeEventListener('click', onConfirm);
+        pasteClose.removeEventListener('click', onClose);
+      }
+      function onConfirm(){ const t=pasteArea.value; cleanup(); resolve(t); }
+      function onClose(){ cleanup(); resolve(''); }
+      pasteConfirm.addEventListener('click', onConfirm);
+      pasteClose.addEventListener('click', onClose);
+    });
+  }
+
+  // Events
+  chevOriginal.addEventListener('click',()=> setPaneCollapsed(paneOriginal, chevOriginal, !paneOriginal.classList.contains('collapsed')));
+  chevUpdated.addEventListener('click',()=> setPaneCollapsed(paneUpdated, chevUpdated, !paneUpdated.classList.contains('collapsed')));
+
+  copyOriginalBtn.addEventListener('click', async ()=>{
+    await robustCopy(originalBox.value||'');
+  });
+  previewOriginalBtn.addEventListener('click', ()=>{
+    const html = originalBox.value || '';
+    const w = window.open('', '_blank');
+    if(!w){ alert('Popup blocked. Allow popups for preview.'); return; }
+    // If content already includes html/head/body, write as-is; otherwise wrap
+    const hasHtml = /<html[\s>]/i.test(html);
+    w.document.open();
+    w.document.write(hasHtml ? html : `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Preview</title></head><body>${html}</body></html>`);
+    w.document.close();
+  });
+
+  pasteBtn.addEventListener('click', async ()=>{
+    setPaneCollapsed(paneUpdated, chevUpdated, false);
+    updatedBox.focus();
+    const text = await robustPaste();
+    if(text !== undefined && text !== null){
+      updatedBox.value = text;
+      if(text) toast('Pasted');
+    }
+  });
+
+  diffBtn.addEventListener('click', ()=>{
+    if(!currentPath){ alert('No file selected'); return; }
+    const diff = renderUnifiedDiff(originalBox.value||'', updatedBox.value||'', currentPath);
+    diffOutput.textContent = diff;
+    diffModal.classList.add('open');
+  });
+  diffClose.addEventListener('click',()=> diffModal.classList.remove('open'));
+
+  function setStatus(text, cls){
+    const li=document.createElement('li'); li.textContent=text; if(cls) li.className=cls;
+    commitSteps.appendChild(li); commitSteps.scrollTop = commitSteps.scrollHeight;
+    return li;
+  }
+
+  commitBtn.addEventListener('click', async ()=>{
+    if(!currentPath){ alert('No file selected'); return; }
+    commitSteps.innerHTML=''; commitModal.classList.add('open');
+    const message = `Update ${currentPath} via tablet editor`;
+    setStatus('Validating selection…');
+    setStatus(`Preparing commit to ${currentUser}/${currentRepo}@${repoDefaultBranch}`);
+    try{
+      setStatus('Fetching latest file SHA…');
+      const latest = await fetchFileContent(currentUser, currentRepo, currentPath, repoDefaultBranch);
+      const sha = latest.sha;
+      setStatus('Pushing commit via GitHub API…');
+      const resp = await putFileContent(currentUser, currentRepo, currentPath, message, updatedBox.value, repoDefaultBranch, sha);
+      const csha = resp.commit && resp.commit.sha ? resp.commit.sha.substring(0,7) : 'unknown';
+      setStatus('Commit succeeded: '+csha,'status-ok');
+      originalBox.value = updatedBox.value;
+      toast('Committed');
+    }catch(e){
+      setStatus('Commit failed','status-err');
+      setStatus(e.message||String(e),'status-err');
+    }
+  });
+  commitClose.addEventListener('click',()=> commitModal.classList.remove('open'));
+
+  repoSelect.addEventListener('change', async ()=>{
+    try{ await refreshRepoContext(); }catch(e){ /* toast already shown */ }
+  });
+
+  userInput.addEventListener('change', async ()=>{
+    const identity = userInput.value.trim();
+    await populateRepos(identity, DEFAULT_REPO_HINT);
+    await refreshRepoContext().catch(()=>{});
+  });
+
+  searchInput.addEventListener('input', ()=>{
+    if(!currentRepo){ return; }
+    filterResultsInline();
+  });
+  document.addEventListener('click',(e)=>{ if(!e.target.closest('.omni-wrap')) hideOmni(); });
+
+  // Bootstrap
+  (async function init(){
+    setPaneCollapsed(paneOriginal, chevOriginal, true);
+    setPaneCollapsed(paneUpdated, chevUpdated, false);
+    try{
+      userInput.value = DEFAULT_USER;
+      await populateRepos(DEFAULT_USER, DEFAULT_REPO_HINT);
+      await refreshRepoContext();
+    }catch(e){
+      console.error(e);
+      toast('Failed to initialize repositories', 3500, 'warn');
+    }
+  })();
+})();
+</script>
+</body>
+</html>
