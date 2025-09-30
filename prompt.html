@@ -395,46 +395,31 @@
     <script>
         // Default data
         const defaultChoices = {
-            'Gender': ['woman', 'lady', 'female'],
-            'Ethnicity': ['Korean', 'Japanese', 'Chinese', 'Indian', 'Filipino', 'Vietnamese', 'Thai', 'Vietnamese-American'],
-            'Age': ['34-year-old', '35-year-old', '36-year-old', '37-year-old', '38-year-old', '39-year-old', '40-year-old', '41-year-old', '42-year-old', '43-year-old', '44-year-old', '45-year-old', '46-year-old', '47-year-old', '48-year-old', '49-year-old', '50-year-old'],
-            'Body': ['thin legs', 'slender waist', 'hourglass figure', 'athletic build', 'curvy', 'toned', 'muscular', 'petite', 'tall', 'short', 'voluptuous', 'slim', 'sexy', 'slutty'],
-            'Hair Color': ['black', 'brown', 'blonde', 'red', 'gray', 'white', 'auburn', 'chestnut', 'platinum', 'ash', 'strawberry', 'copper', 'honey', 'caramel'],
-            'Hair Style': ['straight', 'wavy', 'curly', 'braided', 'ponytail', 'bun', 'bob', 'pixie', 'shaggy', 'layered'],
-            'Face': ['smiling', 'serious', 'thoughtful', 'seductive'],
-            'Role/Occupation': ['model', 'actress', 'professional', 'dancer', 'singer', 'artist', 'writer', 'student', 'teacher', 'doctor', 'lawyer', 'engineer', 'scientist', 'athlete', 'chef', 'nurse', 'pilot', 'astronaut', 'politician'],
-            'Clothes': ['elegant evening gown', 'casual attire', 'bikini', 'lingerie', 'sleeveless top', 'shorts', 'dress', 'swimsuit', 'stockings', 'gloves', 'boots', 'tight dress', 'short dress', 'long dress', 'casual attire', 'elegant gown', 'sportswear', 'traditional dress', 'business suit'],
-            'Location': ['beach', 'park', 'studio', 'urban street', 'natural landscape', 'luxurious setting', 'office', 'gym', 'kitchen', 'living room', 'bedroom', 'bathroom', 'garden', 'forest', 'mountain', 'cityscape', 'countryside'],
-            'Activity': ['dancing', 'posing', 'smiling', 'laughing', 'thoughtful', 'seductive', 'playing sports', 'reading', 'cooking', 'working out', 'shopping', 'driving', 'walking', 'running', 'jogging', 'cycling', 'swimming', 'sunbathing', 'partying', 'singing'],
-            'Camera Angle': ['close-up', 'wide shot', 'low angle', 'high angle'],
-            'Shot Type': ['cinematic', 'personal photograph', 'professional model shot'],
-            'NSFW Details': ['erotic poses', 'explicit descriptions', 'seductive looks', 'provocative clothing', 'intimate settings'],
-            'Artistic Style': ['realistic', 'impressionistic', 'surreal'],
-            'Additional Details': ['bright lighting', 'dim lighting', 'natural lighting', 'artificial lighting', 'soft lighting', 'hard lighting', 'mood lighting', 'colorful lighting', 'monochrome lighting', 'black and white', 'sepia', 'vintage', 'retro', 'futuristic']
+            'Gender': ['woman', 'lady', 'female', 'girl', 'young woman'],
+            'Ethnicity': ['Asian', 'Korean', 'Japanese', 'Chinese', 'Thai', 'Vietnamese', 'Filipino', 'Indian', 'Latina', 'Hispanic', 'Caucasian', 'European', 'Mediterranean', 'Middle Eastern', 'African American', 'Mixed race', 'Eurasian'],
+            'Age': ['18 years old', '19 years old', '20 years old', '21 years old', '22 years old', '25 years old', '28 years old', '30 years old', '32 years old', '35 years old', '38 years old', '40 years old', '42 years old', '45 years old'],
+            'Body': ['toned legs and sculpted arms', 'curvy hips and slender waist', 'athletic body with defined muscles', 'petite frame with delicate limbs', 'tall body with long legs', 'hourglass figure with curved hips', 'slim body with graceful arms', 'fit physique with strong legs', 'elegant body with refined posture', 'voluptuous figure with shapely hips', 'lean body with toned arms', 'statuesque frame with long limbs'],
+            'Hair Color': ['jet black', 'chocolate brown', 'honey blonde', 'platinum blonde', 'auburn red', 'copper red', 'ash brown', 'caramel brown', 'dark brown', 'golden blonde', 'strawberry blonde', 'chestnut brown', 'silver gray', 'pearl white'],
+            'Hair Style': ['long straight hair', 'wavy shoulder-length hair', 'curly voluminous hair', 'sleek bob hair', 'messy bun hair', 'elegant updo hair', 'braided hair', 'layered hair', 'pixie cut hair', 'beach wave hair', 'ponytail hair', 'loose flowing hair'],
+            'Face': ['bright smile', 'confident expression', 'serene look', 'playful grin', 'gentle smile', 'mysterious gaze', 'joyful expression', 'thoughtful expression', 'radiant smile', 'sultry look', 'warm smile', 'captivating stare'],
+            'Role/Occupation': ['fashion model', 'professional dancer', 'yoga instructor', 'artist', 'photographer', 'designer', 'musician', 'actress', 'fitness trainer', 'chef', 'writer', 'entrepreneur', 'student', 'teacher', 'scientist', 'doctor'],
+            'Clothes': ['flowing summer dress', 'elegant cocktail dress', 'casual denim outfit', 'professional business attire', 'athletic wear', 'vintage-inspired outfit', 'bohemian style clothing', 'minimalist fashion', 'designer evening gown', 'comfortable loungewear', 'chic street style', 'formal wear'],
+            'Location': ['sunlit beach', 'urban rooftop', 'cozy coffee shop', 'modern studio', 'lush garden', 'city street', 'elegant interior', 'natural landscape', 'contemporary office', 'artistic gallery', 'peaceful park', 'luxury hotel', 'mountain vista', 'forest clearing'],
+            'Activity': ['posing confidently', 'dancing gracefully', 'laughing joyfully', 'reading peacefully', 'exercising energetically', 'cooking creatively', 'painting artistically', 'walking casually', 'stretching elegantly', 'meditating calmly', 'working focused', 'celebrating happily'],
+            'Camera Angle': ['eye-level shot', 'slightly low angle', 'overhead view', 'close-up portrait', 'wide establishing shot', 'three-quarter view', 'profile shot', 'candid angle'],
+            'Shot Type': ['professional portrait', 'lifestyle photography', 'fashion shoot', 'artistic composition', 'documentary style', 'commercial photography', 'editorial shot', 'fine art photography'],
+            'NSFW Details': ['sensual pose', 'intimate atmosphere', 'seductive styling', 'provocative composition', 'alluring expression', 'romantic mood', 'sultry lighting', 'passionate energy'],
+            'Artistic Style': ['photorealistic', 'soft romantic style', 'dramatic lighting', 'vintage aesthetic', 'modern minimalist', 'classic portrait style', 'contemporary fashion', 'artistic interpretation'],
+            'Additional Details': ['golden hour lighting', 'soft natural light', 'dramatic shadows', 'warm color palette', 'cool tones', 'high contrast', 'dreamy atmosphere', 'crisp detail', 'film grain texture', 'bokeh background', 'vibrant colors', 'muted tones', 'professional quality']
         };
 
         // Default template matrix
         const defaultTemplates = {
             'Template 1': ['Gender', 'Ethnicity', 'Age', 'Body', 'Hair Color', 'Hair Style', 'Face'],
-            'Template 2': ['Gender', 'Ethnicity', 'Age', 'Body', 'Role/Occupation', 'Clothes'],
-            'Template 3': ['Gender', 'Ethnicity', 'Age', 'Body', 'Hair Style', 'Face'],
-            'Template 4': ['Gender', 'Ethnicity', 'Age', 'Body', 'Role/Occupation', 'Activity'],
-            'Template 5': ['Gender', 'Ethnicity', 'Age', 'Body', 'Hair Color', 'Face', 'Role/Occupation'],
-            'Template 6': ['Gender', 'Ethnicity', 'Age', 'Body', 'Face', 'Role/Occupation', 'Clothes'],
-            'Template 7': ['Gender', 'Ethnicity', 'Age', 'Body', 'Hair Color', 'Hair Style', 'Face', 'Role/Occupation'],
-            'Template 8': ['Gender', 'Ethnicity', 'Age', 'Body', 'Hair Color', 'Clothes', 'Location', 'Activity'],
-            'Template 9': ['Gender', 'Ethnicity', 'Age', 'Body', 'Hair Color', 'Hair Style', 'Face', 'Activity'],
-            'Template 10': ['Gender', 'Ethnicity', 'Age', 'Body', 'Hair Color', 'Role/Occupation', 'Clothes', 'Camera Angle'],
-            'Template 11': ['Gender', 'Ethnicity', 'Age', 'Body', 'Hair Color', 'Hair Style', 'Face', 'Role/Occupation', 'Clothes'],
-            'Template 12': ['Gender', 'Ethnicity', 'Age', 'Body', 'Hair Color', 'Hair Style', 'Face', 'Location', 'Activity'],
-            'Template 13': ['Gender', 'Ethnicity', 'Age', 'Body', 'Hair Color', 'Hair Style', 'Face', 'Role/Occupation', 'Clothes', 'Camera Angle'],
-            'Template 14': ['Gender', 'Ethnicity', 'Age', 'Body', 'Hair Color', 'Hair Style', 'Face', 'Role/Occupation', 'Clothes', 'Location'],
-            'Template 15': ['Gender', 'Ethnicity', 'Age', 'Body', 'Hair Color', 'Hair Style', 'Face', 'Role/Occupation', 'Clothes', 'Activity'],
-            'Template 16': ['Gender', 'Ethnicity', 'Age', 'Body', 'Hair Color', 'Hair Style', 'Face', 'Role/Occupation', 'Clothes', 'Camera Angle', 'Shot Type'],
-            'Template 17': ['Gender', 'Ethnicity', 'Age', 'Body', 'Hair Color', 'Hair Style', 'Face', 'Role/Occupation', 'Clothes', 'Location', 'Camera Angle'],
-            'Template 18': ['Gender', 'Ethnicity', 'Age', 'Body', 'Hair Color', 'Hair Style', 'Face', 'Role/Occupation', 'Clothes', 'Location', 'Activity'],
-            'Template 19': ['Gender', 'Ethnicity', 'Age', 'Body', 'Hair Color', 'Hair Style', 'Face', 'Role/Occupation', 'Clothes', 'Location', 'Camera Angle', 'Shot Type'],
-            'Template 20': ['Gender', 'Ethnicity', 'Age', 'Body', 'Hair Color', 'Hair Style', 'Face', 'Role/Occupation', 'Clothes', 'Location', 'Activity', 'Camera Angle']
+            'Template 2': ['Gender', 'Ethnicity', 'Age', 'Body', 'Hair Color', 'Hair Style', 'Face', 'Role/Occupation', 'Clothes'],
+            'Template 3': ['Gender', 'Ethnicity', 'Age', 'Body', 'Hair Color', 'Hair Style', 'Face', 'Activity', 'Location'],
+            'Template 4': ['Gender', 'Ethnicity', 'Age', 'Body', 'Hair Color', 'Hair Style', 'Face', 'Clothes', 'Camera Angle', 'Shot Type'],
+            'Template 5': ['Gender', 'Ethnicity', 'Age', 'Body', 'Hair Color', 'Hair Style', 'Face', 'Role/Occupation', 'Clothes', 'Activity', 'Location', 'Camera Angle', 'Shot Type', 'Artistic Style', 'Additional Details']
         };
 
         let currentChoices = {...defaultChoices};
@@ -476,8 +461,15 @@
                 currentChoices = JSON.parse(savedChoices);
             }
             
-            if (savedTemplates) {
-                currentTemplates = JSON.parse(savedTemplates);
+            // Always use the current defaultTemplates (5 templates) - ignore old saved data with 20 templates
+            const savedTemplatesData = savedTemplates ? JSON.parse(savedTemplates) : null;
+            if (savedTemplatesData && Object.keys(savedTemplatesData).length === 5) {
+                // Only load saved templates if they match our current 5-template structure
+                currentTemplates = savedTemplatesData;
+            } else {
+                // Reset to default 5 templates and clear old localStorage
+                currentTemplates = {...defaultTemplates};
+                localStorage.removeItem('promptTemplates'); // Clear old 20-template data
             }
         }
 
@@ -653,17 +645,18 @@
                 const elements = currentTemplates[templateName];
                 
                 for (let i = 0; i < count; i++) {
-                    let prompt = `Template: ${templateName}\n`;
-                    let promptParts = [];
+                    let promptData = {};
                     
+                    // Collect random choices for each element
                     elements.forEach(element => {
                         if (currentChoices[element] && currentChoices[element].length > 0) {
                             const randomChoice = currentChoices[element][Math.floor(Math.random() * currentChoices[element].length)];
-                            promptParts.push(`${element}: ${randomChoice}`);
+                            promptData[element] = randomChoice;
                         }
                     });
                     
-                    prompt += promptParts.join(', ');
+                    // Create natural language prompt
+                    let prompt = createNaturalPrompt(promptData);
                     allPrompts.push(prompt);
                 }
             });
@@ -672,19 +665,135 @@
             document.getElementById('promptModal').style.display = 'block';
         }
 
+        // Create natural language prompt from data
+        function createNaturalPrompt(data) {
+            let parts = [];
+            
+            // Start with article and basic description
+            let description = "A";
+            
+            // Add age if present
+            if (data['Age']) {
+                description += ` ${data['Age']}`;
+            }
+            
+            // Add ethnicity and gender
+            if (data['Ethnicity']) {
+                description += ` ${data['Ethnicity']}`;
+            }
+            if (data['Gender']) {
+                description += ` ${data['Gender']}`;
+            }
+            
+            // Add role/occupation
+            if (data['Role/Occupation']) {
+                description += ` ${data['Role/Occupation']}`;
+            }
+            
+            parts.push(description);
+            
+            // Add physical description with explicit body/anatomy words
+            if (data['Body']) {
+                parts.push(`with ${data['Body']}`);
+            }
+            
+            // Add hair description with explicit "hair" word
+            if (data['Hair Color'] || data['Hair Style']) {
+                let hairDesc = "";
+                if (data['Hair Color'] && data['Hair Style']) {
+                    hairDesc = `${data['Hair Color']} ${data['Hair Style']}`;
+                } else if (data['Hair Color']) {
+                    hairDesc = `${data['Hair Color']} hair`;
+                } else if (data['Hair Style']) {
+                    hairDesc = `${data['Hair Style']}`;
+                }
+                if (hairDesc) {
+                    parts.push(hairDesc);
+                }
+            }
+            
+            // Add facial expression
+            if (data['Face']) {
+                parts.push(`with a ${data['Face']}`);
+            }
+            
+            // Add clothing
+            if (data['Clothes']) {
+                parts.push(`wearing ${data['Clothes']}`);
+            }
+            
+            // Add activity and location
+            if (data['Activity'] && data['Location']) {
+                parts.push(`${data['Activity']} at ${data['Location']}`);
+            } else if (data['Activity']) {
+                parts.push(data['Activity']);
+            } else if (data['Location']) {
+                parts.push(`located at ${data['Location']}`);
+            }
+            
+            // Add camera/shot details
+            let technicalDesc = [];
+            if (data['Camera Angle']) {
+                technicalDesc.push(data['Camera Angle']);
+            }
+            if (data['Shot Type']) {
+                technicalDesc.push(data['Shot Type']);
+            }
+            if (technicalDesc.length > 0) {
+                parts.push(technicalDesc.join(', '));
+            }
+            
+            // Add artistic style
+            if (data['Artistic Style']) {
+                parts.push(`in ${data['Artistic Style']}`);
+            }
+            
+            // Add NSFW details
+            if (data['NSFW Details']) {
+                parts.push(data['NSFW Details']);
+            }
+            
+            // Add additional details
+            if (data['Additional Details']) {
+                parts.push(`with ${data['Additional Details']}`);
+            }
+            
+            // Join all parts with appropriate punctuation
+            return parts.join(', ') + '.';
+        }
+
         // Close modal
         function closeModal() {
             document.getElementById('promptModal').style.display = 'none';
         }
 
         // Copy to clipboard
-        function copyToClipboard() {
+        async function copyToClipboard() {
             const text = document.getElementById('generatedPrompts').textContent;
-            navigator.clipboard.writeText(text).then(() => {
-                alert('Prompts copied to clipboard!');
-            }).catch(() => {
-                alert('Failed to copy to clipboard');
-            });
+            
+            // Format for spreadsheet - each prompt on its own line
+            const formattedText = text.split('\n\n').filter(line => line.trim()).join('\n');
+            
+            try {
+                await navigator.clipboard.writeText(formattedText);
+                alert('Prompts copied to clipboard! Each prompt will paste into its own spreadsheet row.');
+            } catch (err) {
+                // Fallback for browsers that don't support clipboard API
+                const textArea = document.createElement('textarea');
+                textArea.value = formattedText;
+                document.body.appendChild(textArea);
+                textArea.focus();
+                textArea.select();
+                
+                try {
+                    document.execCommand('copy');
+                    alert('Prompts copied to clipboard! Each prompt will paste into its own spreadsheet row.');
+                } catch (fallbackErr) {
+                    alert('Failed to copy to clipboard. Please manually select and copy the text.');
+                }
+                
+                document.body.removeChild(textArea);
+            }
         }
 
         // Close modal when clicking outside
