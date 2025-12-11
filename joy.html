@@ -1,0 +1,1240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" name="viewport">
+    <title>A Gift for My Babydoll</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,1,0" rel="stylesheet">
+    <style>
+        body {
+            touch-action: none;
+            overscroll-behavior: none;
+            -webkit-tap-highlight-color: transparent;
+            background-color: #000;
+        }
+        /* Hide scrollbar for settings panel */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* Slider Styling */
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 16px; width: 16px;
+            border-radius: 50%; background: #8ec5fc;
+            cursor: pointer; margin-top: -6px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%; height: 4px; cursor: pointer;
+            background: #e2e8f0; border-radius: 2px;
+        }
+        
+        /* Modal Animation Classes */
+        .modal { transition: opacity 0.3s ease, visibility 0.3s ease; }
+        .modal.invisible { opacity: 0; visibility: hidden; pointer-events: none; }
+        .modal.visible { opacity: 1; visibility: visible; pointer-events: auto; }
+        
+        .modal-content { transition: transform 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        .scale-in { transform: scale(1); }
+        .scale-out { transform: scale(0.95); }
+
+        /* Code Block Styling */
+        pre { white-space: pre-wrap; word-wrap: break-word; }
+        
+        /* Added for v13 Text Injection support */
+        #custom-message-container { pointer-events: auto; }
+        #custom-message-container a { color: #8ec5fc; text-decoration: underline; }
+    </style>
+</head>
+<body class="overflow-hidden h-screen w-screen font-sans text-slate-800">
+
+    <canvas class="block absolute top-0 left-0 w-full h-full z-0" id="gameCanvas"></canvas>
+
+    <div class="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-10 transition-opacity duration-1000 opacity-100 text-white/90 text-center drop-shadow-md" id="overlay">
+        <h1 class="text-3xl md:text-5xl font-light mb-4 tracking-widest" id="main-title">A Gift for My Babydoll</h1>
+        <div id="main-subtitle-container">
+            <p class="text-lg md:text-xl font-light leading-relaxed">
+                Tap to Bloom<br>
+                Double Tap for Hearts<br>
+                <span class="text-sm opacity-70 mt-2 block">Drag to Strum</span>
+            </p>
+        </div>
+        <div id="custom-message-container" class="mt-4 hidden bg-black/30 p-4 rounded-lg backdrop-blur-sm max-w-lg text-sm text-left"></div>
+    </div>
+
+    <div class="fixed top-5 left-5 flex items-center gap-2 bg-black/40 backdrop-blur px-3 py-2 rounded-full text-white text-xs font-bold tracking-wide opacity-0 transition-opacity z-50 pointer-events-none" id="rec-indicator">
+        <div class="w-2.5 h-2.5 bg-red-500 rounded-full animate-pulse"></div>
+        REC
+    </div>
+
+    <div class="fixed bottom-3 right-4 text-[10px] text-white/60 pointer-events-none z-10 tracking-wider" id="master-footer">
+        A Gift for My Babydoll v13.0 • <span id="clock">--:--</span>
+    </div>
+
+    <button class="fixed top-5 right-5 w-12 h-12 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-white/30 active:scale-95 transition-all shadow-lg z-50" id="settings-trigger">
+        <span class="material-symbols-outlined">settings</span>
+    </button>
+
+    <aside class="fixed top-0 right-0 w-80 h-full bg-white/95 backdrop-blur-xl shadow-2xl transform transition-transform duration-300 translate-x-full z-50 flex flex-col no-scrollbar overflow-y-auto" id="settings-panel">
+        
+        <div class="p-6 flex justify-between items-center border-b border-gray-100">
+            <h2 class="text-lg font-bold text-gray-700 tracking-wide uppercase">Settings</h2>
+            <button class="text-gray-400 hover:text-gray-700 transition-colors" id="close-btn">
+                <span class="material-symbols-outlined text-3xl">close</span>
+            </button>
+        </div>
+
+        <div class="p-6 space-y-8 flex-1">
+            
+            <div class="flex justify-between items-center">
+                <span class="text-xs font-bold text-gray-500 uppercase tracking-wider">Sound</span>
+                <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" id="audio-toggle" class="sr-only peer" checked>
+                    <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-300"></div>
+                </label>
+            </div>
+
+            <div class="space-y-3">
+                <span class="text-xs font-bold text-gray-500 uppercase tracking-wider block">Background</span>
+                <div class="space-y-2">
+                    <input class="block w-full text-xs text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-full file:border-0 file:text-xs file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100" id="bg-upload-input" type="file" accept="image/*">
+                    <div class="grid grid-cols-2 gap-2">
+                        <button class="w-full py-2 bg-blue-100 text-blue-700 text-xs font-semibold rounded hover:bg-blue-200 transition" id="apply-bg-btn">
+                            Apply Image
+                        </button>
+                        <button class="w-full py-2 bg-gray-100 text-gray-500 text-xs font-medium rounded hover:bg-gray-200 transition" id="reset-bg-btn">
+                            Reset Gradient
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="space-y-2">
+                <span class="text-xs font-bold text-gray-500 uppercase tracking-wider block">Custom Words</span>
+                <textarea class="w-full p-3 text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-lg focus:ring-blue-300 focus:border-blue-300 resize-none h-24" id="custom-words" placeholder="e.g. Joy, Peace, Kindness..."></textarea>
+            </div>
+
+            <div class="space-y-6">
+                <div class="space-y-2">
+                    <div class="flex justify-between">
+                        <span class="text-xs font-bold text-gray-500 uppercase tracking-wider">Fade Duration (Flowers)</span>
+                    </div>
+                    <input type="range" id="decay-slider" min="0" max="5" step="1" value="2" class="w-full bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                </div>
+
+                <div class="space-y-2">
+                    <div class="flex justify-between">
+                        <span class="text-xs font-bold text-gray-500 uppercase tracking-wider">Trail Duration & Speed</span>
+                    </div>
+                    <input type="range" id="trail-slider" min="1" max="10" step="1" value="5" class="w-full bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                    <div class="flex justify-between text-[10px] text-gray-400 mt-1">
+                        <span>Short/Fast</span>
+                        <span>Long/Slow</span>
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    <div class="flex justify-between">
+                        <span class="text-xs font-bold text-gray-500 uppercase tracking-wider">Growth Speed</span>
+                    </div>
+                    <input type="range" id="speed-slider" min="1" max="100" value="50" class="w-full bg-gray-200 rounded-lg appearance-none cursor-pointer">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 pt-4 border-t border-gray-100">
+                <button class="col-span-1 px-4 py-3 bg-orange-50 text-orange-700 text-sm font-semibold rounded-xl hover:bg-orange-100 transition text-center" id="record-btn">Record</button>
+                <button class="col-span-1 px-4 py-3 bg-green-50 text-green-700 text-sm font-semibold rounded-xl hover:bg-green-100 transition text-center" id="save-btn">Snapshot</button>
+                <button class="col-span-1 px-4 py-3 bg-gray-50 text-gray-700 text-sm font-medium rounded-xl hover:bg-gray-100 transition text-center" id="theme-btn">Theme</button>
+                <button class="col-span-1 px-4 py-3 bg-red-50 text-red-700 text-sm font-medium rounded-xl hover:bg-red-100 transition text-center" id="clear-btn">Clear</button>
+                
+                <button class="col-span-2 mt-2 py-4 bg-amber-50 text-amber-700 font-bold rounded-xl hover:bg-amber-100 transition text-center flex items-center justify-center gap-2 border border-amber-200 shadow-sm" id="secrets-btn">
+                    <span class="material-symbols-outlined">key</span> Open Secrets
+                </button>
+
+                 <button class="col-span-1 mt-2 py-3 bg-blue-50 text-blue-700 text-sm font-bold rounded-xl hover:bg-blue-100 transition text-center flex items-center justify-center gap-2 border border-blue-200" id="info-btn">
+                    <span class="material-symbols-outlined text-sm">code</span> Code
+                </button>
+                <button class="col-span-1 mt-2 py-3 bg-purple-50 text-purple-700 text-sm font-bold rounded-xl hover:bg-purple-100 transition text-center flex items-center justify-center gap-2 border border-purple-200" id="req-btn">
+                    <span class="material-symbols-outlined text-sm">list</span> Reqs
+                </button>
+            </div>
+        </div>
+    </aside>
+
+    <div id="secrets-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center invisible modal">
+        <div id="secrets-content" class="bg-white rounded-2xl shadow-2xl w-11/12 max-w-md p-6 transform scale-out modal-content">
+            <div class="flex justify-between items-center mb-4 border-b pb-2">
+                <h3 class="text-xl font-bold text-gray-800 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-amber-500">auto_awesome</span> 
+                    Discoveries
+                </h3>
+                <button id="close-secrets" class="text-gray-400 hover:text-gray-800 p-2 hover:bg-gray-100 rounded-full transition-colors">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+
+            <div id="secrets-grid-view">
+                <p class="text-sm text-gray-500 mb-4">
+                    Unlock patterns by experimenting with rhythms (Taps) and flow (Drags). Click a discovery to see its activation code.
+                </p>
+                <div id="secrets-list" class="grid grid-cols-5 gap-2 max-h-60 overflow-y-auto p-1">
+                    </div>
+                <div class="text-center text-xs text-gray-400 mt-4">
+                    Found: <span id="secrets-count">0</span> / 20
+                </div>
+            </div>
+
+            <div id="secrets-detail-view" class="hidden flex flex-col">
+                <button id="back-to-grid" class="text-xs text-blue-500 mb-2 flex items-center hover:underline self-start">
+                    <span class="material-symbols-outlined text-sm mr-1">arrow_back</span> Back
+                </button>
+                
+                <div class="bg-amber-50 rounded-xl p-5 border border-amber-100 text-center space-y-4">
+                    <div id="detail-id" class="w-16 h-16 bg-amber-200 rounded-full flex items-center justify-center mx-auto text-amber-800 font-bold text-2xl shadow-inner">?</div>
+                    
+                    <div>
+                        <h4 id="detail-title" class="text-lg font-bold text-amber-900">Secret Unlocked</h4>
+                        <p id="detail-type" class="text-xs text-amber-700/70 uppercase tracking-wide font-bold mt-1">RHYTHM</p>
+                    </div>
+
+                    <div class="text-left bg-white/60 p-4 rounded-lg text-sm border border-amber-100 shadow-sm">
+                        <p class="mb-2"><span class="font-bold text-gray-600 block text-xs uppercase mb-1">Trigger:</span>
+                        <span id="detail-trigger" class="font-mono text-lg text-amber-600 tracking-wider bg-amber-50 px-2 py-1 rounded">Tap Tap</span></p>
+                        
+                        <p><span class="font-bold text-gray-600 block text-xs uppercase mb-1">Visual Effect:</span>
+                        <span id="detail-reward" class="italic text-gray-700">Blooming Mandala</span></p>
+                    </div>
+
+                    <button id="simulate-btn" class="w-full py-3 bg-gradient-to-r from-amber-400 to-amber-500 text-white rounded-xl font-bold shadow-lg hover:from-amber-500 hover:to-amber-600 active:scale-95 transition flex items-center justify-center gap-2">
+                        <span class="material-symbols-outlined">play_circle</span> Play Example
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="code-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center invisible modal">
+        <div class="bg-white rounded-2xl shadow-2xl w-11/12 max-w-4xl h-[80vh] p-6 transform scale-out modal-content flex flex-col">
+            <div class="flex justify-between items-center mb-4 border-b pb-2 shrink-0">
+                <h3 class="text-xl font-bold text-gray-800 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-blue-500">code</span> Source Code
+                </h3>
+                <button id="close-code" class="text-gray-400 hover:text-gray-800 p-2 hover:bg-gray-100 rounded-full transition-colors">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <div class="flex-1 overflow-auto bg-gray-50 p-4 rounded border border-gray-200 font-mono text-xs">
+                <pre id="source-code-display">Loading...</pre>
+            </div>
+            <div class="mt-4 flex justify-end shrink-0">
+                <button id="copy-code-btn" class="px-4 py-2 bg-blue-600 text-white rounded font-bold hover:bg-blue-700 transition flex items-center gap-2">
+                    <span class="material-symbols-outlined text-sm">content_copy</span> Copy to Clipboard
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="req-modal" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-[100] flex items-center justify-center invisible modal">
+        <div class="bg-white rounded-2xl shadow-2xl w-11/12 max-w-lg p-6 transform scale-out modal-content">
+            <div class="flex justify-between items-center mb-4 border-b pb-2">
+                <h3 class="text-xl font-bold text-gray-800 flex items-center gap-2">
+                    <span class="material-symbols-outlined text-purple-500">checklist</span> Changes & Requirements
+                </h3>
+                <button id="close-req" class="text-gray-400 hover:text-gray-800 p-2 hover:bg-gray-100 rounded-full transition-colors">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <div class="overflow-y-auto max-h-[60vh] space-y-3 text-sm text-gray-700">
+                <p class="font-bold text-gray-900">v13.0 Changelog (Lift & Shift):</p>
+                <ul class="list-decimal pl-5 space-y-1">
+                    <li><strong>Baseline:</strong> Strict "Love 3" UI/Visuals maintained. No rewrites.</li>
+                    <li><strong>Audio:</strong> Injected High-Register scale (261Hz+) to fix mud.</li>
+                    <li><strong>Deployment:</strong> Added Auto-detection for img.png/sound.mp3/msg.txt.</li>
+                    <li><strong>Telemetry:</strong> Added background Google Sheets logging (25 pts).</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /**
+         * A Gift for My Babydoll - v13.0 (Baseline + Injection)
+         */
+
+        // --- 1. Core Config & State ---
+        const config = {
+            currentThemeIndex: 0,
+            defaultWords: [
+                "Peace", "Gentle", "Warmth", "Love", "Hope", "Empathy", "Calm", "Grace", "Kindness", "Light", "Joy", "Bliss",
+                "Serenity", "Breathe Deep", "Be Here", "Soften", "Let Go", "You Are Enough", "Tranquility", "Balance", "Harmony",
+                "Inner Peace", "Radiate", "Stillness", "Presence", "Gratitude", "Acceptance", "Flow", "Healing", "Strength",
+                "Wisdom", "Patience", "Courage", "Trust", "Clarity", "Unity", "Wholeness"
+            ],
+            customWords: [],
+            speedMultiplier: 1.0,
+            decayValue: 0.005,
+            trailDecay: 0.01,
+            trailSpeed: 1.0,
+            useGradient: true,
+            backgroundImage: null,
+            // Trail State
+            currentTrail: '♥',
+            lastTrailSwitch: Date.now()
+        };
+
+        const themes = [
+            { bg: ['#e0c3fc', '#8ec5fc'], text: '#4a148c' },
+            { bg: ['#fad0c4', '#ffd1ff'], text: '#880e4f' },
+            { bg: ['#d299c2', '#fef9d7'], text: '#3e2723' },
+            { bg: ['#a1c4fd', '#c2e9fb'], text: '#01579b' },
+            { bg: ['#d4fc79', '#96e6a1'], text: '#1b5e20' }
+        ];
+
+        const secretWords = [
+            "Huoi I Love You", "You are my Sunshine", "I Love You My Sweetheart", "My Babydoll", "❤️❤️❤️", "🥰❤️♥️🧡🫰",
+            "whereever you go that's where I want to be", "Forever Yours", "My One and Only", "Soulmate", "Endless Love",
+            "My Heart is Yours", "Together Always", "You Complete Me", "My Happy Place", "Love of My Life", "Dream Come True",
+            "My Everything", "Cherished", "Adored", "My Rock", "Purest Love", "Only You", "Sweetheart", "Darling",
+            "Beloved", "My Angel", "Home is You", "Infinite Love", "Unconditional", "My Better Half", "Twin Flame"
+        ];
+        
+        let visualEntities = [];
+        let wordEntities = [];
+        let particles = []; 
+        let foundEggs = JSON.parse(localStorage.getItem('garden_egg_ids') || "[]");
+        let inputBuffer = ""; 
+
+        // --- 2. Audio Engine (MODIFIED: High Register) ---
+        const ZenAudio = {
+            ctx: null, enabled: true, masterGain: null, dest: null,
+            // MODIFIED: High Register Scale (C4+) to prevent mud
+            scale: [261.63, 293.66, 329.63, 392.00, 440.00, 523.25, 587.33, 659.25, 783.99, 880.00, 1046.50, 1174.66, 1318.51],
+            
+            init: function() {
+                if (!this.ctx && (window.AudioContext || window.webkitAudioContext)) {
+                    this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+                    this.masterGain = this.ctx.createGain();
+                    this.masterGain.gain.value = 0.3; // Standard Volume
+                    
+                    this.dest = this.ctx.createMediaStreamDestination();
+                    this.masterGain.connect(this.ctx.destination);
+                    this.masterGain.connect(this.dest);
+                }
+            },
+
+            // Instant Wake Up (Fixes 1st Drag Mute)
+            warmUp: function() {
+                if (!this.ctx) this.init();
+                if (this.ctx && (this.ctx.state === 'suspended' || this.ctx.state === 'interrupted')) {
+                    this.ctx.resume();
+                }
+                
+                if (this.ctx && this.enabled) {
+                    // Play imperceptible silence to force hardware engage
+                    const osc = this.ctx.createOscillator();
+                    const gain = this.ctx.createGain();
+                    gain.gain.value = 0.001; 
+                    osc.connect(gain);
+                    gain.connect(this.masterGain);
+                    osc.start();
+                    osc.stop(this.ctx.currentTime + 0.01);
+                }
+            },
+
+            getFreqIndex: function(y, height) {
+                const norm = 1 - Math.max(0, Math.min(1, y / height));
+                return Math.floor(norm * (this.scale.length - 1));
+            },
+            
+            // Classic Karplus-Strong Pluck
+            playPluck: function(freq, volume = 0.3) {
+                if (!this.ctx || !this.enabled) return;
+                if (this.ctx.state !== 'running') this.ctx.resume().catch(()=>{});
+
+                const buffer = this.ctx.createBuffer(1, this.ctx.sampleRate * 2.0, this.ctx.sampleRate);
+                const data = buffer.getChannelData(0);
+                const delayLength = Math.floor(this.ctx.sampleRate / freq);
+                let idx = 0, last = 0;
+                
+                // Burst
+                const noise = new Float32Array(delayLength).map(() => Math.random()*2-1);
+                
+                for (let i = 0; i < buffer.length; i++) {
+                    // 0.99 Decay for "Classic" cleaner sound (vs 0.992 metallic)
+                    const sample = (noise[idx] + last) * 0.5 * 0.99; 
+                    last = noise[idx]; noise[idx] = sample;
+                    data[i] = sample * volume;
+                    idx = (idx + 1) % delayLength;
+                }
+                const src = this.ctx.createBufferSource(); src.buffer = buffer; src.connect(this.masterGain); src.start();
+            },
+            
+            // Harmonious Triad Strum (Double Tap)
+            playChord: function(baseIdx) {
+                if (!this.ctx || !this.enabled) return;
+                // Root
+                this.playPluck(this.scale[baseIdx], 0.2);
+                // 3rd (approx)
+                setTimeout(() => {
+                    const idx2 = Math.min(this.scale.length-1, baseIdx + 2);
+                    this.playPluck(this.scale[idx2], 0.15);
+                }, 40);
+                // 5th (approx)
+                setTimeout(() => {
+                    const idx3 = Math.min(this.scale.length-1, baseIdx + 4);
+                    this.playPluck(this.scale[idx3], 0.15);
+                }, 80);
+            },
+            
+            playDiscovery: function() {
+                if (!this.ctx || !this.enabled) return;
+                [261.63, 329.63, 392.00, 523.25].forEach((f, i) => { setTimeout(() => this.playPluck(f, 0.2), i * 150); });
+            }
+        };
+
+        // --- 3. Graphics & Entities ---
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        let width, height;
+
+        function resize() {
+            width = window.innerWidth;
+            height = window.innerHeight;
+            canvas.width = width; canvas.height = height;
+            document.getElementById('settings-panel').style.height = `${window.innerHeight}px`;
+        }
+        window.addEventListener('resize', resize);
+        window.addEventListener('orientationchange', () => { setTimeout(resize, 100); });
+        resize();
+
+        const random = (min, max) => Math.random() * (max - min) + min;
+        function getPastelColor() { 
+            const hue = random(0, 360);
+            return { hue: hue, str: `hsla(${hue}, 70%, 80%,` };
+        }
+        function getRandomWord() {
+            if (config.customWords.length > 0) return config.customWords[Math.floor(Math.random() * config.customWords.length)];
+            return config.defaultWords[Math.floor(Math.random() * config.defaultWords.length)];
+        }
+
+        class Particle {
+            constructor(x, y, color) {
+                this.x = x; this.y = y;
+                this.vx = random(-3, 3); this.vy = random(-5, 1);
+                this.life = 1.0; this.decay = random(0.005, 0.02);
+                this.color = color;
+                this.gravity = 0.1;
+                this.sparkleColor = `hsl(${random(0,360)}, 80%, 70%)`;
+            }
+            update() {
+                this.x += this.vx; this.y += this.vy;
+                this.vy += this.gravity;
+                this.life -= this.decay;
+            }
+            draw(ctx) {
+                ctx.globalAlpha = Math.max(0, this.life);
+                ctx.fillStyle = this.sparkleColor;
+                ctx.fillRect(this.x, this.y, 2, 2);
+            }
+            isDead() { return this.life <= 0; }
+        }
+
+        class Word {
+            constructor(x, y, text) {
+                this.x = x; this.y = y; this.text = text || getRandomWord();
+                this.velocity = -0.5; this.alpha = 0; this.fadeIn = true;
+                this.color = themes[config.currentThemeIndex].text; 
+            }
+            update() {
+                this.y += this.velocity * config.speedMultiplier;
+                if (this.fadeIn) { this.alpha += 0.02 * config.speedMultiplier; if (this.alpha>=1) this.fadeIn=false; } 
+                else if (config.decayValue > 0) { this.alpha -= config.decayValue * config.speedMultiplier; }
+            }
+            draw(ctx) {
+                ctx.save(); ctx.globalAlpha = Math.max(0, this.alpha);
+                ctx.font = "20px 'Segoe UI', sans-serif"; ctx.fillStyle = this.color;
+                ctx.textAlign = "center"; ctx.shadowBlur = 4; ctx.shadowColor = "rgba(0,0,0,0.5)";
+                ctx.fillText(this.text, this.x, this.y); ctx.restore();
+            }
+            isDead() { return this.alpha <= 0 && !this.fadeIn; }
+        }
+
+        class Bloom {
+            constructor(x, y, size=null) {
+                this.x = x; this.y = y; this.size = 0; 
+                this.maxSize = size || random(30, 80);
+                this.colorObj = getPastelColor();
+                this.colorBase = this.colorObj.str;
+                this.petals = Math.floor(random(5, 9));
+                this.alpha = 1; 
+                this.compColor = `hsla(${(this.colorObj.hue + 180)%360}, 60%, 70%,`;
+                this.rotation = random(0, Math.PI*2);
+                const shapeRnd = Math.random();
+                if(shapeRnd > 0.6) this.shape = 'pointed';
+                else if (shapeRnd > 0.3) this.shape = 'round';
+                else this.shape = 'hybrid';
+            }
+            update() {
+                this.rotation += 0.002;
+                if (this.size < this.maxSize) this.size += 0.5 * config.speedMultiplier;
+                else if (config.decayValue > 0) this.alpha -= config.decayValue * config.speedMultiplier;
+            }
+            draw(ctx) {
+                ctx.save();
+                
+                // Secret 2: Gold Filigree
+                if(foundEggs.includes(2)) {
+                    ctx.strokeStyle = `rgba(218, 165, 32, ${this.alpha * 0.6})`;
+                    ctx.lineWidth = 0.5;
+                    for(let i=0; i<5; i++) {
+                        const angle = (i/5) * Math.PI*2 + this.rotation;
+                        const len = this.size * 1.5;
+                        ctx.beginPath();
+                        ctx.moveTo(this.x, this.y);
+                        ctx.bezierCurveTo(this.x + Math.cos(angle - 0.4) * len * 0.5, this.y + Math.sin(angle - 0.4) * len * 0.5,
+                            this.x + Math.cos(angle + 0.4) * len * 0.8, this.y + Math.sin(angle + 0.4) * len * 0.8,
+                            this.x + Math.cos(angle) * len, this.y + Math.sin(angle) * len);
+                        ctx.stroke(); 
+                    }
+                }
+
+                for(let i=0; i<3; i++) {
+                    ctx.fillStyle = this.colorBase + (this.alpha * 0.7 * (1 - i*0.2)) + ')';
+                    ctx.beginPath();
+                    for (let j = 0; j < this.petals; j++) {
+                        const angle = (j / this.petals) * Math.PI * 2 + (i * 0.1) + this.rotation;
+                        const petalSize = (this.size - (i*5));
+                        if (petalSize <= 0) continue;
+                        
+                        ctx.moveTo(this.x, this.y);
+                        if(this.shape === 'pointed') {
+                            ctx.quadraticCurveTo(
+                                this.x + Math.cos(angle - 0.3) * petalSize, 
+                                this.y + Math.sin(angle - 0.3) * petalSize,
+                                this.x + Math.cos(angle) * petalSize * 1.2,
+                                this.y + Math.sin(angle) * petalSize * 1.2
+                            );
+                            ctx.quadraticCurveTo(
+                                this.x + Math.cos(angle + 0.3) * petalSize,
+                                this.y + Math.sin(angle + 0.3) * petalSize,
+                                this.x, this.y
+                            );
+                        } else {
+                            ctx.ellipse(this.x + Math.cos(angle)*(petalSize*0.5), this.y + Math.sin(angle)*(petalSize*0.5), petalSize*0.4, petalSize*0.2, angle, 0, Math.PI*2);
+                        }
+                    }
+                    ctx.fill();
+                }
+
+                // Ornate Center
+                const grad = ctx.createRadialGradient(this.x, this.y, 0, this.x, this.y, this.size * 0.25);
+                const centerAlpha = foundEggs.includes(1) ? 0.9 : 0.7; 
+                grad.addColorStop(0, `rgba(255, 255, 255, ${centerAlpha})`); 
+                grad.addColorStop(0.4, this.compColor + (this.alpha * centerAlpha) + ")"); 
+                grad.addColorStop(1, this.compColor + "0)"); 
+                ctx.fillStyle = grad;
+                ctx.beginPath(); ctx.arc(this.x, this.y, this.size * 0.25, 0, Math.PI*2); ctx.fill();
+                
+                ctx.strokeStyle = `rgba(255,255,255,${this.alpha*0.6})`;
+                ctx.lineWidth = 1;
+                ctx.beginPath(); ctx.arc(this.x, this.y, this.size*0.1, 0, Math.PI*2); ctx.stroke();
+                
+                if(this.size > 20) {
+                    ctx.fillStyle = `rgba(255,255,200,${this.alpha})`;
+                    for(let k=0; k<6; k++) {
+                        const dotA = (k/6)*Math.PI*2 + this.rotation;
+                        const dotR = this.size * 0.2;
+                        ctx.beginPath(); ctx.arc(this.x + Math.cos(dotA)*dotR, this.y + Math.sin(dotA)*dotR, 1.5, 0, Math.PI*2); ctx.fill();
+                    }
+                }
+
+                ctx.restore();
+            }
+            isDead() { 
+                if (this.alpha <= 0 && foundEggs.includes(5)) {
+                    for(let k=0; k<15; k++) particles.push(new Particle(this.x, this.y, this.colorBase + '1)'));
+                }
+                return this.alpha <= 0; 
+            }
+        }
+
+        class GrowingHeart {
+            constructor(x, y) {
+                this.x = x; this.y = y; this.size = 0; 
+                this.maxSize = random(40, 90);
+                this.hue = random(0, 360);
+                this.alpha = 1;
+            }
+            update() {
+                if (this.size < this.maxSize) this.size += 0.5 * config.speedMultiplier;
+                else if (config.decayValue > 0) this.alpha -= config.decayValue * config.speedMultiplier;
+            }
+            draw(ctx) {
+                ctx.save();
+                ctx.translate(this.x, this.y);
+                const scale = this.size / 30;
+                ctx.scale(scale, scale);
+                ctx.globalAlpha = Math.max(0, this.alpha);
+
+                let grad = ctx.createRadialGradient(-5, -5, 2, 0, 0, 25);
+                grad.addColorStop(0, "white"); 
+                grad.addColorStop(0.3, `hsl(${this.hue}, 100%, 70%)`); 
+                grad.addColorStop(1, `hsl(${this.hue}, 100%, 30%)`); 
+                ctx.fillStyle = grad;
+
+                ctx.beginPath();
+                ctx.moveTo(0, 0);
+                ctx.bezierCurveTo(-10, -10, -20, 0, 0, 20);
+                ctx.bezierCurveTo(20, 0, 10, -10, 0, 0);
+                ctx.fill();
+                
+                ctx.strokeStyle = `rgba(255,255,255,${this.alpha*0.5})`;
+                ctx.lineWidth = 1;
+                ctx.stroke();
+
+                ctx.restore();
+            }
+            isDead() { return this.alpha <= 0; }
+        }
+
+        class HeartBloom extends Bloom {
+            draw(ctx) {
+                ctx.save();
+                const layerCount = foundEggs.includes(3) ? 5 : 3;
+                for(let i=0; i<layerCount; i++) {
+                    const scale = (this.size - (i*4)) / 20;
+                    if (scale <= 0) continue;
+                    const pCount = this.petals + (i%2); 
+                    for (let j = 0; j < pCount; j++) {
+                        ctx.save();
+                        const angle = (j / pCount) * Math.PI * 2 + this.rotation + (i*0.2);
+                        ctx.translate(this.x, this.y);
+                        ctx.rotate(angle + Math.PI/2);
+                        ctx.translate(0, -scale * 15);
+                        ctx.scale(scale, scale);
+                        
+                        let grad = ctx.createRadialGradient(-3, -3, 1, 0, 0, 15);
+                        grad.addColorStop(0, "rgba(255,255,255,0.4)");
+                        grad.addColorStop(1, this.colorBase + (this.alpha * 0.8) + ')');
+                        ctx.fillStyle = grad;
+
+                        ctx.beginPath();
+                        ctx.moveTo(0,0);
+                        ctx.bezierCurveTo(-5, -5, -10, 0, 0, 10);
+                        ctx.bezierCurveTo(10, 0, 5, -5, 0, 0);
+                        ctx.fill();
+                        ctx.restore();
+                    }
+                }
+                ctx.fillStyle = this.compColor + this.alpha + ')';
+                ctx.beginPath(); ctx.arc(this.x, this.y, this.size * 0.1, 0, Math.PI*2); ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        class HeartCloud {
+            constructor(x, y) {
+                this.x = x; this.y = y; this.alpha = 1;
+                this.hearts = [];
+                const count = Math.floor(random(4, 12));
+                const colors = ["#ff0000", "#ff7f00", "#ffff00", "#00ff00", "#0000ff", "#4b0082", "#9400d3", "#ff1493"];
+                for(let i=0; i<count; i++) {
+                    this.hearts.push({
+                        ox: random(-40, 40), oy: random(-40, 40),
+                        size: random(10, 25),
+                        color: colors[Math.floor(Math.random()*colors.length)],
+                        rot: random(-0.2, 0.2)
+                    });
+                }
+            }
+            update() {
+                this.y -= 0.5 * config.speedMultiplier;
+                if (config.decayValue > 0) this.alpha -= config.decayValue * config.speedMultiplier;
+            }
+            draw(ctx) {
+                ctx.save(); ctx.globalAlpha = Math.max(0, this.alpha);
+                this.hearts.forEach(h => {
+                    ctx.save();
+                    ctx.translate(this.x + h.ox, this.y + h.oy);
+                    ctx.rotate(h.rot);
+                    const scale = h.size / 20;
+                    ctx.scale(scale, scale);
+                    
+                    let grad = ctx.createRadialGradient(-5, -5, 2, 0, 0, 20);
+                    grad.addColorStop(0, "white");
+                    grad.addColorStop(0.3, h.color);
+                    grad.addColorStop(1, "#330000"); // Depth
+                    ctx.fillStyle = grad;
+                    
+                    ctx.beginPath();
+                    ctx.moveTo(0,0);
+                    ctx.bezierCurveTo(-10, -10, -20, 0, 0, 20);
+                    ctx.bezierCurveTo(20, 0, 10, -10, 0, 0);
+                    ctx.fill();
+                    ctx.restore();
+                });
+                ctx.restore();
+            }
+            isDead() { return this.alpha <= 0; }
+        }
+
+        // --- TRAIL SYSTEM (Vivid & Opaque) ---
+        class TrailBase {
+            constructor(x, y, type) {
+                this.x = x; this.y = y; this.alpha = 1; 
+                this.size = random(10, 20);
+                this.type = type; 
+                this.hue = random(0, 360);
+                this.color = `hsl(${this.hue},100%,60%)`; 
+                this.cometColor = `hsl(${random(200,260)},100%,80%)`;
+            }
+            update() {
+                this.y -= config.trailSpeed; 
+                this.alpha -= config.trailDecay; 
+            }
+            draw(ctx) {
+                ctx.save(); ctx.globalAlpha = Math.max(0, this.alpha);
+                
+                if(this.type === "Comet") {
+                    ctx.fillStyle = this.cometColor;
+                    ctx.beginPath(); ctx.arc(this.x, this.y, this.size/3, 0, Math.PI*2); ctx.fill();
+                } 
+                else if (this.type === "♥" || this.type === "⭐") {
+                    ctx.translate(this.x, this.y);
+                    
+                    if(this.type === "♥") {
+                        // 2D Vivid Heart
+                        ctx.fillStyle = this.color;
+                        ctx.font = `${this.size}px serif`;
+                        ctx.fillText("♥", 0, 0);
+                    } else {
+                        // Star
+                        ctx.fillStyle = this.color; // Colorful Stars
+                        ctx.font = `${this.size}px serif`;
+                        ctx.fillText("⭐", 0, 0);
+                    }
+                } 
+                else {
+                    // Cloud
+                    ctx.fillStyle = "rgba(255,255,255,0.9)";
+                    ctx.font = `${this.size}px serif`;
+                    ctx.fillText(this.type, this.x, this.y);
+                }
+                ctx.restore();
+            }
+            isDead() { return this.alpha <= 0; }
+        }
+
+        // --- 4. Input Handling ---
+        let lastTap=0, isDragging=false, dragStart=0, startX, startY, lastDragSound=0;
+        
+        // Immediate Audio Wake Up
+        function wakeAudio() {
+            ZenAudio.warmUp();
+            document.removeEventListener('touchstart', wakeAudio);
+            document.removeEventListener('mousedown', wakeAudio);
+        }
+        document.addEventListener('touchstart', wakeAudio, {passive: false});
+        document.addEventListener('mousedown', wakeAudio);
+
+        function handleInputStart(x,y) { 
+            ZenAudio.warmUp(); // Instant engagement
+            document.getElementById('overlay').style.opacity='0'; 
+            startX=x; startY=y; 
+            dragStart=Date.now(); 
+            isDragging=false; 
+        }
+        
+        function handleInputMove(x,y) {
+            if(!startX) return;
+            if(Math.sqrt((x-startX)**2 + (y-startY)**2) > 10) {
+                isDragging=true;
+                
+                // Trail Logic: Switch randomly every 10s
+                if(Date.now() - config.lastTrailSwitch > 10000) {
+                    const options = ['♥', 'Comet', '☁️', '⭐'];
+                    if (config.currentTrail !== '♥' && Math.random() > 0.4) {
+                        config.currentTrail = '♥';
+                    } else {
+                        config.currentTrail = options[Math.floor(Math.random() * options.length)];
+                    }
+                    config.lastTrailSwitch = Date.now();
+                }
+
+                visualEntities.push(new TrailBase(x, y, config.currentTrail));
+                
+                // Fluid Strumming on Drag
+                if(Date.now()-lastDragSound > 60) { 
+                    const idx = ZenAudio.getFreqIndex(y, height);
+                    ZenAudio.playPluck(ZenAudio.scale[idx], 0.1); 
+                    lastDragSound=Date.now(); 
+                }
+            }
+        }
+
+        function handleInputEnd(x,y) {
+            const now = Date.now();
+            if(isDragging) { 
+                registerInput('S'); 
+                checkDragUnlock(now-dragStart); 
+            } else {
+                const idx = ZenAudio.getFreqIndex(y, height);
+                const freq = ZenAudio.scale[idx];
+                
+                let ent;
+                const rnd = Math.random();
+                if(foundEggs.includes(3) && rnd > 0.7) ent = new GrowingHeart(x,y);
+                else if(foundEggs.includes(3) && rnd > 0.5) ent = new HeartBloom(x,y);
+                else ent = new Bloom(x,y);
+
+                visualEntities.push(ent);
+                wordEntities.push(new Word(x,y-30));
+                
+                ZenAudio.playPluck(freq, 0.3);
+                
+                // TELEMETRY TAP
+                window.telemetryStats.taps++;
+
+                registerInput('T');
+                
+                if(now-lastTap < 300) { 
+                    visualEntities.push(new HeartCloud(x,y));
+                    ZenAudio.playChord(idx);
+                    // TELEMETRY DRAG (Chord)
+                    window.telemetryStats.drags++;
+                }
+                lastTap=now;
+            }
+            startX=null; isDragging=false;
+        }
+        
+        canvas.addEventListener('mousedown',e=>handleInputStart(e.clientX,e.clientY));
+        canvas.addEventListener('mousemove',e=>{if(startX)handleInputMove(e.clientX,e.clientY)});
+        canvas.addEventListener('mouseup',e=>handleInputEnd(e.clientX,e.clientY));
+        canvas.addEventListener('touchstart',e=>{e.preventDefault();handleInputStart(e.touches[0].clientX,e.touches[0].clientY)},{passive:false});
+        canvas.addEventListener('touchmove',e=>{e.preventDefault();if(startX)handleInputMove(e.touches[0].clientX,e.touches[0].clientY)},{passive:false});
+        canvas.addEventListener('touchend',e=>{e.preventDefault();if(e.changedTouches.length)handleInputEnd(e.changedTouches[0].clientX,e.changedTouches[0].clientY)});
+
+        // --- 5. Secrets Logic ---
+        const rhythmSequences = [
+            { code: "TTT", id: 1, desc: "Tap Tap Tap", title: "Jewel Core" }, 
+            { code: "TTS", id: 2, desc: "Tap Tap Swipe", title: "Gold Filigree" }, 
+            { code: "TST", id: 3, desc: "Tap Swipe Tap", title: "Amour Bloom & Heart 3D" }, 
+            { code: "SST", id: 4, desc: "Swipe Swipe Tap", title: "Dimension Heart" }, 
+            { code: "TTTT", id: 5, desc: "Tap Tap Tap Tap", title: "Stardust Legacy" }, 
+            { code: "SS", id: 6, desc: "Swipe Swipe", title: "Removed (Joy)" },
+            { code: "TSTS", id: 7, desc: "Tap Swipe Tap Swipe", title: "Secret 7" }, 
+            { code: "STST", id: 8, desc: "Swipe Tap Swipe Tap", title: "Secret 8" }, 
+            { code: "TSS", id: 9, desc: "Tap Swipe Swipe", title: "Secret 9" }, 
+            { code: "SSS", id: 10, desc: "Swipe Swipe Swipe", title: "Secret 10" }
+        ];
+
+        function registerInput(char) {
+            inputBuffer += char; if(inputBuffer.length>5) inputBuffer=inputBuffer.slice(-5);
+            rhythmSequences.forEach(seq => { if(inputBuffer.endsWith(seq.code)) triggerUnlock(seq.id); });
+        }
+        function checkDragUnlock(dur) {
+            const sec = 10 + Math.floor(dur/1000) - 1;
+            if(sec>10 && sec<=20) triggerUnlock(sec);
+        }
+        function triggerUnlock(id) {
+            inputBuffer="";
+            if(!foundEggs.includes(id)) {
+                foundEggs.push(id); localStorage.setItem('garden_egg_ids', JSON.stringify(foundEggs));
+                
+                let b = new Bloom(width/2, height/2, 200);
+                if(id===3) b = new GrowingHeart(width/2, height/2); 
+                visualEntities.push(b);
+                
+                // TELEMETRY SECRET
+                window.telemetryStats.secrets++;
+
+                ZenAudio.playDiscovery(); 
+                updateSecretsUI();
+            }
+        }
+
+        // --- 6. Rendering ---
+        function drawBackground(ctx, img, cw, ch) {
+            if (!img.complete || img.naturalWidth === 0) return;
+            const scale = Math.max(cw / img.width, ch / img.height);
+            const x = (cw / 2) - (img.width / 2) * scale;
+            const y = (ch / 2) - (img.height / 2) * scale;
+            ctx.drawImage(img, x, y, img.width * scale, img.height * scale);
+        }
+
+        function loop() {
+            if(config.useGradient || !config.backgroundImage) {
+                const t=themes[config.currentThemeIndex]; const g=ctx.createLinearGradient(0,0,0,height);
+                g.addColorStop(0,t.bg[0]); g.addColorStop(1,t.bg[1]); ctx.fillStyle=g; ctx.fillRect(0,0,width,height);
+            } else { 
+                drawBackground(ctx, config.backgroundImage, width, height); 
+            }
+
+            for(let i=visualEntities.length-1; i>=0; i--) { visualEntities[i].update(); if(visualEntities[i].isDead()) visualEntities.splice(i,1); }
+            for(let i=wordEntities.length-1; i>=0; i--) { wordEntities[i].update(); if(wordEntities[i].isDead()) wordEntities.splice(i,1); }
+            for(let i=particles.length-1; i>=0; i--) { particles[i].update(); particles[i].draw(ctx); if(particles[i].isDead()) particles.splice(i,1); }
+            
+            visualEntities.forEach(e => e.draw(ctx));
+            wordEntities.forEach(w => w.draw(ctx));
+
+            requestAnimationFrame(loop);
+            document.getElementById('clock').innerText = new Date().toLocaleTimeString();
+        }
+
+        // --- 7. UI Logic ---
+        const bgInput=document.getElementById('bg-upload-input');
+        
+        document.getElementById('apply-bg-btn').addEventListener('click', ()=>{
+            const f=bgInput.files[0]; if(!f){alert("Please select an image file first.");return;}
+            const r=new FileReader(); 
+            r.onload=e=>{ 
+                try {
+                    localStorage.setItem('garden_bg',e.target.result); 
+                } catch (err) {
+                    console.warn("Image too large to save to local storage. It will reset on reload.");
+                    alert("Image applied! Note: This image is too large to save permanently, so it will reset if you refresh the page.");
+                }
+                
+                const i=new Image(); 
+                i.onload=()=>{config.backgroundImage=i;config.useGradient=false;}; 
+                i.src=e.target.result; 
+            }; 
+            r.readAsDataURL(f);
+        });
+        
+        document.getElementById('reset-bg-btn').addEventListener('click', ()=>{ localStorage.removeItem('garden_bg'); config.useGradient=true; config.backgroundImage=null; });
+        if(localStorage.getItem('garden_bg')){ const i=new Image(); i.onload=()=>{config.backgroundImage=i;config.useGradient=false;}; i.src=localStorage.getItem('garden_bg'); }
+
+        const panel=document.getElementById('settings-panel');
+        document.getElementById('settings-trigger').onclick = ()=>panel.classList.remove('translate-x-full');
+        document.getElementById('close-btn').onclick = ()=>panel.classList.add('translate-x-full');
+        document.getElementById('audio-toggle').onchange=e=>ZenAudio.enabled=e.target.checked;
+        
+        document.getElementById('decay-slider').oninput=e=>config.decayValue=[0,0.002,0.005,0.01,0.02,0.05][e.target.value];
+        document.getElementById('trail-slider').oninput=e=>{
+            const val = parseInt(e.target.value);
+            const decays = [0.1, 0.08, 0.06, 0.04, 0.02, 0.01, 0.008, 0.005, 0.002, 0.0005];
+            const speeds = [3.0, 2.5, 2.0, 1.5, 1.0, 0.8, 0.6, 0.4, 0.2, 0.1];
+            config.trailDecay = decays[val-1];
+            config.trailSpeed = speeds[val-1];
+        };
+        document.getElementById('speed-slider').oninput=e=>config.speedMultiplier=0.2+(e.target.value/100)*1.8;
+        
+        document.getElementById('theme-btn').onclick=()=>config.currentThemeIndex=(config.currentThemeIndex+1)%themes.length;
+        document.getElementById('clear-btn').onclick=()=>{visualEntities=[];wordEntities=[];particles=[];};
+        document.getElementById('save-btn').onclick=()=>{const a=document.createElement('a');a.download='garden.png';a.href=canvas.toDataURL();a.click();};
+        const cBox=document.getElementById('custom-words');
+        cBox.value=localStorage.getItem('garden_words')||"";
+        cBox.onblur=e=>{localStorage.setItem('garden_words',e.target.value);if(e.target.value==='6969')config.customWords=[...config.defaultWords,...secretWords];else config.customWords=e.target.value.split(',').filter(s=>s.trim());};
+
+        const modals = {
+            secrets: document.getElementById('secrets-modal'),
+            code: document.getElementById('code-modal'),
+            req: document.getElementById('req-modal')
+        };
+
+        function toggleModal(id, show) {
+            const el = modals[id];
+            const content = el.querySelector('.modal-content') || el.querySelector('div');
+            if(show) { 
+                updateSecretsUI(); 
+                el.classList.remove('invisible'); el.classList.add('visible');
+                content.classList.remove('scale-out'); content.classList.add('scale-in');
+                panel.classList.add('translate-x-full'); 
+            } else { 
+                el.classList.remove('visible'); el.classList.add('invisible');
+                content.classList.remove('scale-in'); content.classList.add('scale-out');
+            }
+        }
+
+        document.getElementById('secrets-btn').onclick=()=>toggleModal('secrets', true);
+        document.getElementById('close-secrets').onclick=()=>toggleModal('secrets', false);
+        document.getElementById('info-btn').onclick=()=>{
+            document.getElementById('source-code-display').textContent = document.documentElement.outerHTML;
+            toggleModal('code', true);
+        };
+        document.getElementById('close-code').onclick=()=>toggleModal('code', false);
+        document.getElementById('req-btn').onclick=()=>toggleModal('req', true);
+        document.getElementById('close-req').onclick=()=>toggleModal('req', false);
+        document.getElementById('copy-code-btn').onclick=()=>{
+            navigator.clipboard.writeText(document.documentElement.outerHTML).then(() => {
+                alert("Code copied to clipboard!");
+            });
+        };
+        document.getElementById('back-to-grid').onclick=()=>{
+            document.getElementById('secrets-detail-view').classList.add('hidden');
+            document.getElementById('secrets-grid-view').classList.remove('hidden');
+        };
+
+        function updateSecretsUI() {
+            const list=document.getElementById('secrets-list'); list.innerHTML='';
+            for(let i=1; i<=20; i++) {
+                const u = foundEggs.includes(i);
+                const b = document.createElement('button');
+                b.className = `aspect-square rounded flex items-center justify-center text-xs font-bold border transition-all ${u?'bg-amber-200 border-amber-400 text-amber-900 cursor-pointer hover:bg-amber-300':'bg-gray-100 text-gray-300 cursor-default'}`;
+                b.innerText=i;
+                if(u) b.onclick=()=>showDetail(i);
+                list.appendChild(b);
+            }
+            document.getElementById('secrets-count').innerText=foundEggs.length;
+        }
+
+        function showDetail(id) {
+            document.getElementById('secrets-grid-view').classList.add('hidden');
+            document.getElementById('secrets-detail-view').classList.remove('hidden');
+            document.getElementById('detail-id').innerText=id;
+            const seq = rhythmSequences.find(s=>s.id===id);
+            const trigger = seq ? seq.desc : `Drag ${id-9}s`;
+            const title = seq ? (seq.title || "Secret Unlocked") : "Secret Unlocked";
+            
+            document.getElementById('detail-title').innerText = title;
+            document.getElementById('detail-trigger').innerText = trigger;
+            document.getElementById('detail-type').innerText = id<=10?"RHYTHM":"ENDURANCE";
+            
+            let rewardText = "Mystery Effect";
+            if(id===1) rewardText = "Jewel Center (Soft Gradient)";
+            if(id===2) rewardText = "Gold Filigree Leaves";
+            if(id===3) rewardText = "Fractal Heart Blooms & 3D Hearts";
+            if(id===4) rewardText = "Dimensional 3D Hearts";
+            if(id===5) rewardText = "Stardust Legacy (Particles)";
+            
+            document.getElementById('detail-reward').innerText = rewardText;
+
+            document.getElementById('simulate-btn').onclick = () => {
+                toggleModal('secrets', false);
+                setTimeout(() => {
+                    if(id===3) visualEntities.push(new GrowingHeart(width/2, height/2));
+                    else if(id===4) visualEntities.push(new HeartCloud(width/2, height/2));
+                    else if(id===5) {
+                        let b = new Bloom(width/2, height/2, 200);
+                        b.alpha = 0.5; 
+                        visualEntities.push(b);
+                    }
+                    else visualEntities.push(new Bloom(width/2, height/2, 200)); 
+                    ZenAudio.playDiscovery();
+                }, 300);
+            };
+        }
+
+        // Recording
+        let mediaRecorder, recordedChunks = [], isRecording = false;
+        const recBtn = document.getElementById('record-btn');
+        const recInd = document.getElementById('rec-indicator');
+        
+        recBtn.addEventListener('click', () => isRecording ? stopRecording() : startRecording());
+        
+        function startRecording() {
+            // FULL RESET
+            ZenAudio.init();
+            
+            // Clean up old instances if any
+            if (mediaRecorder && mediaRecorder.state !== 'inactive') {
+                mediaRecorder.stop();
+            }
+            mediaRecorder = null;
+            recordedChunks = [];
+
+            if (ZenAudio.ctx && ZenAudio.ctx.state === 'suspended') {
+                ZenAudio.ctx.resume();
+            }
+
+            const stream = canvas.captureStream(60); 
+            
+            // Re-connect fresh audio tracks
+            if (ZenAudio.dest && ZenAudio.dest.stream.getAudioTracks().length > 0) {
+                const audioTrack = ZenAudio.dest.stream.getAudioTracks()[0].clone();
+                stream.addTrack(audioTrack);
+            }
+
+            const mimeTypes = [
+                "video/mp4", 
+                "video/webm;codecs=h264", 
+                "video/webm;codecs=vp9", 
+                "video/webm"
+            ];
+            
+            let selectedType = mimeTypes.find(type => MediaRecorder.isTypeSupported(type));
+
+            if (!selectedType) { alert("Screen recording is not supported."); return; }
+
+            try { mediaRecorder = new MediaRecorder(stream, { mimeType: selectedType }); } 
+            catch (e) { console.error(e); alert("Recording init failed."); return; }
+
+            mediaRecorder.ondataavailable = e => { if (e.data.size > 0) recordedChunks.push(e.data); };
+            mediaRecorder.onstop = () => {
+                const blob = new Blob(recordedChunks, { type: selectedType });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement("a"); 
+                a.style.display="none"; a.href=url; 
+                
+                let ext = "webm";
+                if (selectedType.includes("mp4")) ext = "mp4";
+                
+                a.download=`garden-${Date.now()}.${ext}`;
+                document.body.appendChild(a); a.click(); 
+                setTimeout(()=>URL.revokeObjectURL(url),100);
+            };
+            
+            mediaRecorder.start(); isRecording = true; 
+            recInd.style.opacity = '1'; recBtn.innerText = "Stop"; 
+            recBtn.classList.add('bg-red-100','text-red-700','animate-pulse'); 
+            panel.classList.add('translate-x-full');
+        }
+
+        function stopRecording() { 
+            if(mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop(); 
+            isRecording=false; recInd.style.opacity='0'; recBtn.innerText="Record"; 
+            recBtn.classList.remove('bg-red-100','text-red-700','animate-pulse'); 
+        }
+
+        loop();
+    </script>
+
+    <script>
+        // --- 1. CONFIGURATION ---
+        const FORM_ID = "1FAIpQLSe3k3uGy3zjEIJ8QVDhjpQOG6EAjWCZ9pCFlhDKle8NeUhg9w"; // Your Real ID
+        const MAPPING = {
+            "entry.320935448": "@session_end_iso",
+            "entry.674244912": "@theme_code",
+            "entry.711998658": "@ip_address",
+            "entry.463387935": "@session_id",
+            "entry.856781419": "@duration_formatted",
+            "entry.799073583": "@input_taps",
+            "entry.1460702381": "@input_drags",
+            "entry.1854966723": "@mouse_pixels_moved",
+            "entry.406770144": "@user_agent",
+            "entry.339302030": "@platform",
+            "entry.1885869286": "@screen_resolution",
+            "entry.1550217446": "@window_size",
+            "entry.581200255": "@pixel_ratio",
+            "entry.720549735": "@color_depth",
+            "entry.1134789700": "@cores",
+            "entry.1076432340": "@memory",
+            "entry.854591687": "@language",
+            "entry.101770949": "@timezone",
+            "entry.2010953570": "@cookies_enabled",
+            "entry.607664253": "@local_storage",
+            "entry.1399187003": "@canvas_fingerprint",
+            "entry.1854154093": "@referrer",
+            "entry.1036649804": "@session_start_iso",
+            "entry.1683490369": "@secrets_found_count",
+            "entry.1722638233": "v13.0"
+        };
+
+        const START_TIME = Date.now();
+        window.telemetryStats = { taps: 0, drags: 0, secrets: 0, mouseDist: 0 };
+        let cachedIP = "pending";
+
+        // --- 2. ASYNC IP FETCH ---
+        fetch('https://api.ipify.org?format=json')
+            .then(r => r.json()).then(d => cachedIP = d.ip).catch(e => cachedIP = "offline");
+
+        // --- 3. MOUSE TRACKING ---
+        let lastMouse = {x:0, y:0};
+        document.addEventListener('mousemove', e => {
+            if(lastMouse.x!==0) window.telemetryStats.mouseDist += Math.hypot(e.clientX-lastMouse.x, e.clientY-lastMouse.y);
+            lastMouse = {x:e.clientX, y:e.clientY};
+        });
+
+        // --- 4. DATA COLLECTION & SEND ---
+        const getCanvasFP = () => {
+            try {
+                const c = document.createElement('canvas'); const cx = c.getContext('2d');
+                cx.textBaseline = "top"; cx.font = "14px 'Arial'"; cx.fillStyle = "#f60";
+                cx.fillRect(125,1,62,20); cx.fillStyle = "#069"; cx.fillText("Garden", 2, 15);
+                let b64 = c.toDataURL(); let hash=0; for(let i=0;i<b64.length;i++) hash=Math.imul(31,hash)+b64.charCodeAt(i)|0;
+                return Math.abs(hash).toString(16);
+            } catch(e) { return "err"; }
+        };
+
+        async function logSession() {
+            const now = Date.now();
+            const duration = (now - START_TIME) / 1000;
+            const dataLayer = {
+                "@session_start_iso": new Date(START_TIME).toISOString(),
+                "@session_end_iso": new Date(now).toISOString(),
+                "@duration_formatted": `${Math.floor(duration/60)}m ${Math.floor(duration%60)}s`,
+                "@ip_address": cachedIP,
+                "@session_id": START_TIME.toString(36),
+                "@theme_code": "DEFAULT",
+                "@user_agent": navigator.userAgent,
+                "@screen_resolution": `${window.screen.width}x${window.screen.height}`,
+                "@window_size": `${window.innerWidth}x${window.innerHeight}`,
+                "@pixel_ratio": window.devicePixelRatio || 1,
+                "@color_depth": window.screen.colorDepth,
+                "@cores": navigator.hardwareConcurrency || "ukn",
+                "@memory": navigator.deviceMemory || "ukn",
+                "@platform": navigator.platform,
+                "@language": navigator.language,
+                "@timezone": Intl.DateTimeFormat().resolvedOptions().timeZone,
+                "@cookies_enabled": navigator.cookieEnabled,
+                "@local_storage": (typeof localStorage !== 'undefined') ? 'available' : 'blocked',
+                "@canvas_fingerprint": getCanvasFP(),
+                "@referrer": document.referrer || "direct",
+                "@input_taps": window.telemetryStats.taps,
+                "@input_drags": window.telemetryStats.drags,
+                "@mouse_pixels_moved": Math.round(window.telemetryStats.mouseDist),
+                "@secrets_found_count": window.telemetryStats.secrets
+            };
+
+            const formData = new FormData();
+            for (const [entryId, token] of Object.entries(MAPPING)) {
+                let val = token.replace(/@\w+/g, match => dataLayer[match] !== undefined ? dataLayer[match] : match);
+                formData.append(entryId, val);
+            }
+
+            try {
+                // Using keepalive to ensure delivery on close
+                await fetch(`https://docs.google.com/forms/d/e/${FORM_ID}/formResponse`, {
+                    method: 'POST', mode: 'no-cors', body: formData, keepalive: true
+                });
+            } catch(e) {}
+        }
+
+        window.addEventListener('beforeunload', logSession);
+        window.addEventListener('pagehide', logSession);
+        window.addEventListener('visibilitychange', () => { if(document.visibilityState === 'hidden') logSession(); });
+    </script>
+
+    <script>
+        const AppState = { bgImage: null, useGradient: true };
+        async function initEnvironment() {
+            // Text
+            try {
+                const r = await fetch('msg.txt');
+                if (r.ok) {
+                    const text = await r.text();
+                    const parts = text.split('|');
+                    if(parts[0]) document.getElementById('main-title').innerHTML = parts[0].trim();
+                    if(parts[1]) document.getElementById('main-subtitle-container').innerHTML = parts[1].trim();
+                    if(parts[2]) {
+                        const b = document.getElementById('custom-message-container');
+                        b.innerHTML = parts[2].trim(); b.classList.remove('hidden');
+                    }
+                }
+            } catch(e){}
+            // Audio
+            try {
+                const r = await fetch('sound.mp3', {method:'HEAD'});
+                if(r.ok) {
+                    const a = document.createElement('audio'); a.id='bg-audio-track'; a.loop=true; a.src='sound.mp3'; a.volume=0.2; document.body.appendChild(a);
+                    const unlock = ()=>{ a.play().catch(()=>{}); document.removeEventListener('click', unlock); document.removeEventListener('touchstart', unlock); };
+                    document.addEventListener('click', unlock); document.addEventListener('touchstart', unlock);
+                }
+            } catch(e){}
+            // Image
+            for(const ext of ['png','jpg','jpeg','gif']) {
+                try {
+                    const r = await fetch(`img.${ext}`, {method:'HEAD'});
+                    if(r.ok) {
+                        const i = new Image(); i.onload = ()=>{ AppState.bgImage=i; AppState.useGradient=false; }; i.src=`img.${ext}`; break;
+                    }
+                } catch(e){}
+            }
+        }
+        initEnvironment();
+    </script>
+</body>
+</html>
