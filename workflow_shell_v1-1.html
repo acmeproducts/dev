@@ -1,0 +1,1659 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Voice Workflow Shell v1</title>
+<style>
+:root{
+  --bg:#0b1020;
+  --panel:#121a2b;
+  --panel-2:#17233a;
+  --panel-3:#0f1728;
+  --text:#e8eefc;
+  --muted:#9eb0d1;
+  --accent:#5aa7ff;
+  --accent-2:#7ce0c3;
+  --warn:#ffb454;
+  --danger:#ff6b6b;
+  --ok:#64d98b;
+  --border:#263551;
+  --chip:#1a2741;
+  --shadow:0 10px 30px rgba(0,0,0,.28);
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{
+  margin:0;
+  font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+  background:linear-gradient(180deg,#0b1020 0%,#10192d 100%);
+  color:var(--text);
+}
+.app{
+  display:grid;
+  grid-template-columns:260px 1fr;
+  min-height:100vh;
+}
+.sidebar{
+  border-right:1px solid var(--border);
+  background:rgba(10,16,32,.88);
+  backdrop-filter:blur(8px);
+  padding:16px 12px;
+  position:sticky;
+  top:0;
+  height:100vh;
+  overflow:auto;
+}
+.brand{
+  margin:4px 8px 14px;
+}
+.brand h1{
+  font-size:18px;
+  margin:0 0 4px;
+}
+.brand p{
+  margin:0;
+  color:var(--muted);
+  font-size:12px;
+  line-height:1.35;
+}
+.nav{
+  display:flex;
+  flex-direction:column;
+  gap:6px;
+  margin-top:14px;
+}
+.nav button{
+  width:100%;
+  text-align:left;
+  border:1px solid var(--border);
+  background:transparent;
+  color:var(--text);
+  padding:12px 12px;
+  border-radius:12px;
+  cursor:pointer;
+  font-weight:600;
+}
+.nav button.active{
+  background:var(--panel-2);
+  border-color:var(--accent);
+  box-shadow:inset 0 0 0 1px rgba(90,167,255,.15);
+}
+.nav button small{
+  display:block;
+  margin-top:4px;
+  color:var(--muted);
+  font-weight:500;
+}
+.side-group{
+  margin-top:18px;
+  padding:12px;
+  border:1px solid var(--border);
+  border-radius:14px;
+  background:rgba(255,255,255,.02);
+}
+.side-group h2{
+  margin:0 0 8px;
+  font-size:13px;
+  letter-spacing:.02em;
+}
+.kv{
+  display:grid;
+  grid-template-columns:1fr auto;
+  gap:6px 8px;
+  font-size:12px;
+}
+.kv div:nth-child(odd){color:var(--muted)}
+.main{
+  padding:18px;
+  overflow:auto;
+}
+.topbar{
+  display:flex;
+  gap:10px;
+  align-items:center;
+  flex-wrap:wrap;
+  margin-bottom:16px;
+}
+.badge{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  padding:7px 10px;
+  border:1px solid var(--border);
+  border-radius:999px;
+  background:var(--chip);
+  font-size:12px;
+}
+.dot{width:8px;height:8px;border-radius:999px;background:var(--muted);display:inline-block}
+.dot.ok{background:var(--ok)}
+.dot.warn{background:var(--warn)}
+.dot.err{background:var(--danger)}
+.panel{
+  border:1px solid var(--border);
+  background:linear-gradient(180deg,rgba(255,255,255,.02),rgba(255,255,255,.01));
+  border-radius:16px;
+  box-shadow:var(--shadow);
+}
+.panel + .panel{margin-top:14px}
+.panel-header{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  padding:14px 16px;
+  border-bottom:1px solid var(--border);
+}
+.panel-header h2,.panel-header h3{
+  margin:0;
+  font-size:16px;
+}
+.panel-body{
+  padding:16px;
+}
+.grid{
+  display:grid;
+  gap:14px;
+}
+.grid.two{grid-template-columns:repeat(2,minmax(0,1fr))}
+.grid.three{grid-template-columns:repeat(3,minmax(0,1fr))}
+label{
+  display:block;
+  font-size:12px;
+  color:var(--muted);
+  margin-bottom:6px;
+}
+input,select,textarea{
+  width:100%;
+  background:var(--panel-3);
+  color:var(--text);
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:11px 12px;
+  font:inherit;
+}
+textarea{min-height:110px;resize:vertical}
+button,.btn{
+  border:1px solid var(--border);
+  background:var(--panel-2);
+  color:var(--text);
+  border-radius:12px;
+  padding:10px 12px;
+  cursor:pointer;
+  font-weight:600;
+}
+button.primary,.btn.primary{
+  background:linear-gradient(180deg,#3d8cff,#2c6bd6);
+  border-color:#2c6bd6;
+}
+button.good,.btn.good{
+  background:linear-gradient(180deg,#2e9d6f,#257d59);
+  border-color:#257d59;
+}
+button.warn,.btn.warn{
+  background:linear-gradient(180deg,#c08739,#9b6928);
+  border-color:#9b6928;
+}
+button.danger,.btn.danger{
+  background:linear-gradient(180deg,#b34f5b,#913844);
+  border-color:#913844;
+}
+button.ghost{
+  background:transparent;
+}
+.row{
+  display:flex;
+  gap:10px;
+  align-items:center;
+  flex-wrap:wrap;
+}
+.hidden{display:none !important}
+.chips{
+  display:flex;
+  gap:8px;
+  flex-wrap:wrap;
+}
+.chip{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:8px 10px;
+  border-radius:999px;
+  border:1px solid var(--border);
+  background:var(--chip);
+  font-size:12px;
+}
+.stack{
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+}
+.workflow{
+  display:grid;
+  grid-template-columns:repeat(5,minmax(220px,1fr));
+  gap:12px;
+  align-items:start;
+}
+.column{
+  border:1px solid var(--border);
+  border-radius:14px;
+  background:rgba(255,255,255,.02);
+  min-height:280px;
+}
+.column-header{
+  padding:12px;
+  border-bottom:1px solid var(--border);
+  font-weight:700;
+  display:flex;
+  justify-content:space-between;
+  gap:8px;
+}
+.card{
+  margin:10px;
+  padding:12px;
+  border:1px solid var(--border);
+  border-radius:12px;
+  background:var(--panel-3);
+}
+.card h4{
+  margin:0 0 8px;
+  font-size:14px;
+}
+.card p{
+  margin:0 0 8px;
+  color:var(--muted);
+  font-size:12px;
+  line-height:1.4;
+}
+.list{
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+}
+.list-item{
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:10px 12px;
+  background:var(--panel-3);
+}
+.list-item strong{display:block;margin-bottom:4px}
+.table{
+  width:100%;
+  border-collapse:collapse;
+}
+.table th,.table td{
+  border-bottom:1px solid var(--border);
+  padding:10px 8px;
+  text-align:left;
+  font-size:13px;
+  vertical-align:top;
+}
+.table th{color:var(--muted);font-weight:600}
+.code{
+  font-family:ui-monospace,SFMono-Regular,Consolas,monospace;
+  font-size:12px;
+  white-space:pre-wrap;
+  line-height:1.4;
+  background:#0a1220;
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:12px;
+}
+.log{
+  max-height:360px;
+  overflow:auto;
+  background:#09111f;
+  border:1px solid var(--border);
+  border-radius:12px;
+  padding:10px;
+}
+.log-entry{
+  padding:7px 8px;
+  border-bottom:1px solid rgba(255,255,255,.06);
+  font-family:ui-monospace,SFMono-Regular,Consolas,monospace;
+  font-size:12px;
+  line-height:1.45;
+}
+.log-entry:last-child{border-bottom:none}
+hr.sep{
+  border:none;border-top:1px solid var(--border);margin:0;
+}
+.notice{
+  padding:12px;
+  border-radius:12px;
+  border:1px solid rgba(255,255,255,.08);
+  background:rgba(255,255,255,.03);
+  color:var(--muted);
+  font-size:13px;
+  line-height:1.45;
+}
+.footer{
+  margin-top:16px;
+  color:var(--muted);
+  font-size:12px;
+}
+@media (max-width:1100px){
+  .app{grid-template-columns:1fr}
+  .sidebar{position:relative;height:auto}
+  .workflow{grid-template-columns:1fr}
+  .grid.two,.grid.three{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="sidebar">
+    <div class="brand">
+      <h1>Voice Workflow Shell</h1>
+      <p>Configurable web runtime for AI prompt, artifact capture, deployment, remediation, native intents, and voice control.</p>
+    </div>
+
+    <div class="nav" id="nav"></div>
+
+    <div class="side-group">
+      <h2>Runtime</h2>
+      <div class="kv">
+        <div>Version</div><div id="kvVersion">v1</div>
+        <div>Session</div><div id="kvSession">-</div>
+        <div>Voice Source</div><div id="kvVoice">-</div>
+        <div>Bridge</div><div id="kvBridge">-</div>
+        <div>Helper URL</div><div id="kvHelperUrl">-</div>
+      </div>
+    </div>
+
+    <div class="side-group">
+      <h2>Quick Actions</h2>
+      <div class="stack">
+        <button class="primary" id="btnQuickHandshake">Handshake</button>
+        <button id="btnQuickStartVoice">Start Voice</button>
+        <button id="btnQuickStopVoice">Stop Voice</button>
+        <button id="btnQuickCopyLogs">Copy Logs</button>
+        <button class="warn" id="btnQuickExport">Export Config</button>
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div class="badge"><span class="dot" id="bridgeDot"></span><span id="bridgeStatus">Bridge offline</span></div>
+      <div class="badge"><span class="dot" id="voiceDot"></span><span id="voiceStatus">Voice idle</span></div>
+      <div class="badge"><span class="dot ok"></span><span id="commandCount">0 commands</span></div>
+      <div class="badge"><span class="dot ok"></span><span id="eventCount">0 events</span></div>
+    </div>
+
+    <section data-view="overview">
+      <div class="panel">
+        <div class="panel-header">
+          <h2>Workflow Control Plane</h2>
+          <div class="row">
+            <button class="primary" id="btnSeedWorkflow">Seed Workflow</button>
+            <button id="btnAdvanceSelected">Advance Selected Job</button>
+            <button id="btnCreateJob">Create Job</button>
+          </div>
+        </div>
+        <div class="panel-body">
+          <div class="workflow" id="workflowBoard"></div>
+        </div>
+      </div>
+
+      <div class="grid two">
+        <div class="panel">
+          <div class="panel-header"><h3>Current Job</h3></div>
+          <div class="panel-body">
+            <div class="stack">
+              <div>
+                <label for="jobSelect">Selected job</label>
+                <select id="jobSelect"></select>
+              </div>
+              <div>
+                <label for="jobTitle">Title</label>
+                <input id="jobTitle" placeholder="Workflow item title">
+              </div>
+              <div>
+                <label for="jobPrompt">Prompt / Intent</label>
+                <textarea id="jobPrompt" placeholder="Prompt to inject into the chat surface"></textarea>
+              </div>
+              <div>
+                <label for="jobIssues">Issue summary</label>
+                <textarea id="jobIssues" placeholder="Observed issues, remediation notes, test failures"></textarea>
+              </div>
+              <div class="row">
+                <button class="primary" id="btnSaveJob">Save Job</button>
+                <button id="btnSendPrompt">Send Prompt</button>
+                <button id="btnCaptureArtifact">Capture Artifact</button>
+                <button class="good" id="btnQueueDeploy">Queue Deploy</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header"><h3>System Strategy</h3></div>
+          <div class="panel-body">
+            <div class="notice">
+              Native belongs in the helper. Flexibility belongs in the web shell. The helper is a configurable capability bridge for clipboard, intents, URL launch, storage, logging, optional location, files, notifications, and voice. The web shell owns workflow logic, configuration, routing, module registration, helper app registration, and lifecycle orchestration.
+            </div>
+            <table class="table">
+              <thead><tr><th>Concern</th><th>Primary Layer</th><th>Reason</th></tr></thead>
+              <tbody>
+                <tr><td>Workflow state</td><td>Web shell</td><td>Fast iteration and reconfiguration</td></tr>
+                <tr><td>Device intents</td><td>Android helper</td><td>Native APIs and persistence</td></tr>
+                <tr><td>Clipboard/system access</td><td>Android helper</td><td>Reliable platform integration</td></tr>
+                <tr><td>Voice command grammar</td><td>Shared</td><td>Web-first with helper fallback</td></tr>
+                <tr><td>Third-party site automation</td><td>Web shell</td><td>Adapters stay configurable</td></tr>
+                <tr><td>Settings retention</td><td>Android helper + export</td><td>App survives updates</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section data-view="voice" class="hidden">
+      <div class="grid two">
+        <div class="panel">
+          <div class="panel-header">
+            <h2>Voice Control</h2>
+            <div class="row">
+              <button class="primary" id="btnVoiceStart">Start</button>
+              <button id="btnVoiceStop">Stop</button>
+            </div>
+          </div>
+          <div class="panel-body">
+            <div class="grid two">
+              <div>
+                <label for="voiceSource">Voice source</label>
+                <select id="voiceSource">
+                  <option value="auto">Auto</option>
+                  <option value="web">Web speech</option>
+                  <option value="helper">Android helper</option>
+                  <option value="hybrid">Hybrid</option>
+                </select>
+              </div>
+              <div>
+                <label for="voiceWake">Wake phrase</label>
+                <input id="voiceWake" placeholder="assistant">
+              </div>
+            </div>
+            <div class="stack" style="margin-top:12px">
+              <div>
+                <label for="voiceTranscript">Transcript</label>
+                <textarea id="voiceTranscript" placeholder="Voice transcript appears here"></textarea>
+              </div>
+              <div>
+                <label for="voiceGrammar">Command grammar</label>
+                <textarea id="voiceGrammar"></textarea>
+              </div>
+              <div class="row">
+                <button id="btnApplyGrammar">Apply Grammar</button>
+                <button id="btnTestCommand">Parse Transcript</button>
+                <button id="btnSpeakStatus">Speak Status</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header"><h3>Voice Lifecycle Position</h3></div>
+          <div class="panel-body">
+            <table class="table">
+              <thead><tr><th>Layer</th><th>Use</th><th>Decision</th></tr></thead>
+              <tbody>
+                <tr><td>Web</td><td>Fast command iteration, page-level semantics, adapter control</td><td>Primary command grammar</td></tr>
+                <tr><td>Helper</td><td>Background listening, system overlay, offline fallback, device-wide control</td><td>Secondary/fallback runtime</td></tr>
+                <tr><td>Hybrid</td><td>Web command semantics + helper execution</td><td>Target architecture</td></tr>
+              </tbody>
+            </table>
+            <div class="notice">
+              The long-term goal is not isolated voice dictation. It is full lifecycle control. This shell therefore treats voice as a first-class orchestration input, not a bolt-on accessory.
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section data-view="native" class="hidden">
+      <div class="grid two">
+        <div class="panel">
+          <div class="panel-header">
+            <h2>Native Capability Registry</h2>
+            <div class="row">
+              <button id="btnRegisterDefaults">Load Default Capability Set</button>
+              <button id="btnProbeCapabilities">Probe Helper</button>
+            </div>
+          </div>
+          <div class="panel-body">
+            <div class="stack">
+              <div>
+                <label for="capabilityInput">Capability definition</label>
+                <textarea id="capabilityInput" placeholder='{"id":"clipboard.write","label":"Write Clipboard","permission":"clipboard","mode":"request-response"}'></textarea>
+              </div>
+              <div class="row">
+                <button class="primary" id="btnAddCapability">Add Capability</button>
+                <button id="btnCopyCapabilities">Copy Registry</button>
+                <button class="danger" id="btnClearCapabilities">Clear</button>
+              </div>
+              <div id="capabilityList" class="list"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header"><h3>Swiss Army Knife APK Scope</h3></div>
+          <div class="panel-body">
+            <table class="table">
+              <thead><tr><th>Capability</th><th>Default</th><th>Configurable</th></tr></thead>
+              <tbody id="apkScopeTable"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section data-view="helpers" class="hidden">
+      <div class="grid two">
+        <div class="panel">
+          <div class="panel-header">
+            <h2>Registered Helper Apps</h2>
+            <div class="row">
+              <button class="primary" id="btnAddHelperApp">Add Helper App</button>
+              <button id="btnCopyHelperApps">Copy Registry</button>
+            </div>
+          </div>
+          <div class="panel-body">
+            <div class="grid two">
+              <div>
+                <label for="helperAppName">Name</label>
+                <input id="helperAppName" placeholder="GitHub Tablet Editor">
+              </div>
+              <div>
+                <label for="helperAppType">Type</label>
+                <select id="helperAppType">
+                  <option value="deploy">Deploy</option>
+                  <option value="chat">Chat</option>
+                  <option value="testing">Testing</option>
+                  <option value="ops">Operations</option>
+                </select>
+              </div>
+              <div>
+                <label for="helperAppUrl">URL / Route</label>
+                <input id="helperAppUrl" placeholder="https://example/app">
+              </div>
+              <div>
+                <label for="helperAppLaunchMode">Launch mode</label>
+                <select id="helperAppLaunchMode">
+                  <option value="embedded">Embedded</option>
+                  <option value="external">External</option>
+                  <option value="helper-intent">Helper Intent</option>
+                </select>
+              </div>
+            </div>
+            <div class="row" style="margin-top:12px">
+              <button class="primary" id="btnSaveHelperApp">Save Helper App</button>
+              <button id="btnLaunchSelectedHelper">Launch Selected</button>
+            </div>
+            <div id="helperAppList" class="list" style="margin-top:12px"></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header"><h3>Runtime Binding</h3></div>
+          <div class="panel-body">
+            <div class="notice">
+              Existing helper applications can be registered as shell modules. The shell should not hardcode them. It should maintain a registry with launch mode, URL, command mappings, and artifact handoff rules.
+            </div>
+            <div class="code" id="helperBindingPreview"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section data-view="contracts" class="hidden">
+      <div class="grid two">
+        <div class="panel">
+          <div class="panel-header"><h2>Bridge Contract</h2></div>
+          <div class="panel-body">
+            <div class="code" id="bridgeContractBox"></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-header"><h3>Message Console</h3></div>
+          <div class="panel-body">
+            <div class="stack">
+              <div>
+                <label for="commandType">Command type</label>
+                <input id="commandType" value="helper.ping">
+              </div>
+              <div>
+                <label for="commandPayload">Payload</label>
+                <textarea id="commandPayload">{"echo":"hello"}</textarea>
+              </div>
+              <div class="row">
+                <button class="primary" id="btnSendCommand">Send Command</button>
+                <button id="btnSimulateEvent">Simulate Event</button>
+                <button id="btnCopyContract">Copy Contract</button>
+              </div>
+              <div class="code" id="lastMessageBox"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section data-view="settings" class="hidden">
+      <div class="grid two">
+        <div class="panel">
+          <div class="panel-header"><h2>Shell Settings</h2></div>
+          <div class="panel-body">
+            <div class="stack">
+              <div>
+                <label for="shellUrl">Primary shell URL</label>
+                <input id="shellUrl" placeholder="https://host/app">
+              </div>
+              <div class="grid two">
+                <div>
+                  <label for="devUrl">Dev URL</label>
+                  <input id="devUrl" placeholder="https://host/dev">
+                </div>
+                <div>
+                  <label for="fallbackUrl">Fallback URL</label>
+                  <input id="fallbackUrl" placeholder="https://host/fallback">
+                </div>
+              </div>
+              <div class="grid two">
+                <div>
+                  <label for="bridgeMode">Bridge mode</label>
+                  <select id="bridgeMode">
+                    <option value="web-only">Web only</option>
+                    <option value="helper-only">Helper only</option>
+                    <option value="hybrid">Hybrid</option>
+                  </select>
+                </div>
+                <div>
+                  <label for="environmentMode">Environment</label>
+                  <select id="environmentMode">
+                    <option value="prod">Production</option>
+                    <option value="dev">Development</option>
+                    <option value="fallback">Fallback</option>
+                  </select>
+                </div>
+              </div>
+              <div class="grid two">
+                <div>
+                  <label><input type="checkbox" id="settingPersistLogs"> Persist logs</label>
+                </div>
+                <div>
+                  <label><input type="checkbox" id="settingAutoHandshake"> Auto handshake</label>
+                </div>
+                <div>
+                  <label><input type="checkbox" id="settingVoiceAutoStart"> Auto-start voice</label>
+                </div>
+                <div>
+                  <label><input type="checkbox" id="settingAllowLocation"> Enable location capability</label>
+                </div>
+                <div>
+                  <label><input type="checkbox" id="settingAllowFiles"> Enable file capability</label>
+                </div>
+                <div>
+                  <label><input type="checkbox" id="settingAllowNotifications"> Enable notifications</label>
+                </div>
+              </div>
+              <div class="row">
+                <button class="primary" id="btnSaveSettings">Save Settings</button>
+                <button id="btnPushSettingsToHelper">Push to Helper</button>
+                <button class="warn" id="btnResetState">Reset App State</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-header"><h3>Data Model</h3></div>
+          <div class="panel-body">
+            <div class="code" id="dataModelBox"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section data-view="logs" class="hidden">
+      <div class="panel">
+        <div class="panel-header">
+          <h2>Logging / Copy / Debug</h2>
+          <div class="row">
+            <button id="btnCopyLogs">Copy Logs</button>
+            <button id="btnExportLogs">Export Logs</button>
+            <button class="danger" id="btnClearLogs">Clear Logs</button>
+          </div>
+        </div>
+        <div class="panel-body">
+          <div class="log" id="logBox"></div>
+        </div>
+      </div>
+      <div class="footer">Single-file HTML runtime. State persists to local storage. Native bridge uses window.AndroidHelper when available and falls back to in-page simulation.</div>
+    </section>
+  </main>
+</div>
+
+<script>
+(function(){
+  const STORAGE_KEY = 'voice_workflow_shell_v1_state';
+  const views = [
+    {id:'overview',label:'Workflow',desc:'End-to-end session workflow'},
+    {id:'voice',label:'Voice',desc:'Voice control strategy and runtime'},
+    {id:'native',label:'Native',desc:'Capability registry and APK scope'},
+    {id:'helpers',label:'Helper Apps',desc:'Register external helper apps'},
+    {id:'contracts',label:'Contracts',desc:'Bridge API and message console'},
+    {id:'settings',label:'Settings',desc:'Shell URLs and behavior'},
+    {id:'logs',label:'Logs',desc:'Debug, copy, export'}
+  ];
+  const defaultGrammar = [
+    "create job",
+    "save job",
+    "send prompt",
+    "capture artifact",
+    "queue deploy",
+    "advance job",
+    "next job",
+    "start voice",
+    "stop voice",
+    "handshake",
+    "copy logs",
+    "open settings",
+    "open workflow",
+    "open voice",
+    "launch helper"
+  ].join('\\n');
+
+  const apkScope = [
+    ['clipboard.read', true, true],
+    ['clipboard.write', true, true],
+    ['url.open', true, true],
+    ['intent.launch', true, true],
+    ['share.text', true, true],
+    ['storage.read', true, true],
+    ['storage.write', true, true],
+    ['log.persist', true, true],
+    ['notification.post', true, true],
+    ['notification.read', false, true],
+    ['location.read', false, true],
+    ['files.pick', false, true],
+    ['files.write', false, true],
+    ['speech.listen', true, true],
+    ['speech.speak', true, true],
+    ['permissions.snapshot', true, true],
+    ['helper.apps', true, true],
+    ['webview.host', true, true]
+  ];
+
+  const dataModelText = `{
+  session: {
+    id,
+    createdAt,
+    updatedAt,
+    selectedJobId,
+    environment,
+    bridgeMode,
+    voiceSource
+  },
+  jobs: [{
+    id,
+    title,
+    prompt,
+    issues,
+    stage,           // drafting | prompting | artifact | deploy | remediation
+    artifactIds: [],
+    helperAppId,
+    updatedAt
+  }],
+  artifacts: [{
+    id,
+    jobId,
+    type,            // prompt | code | issue-log | deploy-record
+    content,
+    source,
+    createdAt
+  }],
+  helperApps: [{
+    id,
+    name,
+    type,
+    url,
+    launchMode
+  }],
+  capabilities: [{
+    id,
+    label,
+    permission,
+    mode
+  }],
+  logs: [{
+    id,
+    ts,
+    level,
+    type,
+    message,
+    detail
+  }],
+  settings: {
+    shellUrl,
+    devUrl,
+    fallbackUrl,
+    bridgeMode,
+    environmentMode,
+    persistLogs,
+    autoHandshake,
+    voiceAutoStart,
+    allowLocation,
+    allowFiles,
+    allowNotifications
+  }
+}`;
+
+  const bridgeContractText = `{
+  envelope: {
+    messageId: string,
+    type: string,
+    source: "web-shell" | "android-helper",
+    timestamp: number,
+    version: "1.0",
+    payload: object
+  },
+  commands: [
+    "helper.ping",
+    "helper.getConfig",
+    "helper.setConfig",
+    "helper.readClipboard",
+    "helper.writeClipboard",
+    "helper.openUrl",
+    "helper.launchIntent",
+    "helper.shareText",
+    "helper.getCapabilities",
+    "helper.appendLog",
+    "helper.getHelperApps",
+    "helper.registerHelperApp",
+    "helper.voice.start",
+    "helper.voice.stop",
+    "helper.location.get",
+    "helper.files.pick"
+  ],
+  events: [
+    "helper.ready",
+    "helper.error",
+    "helper.configChanged",
+    "helper.clipboardChanged",
+    "helper.capabilities",
+    "helper.voice.result",
+    "helper.location.result",
+    "helper.intent.result",
+    "helper.log.updated"
+  ]
+}`;
+
+  function uid(){
+    return Math.random().toString(36).slice(2,10);
+  }
+
+  function now(){
+    return Date.now();
+  }
+
+  function defaultState(){
+    return {
+      session: {
+        id: uid(),
+        createdAt: now(),
+        updatedAt: now(),
+        selectedJobId: null,
+        environment: 'prod',
+        bridgeMode: 'hybrid',
+        voiceSource: 'auto'
+      },
+      jobs: [],
+      artifacts: [],
+      helperApps: [
+        {id:uid(),name:'AI Jobs Kanban',type:'ops',url:'stuff/kanban.html',launchMode:'embedded'},
+        {id:uid(),name:'GitHub Tablet Editor',type:'deploy',url:'stuff/gg.html',launchMode:'embedded'}
+      ],
+      capabilities: [],
+      logs: [],
+      counters: {commands:0,events:0},
+      settings: {
+        shellUrl: '',
+        devUrl: '',
+        fallbackUrl: '',
+        bridgeMode: 'hybrid',
+        environmentMode: 'prod',
+        persistLogs: true,
+        autoHandshake: true,
+        voiceAutoStart: false,
+        allowLocation: true,
+        allowFiles: true,
+        allowNotifications: true
+      },
+      voice: {
+        wakePhrase: 'assistant',
+        transcript: '',
+        grammar: defaultGrammar,
+        active: false
+      }
+    };
+  }
+
+  let state = loadState();
+  let recognition = null;
+  let currentView = 'overview';
+
+  function loadState(){
+    try{
+      const raw = localStorage.getItem(STORAGE_KEY);
+      if(!raw) return defaultState();
+      const parsed = JSON.parse(raw);
+      return deepMerge(defaultState(), parsed);
+    }catch(e){
+      return defaultState();
+    }
+  }
+
+  function deepMerge(base, incoming){
+    if(Array.isArray(base)) return Array.isArray(incoming) ? incoming : base;
+    if(base && typeof base === 'object'){
+      const out = {...base};
+      for(const key of Object.keys(incoming || {})){
+        const b = base[key];
+        const v = incoming[key];
+        if(b && typeof b === 'object' && !Array.isArray(b) && v && typeof v === 'object' && !Array.isArray(v)){
+          out[key] = deepMerge(b, v);
+        }else{
+          out[key] = v;
+        }
+      }
+      return out;
+    }
+    return incoming ?? base;
+  }
+
+  function saveState(){
+    state.session.updatedAt = now();
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    render();
+  }
+
+  function log(level, type, message, detail){
+    const entry = {id:uid(), ts:now(), level, type, message, detail:detail ?? null};
+    state.logs.unshift(entry);
+    if(state.logs.length > 300) state.logs = state.logs.slice(0,300);
+    if(level === 'event') state.counters.events += 1;
+    if(level === 'command') state.counters.commands += 1;
+    if(state.settings.persistLogs) localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    renderLogs();
+    renderTopbar();
+  }
+
+  function byId(id){ return document.getElementById(id); }
+
+  function renderNav(){
+    const nav = byId('nav');
+    nav.innerHTML = '';
+    views.forEach(v=>{
+      const btn = document.createElement('button');
+      btn.className = v.id === currentView ? 'active' : '';
+      btn.innerHTML = `${v.label}<small>${v.desc}</small>`;
+      btn.onclick = ()=>showView(v.id);
+      nav.appendChild(btn);
+    });
+  }
+
+  function showView(id){
+    currentView = id;
+    document.querySelectorAll('[data-view]').forEach(el=>{
+      el.classList.toggle('hidden', el.getAttribute('data-view') !== id);
+    });
+    renderNav();
+  }
+
+  function renderTopbar(){
+    byId('commandCount').textContent = `${state.counters.commands} commands`;
+    byId('eventCount').textContent = `${state.counters.events} events`;
+
+    const bridgeAvailable = !!window.AndroidHelper || state.settings.bridgeMode !== 'web-only';
+    byId('bridgeDot').className = `dot ${bridgeAvailable ? 'ok' : 'err'}`;
+    byId('bridgeStatus').textContent = bridgeAvailable ? 'Bridge ready/simulated' : 'Bridge offline';
+
+    byId('voiceDot').className = `dot ${state.voice.active ? 'ok' : 'warn'}`;
+    byId('voiceStatus').textContent = state.voice.active ? 'Voice active' : 'Voice idle';
+  }
+
+  function renderRuntime(){
+    byId('kvVersion').textContent = 'v1';
+    byId('kvSession').textContent = state.session.id;
+    byId('kvVoice').textContent = state.session.voiceSource || state.voiceSource || state.voice?.source || state.voice?.mode || state.voiceSource || state.voiceSource;
+    byId('kvBridge').textContent = state.settings.bridgeMode;
+    byId('kvHelperUrl').textContent = activeShellUrl() || '-';
+  }
+
+  function activeShellUrl(){
+    if(state.settings.environmentMode === 'dev') return state.settings.devUrl;
+    if(state.settings.environmentMode === 'fallback') return state.settings.fallbackUrl;
+    return state.settings.shellUrl;
+  }
+
+  function renderWorkflow(){
+    const columns = [
+      {stage:'drafting',label:'Drafting'},
+      {stage:'prompting',label:'Prompting'},
+      {stage:'artifact',label:'Artifact'},
+      {stage:'deploy',label:'Deploy'},
+      {stage:'remediation',label:'Remediation'}
+    ];
+    const board = byId('workflowBoard');
+    board.innerHTML = '';
+    columns.forEach(col=>{
+      const wrap = document.createElement('div');
+      wrap.className = 'column';
+      const list = state.jobs.filter(j=>j.stage === col.stage);
+      wrap.innerHTML = `<div class="column-header"><span>${col.label}</span><span>${list.length}</span></div>`;
+      list.forEach(job=>{
+        const card = document.createElement('div');
+        card.className = 'card';
+        card.innerHTML = `<h4>${escapeHtml(job.title || 'Untitled')}</h4>
+          <p>${escapeHtml((job.prompt || '').slice(0,140) || 'No prompt')}</p>
+          <div class="chips">
+            <span class="chip">${job.helperAppId ? 'helper linked' : 'unlinked'}</span>
+            <span class="chip">${new Date(job.updatedAt).toLocaleString()}</span>
+          </div>`;
+        card.onclick = ()=>{
+          state.session.selectedJobId = job.id;
+          saveState();
+          renderJobEditor();
+        };
+        wrap.appendChild(card);
+      });
+      board.appendChild(wrap);
+    });
+    renderJobEditor();
+  }
+
+  function renderJobEditor(){
+    const select = byId('jobSelect');
+    select.innerHTML = '';
+    state.jobs.forEach(job=>{
+      const opt = document.createElement('option');
+      opt.value = job.id;
+      opt.textContent = `${job.title || 'Untitled'} · ${job.stage}`;
+      if(job.id === state.session.selectedJobId) opt.selected = true;
+      select.appendChild(opt);
+    });
+    if(!state.session.selectedJobId && state.jobs[0]) state.session.selectedJobId = state.jobs[0].id;
+    const job = state.jobs.find(j=>j.id === state.session.selectedJobId);
+    byId('jobTitle').value = job?.title || '';
+    byId('jobPrompt').value = job?.prompt || '';
+    byId('jobIssues').value = job?.issues || '';
+  }
+
+  function createJob(seed){
+    const helper = state.helperApps[0]?.id || null;
+    const job = {
+      id: uid(),
+      title: seed?.title || `Job ${state.jobs.length + 1}`,
+      prompt: seed?.prompt || '',
+      issues: seed?.issues || '',
+      stage: seed?.stage || 'drafting',
+      artifactIds: [],
+      helperAppId: helper,
+      updatedAt: now()
+    };
+    state.jobs.unshift(job);
+    state.session.selectedJobId = job.id;
+    saveState();
+    log('event','job.created',`Created ${job.title}`, job);
+  }
+
+  function seedWorkflow(){
+    if(state.jobs.length) return;
+    createJob({title:'Generate app change from chat output',prompt:'Create or revise code in the chat platform for deployment.',stage:'drafting'});
+    createJob({title:'Deploy artifact to helper app',prompt:'Move generated artifact into configured deployment surface.',stage:'prompting'});
+    createJob({title:'Capture issues and remediation prompt',prompt:'Log runtime issues and prepare remediation batch.',stage:'artifact'});
+  }
+
+  function saveSelectedJob(){
+    const job = state.jobs.find(j=>j.id === state.session.selectedJobId);
+    if(!job) return;
+    job.title = byId('jobTitle').value.trim();
+    job.prompt = byId('jobPrompt').value;
+    job.issues = byId('jobIssues').value;
+    job.updatedAt = now();
+    saveState();
+    log('event','job.saved',`Saved ${job.title}`, job);
+  }
+
+  function advanceJob(){
+    const flow = ['drafting','prompting','artifact','deploy','remediation'];
+    const job = state.jobs.find(j=>j.id === state.session.selectedJobId);
+    if(!job) return;
+    const idx = flow.indexOf(job.stage);
+    job.stage = flow[Math.min(idx + 1, flow.length - 1)];
+    job.updatedAt = now();
+    saveState();
+    log('event','job.advanced',`Advanced ${job.title} to ${job.stage}`, job);
+  }
+
+  function captureArtifact(){
+    const job = state.jobs.find(j=>j.id === state.session.selectedJobId);
+    if(!job) return;
+    const artifact = {
+      id: uid(),
+      jobId: job.id,
+      type: 'code',
+      content: job.prompt || '',
+      source: 'manual-capture',
+      createdAt: now()
+    };
+    state.artifacts.unshift(artifact);
+    job.artifactIds.push(artifact.id);
+    job.updatedAt = now();
+    saveState();
+    log('event','artifact.captured',`Captured artifact for ${job.title}`, artifact);
+  }
+
+  function queueDeploy(){
+    const job = state.jobs.find(j=>j.id === state.session.selectedJobId);
+    if(!job) return;
+    job.stage = 'deploy';
+    job.updatedAt = now();
+    saveState();
+    log('event','deploy.queued',`Queued deploy for ${job.title}`, job);
+  }
+
+  function renderCapabilities(){
+    byId('apkScopeTable').innerHTML = apkScope.map(row=>
+      `<tr><td>${row[0]}</td><td>${row[1] ? 'Yes' : 'No'}</td><td>${row[2] ? 'Yes' : 'No'}</td></tr>`
+    ).join('');
+    const list = byId('capabilityList');
+    list.innerHTML = '';
+    state.capabilities.forEach(cap=>{
+      const el = document.createElement('div');
+      el.className = 'list-item';
+      el.innerHTML = `<strong>${escapeHtml(cap.id)}</strong><div>${escapeHtml(cap.label || '')}</div><div class="chips"><span class="chip">${escapeHtml(cap.permission || 'n/a')}</span><span class="chip">${escapeHtml(cap.mode || 'request-response')}</span></div>`;
+      list.appendChild(el);
+    });
+  }
+
+  function addCapability(){
+    try{
+      const parsed = JSON.parse(byId('capabilityInput').value);
+      state.capabilities.unshift(parsed);
+      saveState();
+      log('event','capability.added',`Added ${parsed.id}`, parsed);
+    }catch(e){
+      log('error','capability.error','Capability JSON invalid', String(e));
+      alert('Capability JSON invalid');
+    }
+  }
+
+  function registerDefaults(){
+    state.capabilities = apkScope.map(row=>({
+      id: row[0],
+      label: row[0],
+      permission: row[0].split('.')[0],
+      mode: 'request-response'
+    }));
+    saveState();
+    log('event','capability.seeded','Loaded default capability set');
+  }
+
+  function renderHelperApps(){
+    const list = byId('helperAppList');
+    list.innerHTML = '';
+    state.helperApps.forEach(app=>{
+      const el = document.createElement('div');
+      el.className = 'list-item';
+      el.innerHTML = `<strong>${escapeHtml(app.name)}</strong>
+      <div>${escapeHtml(app.type)} · ${escapeHtml(app.launchMode)}</div>
+      <div style="color:var(--muted);font-size:12px">${escapeHtml(app.url)}</div>`;
+      el.onclick = ()=>{
+        byId('helperAppName').value = app.name;
+        byId('helperAppType').value = app.type;
+        byId('helperAppUrl').value = app.url;
+        byId('helperAppLaunchMode').value = app.launchMode;
+        state._editingHelperAppId = app.id;
+        renderHelperBindingPreview();
+      };
+      list.appendChild(el);
+    });
+    renderHelperBindingPreview();
+  }
+
+  function saveHelperApp(){
+    const record = {
+      id: state._editingHelperAppId || uid(),
+      name: byId('helperAppName').value.trim(),
+      type: byId('helperAppType').value,
+      url: byId('helperAppUrl').value.trim(),
+      launchMode: byId('helperAppLaunchMode').value
+    };
+    state.helperApps = state.helperApps.filter(x=>x.id !== record.id);
+    state.helperApps.unshift(record);
+    state._editingHelperAppId = record.id;
+    saveState();
+    log('event','helper-app.saved',`Saved helper app ${record.name}`, record);
+  }
+
+  function renderHelperBindingPreview(){
+    const selectedId = state._editingHelperAppId || state.helperApps[0]?.id;
+    const app = state.helperApps.find(x=>x.id === selectedId) || null;
+    const preview = {
+      helperApp: app,
+      shellModuleBinding: {
+        route: app?.type || null,
+        launchMode: app?.launchMode || null,
+        handoffRules: [
+          'prompt -> artifact',
+          'artifact -> deploy helper',
+          'issues -> remediation prompt'
+        ]
+      }
+    };
+    byId('helperBindingPreview').textContent = JSON.stringify(preview,null,2);
+  }
+
+  function renderContracts(){
+    byId('bridgeContractBox').textContent = bridgeContractText;
+    byId('dataModelBox').textContent = dataModelText;
+  }
+
+  function renderSettings(){
+    byId('shellUrl').value = state.settings.shellUrl || '';
+    byId('devUrl').value = state.settings.devUrl || '';
+    byId('fallbackUrl').value = state.settings.fallbackUrl || '';
+    byId('bridgeMode').value = state.settings.bridgeMode || 'hybrid';
+    byId('environmentMode').value = state.settings.environmentMode || 'prod';
+    byId('settingPersistLogs').checked = !!state.settings.persistLogs;
+    byId('settingAutoHandshake').checked = !!state.settings.autoHandshake;
+    byId('settingVoiceAutoStart').checked = !!state.settings.voiceAutoStart;
+    byId('settingAllowLocation').checked = !!state.settings.allowLocation;
+    byId('settingAllowFiles').checked = !!state.settings.allowFiles;
+    byId('settingAllowNotifications').checked = !!state.settings.allowNotifications;
+  }
+
+  function saveSettings(){
+    state.settings.shellUrl = byId('shellUrl').value.trim();
+    state.settings.devUrl = byId('devUrl').value.trim();
+    state.settings.fallbackUrl = byId('fallbackUrl').value.trim();
+    state.settings.bridgeMode = byId('bridgeMode').value;
+    state.settings.environmentMode = byId('environmentMode').value;
+    state.settings.persistLogs = byId('settingPersistLogs').checked;
+    state.settings.autoHandshake = byId('settingAutoHandshake').checked;
+    state.settings.voiceAutoStart = byId('settingVoiceAutoStart').checked;
+    state.settings.allowLocation = byId('settingAllowLocation').checked;
+    state.settings.allowFiles = byId('settingAllowFiles').checked;
+    state.settings.allowNotifications = byId('settingAllowNotifications').checked;
+    state.session.environment = state.settings.environmentMode;
+    state.session.bridgeMode = state.settings.bridgeMode;
+    saveState();
+    log('event','settings.saved','Saved shell settings', state.settings);
+  }
+
+  function renderVoice(){
+    byId('voiceSource').value = state.session.voiceSource || 'auto';
+    byId('voiceWake').value = state.voice.wakePhrase || 'assistant';
+    byId('voiceTranscript').value = state.voice.transcript || '';
+    byId('voiceGrammar').value = state.voice.grammar || defaultGrammar;
+  }
+
+  function applyVoiceSettings(){
+    state.session.voiceSource = byId('voiceSource').value;
+    state.voice.wakePhrase = byId('voiceWake').value.trim() || 'assistant';
+    state.voice.grammar = byId('voiceGrammar').value;
+    saveState();
+  }
+
+  function parseVoiceCommand(text){
+    const t = (text || '').trim().toLowerCase();
+    if(!t) return null;
+    const handlers = [
+      ['create job', ()=>createJob()],
+      ['save job', ()=>saveSelectedJob()],
+      ['send prompt', ()=>sendPrompt()],
+      ['capture artifact', ()=>captureArtifact()],
+      ['queue deploy', ()=>queueDeploy()],
+      ['advance job', ()=>advanceJob()],
+      ['start voice', ()=>startVoice()],
+      ['stop voice', ()=>stopVoice()],
+      ['handshake', ()=>performHandshake()],
+      ['copy logs', ()=>copyLogs()],
+      ['open settings', ()=>showView('settings')],
+      ['open workflow', ()=>showView('overview')],
+      ['open voice', ()=>showView('voice')],
+      ['launch helper', ()=>launchSelectedHelper()]
+    ];
+    for(const [key,fn] of handlers){
+      if(t.includes(key)){
+        fn();
+        log('event','voice.command',`Parsed voice command: ${key}`, {transcript:text});
+        return key;
+      }
+    }
+    log('error','voice.unmatched','No command matched transcript', {transcript:text});
+    return null;
+  }
+
+  function startVoice(){
+    applyVoiceSettings();
+    if(recognition) stopVoice();
+    const mode = state.session.voiceSource;
+    if(mode === 'helper'){
+      sendCommand('helper.voice.start',{mode:'continuous'});
+      state.voice.active = true;
+      saveState();
+      log('command','voice.start','Requested helper voice start');
+      return;
+    }
+    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if(!SR){
+      state.voice.active = false;
+      renderTopbar();
+      log('error','voice.unsupported','Web speech recognition unavailable');
+      return;
+    }
+    recognition = new SR();
+    recognition.lang = 'en-US';
+    recognition.interimResults = true;
+    recognition.continuous = true;
+    recognition.onstart = ()=>{
+      state.voice.active = true;
+      saveState();
+      renderTopbar();
+      log('event','voice.started','Voice recognition started');
+    };
+    recognition.onresult = (evt)=>{
+      let text = '';
+      for(let i = evt.resultIndex; i < evt.results.length; i++){
+        text += evt.results[i][0].transcript + ' ';
+      }
+      state.voice.transcript = text.trim();
+      byId('voiceTranscript').value = state.voice.transcript;
+      if(evt.results[evt.results.length - 1]?.isFinal){
+        parseVoiceCommand(state.voice.transcript);
+      }
+      saveState();
+    };
+    recognition.onerror = (evt)=>{
+      log('error','voice.error','Voice recognition error', evt.error || evt.message || evt);
+    };
+    recognition.onend = ()=>{
+      state.voice.active = false;
+      renderTopbar();
+      log('event','voice.ended','Voice recognition ended');
+    };
+    recognition.start();
+  }
+
+  function stopVoice(){
+    if(recognition){
+      recognition.stop();
+      recognition = null;
+    }
+    sendCommand('helper.voice.stop',{});
+    state.voice.active = false;
+    saveState();
+    renderTopbar();
+    log('command','voice.stop','Stopped voice runtime');
+  }
+
+  function speakStatus(){
+    const utterance = `Bridge ${state.settings.bridgeMode}. Voice ${state.voice.active ? 'active' : 'idle'}. Jobs ${state.jobs.length}.`;
+    if('speechSynthesis' in window){
+      speechSynthesis.cancel();
+      speechSynthesis.speak(new SpeechSynthesisUtterance(utterance));
+    }
+    log('event','voice.speak',utterance);
+  }
+
+  function envelope(type, payload, source){
+    return {
+      messageId: uid(),
+      type,
+      source,
+      timestamp: now(),
+      version: '1.0',
+      payload
+    };
+  }
+
+  function sendCommand(type, payload){
+    const env = envelope(type, payload || {}, 'web-shell');
+    byId('lastMessageBox').textContent = JSON.stringify(env, null, 2);
+    log('command', type, `Sent ${type}`, payload);
+
+    if(window.AndroidHelper && typeof window.AndroidHelper.postMessage === 'function'){
+      try{
+        window.AndroidHelper.postMessage(JSON.stringify(env));
+      }catch(e){
+        log('error','bridge.post','AndroidHelper.postMessage failed', String(e));
+      }
+      return env;
+    }
+
+    setTimeout(()=>{
+      simulateHelperResponse(type, payload);
+    }, 150);
+    return env;
+  }
+
+  function simulateHelperResponse(type, payload){
+    let eventType = 'helper.ready';
+    let eventPayload = {echo: payload || {}};
+
+    if(type === 'helper.getCapabilities'){
+      eventType = 'helper.capabilities';
+      eventPayload = {capabilities: state.capabilities};
+    }else if(type === 'helper.getConfig'){
+      eventType = 'helper.configChanged';
+      eventPayload = state.settings;
+    }else if(type === 'helper.readClipboard'){
+      eventType = 'helper.clipboardChanged';
+      eventPayload = {text: 'simulated clipboard'};
+    }else if(type === 'helper.voice.start'){
+      eventType = 'helper.voice.result';
+      eventPayload = {transcript: 'simulated helper voice transcript'};
+    }
+    receiveEvent(eventType, eventPayload);
+  }
+
+  function receiveEvent(type, payload){
+    const env = envelope(type, payload || {}, 'android-helper');
+    byId('lastMessageBox').textContent = JSON.stringify(env, null, 2);
+    log('event', type, `Received ${type}`, payload);
+    if(type === 'helper.voice.result' && payload?.transcript){
+      state.voice.transcript = payload.transcript;
+      byId('voiceTranscript').value = payload.transcript;
+      parseVoiceCommand(payload.transcript);
+    }
+    if(type === 'helper.configChanged' && payload && typeof payload === 'object'){
+      state.settings = deepMerge(state.settings, payload);
+      saveState();
+    }
+  }
+
+  function performHandshake(){
+    sendCommand('helper.ping',{shellUrl: activeShellUrl(), bridgeMode: state.settings.bridgeMode});
+    sendCommand('helper.getConfig',{});
+    sendCommand('helper.getCapabilities',{});
+  }
+
+  function sendPrompt(){
+    saveSelectedJob();
+    const job = state.jobs.find(j=>j.id === state.session.selectedJobId);
+    if(!job) return;
+    job.stage = 'prompting';
+    job.updatedAt = now();
+    state.artifacts.unshift({
+      id: uid(),
+      jobId: job.id,
+      type: 'prompt',
+      content: job.prompt,
+      source: 'shell',
+      createdAt: now()
+    });
+    saveState();
+    sendCommand('helper.appendLog',{category:'prompt', title:job.title, prompt:job.prompt});
+    log('event','prompt.sent',`Prompt staged for ${job.title}`, job);
+  }
+
+  function launchSelectedHelper(){
+    const app = state.helperApps.find(x=>x.id === state._editingHelperAppId) || state.helperApps[0];
+    if(!app) return;
+    sendCommand('helper.openUrl',{url: app.url, mode: app.launchMode, helperAppId: app.id});
+  }
+
+  function copyText(text){
+    if(navigator.clipboard?.writeText){
+      navigator.clipboard.writeText(text);
+      return;
+    }
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    ta.remove();
+  }
+
+  function copyLogs(){
+    copyText(JSON.stringify(state.logs, null, 2));
+    log('event','logs.copied','Copied logs to clipboard');
+  }
+
+  function exportConfig(){
+    const blob = new Blob([JSON.stringify(state, null, 2)], {type:'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'voice_workflow_shell_state.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    log('event','config.exported','Exported shell configuration');
+  }
+
+  function exportLogs(){
+    const blob = new Blob([JSON.stringify(state.logs, null, 2)], {type:'application/json'});
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'voice_workflow_shell_logs.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+    log('event','logs.exported','Exported logs');
+  }
+
+  function renderLogs(){
+    const box = byId('logBox');
+    box.innerHTML = '';
+    state.logs.forEach(entry=>{
+      const div = document.createElement('div');
+      div.className = 'log-entry';
+      div.textContent = `[${new Date(entry.ts).toLocaleString()}] ${entry.level.toUpperCase()} ${entry.type}: ${entry.message}${entry.detail ? ' ' + JSON.stringify(entry.detail) : ''}`;
+      box.appendChild(div);
+    });
+  }
+
+  function escapeHtml(s){
+    return String(s ?? '')
+      .replaceAll('&','&amp;')
+      .replaceAll('<','&lt;')
+      .replaceAll('>','&gt;')
+      .replaceAll('"','&quot;')
+      .replaceAll("'","&#39;");
+  }
+
+  function bind(){
+    byId('btnSeedWorkflow').onclick = seedWorkflow;
+    byId('btnAdvanceSelected').onclick = advanceJob;
+    byId('btnCreateJob').onclick = ()=>createJob();
+    byId('btnSaveJob').onclick = saveSelectedJob;
+    byId('btnSendPrompt').onclick = sendPrompt;
+    byId('btnCaptureArtifact').onclick = captureArtifact;
+    byId('btnQueueDeploy').onclick = queueDeploy;
+    byId('jobSelect').onchange = (e)=>{
+      state.session.selectedJobId = e.target.value;
+      saveState();
+      renderJobEditor();
+    };
+
+    byId('btnVoiceStart').onclick = startVoice;
+    byId('btnVoiceStop').onclick = stopVoice;
+    byId('btnApplyGrammar').onclick = ()=>{applyVoiceSettings(); log('event','voice.grammar.saved','Saved command grammar');};
+    byId('btnTestCommand').onclick = ()=>parseVoiceCommand(byId('voiceTranscript').value);
+    byId('btnSpeakStatus').onclick = speakStatus;
+
+    byId('btnAddCapability').onclick = addCapability;
+    byId('btnRegisterDefaults').onclick = registerDefaults;
+    byId('btnClearCapabilities').onclick = ()=>{state.capabilities=[]; saveState();};
+    byId('btnCopyCapabilities').onclick = ()=>copyText(JSON.stringify(state.capabilities, null, 2));
+    byId('btnProbeCapabilities').onclick = ()=>sendCommand('helper.getCapabilities',{});
+
+    byId('btnAddHelperApp').onclick = ()=>{ state._editingHelperAppId = null; byId('helperAppName').value=''; byId('helperAppType').value='deploy'; byId('helperAppUrl').value=''; byId('helperAppLaunchMode').value='embedded'; };
+    byId('btnSaveHelperApp').onclick = saveHelperApp;
+    byId('btnCopyHelperApps').onclick = ()=>copyText(JSON.stringify(state.helperApps, null, 2));
+    byId('btnLaunchSelectedHelper').onclick = launchSelectedHelper;
+
+    byId('btnSendCommand').onclick = ()=>{
+      let payload = {};
+      try{ payload = JSON.parse(byId('commandPayload').value || '{}'); }catch(e){ alert('Invalid payload JSON'); return; }
+      sendCommand(byId('commandType').value.trim(), payload);
+    };
+    byId('btnSimulateEvent').onclick = ()=>receiveEvent('helper.ready',{simulated:true});
+    byId('btnCopyContract').onclick = ()=>copyText(bridgeContractText);
+
+    byId('btnSaveSettings').onclick = saveSettings;
+    byId('btnPushSettingsToHelper').onclick = ()=>{ saveSettings(); sendCommand('helper.setConfig', state.settings); };
+    byId('btnResetState').onclick = ()=>{
+      if(!confirm('Reset app state?')) return;
+      state = defaultState();
+      saveState();
+      render();
+    };
+
+    byId('btnCopyLogs').onclick = copyLogs;
+    byId('btnExportLogs').onclick = exportLogs;
+    byId('btnClearLogs').onclick = ()=>{ state.logs=[]; saveState(); renderLogs(); };
+
+    byId('btnQuickHandshake').onclick = performHandshake;
+    byId('btnQuickStartVoice').onclick = startVoice;
+    byId('btnQuickStopVoice').onclick = stopVoice;
+    byId('btnQuickCopyLogs').onclick = copyLogs;
+    byId('btnQuickExport').onclick = exportConfig;
+  }
+
+  function render(){
+    renderNav();
+    renderTopbar();
+    renderRuntime();
+    renderWorkflow();
+    renderCapabilities();
+    renderHelperApps();
+    renderContracts();
+    renderSettings();
+    renderVoice();
+    renderLogs();
+  }
+
+  bind();
+  render();
+  showView('overview');
+
+  byId('bridgeContractBox').textContent = bridgeContractText;
+  byId('dataModelBox').textContent = dataModelText;
+  if(state.settings.autoHandshake) performHandshake();
+  if(state.settings.voiceAutoStart) startVoice();
+
+  window.WorkflowShell = {
+    getState: ()=>JSON.parse(JSON.stringify(state)),
+    receiveEvent,
+    sendCommand,
+    performHandshake
+  };
+})();
+</script>
+</body>
+</html>
