@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Workflow Shell Helper Only</title>
+  <style>
+    :root {
+      --bg: #f4f7fb;
+      --panel: #ffffff;
+      --text: #111827;
+      --muted: #6b7280;
+      --border: #d1d5db;
+      --accent: #0ea5e9;
+      --accent2: #2563eb;
+      --ok: #166534;
+      --err: #991b1b;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    header {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      color: #fff;
+      padding: 16px;
+      position: sticky;
+      top: 0;
+      z-index: 5;
+    }
+    header h1 {
+      margin: 0;
+      font-size: 24px;
+      font-weight: 700;
+    }
+    header .sub {
+      margin-top: 4px;
+      font-size: 13px;
+      opacity: .95;
+    }
+    .wrap {
+      padding: 12px;
+      display: grid;
+      gap: 12px;
+    }
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 14px;
+      box-shadow: 0 4px 20px rgba(15, 23, 42, .06);
+    }
+    .panel h2 {
+      margin: 0 0 12px 0;
+      font-size: 17px;
+    }
+    .row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 10px;
+    }
+    label {
+      display: block;
+      font-size: 12px;
+      color: var(--muted);
+      margin-bottom: 4px;
+      font-weight: 600;
+    }
+    input, textarea, select {
+      width: 100%;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font: inherit;
+      background: #fff;
+      color: inherit;
+    }
+    textarea { min-height: 100px; resize: vertical; }
+    button {
+      border: 1px solid var(--border);
+      background: #fff;
+      color: var(--text);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    button.primary {
+      background: var(--accent2);
+      border-color: var(--accent2);
+      color: #fff;
+    }
+    button.ok {
+      background: var(--ok);
+      border-color: var(--ok);
+      color: #fff;
+    }
+    button.warn {
+      background: var(--err);
+      border-color: var(--err);
+      color: #fff;
+    }
+    .status {
+      padding: 10px 12px;
+      border-radius: 10px;
+      font-size: 13px;
+      background: #eef6ff;
+      border: 1px solid #bfdbfe;
+    }
+    .mono {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12px;
+      word-break: break-word;
+    }
+    #transcript {
+      min-height: 56px;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: #fff;
+      font-size: 15px;
+    }
+    #log {
+      background: #0f172a;
+      color: #e5e7eb;
+      border-radius: 12px;
+      padding: 12px;
+      max-height: 320px;
+      overflow: auto;
+      white-space: pre-wrap;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      font-size: 12px;
+      line-height: 1.45;
+    }
+    .pill {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 999px;
+      font-size: 12px;
+      font-weight: 700;
+      border: 1px solid var(--border);
+      background: #f8fafc;
+    }
+    .muted { color: var(--muted); font-size: 12px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Workflow Shell</h1>
+    <div class="sub">Helper-only voice routing. No browser speech runtime.</div>
+  </header>
+
+  <div class="wrap">
+    <section class="panel">
+      <h2>Connection</h2>
+      <div class="row" style="margin-bottom:10px">
+        <span class="pill" id="bridgeModePill">bridgeMode=helper</span>
+        <span class="pill" id="helperStatePill">helper=unknown</span>
+      </div>
+      <div class="status mono" id="statusBox">Booting…</div>
+      <div class="row" style="margin-top:10px">
+        <button class="primary" id="btnPing">Ping Helper</button>
+        <button id="btnCapabilities">Get Capabilities</button>
+        <button id="btnConfig">Get Config</button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Voice</h2>
+      <div class="muted" style="margin-bottom:10px">This file never calls Web Speech APIs. Voice starts only through the APK helper.</div>
+      <div class="row" style="margin-bottom:10px">
+        <button class="ok" id="btnVoice">Start Native Voice</button>
+      </div>
+      <label>Transcript</label>
+      <div id="transcript"></div>
+    </section>
+
+    <section class="panel">
+      <h2>Clipboard</h2>
+      <div class="grid">
+        <div>
+          <label for="clipText">Clipboard text</label>
+          <textarea id="clipText" placeholder="Type text to send to native clipboard"></textarea>
+        </div>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <button id="btnWriteClip">Write Clipboard</button>
+        <button id="btnReadClip">Read Clipboard</button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Workflow Scratchpad</h2>
+      <div class="grid">
+        <div>
+          <label for="promptBox">Prompt / Notes</label>
+          <textarea id="promptBox" placeholder="Use this as the working prompt and issue loop scratchpad"></textarea>
+        </div>
+      </div>
+      <div class="row" style="margin-top:10px">
+        <button id="btnCopyPrompt">Copy Prompt To Native Clipboard</button>
+        <button id="btnPasteIntoPrompt">Paste Native Clipboard Into Prompt</button>
+        <button id="btnSharePrompt">Share Prompt</button>
+      </div>
+    </section>
+
+    <section class="panel">
+      <h2>Logs</h2>
+      <div class="row" style="margin-bottom:10px">
+        <button id="btnCopyLog">Copy Logs</button>
+        <button id="btnClearLog" class="warn">Clear Logs</button>
+      </div>
+      <div id="log"></div>
+    </section>
+  </div>
+
+  <script>
+    (function () {
+      const state = {
+        bridgeMode: 'helper',
+        helperReady: false,
+        lastVoice: '',
+        config: {},
+        capabilities: {}
+      };
+
+      const $ = (id) => document.getElementById(id);
+      const statusBox = $('statusBox');
+      const logBox = $('log');
+      const transcript = $('transcript');
+      const helperStatePill = $('helperStatePill');
+
+      function now() {
+        const d = new Date();
+        return d.toLocaleTimeString();
+      }
+
+      function setStatus(text) {
+        statusBox.textContent = text;
+      }
+
+      function setHelperState(ready) {
+        state.helperReady = !!ready;
+        helperStatePill.textContent = 'helper=' + (ready ? 'ready' : 'missing');
+      }
+
+      function addLog(type, message, detail) {
+        const line = [
+          '[' + now() + ']',
+          type.toUpperCase() + ':',
+          message,
+          detail == null ? '' : ' | ' + (typeof detail === 'string' ? detail : JSON.stringify(detail))
+        ].join('');
+        logBox.textContent += (logBox.textContent ? '\n' : '') + line;
+        logBox.scrollTop = logBox.scrollHeight;
+      }
+
+      function sendHelper(message) {
+        if (window.AndroidHelper && typeof window.AndroidHelper.postMessage === 'function') {
+          window.AndroidHelper.postMessage(message);
+          addLog('send', message, null);
+          return true;
+        }
+        setHelperState(false);
+        setStatus('Native helper bridge not found. Load this page inside the APK WebView.');
+        addLog('error', 'Helper bridge missing', message);
+        return false;
+      }
+
+      window.receiveEvent = function (msg) {
+        addLog('recv', msg, null);
+
+        if (msg === 'helper.ready') {
+          setHelperState(true);
+          setStatus('Helper connected. Native voice route is active.');
+          return;
+        }
+
+        if (msg.indexOf('voice:') === 0) {
+          const text = msg.substring(6);
+          state.lastVoice = text;
+          transcript.textContent = text;
+          setStatus('Received native voice result.');
+          return;
+        }
+
+        if (msg.indexOf('clipboard:') === 0) {
+          const text = msg.substring(10);
+          $('clipText').value = text;
+          setStatus('Clipboard received from helper.');
+          return;
+        }
+
+        setStatus('Received event: ' + msg);
+      };
+
+      $('btnPing').addEventListener('click', function () {
+        sendHelper('ping');
+      });
+
+      $('btnCapabilities').addEventListener('click', function () {
+        sendHelper('helper.getCapabilities');
+      });
+
+      $('btnConfig').addEventListener('click', function () {
+        sendHelper('helper.getConfig');
+      });
+
+      $('btnVoice').addEventListener('click', function () {
+        transcript.textContent = '';
+        setStatus('Starting native voice input…');
+        sendHelper('voice.start');
+      });
+
+      $('btnWriteClip').addEventListener('click', function () {
+        sendHelper('clipboard.write:' + $('clipText').value);
+      });
+
+      $('btnReadClip').addEventListener('click', function () {
+        sendHelper('clipboard.read');
+      });
+
+      $('btnCopyPrompt').addEventListener('click', function () {
+        sendHelper('clipboard.write:' + $('promptBox').value);
+      });
+
+      $('btnPasteIntoPrompt').addEventListener('click', function () {
+        const originalReceive = window.receiveEvent;
+        sendHelper('clipboard.read');
+        setStatus('Requested clipboard. Use clipboard box or copy into prompt manually if needed.');
+      });
+
+      $('btnSharePrompt').addEventListener('click', function () {
+        sendHelper('share:' + $('promptBox').value);
+      });
+
+      $('btnCopyLog').addEventListener('click', function () {
+        const text = logBox.textContent;
+        if (window.AndroidHelper && typeof window.AndroidHelper.postMessage === 'function') {
+          sendHelper('clipboard.write:' + text);
+          setStatus('Logs copied to native clipboard.');
+        }
+      });
+
+      $('btnClearLog').addEventListener('click', function () {
+        logBox.textContent = '';
+        addLog('info', 'Logs cleared', null);
+      });
+
+      setHelperState(!!(window.AndroidHelper && typeof window.AndroidHelper.postMessage === 'function'));
+      setStatus(state.helperReady
+        ? 'Helper detected. Press Ping Helper.'
+        : 'No helper detected yet. This file is intended to run inside the APK WebView.');
+      addLog('info', 'Shell boot', { bridgeMode: state.bridgeMode, helperDetected: state.helperReady });
+      if (state.helperReady) sendHelper('ping');
+    })();
+  </script>
+</body>
+</html>
