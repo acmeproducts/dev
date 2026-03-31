@@ -1,4 +1,5 @@
 
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -731,7 +732,7 @@ hr.sep{
           <div class="log" id="logBox"></div>
         </div>
       </div>
-      <div class="footer">Single-file HTML runtime. State persists to local storage. Native bridge uses window.AndroidHelper when available and falls back to in-page simulation.</div>
+      <div class="footer">Single-file HTML runtime. State persists to local storage. Native bridge is REQUIRED via window.AndroidHelper. In-page simulation is disabled.</div>
     </section>
   </main>
 </div>
@@ -907,8 +908,8 @@ hr.sep{
         updatedAt: now(),
         selectedJobId: null,
         environment: 'prod',
-        bridgeMode: 'hybrid',
-        voiceSource: 'auto'
+        bridgeMode: 'helper',
+        voiceSource: 'helper'
       },
       jobs: [],
       artifacts: [],
@@ -923,7 +924,7 @@ hr.sep{
         shellUrl: '',
         devUrl: '',
         fallbackUrl: '',
-        bridgeMode: 'hybrid',
+        bridgeMode: 'helper',
         environmentMode: 'prod',
         persistLogs: true,
         autoHandshake: true,
@@ -1017,9 +1018,9 @@ hr.sep{
     byId('commandCount').textContent = `${state.counters.commands} commands`;
     byId('eventCount').textContent = `${state.counters.events} events`;
 
-    const bridgeAvailable = !!window.AndroidHelper || state.settings.bridgeMode !== 'web-only';
+    const bridgeAvailable = !!(window.AndroidHelper && typeof window.AndroidHelper.postMessage === 'function');
     byId('bridgeDot').className = `dot ${bridgeAvailable ? 'ok' : 'err'}`;
-    byId('bridgeStatus').textContent = bridgeAvailable ? 'Bridge ready/simulated' : 'Bridge offline';
+    byId('bridgeStatus').textContent = bridgeAvailable ? 'Native bridge online' : 'Native bridge offline';
 
     byId('voiceDot').className = `dot ${state.voice.active ? 'ok' : 'warn'}`;
     byId('voiceStatus').textContent = state.voice.active ? 'Voice active' : 'Voice idle';
@@ -1267,7 +1268,7 @@ hr.sep{
     byId('shellUrl').value = state.settings.shellUrl || '';
     byId('devUrl').value = state.settings.devUrl || '';
     byId('fallbackUrl').value = state.settings.fallbackUrl || '';
-    byId('bridgeMode').value = state.settings.bridgeMode || 'hybrid';
+    byId('bridgeMode').value = 'helper';
     byId('environmentMode').value = state.settings.environmentMode || 'prod';
     byId('settingPersistLogs').checked = !!state.settings.persistLogs;
     byId('settingAutoHandshake').checked = !!state.settings.autoHandshake;
@@ -1281,7 +1282,7 @@ hr.sep{
     state.settings.shellUrl = byId('shellUrl').value.trim();
     state.settings.devUrl = byId('devUrl').value.trim();
     state.settings.fallbackUrl = byId('fallbackUrl').value.trim();
-    state.settings.bridgeMode = byId('bridgeMode').value;
+    state.settings.bridgeMode = 'helper';
     state.settings.environmentMode = byId('environmentMode').value;
     state.settings.persistLogs = byId('settingPersistLogs').checked;
     state.settings.autoHandshake = byId('settingAutoHandshake').checked;
@@ -1303,7 +1304,7 @@ hr.sep{
   }
 
   function applyVoiceSettings(){
-    state.session.voiceSource = byId('voiceSource').value;
+    state.session.voiceSource = 'helper';
     state.voice.wakePhrase = byId('voiceWake').value.trim() || 'assistant';
     state.voice.grammar = byId('voiceGrammar').value;
     saveState();
@@ -1342,52 +1343,20 @@ hr.sep{
   function startVoice(){
     applyVoiceSettings();
     if(recognition) stopVoice();
-    const mode = state.session.voiceSource;
-    if(mode === 'helper'){
-      sendCommand('helper.voice.start',{mode:'continuous'});
-      state.voice.active = true;
+    state.session.voiceSource = 'helper';
+    state.settings.bridgeMode = 'helper';
+    if(!bridgeAvailable()){
+      state.voice.active = false;
       saveState();
-      log('command','voice.start','Requested helper voice start');
+      renderTopbar();
+      log('error','helper.missing','Native helper bridge not available', {required:true});
       return;
     }
-    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-    if(!SR){
-      state.voice.active = false;
-      renderTopbar();
-      log('error','voice.unsupported','Web speech recognition unavailable');
-      return;
-    }
-    recognition = new SR();
-    recognition.lang = 'en-US';
-    recognition.interimResults = true;
-    recognition.continuous = true;
-    recognition.onstart = ()=>{
-      state.voice.active = true;
-      saveState();
-      renderTopbar();
-      log('event','voice.started','Voice recognition started');
-    };
-    recognition.onresult = (evt)=>{
-      let text = '';
-      for(let i = evt.resultIndex; i < evt.results.length; i++){
-        text += evt.results[i][0].transcript + ' ';
-      }
-      state.voice.transcript = text.trim();
-      byId('voiceTranscript').value = state.voice.transcript;
-      if(evt.results[evt.results.length - 1]?.isFinal){
-        parseVoiceCommand(state.voice.transcript);
-      }
-      saveState();
-    };
-    recognition.onerror = (evt)=>{
-      log('error','voice.error','Voice recognition error', evt.error || evt.message || evt);
-    };
-    recognition.onend = ()=>{
-      state.voice.active = false;
-      renderTopbar();
-      log('event','voice.ended','Voice recognition ended');
-    };
-    recognition.start();
+    sendHelper('voice.start');
+    state.voice.active = true;
+    saveState();
+    renderTopbar();
+    log('command','voice.start','Requested native helper voice start');
   }
 
   function stopVoice(){
@@ -1395,7 +1364,7 @@ hr.sep{
       recognition.stop();
       recognition = null;
     }
-    sendCommand('helper.voice.stop',{});
+    if(bridgeAvailable()) sendHelper('voice.stop');
     state.voice.active = false;
     saveState();
     renderTopbar();
@@ -1422,65 +1391,113 @@ hr.sep{
     };
   }
 
-  function sendCommand(type, payload){
-    const env = envelope(type, payload || {}, 'web-shell');
-    byId('lastMessageBox').textContent = JSON.stringify(env, null, 2);
-    log('command', type, `Sent ${type}`, payload);
-
-    if(window.AndroidHelper && typeof window.AndroidHelper.postMessage === 'function'){
-      try{
-        window.AndroidHelper.postMessage(JSON.stringify(env));
-      }catch(e){
-        log('error','bridge.post','AndroidHelper.postMessage failed', String(e));
-      }
-      return env;
-    }
-
-    setTimeout(()=>{
-      simulateHelperResponse(type, payload);
-    }, 150);
-    return env;
+  function bridgeAvailable(){
+    return !!(window.AndroidHelper && typeof window.AndroidHelper.postMessage === 'function');
   }
 
-  function simulateHelperResponse(type, payload){
-    let eventType = 'helper.ready';
-    let eventPayload = {echo: payload || {}};
-
-    if(type === 'helper.getCapabilities'){
-      eventType = 'helper.capabilities';
-      eventPayload = {capabilities: state.capabilities};
-    }else if(type === 'helper.getConfig'){
-      eventType = 'helper.configChanged';
-      eventPayload = state.settings;
-    }else if(type === 'helper.readClipboard'){
-      eventType = 'helper.clipboardChanged';
-      eventPayload = {text: 'simulated clipboard'};
-    }else if(type === 'helper.voice.start'){
-      eventType = 'helper.voice.result';
-      eventPayload = {transcript: 'simulated helper voice transcript'};
+  function sendHelper(raw){
+    const env = envelope(raw, null, 'web-shell');
+    byId('lastMessageBox').textContent = JSON.stringify(env, null, 2);
+    log('command', raw, `Sent ${raw}`, null);
+    if(!bridgeAvailable()){
+      log('error','helper.missing','Native helper bridge not available', {raw});
+      return false;
     }
-    receiveEvent(eventType, eventPayload);
+    try{
+      window.AndroidHelper.postMessage(raw);
+      return true;
+    }catch(e){
+      log('error','bridge.post','AndroidHelper.postMessage failed', String(e));
+      return false;
+    }
+  }
+
+  function sendCommand(type, payload){
+    const msg = helperMessageFor(type, payload || {});
+    if(!msg){
+      log('error','helper.unsupported',`No native mapping for ${type}`, payload || {});
+      return null;
+    }
+    sendHelper(msg);
+    return envelope(type, payload || {}, 'web-shell');
+  }
+
+  function helperMessageFor(type, payload){
+    switch(type){
+      case 'helper.ping': return 'ping';
+      case 'helper.voice.start': return 'voice.start';
+      case 'helper.voice.stop': return 'voice.stop';
+      case 'helper.readClipboard': return 'clipboard.read';
+      case 'helper.writeClipboard': return `clipboard.write:${payload.text || ''}`;
+      case 'helper.openUrl': return `openUrl:${payload.url || ''}`;
+      case 'helper.shareText': return `share:${payload.text || ''}`;
+      case 'helper.getConfig': return null;
+      case 'helper.getCapabilities': return null;
+      case 'helper.configureGitHub': return `config.github:${payload.user || ''},${payload.repo || ''},${payload.file || ''}`;
+      default: return null;
+    }
+  }
+
+  function parseIncomingNative(raw){
+    if(raw == null) return {type:'helper.unknown', payload:{raw:null}};
+    if(typeof raw === 'object' && raw.type){
+      return {type: raw.type, payload: raw.payload || raw.detail || {}};
+    }
+    const text = String(raw);
+    if(text === 'helper.ready') return {type:'helper.ready', payload:{transport:'native-string'}};
+    if(text.startsWith('voice:')) return {type:'helper.voice.result', payload:{transcript:text.slice(6)}};
+    if(text.startsWith('clipboard:')) return {type:'helper.clipboardChanged', payload:{text:text.slice(10)}};
+    if(text.startsWith('helper.error:')) return {type:'helper.error', payload:{message:text.slice(13)}};
+    return {type:'helper.message', payload:{raw:text}};
   }
 
   function receiveEvent(type, payload){
-    const env = envelope(type, payload || {}, 'android-helper');
-    byId('lastMessageBox').textContent = JSON.stringify(env, null, 2);
-    log('event', type, `Received ${type}`, payload);
-    if(type === 'helper.voice.result' && payload?.transcript){
-      state.voice.transcript = payload.transcript;
-      byId('voiceTranscript').value = payload.transcript;
-      parseVoiceCommand(payload.transcript);
+    let parsed;
+    if(arguments.length === 1){
+      parsed = parseIncomingNative(type);
+    }else{
+      parsed = {type, payload: payload || {}};
     }
-    if(type === 'helper.configChanged' && payload && typeof payload === 'object'){
-      state.settings = deepMerge(state.settings, payload);
+    const env = envelope(parsed.type, parsed.payload || {}, 'android-helper');
+    byId('lastMessageBox').textContent = JSON.stringify(env, null, 2);
+    log('event', parsed.type, `Received ${parsed.type}`, parsed.payload || {});
+
+    if(parsed.type === 'helper.ready'){
+      state.capabilities = [
+        {id:'voice', name:'Native Voice', source:'apk'},
+        {id:'clipboard', name:'Clipboard', source:'apk'},
+        {id:'openUrl', name:'Open URL', source:'apk'},
+        {id:'share', name:'Share Text', source:'apk'},
+        {id:'config', name:'GitHub URL Config', source:'apk'}
+      ];
+      state.settings.bridgeMode = 'helper';
+      state.session.voiceSource = 'helper';
+      saveState();
+    }
+    if(parsed.type === 'helper.voice.result' && parsed.payload?.transcript){
+      state.voice.active = false;
+      state.voice.transcript = parsed.payload.transcript;
+      byId('voiceTranscript').value = parsed.payload.transcript;
+      parseVoiceCommand(parsed.payload.transcript);
+      saveState();
+      renderTopbar();
+    }
+    if(parsed.type === 'helper.clipboardChanged' && parsed.payload?.text != null){
+      const box = byId('clipboardText');
+      if(box) box.value = parsed.payload.text;
+    }
+    if(parsed.type === 'helper.configChanged' && parsed.payload && typeof parsed.payload === 'object'){
+      state.settings = deepMerge(state.settings, parsed.payload);
       saveState();
     }
   }
 
   function performHandshake(){
-    sendCommand('helper.ping',{shellUrl: activeShellUrl(), bridgeMode: state.settings.bridgeMode});
-    sendCommand('helper.getConfig',{});
-    sendCommand('helper.getCapabilities',{});
+    if(!bridgeAvailable()){
+      log('error','helper.missing','Native helper bridge not available', {required:true});
+      return;
+    }
+    sendHelper('ping');
   }
 
   function sendPrompt(){
@@ -1602,7 +1619,7 @@ hr.sep{
       try{ payload = JSON.parse(byId('commandPayload').value || '{}'); }catch(e){ alert('Invalid payload JSON'); return; }
       sendCommand(byId('commandType').value.trim(), payload);
     };
-    byId('btnSimulateEvent').onclick = ()=>receiveEvent('helper.ready',{simulated:true});
+    byId('btnSimulateEvent').onclick = ()=>log('error','simulation.disabled','Simulation disabled in strict native mode');
     byId('btnCopyContract').onclick = ()=>copyText(bridgeContractText);
 
     byId('btnSaveSettings').onclick = saveSettings;
