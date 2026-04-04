@@ -1,0 +1,364 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>SayIt Studio v1.2</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#09090b;
+  --surface:#18181b;
+  --surface-2:#111827;
+  --surface-3:#27272a;
+  --border:#27272a;
+  --border-2:#3f3f46;
+  --accent:#14b8a6;
+  --accent-hover:#0d9488;
+  --ok:#22c55e;
+  --warn:#f59e0b;
+  --danger:#ef4444;
+  --text:#f4f4f5;
+  --muted:#a1a1aa;
+  --placeholder:#2a1f0f;
+  --placeholder-border:#f59e0b;
+  --mono:'JetBrains Mono', monospace;
+  --sans:'Inter', sans-serif;
+  --header-height:56px;
+  --footer-height:36px;
+  --sidebar-width:280px;
+  --sidebar-collapsed:0px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+header{height:var(--header-height);display:grid;grid-template-columns:40px auto 1fr;align-items:center;gap:10px;padding:0 12px;background:var(--surface);border-bottom:1px solid var(--border);flex-shrink:0}
+.global-menu-btn,.sidebar-toggle{width:36px;height:36px;border-radius:12px;border:1px solid var(--border-2);background:var(--surface-2);cursor:pointer;font-size:18px;line-height:1;color:var(--text)}
+.logo{display:flex;align-items:center;font-size:18px;font-weight:700;white-space:nowrap}
+.logo span{color:var(--accent)}
+.tab-nav{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:6px;align-items:stretch;min-width:0}
+.tab-btn{background:transparent;border:none;color:var(--muted);font-size:14px;font-weight:600;height:100%;min-width:0;padding:0 8px;cursor:pointer;transition:all .2s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-radius:12px}
+.tab-btn.active{color:#041414;background:var(--accent)}
+.app-container{flex:1;display:flex;overflow:hidden;position:relative;min-height:0}
+.view-section{display:none;width:100%;height:100%}
+.view-section.active{display:flex}
+.sidebar{width:var(--sidebar-width);min-width:var(--sidebar-width);background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;transition:width .2s ease,min-width .2s ease,opacity .2s ease}
+.sidebar.collapsed{width:0;min-width:0;opacity:0;border-right:none;overflow:hidden}
+.sidebar-header{padding:12px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:8px}
+.sidebar-content{flex:1;overflow-y:auto;padding:12px}
+.main-pane{flex:1;display:flex;flex-direction:column;overflow:hidden;background:var(--bg);min-width:0}
+.split-top{flex:1;overflow-y:auto;padding:16px;background:var(--surface-2)}
+.split-bottom{height:40%;min-height:220px;overflow-y:auto;padding:16px;background:var(--bg);border-top:1px solid var(--border)}
+.btn{background:var(--surface-2);border:1px solid var(--border-2);color:var(--text);border-radius:12px;padding:0 12px;min-height:38px;font-size:12px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:background .2s}
+.btn:hover{background:var(--surface-3)}
+.btn-primary{background:var(--accent);color:#041414;border:none;font-weight:700}
+.btn-primary:hover{background:var(--accent-hover)}
+.btn-danger{color:#fff;background:var(--danger);border:none}
+.btn-warn{color:#111827;background:var(--warn);border:none}
+.btn-ghost{background:transparent}
+.input-group{margin-bottom:14px}
+.input-group label{display:block;font-size:12px;color:var(--muted);margin-bottom:6px;font-weight:600}
+.input-control{width:100%;background:#09090b;border:1px solid var(--border-2);color:var(--text);border-radius:12px;padding:10px 12px;font-family:var(--sans);font-size:13px;outline:none}
+.input-control.mono{font-family:var(--mono)}
+.input-control:focus{border-color:var(--accent)}
+.list-item{padding:12px;background:var(--surface-2);border:1px solid var(--border);border-radius:12px;margin-bottom:8px;cursor:pointer}
+.list-item:hover{border-color:var(--border-2)}
+.list-item.selected{border-color:var(--accent);background:#102424}
+.tablet-console{background:#050505;color:var(--text);font-family:var(--mono);font-size:12px;padding:12px;height:100%;overflow-y:auto;border-radius:12px;border:1px solid var(--border);line-height:1.5;white-space:pre-wrap}
+.code-box{background:#050505;border:1px solid var(--border);border-radius:12px;padding:12px;font-family:var(--mono);font-size:12px;line-height:1.5;white-space:pre-wrap;overflow:auto;color:var(--text)}
+.section-title{font-size:16px;font-weight:700;margin-bottom:10px}
+.muted{color:var(--muted)}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.grid-two{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.stack{display:flex;flex-direction:column;gap:12px}
+.placeholder{background:var(--placeholder);border:1px solid var(--placeholder-border);border-left:4px solid var(--placeholder-border);padding:12px;border-radius:12px;font-size:13px;line-height:1.5}
+.small-note{font-size:12px;color:var(--muted);line-height:1.45}
+.master-footer{height:var(--footer-height);background:var(--surface);border-top:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:11px;font-family:var(--mono);flex-shrink:0}
+.empty-state{display:flex;align-items:center;justify-content:center;height:100%;color:var(--muted);font-style:italic;text-align:center;padding:20px}
+hr.sep{border:none;border-top:1px solid var(--border);margin:14px 0}
+.kv{display:grid;grid-template-columns:180px 1fr;gap:8px 12px}
+.kv .key{color:var(--muted);font-size:12px}
+.kv .val{font-size:13px;overflow-wrap:anywhere}
+.status-pills{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.pill{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border:1px solid var(--border);background:var(--surface);border-radius:999px;font-size:12px}
+.dot{width:8px;height:8px;border-radius:999px;background:var(--muted)}
+.dot.ok{background:var(--ok)} .dot.warn{background:var(--warn)} .dot.err{background:var(--danger)}
+.job-metadata{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.meta-card{border:1px solid var(--border);background:var(--surface);border-radius:12px;padding:12px}
+.meta-card .label{color:var(--muted);font-size:12px;margin-bottom:4px}
+.meta-card .value{font-size:14px;word-break:break-word}
+.train-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.adapter-status{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border-radius:999px;font-size:11px;font-weight:600;border:1px solid var(--border)}
+.adapter-status.trained{background:#052e16;color:#86efac;border-color:#166534}
+.adapter-status.partial{background:#451a03;color:#fdba74;border-color:#9a3412}
+.adapter-status.placeholder{background:#450a0a;color:#fca5a5;border-color:#991b1b}
+@media (max-width:900px){:root{--sidebar-width:220px}header{grid-template-columns:40px auto 1fr;gap:8px;padding:0 8px}.logo{font-size:16px}.tab-btn{font-size:13px;padding:0 4px}.grid-two,.job-metadata,.train-grid{grid-template-columns:1fr}}
+@media (max-width:640px){:root{--header-height:52px;--sidebar-width:180px}.tab-nav{gap:2px}.tab-btn{font-size:11px;padding:0 2px}.split-top,.split-bottom{padding:12px}.kv{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<header>
+  <button class="global-menu-btn" onclick="toggleSidebar(currentView)">☰</button>
+  <div class="logo">Say<span>It</span> Studio</div>
+  <div class="tab-nav">
+    <button class="tab-btn active" data-target="view-install">Install</button>
+    <button class="tab-btn" data-target="view-config">Config</button>
+    <button class="tab-btn" data-target="view-job">Job</button>
+    <button class="tab-btn" data-target="view-run">Run</button>
+    <button class="tab-btn" data-target="view-train">Train</button>
+    <button class="tab-btn" data-target="view-logs">Logs</button>
+  </div>
+</header>
+<div class="app-container">
+  <div id="view-install" class="view-section active">
+    <div class="sidebar"><div class="sidebar-header"><span class="sidebar-label" style="font-weight:600;">Install Steps</span></div><div class="sidebar-content" id="installStepList"></div></div>
+    <div class="main-pane"><div class="split-top" id="installTop"></div><div class="split-bottom" id="installBottom"></div></div>
+  </div>
+  <div id="view-config" class="view-section">
+    <div class="sidebar"><div class="sidebar-header"><span class="sidebar-label" style="font-weight:600;">Global Config</span></div><div class="sidebar-content" id="configNavList"></div></div>
+    <div class="main-pane"><div class="split-top" id="configTop"></div><div class="split-bottom" id="configBottom"></div></div>
+  </div>
+  <div id="view-job" class="view-section">
+    <div class="sidebar"><div class="sidebar-header"><span class="sidebar-label" style="font-weight:600;">Jobs</span><div class="row"><button class="btn btn-primary" id="btnNewJob">New</button></div></div><div class="sidebar-content" id="jobList"></div></div>
+    <div class="main-pane"><div class="split-top" id="jobTop"></div><div class="split-bottom" id="jobBottom"></div></div>
+  </div>
+  <div id="view-run" class="view-section">
+    <div class="sidebar"><div class="sidebar-header"><span class="sidebar-label" style="font-weight:600;">Run WF</span></div><div class="sidebar-content" id="runStepList"></div></div>
+    <div class="main-pane"><div class="split-top" id="runTop"></div><div class="split-bottom" id="runBottom"></div></div>
+  </div>
+  <div id="view-train" class="view-section">
+    <div class="sidebar"><div class="sidebar-header"><span class="sidebar-label" style="font-weight:600;">AI Adapters</span><div class="row"><button class="btn btn-primary" id="btnNewAdapter">New</button></div></div><div class="sidebar-content" id="trainAdapterList"></div></div>
+    <div class="main-pane"><div class="split-top" id="trainTop"></div><div class="split-bottom" id="trainBottom"></div></div>
+  </div>
+  <div id="view-logs" class="view-section">
+    <div class="sidebar"><div class="sidebar-header"><span class="sidebar-label" style="font-weight:600;">Logs / Diagnostics</span></div><div class="sidebar-content" id="logsNavList"></div></div>
+    <div class="main-pane"><div class="split-top" id="logsTop"></div><div class="split-bottom" id="logsBottom"></div></div>
+  </div>
+</div>
+<footer class="master-footer" id="footerInfo"></footer>
+<script>
+const APP_VERSION="SayIt Studio v1.2.0";
+const STORAGE_KEY="sayit_studio_v1_1_state";
+const DEFAULTS={githubUser:"acmeproducts",githubRepo:"dev",htmlFile:"sayit-v1.html",apkName:"SayIt",aiPlatform:"Gemini",aiUrl:"https://gemini.google.com/app",pat:"",wakeWord:"HEY VOICEHELPER"};
+const DEFAULT_ADAPTERS=[
+{id:"gemini-default",platform:"Gemini",launchUrl:"https://gemini.google.com/app",inputSelector:"",submitSelector:"",responseSelector:"",extractionMode:"text",waitStrategy:"poll-last-response",status:"partial",notes:"URL prompt mode is understood. DOM selectors still need live training.",version:1},
+{id:"claude-default",platform:"Claude",launchUrl:"https://claude.ai",inputSelector:"",submitSelector:"",responseSelector:"",extractionMode:"text",waitStrategy:"poll-last-response",status:"placeholder",notes:"Platform shell created. Live selector training pending.",version:1},
+{id:"chatgpt-default",platform:"ChatGPT",launchUrl:"https://chatgpt.com",inputSelector:"",submitSelector:"",responseSelector:"",extractionMode:"text",waitStrategy:"poll-last-response",status:"placeholder",notes:"Platform shell created. Live selector training pending.",version:1},
+{id:"perplexity-default",platform:"Perplexity",launchUrl:"https://www.perplexity.ai",inputSelector:"",submitSelector:"",responseSelector:"",extractionMode:"text",waitStrategy:"poll-last-response",status:"placeholder",notes:"Platform shell created. Live selector training pending.",version:1}
+];
+const INSTALL_STEPS=[{id:"project",title:"Step 1: Create AIDE Project",desc:"What to create in AIDE."},{id:"manifest",title:"Step 2: AndroidManifest.xml",desc:"Copyable manifest."},{id:"java",title:"Step 3: MainActivity.java",desc:"Copyable Java thin client."},{id:"build",title:"Step 4: Build + Install",desc:"Build/install checklist."}];
+const CONFIG_SECTIONS=[{id:"runtime",title:"Runtime",desc:"AI platform, wake word, active file."},{id:"github",title:"GitHub",desc:"User, repo, PAT, computed URLs."},{id:"apk",title:"APK",desc:"APK name and install alignment."}];
+const RUN_STEPS=[{id:"build",title:"Build",desc:"Generate the initial prompt."},{id:"go",title:"Run AI",desc:"Thin client injects prompt through trained adapter."},{id:"capture",title:"Capture",desc:"Capture AI output into the active job."},{id:"deploy",title:"Send to GH",desc:"Package response for GitHub Pages."},{id:"test",title:"Test",desc:"Open the live URL for the job."},{id:"fix",title:"Fix",desc:"Generate remediation prompt."}];
+const LOG_SECTIONS=[{id:"events",title:"Event Log",desc:"Commands, events, and errors."},{id:"diag",title:"Diagnostics",desc:"Clipboard, helper, runtime state."}];
+const sidebarState={"view-install":false,"view-config":false,"view-job":false,"view-run":true,"view-train":false,"view-logs":false};
+let state=loadState(); let currentView="view-install"; let selectedInstallStep="project"; let selectedConfigSection="runtime"; let selectedRunStep="build"; let selectedLogsSection="events"; let selectedAdapterId=state.selectedAdapterId || (state.adapters[0] ? state.adapters[0].id : null);
+function loadState(){const raw=localStorage.getItem(STORAGE_KEY);if(!raw){return {config:{...DEFAULTS},jobs:[],adapters:JSON.parse(JSON.stringify(DEFAULT_ADAPTERS)),selectedJobId:null,selectedAdapterId:DEFAULT_ADAPTERS[0].id,logs:[],diagnostics:{helperPresent:!!window.AndroidHelper,lastClipboardRead:"",lastCommand:"",lastEvent:""}};}try{const parsed=JSON.parse(raw);return {config:{...DEFAULTS,...(parsed.config||{})},jobs:Array.isArray(parsed.jobs)?parsed.jobs:[],adapters:Array.isArray(parsed.adapters)&&parsed.adapters.length?parsed.adapters:JSON.parse(JSON.stringify(DEFAULT_ADAPTERS)),selectedJobId:parsed.selectedJobId||null,selectedAdapterId:parsed.selectedAdapterId||DEFAULT_ADAPTERS[0].id,logs:Array.isArray(parsed.logs)?parsed.logs:[],diagnostics:{helperPresent:!!window.AndroidHelper,lastClipboardRead:"",lastCommand:"",lastEvent:"",...(parsed.diagnostics||{})}};}catch{localStorage.removeItem(STORAGE_KEY);return loadState();}}
+function saveState(){state.selectedAdapterId=selectedAdapterId;localStorage.setItem(STORAGE_KEY,JSON.stringify(state));renderAll();}
+function logEvent(type,message,detail=""){state.logs.unshift({ts:new Date().toLocaleString(),type,message,detail});if(state.logs.length>500) state.logs=state.logs.slice(0,500);state.diagnostics.lastEvent=`${type}: ${message}`;localStorage.setItem(STORAGE_KEY,JSON.stringify(state));renderLogs();}
+function currentJob(){return state.jobs.find(j=>j.id===state.selectedJobId)||null;} function currentAdapter(){return state.adapters.find(a=>a.id===selectedAdapterId)||null;}
+function ensureJob(){const job=currentJob();if(!job){alert("Create or select a job first.");return null;}return job;}
+function ensureAdapter(){const adapter=currentAdapter();if(!adapter){alert("Create or select an adapter first.");return null;}return adapter;}
+function uid(){return Math.random().toString(36).slice(2,10);}
+function escapeHtml(v){return String(v??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;").replaceAll('"',"&quot;");}
+function repoUrl(){return `https://github.com/${state.config.githubUser}/${state.config.githubRepo}`;}
+function liveControlUrl(){return `https://${state.config.githubUser}.github.io/${state.config.githubRepo}/${state.config.htmlFile}`;}
+function jobLiveUrl(job){return `https://${state.config.githubUser}.github.io/${state.config.githubRepo}/${job.fileName}`;}
+function generatedManifest(){return `<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.acme.sayit">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
+    <application
+        android:label="${state.config.apkName}"
+        android:usesCleartextTraffic="true">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+        </activity>
+
+    </application>
+</manifest>`;}
+function generatedJava(){return `package com.acme.sayit;
+
+import android.app.Activity;
+import android.os.Bundle;
+import android.webkit.WebView;
+import android.webkit.WebViewClient;
+import android.webkit.WebSettings;
+import android.webkit.JavascriptInterface;
+import android.content.ClipboardManager;
+import android.content.ClipData;
+import android.content.Context;
+import android.content.Intent;
+import android.net.Uri;
+
+public class MainActivity extends Activity {
+
+    private WebView webView;
+
+    @Override
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+
+        webView = new WebView(this);
+        setContentView(webView);
+
+        WebSettings settings = webView.getSettings();
+        settings.setJavaScriptEnabled(true);
+        settings.setDomStorageEnabled(true);
+
+        webView.setWebViewClient(new WebViewClient());
+        webView.addJavascriptInterface(new AndroidHelper(), "AndroidHelper");
+
+        webView.loadUrl("${liveControlUrl()}");
+    }
+
+    public class AndroidHelper {
+
+        @JavascriptInterface
+        public void postMessage(String msg) {
+            if (msg == null) return;
+
+            if (msg.startsWith("clipboard.write:")) {
+                String text = msg.substring("clipboard.write:".length());
+                ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+                clipboard.setPrimaryClip(ClipData.newPlainText("${state.config.apkName}", text));
+                return;
+            }
+
+            if (msg.equals("clipboard.read")) {
+                ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+                if (clipboard != null && clipboard.hasPrimaryClip()) {
+                    CharSequence text = clipboard.getPrimaryClip().getItemAt(0).coerceToText(MainActivity.this);
+                    if (text != null) {
+                        sendToWeb("clipboard:" + text.toString().replace("'", "\\'"));
+                    }
+                }
+                return;
+            }
+
+            if (msg.startsWith("openUrl:")) {
+                String url = msg.substring("openUrl:".length());
+                Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+                startActivity(intent);
+                return;
+            }
+
+            if (msg.equals("ping")) {
+                sendToWeb("helper.ready");
+            }
+
+            if (msg.startsWith("ai.train.open:")) {
+                String url = msg.substring("ai.train.open:".length());
+                Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+                startActivity(intent);
+                return;
+            }
+        }
+
+        private void sendToWeb(String payload) {
+            webView.post(() ->
+                webView.evaluateJavascript(
+                    "window.receiveEvent && window.receiveEvent('" + payload + "')",
+                    null
+                )
+            );
+        }
+    }
+}`;}
+function copyText(text){navigator.clipboard.writeText(text).then(()=>logEvent("event","Copied to clipboard")).catch(()=>logEvent("error","Clipboard copy failed"));}
+function openUrl(url){state.diagnostics.lastCommand=`openUrl:${url}`;if(window.AndroidHelper&&typeof window.AndroidHelper.postMessage==="function"){window.AndroidHelper.postMessage("openUrl:"+url);}else{window.open(url,"_blank");}logEvent("command","Open URL",url);}
+function writeClipboard(text){state.diagnostics.lastCommand="clipboard.write";if(window.AndroidHelper&&typeof window.AndroidHelper.postMessage==="function"){window.AndroidHelper.postMessage("clipboard.write:"+text);logEvent("command","Clipboard write via helper");}else{navigator.clipboard.writeText(text).then(()=>logEvent("command","Clipboard write via browser")).catch(()=>logEvent("error","Clipboard write failed"));}}
+function readClipboardIntoResponse(){const job=ensureJob();if(!job) return;state.diagnostics.lastCommand="clipboard.read";if(window.AndroidHelper&&typeof window.AndroidHelper.postMessage==="function"){window.AndroidHelper.postMessage("clipboard.read");logEvent("command","Clipboard read via helper");}else{navigator.clipboard.readText().then(text=>{job.response=text;state.diagnostics.lastClipboardRead=text;logEvent("event","Clipboard captured via browser");saveState();}).catch(()=>logEvent("error","Clipboard read failed"));}}
+window.receiveEvent=function(msg){if(typeof msg!=="string") return;state.diagnostics.lastEvent=msg;if(msg==="helper.ready"){state.diagnostics.helperPresent=true;logEvent("event","Helper ready");saveState();return;}if(msg.startsWith("clipboard:")){const job=currentJob();const text=msg.slice("clipboard:".length);state.diagnostics.lastClipboardRead=text;if(job){job.response=text;logEvent("event","Clipboard captured into selected job");saveState();}else{logEvent("warn","Clipboard returned but no selected job");}}};
+function createJob(){const name=prompt("Job/app name?");if(!name) return;const trimmed=name.trim();if(!trimmed) return;const fileName=`${trimmed}.html`;const job={id:uid(),title:trimmed,description:"",prompt:"",response:"",issues:"",fileName,createdAt:new Date().toLocaleString(),updatedAt:new Date().toLocaleString()};state.jobs.unshift(job);state.selectedJobId=job.id;logEvent("event","Created job",trimmed);saveState();}
+function saveSelectedJob(){const job=ensureJob();if(!job) return;job.title=document.getElementById("jobTitleInput").value.trim()||job.title;job.description=document.getElementById("jobDescInput").value;job.prompt=document.getElementById("jobPromptInput").value;job.response=document.getElementById("jobResponseInput").value;job.issues=document.getElementById("jobIssuesInput").value;job.fileName=(document.getElementById("jobFileInput").value.trim()||job.fileName);job.updatedAt=new Date().toLocaleString();logEvent("event","Saved selected job",job.title);saveState();}
+function compileBuildPrompt(job){return `Create a complete self-contained HTML application.
+
+App name: ${job.title}
+
+What it is and what it does:
+${job.description || "[DESCRIPTION MISSING - PLACEHOLDER]"}
+
+Requirements:
+- single HTML file
+- mobile friendly
+- no external libraries unless absolutely necessary
+- return full HTML only
+
+Filename: ${job.fileName}
+
+GO!`;}
+function compileFixPrompt(job,issueText){return `Update the existing ${job.title} application.
+
+Existing functionality must remain intact unless the issue explicitly requires change.
+
+Issue to fix:
+${issueText || "[ISSUE MISSING - PLACEHOLDER]"}
+
+Return full updated HTML only.
+
+Filename: ${job.fileName}
+
+GO!`;}
+function runGo(){const job=ensureJob();const adapter=ensureAdapter();if(!job||!adapter) return;saveSelectedJob();const prompt=job.prompt||document.getElementById("runPromptArea").value;writeClipboard(prompt);if(adapter.platform==="Gemini"&&adapter.launchUrl){const compactPrompt=encodeURIComponent(prompt.slice(0,1800));openUrl(`${adapter.launchUrl}?prompt=${compactPrompt}`);logEvent("event","GO executed using Gemini URL prompt mode",adapter.platform);}else{openUrl(adapter.launchUrl||state.config.aiUrl);logEvent("event","GO executed using adapter launch URL",adapter.platform);}}
+function runCapture(){saveSelectedJob();readClipboardIntoResponse();}
+function runTest(){const job=ensureJob();if(!job) return;openUrl(jobLiveUrl(job));logEvent("event","Opened test URL",jobLiveUrl(job));}
+function createAdapter(){const platform=prompt("Adapter/platform name?");if(!platform) return;const adapter={id:uid(),platform:platform.trim(),launchUrl:"",inputSelector:"",submitSelector:"",responseSelector:"",extractionMode:"text",waitStrategy:"poll-last-response",status:"placeholder",notes:"New adapter created. Train and save.",version:1};state.adapters.unshift(adapter);selectedAdapterId=adapter.id;logEvent("event","Created adapter",adapter.platform);saveState();}
+function saveAdapter(){const adapter=ensureAdapter();if(!adapter) return;adapter.platform=document.getElementById("adapterPlatform").value.trim()||adapter.platform;adapter.launchUrl=document.getElementById("adapterLaunchUrl").value.trim();adapter.inputSelector=document.getElementById("adapterInputSelector").value.trim();adapter.submitSelector=document.getElementById("adapterSubmitSelector").value.trim();adapter.responseSelector=document.getElementById("adapterResponseSelector").value.trim();adapter.extractionMode=document.getElementById("adapterExtractionMode").value;adapter.waitStrategy=document.getElementById("adapterWaitStrategy").value.trim();adapter.status=document.getElementById("adapterStatus").value;adapter.notes=document.getElementById("adapterNotes").value;adapter.version=parseInt(document.getElementById("adapterVersion").value,10)||adapter.version||1;logEvent("event","Saved adapter",adapter.platform);saveState();}
+function exportAdapter(){const adapter=ensureAdapter();if(!adapter) return;copyText(JSON.stringify(adapter,null,2));logEvent("event","Exported adapter JSON",adapter.platform);}
+function importAdapter(){const raw=prompt("Paste adapter JSON");if(!raw) return;try{const parsed=JSON.parse(raw);parsed.id=parsed.id||uid();state.adapters.unshift(parsed);selectedAdapterId=parsed.id;logEvent("event","Imported adapter",parsed.platform||parsed.id);saveState();}catch{logEvent("error","Invalid adapter JSON");alert("Invalid adapter JSON");}}
+function openTrainingSurface(){const adapter=ensureAdapter();if(!adapter) return;openUrl(adapter.launchUrl||state.config.aiUrl);logEvent("event","Opened training surface",adapter.platform);}
+function renderTabs(){document.querySelectorAll(".tab-btn").forEach(btn=>{btn.classList.toggle("active",btn.dataset.target===currentView);});document.querySelectorAll(".view-section").forEach(v=>{v.classList.toggle("active",v.id===currentView);});}
+function renderInstall(){const list=document.getElementById("installStepList");list.innerHTML=INSTALL_STEPS.map(step=>`<div class="list-item ${selectedInstallStep===step.id?"selected":""}" onclick="selectedInstallStep='${step.id}'; renderInstall();"><strong>${step.title}</strong><div class="small-note">${step.desc}</div></div>`).join("");const top=document.getElementById("installTop");const bottom=document.getElementById("installBottom");
+if(selectedInstallStep==="project"){top.innerHTML=`<div class="section-title">Create AIDE Project</div><div class="stack"><div class="small-note">Create a plain Android app project in AIDE. Use package <strong>com.acme.sayit</strong>. The APK is only a thin client that loads the hosted HTML and exposes clipboard + URL bridge behavior.</div><div class="kv"><div class="key">APK Name</div><div class="val">${escapeHtml(state.config.apkName)}</div><div class="key">Package</div><div class="val">com.acme.sayit</div><div class="key">Hosted Control File</div><div class="val">${escapeHtml(liveControlUrl())}</div></div></div>`;bottom.innerHTML=`<div class="section-title">Install Strategy</div><div class="small-note">The HTML page is the real application. The APK should change rarely. Most updates should be HTML-only changes pushed to GitHub Pages.</div>`;}
+if(selectedInstallStep==="manifest"){const xml=generatedManifest();top.innerHTML=`<div class="row" style="justify-content:space-between;margin-bottom:10px;"><div class="section-title">AndroidManifest.xml</div><button class="btn btn-primary" onclick="copyText(generatedManifest())">Copy Manifest</button></div><div class="code-box">${escapeHtml(xml)}</div>`;bottom.innerHTML=`<div class="section-title">Manifest Notes</div><div class="small-note">This is complete for the current scope. Internet is required. Record audio is included for later native voice support. No placeholder here.</div>`;}
+if(selectedInstallStep==="java"){const java=generatedJava();top.innerHTML=`<div class="row" style="justify-content:space-between;margin-bottom:10px;"><div class="section-title">MainActivity.java</div><button class="btn btn-primary" onclick="copyText(generatedJava())">Copy Java</button></div><div class="code-box">${escapeHtml(java)}</div>`;bottom.innerHTML=`<div class="section-title">Java Notes</div><div class="small-note">This activity loads the hosted control HTML and supports helper-ready ping, clipboard write, clipboard read, and open URL. Voice bridge is intentionally not claimed as implemented yet.</div>`;}
+if(selectedInstallStep==="build"){top.innerHTML=`<div class="section-title">Build + Install</div><div class="stack"><div class="list-item"><strong>1.</strong><div class="small-note">Paste AndroidManifest.xml into the project.</div></div><div class="list-item"><strong>2.</strong><div class="small-note">Paste MainActivity.java into the Java package.</div></div><div class="list-item"><strong>3.</strong><div class="small-note">Build the APK in AIDE.</div></div><div class="list-item"><strong>4.</strong><div class="small-note">Host this HTML at <strong>${escapeHtml(liveControlUrl())}</strong>.</div></div><div class="list-item"><strong>5.</strong><div class="small-note">Install the APK and verify clipboard + URL open using the Logs tab diagnostics.</div></div></div>`;bottom.innerHTML=`<div class="section-title">Build Info</div><div class="kv"><div class="key">APK</div><div class="val">${escapeHtml(state.config.apkName)}</div><div class="key">HTML Control File</div><div class="val">${escapeHtml(state.config.htmlFile)}</div><div class="key">Repo</div><div class="val">${escapeHtml(repoUrl())}</div><div class="key">Live Control URL</div><div class="val">${escapeHtml(liveControlUrl())}</div></div>`;}}
+function renderConfig(){document.getElementById("configNavList").innerHTML=CONFIG_SECTIONS.map(section=>`<div class="list-item ${selectedConfigSection===section.id?"selected":""}" onclick="selectedConfigSection='${section.id}'; renderConfig();"><strong>${section.title}</strong><div class="small-note">${section.desc}</div></div>`).join("");const top=document.getElementById("configTop");const bottom=document.getElementById("configBottom");
+if(selectedConfigSection==="runtime"){top.innerHTML=`<div class="section-title">Runtime</div><div class="grid-two"><div class="input-group"><label>AI Platform</label><select id="cfgAiPlatform" class="input-control"><option ${state.config.aiPlatform==="Gemini"?"selected":""}>Gemini</option><option ${state.config.aiPlatform==="Claude"?"selected":""}>Claude</option><option ${state.config.aiPlatform==="ChatGPT"?"selected":""}>ChatGPT</option><option ${state.config.aiPlatform==="Perplexity"?"selected":""}>Perplexity</option></select></div><div class="input-group"><label>Wake Word</label><input id="cfgWakeWord" class="input-control" value="${escapeHtml(state.config.wakeWord)}"></div></div><div class="input-group"><label>AI URL</label><input id="cfgAiUrl" class="input-control mono" value="${escapeHtml(state.config.aiUrl)}"></div><button class="btn btn-primary" onclick="saveConfigSection()">Save Runtime Config</button>`;bottom.innerHTML=`<div class="section-title">Runtime Notes</div><div class="small-note">Voice parsing is not yet implemented. The wake word is persisted now because it is part of the locked architecture. This is a real stored value, not a fake control.</div>`;}
+if(selectedConfigSection==="github"){top.innerHTML=`<div class="section-title">GitHub</div><div class="grid-two"><div class="input-group"><label>User</label><input id="cfgGitHubUser" class="input-control" value="${escapeHtml(state.config.githubUser)}"></div><div class="input-group"><label>Repo</label><input id="cfgGitHubRepo" class="input-control" value="${escapeHtml(state.config.githubRepo)}"></div></div><div class="grid-two"><div class="input-group"><label>Control HTML File</label><input id="cfgHtmlFile" class="input-control" value="${escapeHtml(state.config.htmlFile)}"></div><div class="input-group"><label>GitHub PAT</label><input id="cfgPat" class="input-control mono" value="${escapeHtml(state.config.pat)}"></div></div><button class="btn btn-primary" onclick="saveConfigSection()">Save GitHub Config</button>`;bottom.innerHTML=`<div class="section-title">Computed URLs</div><div class="kv"><div class="key">Repo URL</div><div class="val">${escapeHtml(repoUrl())}</div><div class="key">Control URL</div><div class="val">${escapeHtml(liveControlUrl())}</div></div><hr class="sep"><div class="placeholder"><strong>Placeholder:</strong> GitHub PAT auto-commit is not implemented yet. The PAT is persisted and the system is prepared for it, but deploy is currently a structured manual step.</div>`;}
+if(selectedConfigSection==="apk"){top.innerHTML=`<div class="section-title">APK Alignment</div><div class="input-group"><label>APK Name</label><input id="cfgApkName" class="input-control" value="${escapeHtml(state.config.apkName)}"></div><button class="btn btn-primary" onclick="saveConfigSection()">Save APK Config</button>`;bottom.innerHTML=`<div class="section-title">Thin Client Rule</div><div class="small-note">The APK should remain minimal and stable. The control HTML should absorb most future changes. The install tab code is generated directly from these values.</div>`;}}
+function saveConfigSection(){const get=id=>document.getElementById(id);if(selectedConfigSection==="runtime"){state.config.aiPlatform=get("cfgAiPlatform").value;state.config.wakeWord=get("cfgWakeWord").value.trim()||DEFAULTS.wakeWord;state.config.aiUrl=get("cfgAiUrl").value.trim()||DEFAULTS.aiUrl;logEvent("event","Saved runtime config");}if(selectedConfigSection==="github"){state.config.githubUser=get("cfgGitHubUser").value.trim()||DEFAULTS.githubUser;state.config.githubRepo=get("cfgGitHubRepo").value.trim()||DEFAULTS.githubRepo;state.config.htmlFile=get("cfgHtmlFile").value.trim()||DEFAULTS.htmlFile;state.config.pat=get("cfgPat").value;logEvent("event","Saved GitHub config");}if(selectedConfigSection==="apk"){state.config.apkName=get("cfgApkName").value.trim()||DEFAULTS.apkName;logEvent("event","Saved APK config");}saveState();}
+function renderJobs(){document.getElementById("jobList").innerHTML=state.jobs.length?state.jobs.map(job=>`<div class="list-item ${state.selectedJobId===job.id?"selected":""}" onclick="selectJob('${job.id}')"><strong>${escapeHtml(job.title)}</strong><div class="small-note">${escapeHtml(job.fileName)}</div><div class="small-note">Updated: ${escapeHtml(job.updatedAt)}</div></div>`).join(""):`<div class="empty-state">No jobs yet</div>`;const job=currentJob();document.getElementById("jobTop").innerHTML=job?`<div class="section-title">Selected Job</div><div class="grid-two"><div class="input-group"><label>Job Name</label><input id="jobTitleInput" class="input-control" value="${escapeHtml(job.title)}"></div><div class="input-group"><label>File Name</label><input id="jobFileInput" class="input-control mono" value="${escapeHtml(job.fileName)}"></div></div><div class="input-group"><label>Description</label><textarea id="jobDescInput" class="input-control">${escapeHtml(job.description)}</textarea></div><div class="input-group"><label>Current Prompt</label><textarea id="jobPromptInput" class="input-control mono">${escapeHtml(job.prompt)}</textarea></div><div class="input-group"><label>Current Response</label><textarea id="jobResponseInput" class="input-control mono">${escapeHtml(job.response)}</textarea></div><div class="input-group"><label>Issue Summary</label><textarea id="jobIssuesInput" class="input-control">${escapeHtml(job.issues)}</textarea></div><div class="row"><button class="btn btn-primary" onclick="saveSelectedJob()">Save Job</button><button class="btn btn-danger" onclick="deleteSelectedJob()">Delete Job</button></div>`:`<div class="empty-state">Create or select a job</div>`;document.getElementById("jobBottom").innerHTML=job?`<div class="section-title">Job Metadata</div><div class="job-metadata"><div class="meta-card"><div class="label">Created</div><div class="value">${escapeHtml(job.createdAt)}</div></div><div class="meta-card"><div class="label">Updated</div><div class="value">${escapeHtml(job.updatedAt)}</div></div><div class="meta-card"><div class="label">Live URL</div><div class="value">${escapeHtml(jobLiveUrl(job))}</div></div><div class="meta-card"><div class="label">Control Repo</div><div class="value">${escapeHtml(repoUrl())}</div></div></div>`:`<div class="empty-state">No metadata to show</div>`;}
+function selectJob(id){state.selectedJobId=id;saveState();}
+function deleteSelectedJob(){const job=currentJob();if(!job) return;state.jobs=state.jobs.filter(j=>j.id!==job.id);state.selectedJobId=state.jobs[0]?.id||null;logEvent("event","Deleted job",job.title);saveState();}
+function renderRun(){document.getElementById("runStepList").innerHTML=RUN_STEPS.map(step=>`<div class="list-item ${selectedRunStep===step.id?"selected":""}" onclick="selectedRunStep='${step.id}'; renderRun();"><strong>${step.title}</strong><div class="small-note">${step.desc}</div></div>`).join("");const job=currentJob();const top=document.getElementById("runTop");const bottom=document.getElementById("runBottom");if(!job){top.innerHTML=`<div class="empty-state">Create or select a job first</div>`;bottom.innerHTML=`<div class="empty-state">Run controls appear when a job is selected</div>`;return;}const adapter=currentAdapter();const statusPills=`<div class="status-pills"><div class="pill"><span class="dot ${state.diagnostics.helperPresent?'ok':'warn'}"></span>Helper ${state.diagnostics.helperPresent?'present':'browser mode'}</div><div class="pill"><span class="dot ok"></span>${escapeHtml(adapter?adapter.platform:state.config.aiPlatform)}</div><div class="pill"><span class="dot ok"></span>${escapeHtml(job.title)}</div></div>`;
+if(selectedRunStep==="build"){top.innerHTML=`${statusPills}<div class="section-title">Build Prompt</div><div class="small-note">This generates the initial prompt from the selected job definition.</div><div class="input-group"><label>Job</label><input class="input-control" value="${escapeHtml(job.title)}" disabled></div><div class="input-group"><label>Description</label><textarea id="runBuildDesc" class="input-control">${escapeHtml(job.description)}</textarea></div><div class="input-group"><label>Generated Prompt</label><textarea id="runPromptArea" class="input-control mono">${escapeHtml(job.prompt)}</textarea></div>`;bottom.innerHTML=`<div class="row"><button class="btn btn-primary" onclick="saveBuildDescAndGenerate()">Generate BUILD Prompt</button><button class="btn" onclick="copyText(document.getElementById('runPromptArea').value)">Copy Prompt</button></div>`;}
+if(selectedRunStep==="go"){top.innerHTML=`${statusPills}<div class="section-title">Run AI</div><div class="kv"><div class="key">Adapter</div><div class="val">${escapeHtml(adapter?adapter.platform:"-")}</div><div class="key">Launch URL</div><div class="val">${escapeHtml(adapter?adapter.launchUrl:state.config.aiUrl)}</div><div class="key">Input Selector</div><div class="val">${escapeHtml(adapter?adapter.inputSelector:"") || "[PLACEHOLDER]"}</div><div class="key">Submit Selector</div><div class="val">${escapeHtml(adapter?adapter.submitSelector:"") || "[PLACEHOLDER]"}</div></div><hr class="sep"><div class="input-group"><label>Prompt To Send</label><textarea id="runPromptArea" class="input-control mono">${escapeHtml(job.prompt)}</textarea></div>`;bottom.innerHTML=`<div class="row"><button class="btn btn-primary" onclick="savePromptThenGo()">GO: Send Prompt</button></div><div class="small-note" style="margin-top:10px;">Gemini uses URL-prompt mode first when possible. Other adapters currently open the trained launch URL after copying the prompt to clipboard.</div>`;}
+if(selectedRunStep==="capture"){top.innerHTML=`${statusPills}<div class="section-title">Capture Response</div><div class="input-group"><label>Response</label><textarea id="runResponseArea" class="input-control mono">${escapeHtml(job.response)}</textarea></div>`;bottom.innerHTML=`<div class="row"><button class="btn btn-primary" onclick="runCapture()">CAPTURE From Clipboard</button><button class="btn" onclick="saveRunResponse()">Save Response</button></div>`;}
+if(selectedRunStep==="deploy"){top.innerHTML=`${statusPills}<div class="section-title">Send to GitHub</div><div class="kv"><div class="key">Repo</div><div class="val">${escapeHtml(repoUrl())}</div><div class="key">Target File</div><div class="val">${escapeHtml(job.fileName)}</div><div class="key">Live URL</div><div class="val">${escapeHtml(jobLiveUrl(job))}</div></div><hr class="sep"><div class="input-group"><label>Artifact To Deploy</label><textarea id="deployArtifactArea" class="input-control mono">${escapeHtml(job.response)}</textarea></div>`;bottom.innerHTML=`<div class="placeholder"><strong>Placeholder:</strong> PAT-backed auto deploy is not implemented yet. The job-bound repo, filename, and live URL are computed and ready, but the commit/push step remains manual.</div>`;}
+if(selectedRunStep==="test"){top.innerHTML=`${statusPills}<div class="section-title">Test</div><div class="kv"><div class="key">Job</div><div class="val">${escapeHtml(job.title)}</div><div class="key">Live URL</div><div class="val">${escapeHtml(jobLiveUrl(job))}</div></div>`;bottom.innerHTML=`<div class="row"><button class="btn btn-primary" onclick="runTest()">Open Live URL</button></div>`;}
+if(selectedRunStep==="fix"){top.innerHTML=`${statusPills}<div class="section-title">Fix</div><div class="input-group"><label>Issue Summary</label><textarea id="runIssueArea" class="input-control">${escapeHtml(job.issues)}</textarea></div><div class="input-group"><label>Generated Fix Prompt</label><textarea id="runPromptArea" class="input-control mono">${escapeHtml(job.prompt)}</textarea></div>`;bottom.innerHTML=`<div class="row"><button class="btn btn-primary" onclick="saveIssueThenFix()">Generate FIX Prompt</button><button class="btn" onclick="copyText(document.getElementById('runPromptArea').value)">Copy Prompt</button></div>`;}}
+function saveBuildDescAndGenerate(){const job=ensureJob();if(!job) return;job.description=document.getElementById("runBuildDesc").value;job.prompt=compileBuildPrompt(job);job.updatedAt=new Date().toLocaleString();saveState();}
+function savePromptThenGo(){const job=ensureJob();if(!job) return;job.prompt=document.getElementById("runPromptArea").value;job.updatedAt=new Date().toLocaleString();saveState();runGo();}
+function saveRunResponse(){const job=ensureJob();if(!job) return;job.response=document.getElementById("runResponseArea").value;job.updatedAt=new Date().toLocaleString();logEvent("event","Saved response",job.title);saveState();}
+function saveIssueThenFix(){const job=ensureJob();if(!job) return;job.issues=document.getElementById("runIssueArea").value;job.prompt=compileFixPrompt(job,job.issues);job.updatedAt=new Date().toLocaleString();saveState();}
+function renderTrain(){document.getElementById("trainAdapterList").innerHTML=state.adapters.length?state.adapters.map(adapter=>`<div class="list-item ${selectedAdapterId===adapter.id?"selected":""}" onclick="selectAdapter('${adapter.id}')"><strong>${escapeHtml(adapter.platform)}</strong><div class="small-note">v${escapeHtml(adapter.version)}</div><div class="small-note"><span class="adapter-status ${escapeHtml(adapter.status)}">${escapeHtml(adapter.status)}</span></div></div>`).join(""):`<div class="empty-state">No adapters yet</div>`;const adapter=currentAdapter();const top=document.getElementById("trainTop");const bottom=document.getElementById("trainBottom");if(!adapter){top.innerHTML=`<div class="empty-state">Create or select an adapter</div>`;bottom.innerHTML=`<div class="empty-state">Training actions appear when an adapter is selected</div>`;return;}top.innerHTML=`<div class="section-title">Train Adapter</div><div class="train-grid"><div class="input-group"><label>Platform</label><input id="adapterPlatform" class="input-control" value="${escapeHtml(adapter.platform)}"></div><div class="input-group"><label>Launch URL</label><input id="adapterLaunchUrl" class="input-control mono" value="${escapeHtml(adapter.launchUrl)}"></div></div><div class="train-grid"><div class="input-group"><label>Input Selector</label><input id="adapterInputSelector" class="input-control mono" value="${escapeHtml(adapter.inputSelector)}"></div><div class="input-group"><label>Submit Selector</label><input id="adapterSubmitSelector" class="input-control mono" value="${escapeHtml(adapter.submitSelector)}"></div></div><div class="train-grid"><div class="input-group"><label>Response Selector</label><input id="adapterResponseSelector" class="input-control mono" value="${escapeHtml(adapter.responseSelector)}"></div><div class="input-group"><label>Wait Strategy</label><input id="adapterWaitStrategy" class="input-control mono" value="${escapeHtml(adapter.waitStrategy)}"></div></div><div class="train-grid"><div class="input-group"><label>Extraction Mode</label><select id="adapterExtractionMode" class="input-control"><option ${adapter.extractionMode==="text"?"selected":""}>text</option><option ${adapter.extractionMode==="html"?"selected":""}>html</option><option ${adapter.extractionMode==="code"?"selected":""}>code</option></select></div><div class="input-group"><label>Status</label><select id="adapterStatus" class="input-control"><option ${adapter.status==="trained"?"selected":""}>trained</option><option ${adapter.status==="partial"?"selected":""}>partial</option><option ${adapter.status==="placeholder"?"selected":""}>placeholder</option><option ${adapter.status==="broken"?"selected":""}>broken</option></select></div></div><div class="train-grid"><div class="input-group"><label>Version</label><input id="adapterVersion" class="input-control mono" value="${escapeHtml(adapter.version)}"></div><div></div></div><div class="input-group"><label>Notes</label><textarea id="adapterNotes" class="input-control">${escapeHtml(adapter.notes)}</textarea></div>`;bottom.innerHTML=`<div class="row"><button class="btn btn-primary" onclick="saveAdapter()">Save Adapter</button><button class="btn" onclick="exportAdapter()">Export JSON</button><button class="btn" onclick="importAdapter()">Import JSON</button><button class="btn btn-warn" onclick="openTrainingSurface()">Open Training Surface</button></div><hr class="sep"><div class="placeholder"><strong>Placeholder:</strong> Live DOM inspection and selector harvesting from the APK browser are not implemented yet. This tab already supports saving, exporting, importing, versioning, and marking adapter status so the library is repeatable and maintainable.</div>`;}
+function selectAdapter(id){selectedAdapterId=id;saveState();}
+function renderLogs(){document.getElementById("logsNavList").innerHTML=LOG_SECTIONS.map(section=>`<div class="list-item ${selectedLogsSection===section.id?"selected":""}" onclick="selectedLogsSection='${section.id}'; renderLogs();"><strong>${section.title}</strong><div class="small-note">${section.desc}</div></div>`).join("");const top=document.getElementById("logsTop");const bottom=document.getElementById("logsBottom");
+if(selectedLogsSection==="events"){top.innerHTML=`<div class="row" style="justify-content:space-between;margin-bottom:10px;"><div class="section-title">Event Log</div><div class="row"><button class="btn" onclick="copyText(JSON.stringify(state.logs, null, 2))">Copy Logs</button><button class="btn btn-danger" onclick="clearLogs()">Clear Logs</button></div></div><div class="tablet-console">${state.logs.map(l=>`[${l.ts}] ${l.type.toUpperCase()} | ${l.message}${l.detail ? " | " + l.detail : ""}`).join("\n") || "No logs yet."}</div>`;bottom.innerHTML=`<div class="section-title">Current Counts</div><div class="kv"><div class="key">Jobs</div><div class="val">${state.jobs.length}</div><div class="key">Adapters</div><div class="val">${state.adapters.length}</div><div class="key">Logs</div><div class="val">${state.logs.length}</div></div>`;}
+if(selectedLogsSection==="diag"){top.innerHTML=`<div class="section-title">Diagnostics</div><div class="kv"><div class="key">Helper Present</div><div class="val">${state.diagnostics.helperPresent ? "Yes" : "No"}</div><div class="key">Current AI</div><div class="val">${escapeHtml((currentAdapter() || {}).platform || state.config.aiPlatform)}</div><div class="key">Current Job</div><div class="val">${escapeHtml(currentJob()?.title || "-")}</div><div class="key">Last Clipboard Read</div><div class="val">${escapeHtml((state.diagnostics.lastClipboardRead || "").slice(0, 120) || "-")}</div><div class="key">Last Command</div><div class="val">${escapeHtml(state.diagnostics.lastCommand || "-")}</div><div class="key">Last Event</div><div class="val">${escapeHtml(state.diagnostics.lastEvent || "-")}</div></div>`;bottom.innerHTML=`<div class="row"><button class="btn" onclick="pingHelper()">Ping Helper</button><button class="btn" onclick="readClipboardIntoResponse()">Read Clipboard</button></div><div class="small-note" style="margin-top:10px;">Voice diagnostics are intentionally not presented as implemented. That work is still pending.</div>`;}}
+function clearLogs(){state.logs=[];saveState();}
+function pingHelper(){state.diagnostics.lastCommand="ping";if(window.AndroidHelper&&typeof window.AndroidHelper.postMessage==="function"){window.AndroidHelper.postMessage("ping");logEvent("command","Sent helper ping");}else{state.diagnostics.helperPresent=false;logEvent("warn","AndroidHelper not present in this runtime");saveState();}}
+function renderFooter(){document.getElementById("footerInfo").textContent=`${APP_VERSION} | ${state.config.githubUser}/${state.config.githubRepo}/${state.config.htmlFile} | ${liveControlUrl()}`;}
+function toggleSidebar(viewId){sidebarState[viewId]=!sidebarState[viewId];const view=document.getElementById(viewId);if(!view) return;const sidebar=view.querySelector(".sidebar");if(!sidebar) return;sidebar.classList.toggle("collapsed",!!sidebarState[viewId]);}
+function renderTabs(){document.querySelectorAll(".tab-btn").forEach(btn=>{btn.classList.toggle("active",btn.dataset.target===currentView);});document.querySelectorAll(".view-section").forEach(v=>{v.classList.toggle("active",v.id===currentView);});}
+function renderAll(){renderTabs();renderInstall();renderConfig();renderJobs();renderRun();renderTrain();renderLogs();renderFooter();Object.keys(sidebarState).forEach(viewId=>{const view=document.getElementById(viewId);if(!view) return;const sidebar=view.querySelector(".sidebar");if(!sidebar) return;sidebar.classList.toggle("collapsed",!!sidebarState[viewId]);});}
+document.querySelectorAll(".tab-btn").forEach(btn=>{btn.addEventListener("click",e=>{currentView=e.target.dataset.target;renderAll();});});
+document.getElementById("btnNewJob").addEventListener("click",createJob);
+document.getElementById("btnNewAdapter").addEventListener("click",createAdapter);
+renderAll();
+if(window.AndroidHelper&&typeof window.AndroidHelper.postMessage==="function"){state.diagnostics.helperPresent=true;localStorage.setItem(STORAGE_KEY,JSON.stringify(state));}
+</script>
+</body>
+</html>
