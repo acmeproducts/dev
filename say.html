@@ -1,0 +1,539 @@
+<!-- SayIt-Studio-v3.4-2026-04-05 04:45 AM -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>SayIt Studio v3.4: Hands-Free Orchestrator</title>
+<style>
+:root{
+  --bg:#09090b; --surface:#18181b; --surface2:#111827; --surface3:#27272a;
+  --border:#27272a; --border2:#3f3f46; --text:#f4f4f5; --muted:#a1a1aa;
+  --accent:#14b8a6; --accentHover:#0d9488; --ok:#22c55e; --warn:#f59e0b; --danger:#ef4444;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;
+  --sans:Inter,system-ui,-apple-system,sans-serif;
+  --headerH:60px; --footerH:38px; --sidebarW:280px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:var(--sans);font-size:14px}
+body{display:flex;flex-direction:column}
+
+/* Header & Tabs */
+header{height:var(--headerH);background:var(--surface);border-bottom:1px solid var(--border);display:flex;align-items:center;padding:0 12px;gap:12px;flex-shrink:0;z-index:100}
+.logo{font-size:18px;font-weight:800;letter-spacing:-0.5px;white-space:nowrap}.logo span{color:var(--accent)}
+.tab-nav{display:flex;gap:4px;flex:1;overflow-x:auto;scrollbar-width:none}
+.tab-nav::-webkit-scrollbar{display:none}
+.tab-btn{padding:8px 12px;border-radius:8px;border:1px solid transparent;background:transparent;color:var(--muted);font-weight:600;cursor:pointer;white-space:nowrap;transition:0.2s;font-size:12px}
+.tab-btn:hover{background:var(--surface3);color:var(--text)}
+.tab-btn.active{background:var(--surface2);color:var(--accent);border-color:var(--border2)}
+
+/* Layout */
+.app{flex:1;display:flex;overflow:hidden;min-height:0}
+.view{display:none;width:100%;height:100%;overflow:hidden}.view.active{display:flex}
+.sidebar{width:var(--sidebarW);background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;transition: width 0.25s ease;overflow:hidden}
+.sidebar.collapsed{width:0;border-right:none}
+.sidebar-header{padding:16px;border-bottom:1px solid var(--border);font-weight:700;display:flex;justify-content:space-between;align-items:center;white-space:nowrap}
+.sidebar-content{flex:1;overflow-y:auto;padding:8px;min-width:var(--sidebarW)}
+.main{flex:1;display:flex;flex-direction:column;min-width:0;background:var(--bg)}
+.content-area{flex:1;overflow-y:auto;padding:20px}
+.split-bottom{height:38%;min-height:200px;background:var(--surface);border-top:1px solid var(--border);padding:16px;overflow-y:auto}
+
+/* Buttons/Inputs */
+.btn{display:inline-flex;align-items:center;justify-content:center;padding:10px 14px;border-radius:10px;border:1px solid var(--border2);background:var(--surface2);color:var(--text);font-weight:600;cursor:pointer;gap:8px;font-size:13px;transition:0.15s;white-space:nowrap}
+.btn:hover{background:var(--surface3);border-color:var(--muted)}
+.btn-primary{background:var(--accent);color:#041414;border:none}.btn-primary:hover{background:var(--accentHover)}
+.btn-danger{background:#450a0a;color:#fecaca;border:none}
+.btn-icon{width:38px;height:38px;padding:0;font-size:18px;flex-shrink:0}
+
+.input-group{margin-bottom:16px}.input-group label{display:block;font-size:11px;font-weight:700;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.5px}
+.input,.textarea,.select{width:100%;background:#050505;border:1px solid var(--border2);border-radius:10px;padding:12px;color:var(--text);font-size:14px;outline:none;transition:0.2s}
+.textarea{min-height:100px;font-family:var(--mono);line-height:1.5}
+
+.card{background:var(--surface2);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:16px}
+.list-item{padding:12px;border-radius:10px;margin-bottom:6px;cursor:pointer;border:1px solid transparent;transition:0.1s}
+.list-item.active{background:var(--surface3);border-color:var(--accent)}
+.list-item strong{display:block;font-size:14px}
+.list-item span{font-size:11px;color:var(--muted);font-family:var(--mono)}
+
+.code-block{background:#000;border:1px solid var(--border2);border-radius:10px;padding:16px;font-family:var(--mono);font-size:12px;line-height:1.6;color:#d1d5db;position:relative;overflow:auto}
+.copy-btn{position:absolute;top:8px;right:8px;padding:4px 8px;font-size:10px;background:var(--surface3);border:1px solid var(--border2);border-radius:4px;color:var(--muted);cursor:pointer}
+
+.badge{display:inline-block;padding:2px 8px;border-radius:99px;font-size:10px;font-weight:800;text-transform:uppercase}
+.badge-ok{background:#052e16;color:#bbf7d0;border:1px solid #166534}
+.badge-warn{background:#3a2a05;color:#fde68a;border:1px solid #92400e}
+
+.section-title{font-size:18px;font-weight:800;margin-bottom:16px}
+.okbox{background:#052e16;color:#bbf7d0;border:1px solid #166534;padding:12px;border-radius:10px;margin:10px 0;font-size:13px}
+.warnbox{background:#3a2a05;color:#fde68a;border:1px solid #92400e;padding:12px;border-radius:10px;margin:10px 0;font-size:13px}
+
+footer{height:var(--footerH);background:var(--surface);border-top:1px solid var(--border);display:flex;align-items:center;justify-content:center;padding:0 16px;font-size:11px;color:var(--muted);font-family:var(--mono);gap:15px;flex-shrink:0}
+
+#toast{position:fixed;bottom:60px;left:50%;transform:translateX(-50%);background:var(--accent);color:#000;padding:10px 20px;border-radius:8px;font-weight:700;z-index:1000;opacity:0;pointer-events:none;transition:0.3s}
+#toast.show{opacity:1;bottom:70px}
+</style>
+</head>
+<body>
+
+<header>
+  <button class="btn btn-icon" id="toggleSidebarBtn">☰</button>
+  <div class="logo">Say<span>It</span> v3.4</div>
+  <nav class="tab-nav">
+    <button class="tab-btn active" data-view="install">Install</button>
+    <button class="tab-btn" data-view="config">Config</button>
+    <button class="tab-btn" data-view="train">Train</button>
+    <button class="tab-btn" data-view="jobs">Jobs</button>
+    <button class="tab-btn" data-view="orchestrator">Orchestrator</button>
+    <button class="tab-btn" data-view="logs">System Logs</button>
+  </nav>
+</header>
+
+<div class="app">
+  <!-- INSTALL VIEW -->
+  <section class="view active" id="view-install">
+    <aside class="sidebar">
+      <div class="sidebar-header">Source Files</div>
+      <div class="sidebar-content">
+        <div class="list-item active" onclick="showInstall('java')"><strong>MainActivity.java</strong><span>Full Orchestrator Bridge</span></div>
+        <div class="list-item" onclick="showInstall('xml')"><strong>AndroidManifest.xml</strong><span>Internet & Audio</span></div>
+        <div class="list-item" onclick="showInstall('guide')"><strong>Final Checklist</strong><span>Ready to Launch</span></div>
+      </div>
+    </aside>
+    <main class="main">
+      <div class="content-area" id="installContent"></div>
+    </main>
+  </section>
+
+  <!-- CONFIG VIEW -->
+  <section class="view" id="view-config">
+    <main class="main">
+      <div class="content-area" style="max-width:800px; margin:0 auto">
+        <div class="section-title">Global Settings</div>
+        <div class="card">
+          <div class="grid2" style="display:grid; grid-template-columns:1fr 1fr; gap:16px">
+            <div class="input-group"><label>GitHub User</label><input type="text" class="input" id="cfgUser" placeholder="username"></div>
+            <div class="input-group"><label>GitHub Repo</label><input type="text" class="input" id="cfgRepo" placeholder="repo"></div>
+          </div>
+          <div class="input-group"><label>GitHub PAT</label><input type="password" class="input" id="cfgPat"></div>
+          <div class="input-group">
+            <label>Voice Automation Phrase</label>
+            <input type="text" class="input" id="cfgWake" value="start orchestrator">
+          </div>
+          <button class="btn btn-primary" onclick="saveConfig()">Save Config</button>
+        </div>
+      </div>
+    </main>
+  </section>
+
+  <!-- TRAIN VIEW -->
+  <section class="view" id="view-train">
+    <aside class="sidebar">
+      <div class="sidebar-header">Adapters <button class="btn btn-primary" style="padding:4px 8px; font-size:10px" onclick="addAdapter()">+</button></div>
+      <div class="sidebar-content" id="adapterList"></div>
+    </aside>
+    <main class="main">
+      <div class="content-area" id="adapterEditor"></div>
+    </main>
+  </section>
+
+  <!-- JOBS VIEW -->
+  <section class="view" id="view-jobs">
+    <aside class="sidebar">
+      <div class="sidebar-header">App Jobs <button class="btn btn-primary" style="padding:4px 8px; font-size:10px" onclick="addJob()">+</button></div>
+      <div class="sidebar-content" id="jobList"></div>
+    </aside>
+    <main class="main">
+      <div class="content-area" id="jobEditor"></div>
+    </main>
+  </section>
+
+  <!-- ORCHESTRATOR (COMMAND CENTER) -->
+  <section class="view" id="view-orchestrator">
+    <main class="main">
+      <div class="content-area" style="max-width:900px; margin:0 auto">
+        <div class="section-title">Command Center</div>
+        <div class="grid2" style="display:grid; grid-template-columns:1.2fr 0.8fr; gap:20px">
+          <div>
+            <div class="card">
+              <div class="input-group">
+                <label>Target Workflow</label>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px">
+                  <select class="select" id="liveAdapterSelect"></select>
+                  <select class="select" id="liveJobSelect"></select>
+                </div>
+              </div>
+              <div style="display:flex; gap:10px; margin-top:20px">
+                <button class="btn btn-primary" style="height:50px; flex:1" onclick="launchHandsFree()">🚀 START HANDS-FREE LOOP</button>
+                <button class="btn" onclick="pingBridge()">📡 PING BRIDGE</button>
+              </div>
+            </div>
+            <div class="card">
+              <div class="section-title" style="font-size:14px">Live Automation Status</div>
+              <div class="okbox" id="loopStatus">Waiting for Voice or Command...</div>
+              <div class="textarea" id="liveConsole" style="height:100px; font-size:12px; background:#000" readonly>SYSTEM IDLE</div>
+            </div>
+          </div>
+          <div>
+            <div class="card" style="border:1px solid var(--accent)">
+              <div class="section-title" style="font-size:14px">Voice Control Engine</div>
+              <p class="small" style="margin-bottom:10px">Listening for: <i>"Start Orchestrator", "Capture Code", "Deploy Now"</i></p>
+              <button class="btn btn-primary" id="voiceToggle" onclick="toggleVoice()">🎙️ ENABLE VOICE CONTROL</button>
+              <div class="input-group" style="margin-top:15px">
+                <label>Last Transcript</label>
+                <div class="field-current" id="voiceTranscript" style="height:40px; background:#000; border:1px solid var(--border2); padding:10px">...</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="split-bottom">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px">
+          <label style="font-size:11px; font-weight:700; color:var(--muted)">DEPLOYMENT BUFFER</label>
+          <button class="btn btn-primary" onclick="deployToGithub()">🚀 PUSH TO GITHUB</button>
+        </div>
+        <textarea class="textarea" id="orchestratorResponse" readonly placeholder="Code from AI will stream here..."></textarea>
+      </div>
+    </main>
+  </section>
+
+  <!-- LOGS -->
+  <section class="view" id="view-logs">
+    <main class="main"><div class="content-area"><div class="code-block" id="systemLogs" style="height:500px"></div></div></main>
+  </section>
+</div>
+
+<footer>
+  <div>SayIt v3.4 Hands-Free</div>
+  <div>|</div>
+  <div id="bridge-status"><span class="badge badge-warn">OFFLINE</span></div>
+  <div>|</div>
+  <div id="footer-ts">2026-04-05 04:45 AM</div>
+</footer>
+
+<div id="toast">Message</div>
+
+<script>
+// --- STATE ---
+let state = {
+    config: { user: '', repo: '', pat: '', wakePhrase: 'start orchestrator' },
+    adapters: [
+        { id: '1', name: 'Gemini', url: 'https://gemini.google.com/app', selectors: { prompt: '[role="textbox"]', response: 'model-response' } },
+        { id: '2', name: 'ChatGPT', url: 'https://chatgpt.com', selectors: { prompt: '#prompt-textarea', response: '[data-message-author-role="assistant"]' } }
+    ],
+    jobs: [],
+    selectedAdapterId: '1',
+    selectedJobId: null,
+    sidebarCollapsed: false
+};
+
+// --- VOICE ENGINE ---
+let recognition = null;
+let isListening = false;
+
+function setupVoice() {
+    const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (!Speech) return log("Voice Recognition not supported in this browser.");
+    recognition = new Speech();
+    recognition.continuous = true;
+    recognition.interimResults = false;
+    recognition.lang = 'en-US';
+
+    recognition.onresult = (e) => {
+        const text = e.results[e.results.length - 1][0].transcript.trim().toLowerCase();
+        document.getElementById('voiceTranscript').innerText = text;
+        handleCommand(text);
+    };
+
+    recognition.onend = () => { if (isListening) recognition.start(); };
+}
+
+function toggleVoice() {
+    if (!recognition) setupVoice();
+    const btn = document.getElementById('voiceToggle');
+    if (!isListening) {
+        recognition.start();
+        isListening = true;
+        btn.innerText = "🛑 STOP VOICE CONTROL";
+        btn.classList.add('btn-danger');
+        log("Voice Engine Started.");
+    } else {
+        recognition.stop();
+        isListening = false;
+        btn.innerText = "🎙️ ENABLE VOICE CONTROL";
+        btn.classList.remove('btn-danger');
+        log("Voice Engine Stopped.");
+    }
+}
+
+function handleCommand(text) {
+    log("Voice Cmd: " + text);
+    if (text.includes(state.config.wakePhrase)) launchHandsFree();
+    if (text.includes("capture code") || text.includes("capture response")) syncClipboard();
+    if (text.includes("deploy now") || text.includes("push to github")) deployToGithub();
+}
+
+// --- APP CORE ---
+function init() {
+    loadState();
+    setupTabs();
+    showInstall('java');
+    renderAll();
+}
+
+function loadState() {
+    const raw = localStorage.getItem('sayit_v34_state');
+    if (raw) state = JSON.parse(raw);
+}
+
+function saveState() {
+    localStorage.setItem('sayit_v34_state', JSON.stringify(state));
+    renderAll();
+}
+
+function log(msg) {
+    const el = document.getElementById('systemLogs');
+    const con = document.getElementById('liveConsole');
+    const ts = new Date().toLocaleTimeString();
+    if(el) el.innerText = `[${ts}] ${msg}\n` + el.innerText;
+    if(con) con.innerText = `> ${msg}\n` + con.innerText;
+}
+
+function toast(msg) {
+    const t = document.getElementById('toast');
+    t.innerText = msg;
+    t.classList.add('show');
+    setTimeout(() => t.classList.remove('show'), 2500);
+}
+
+function renderAll() {
+    document.querySelectorAll('.sidebar').forEach(el => el.classList.toggle('collapsed', state.sidebarCollapsed));
+    renderAdapterList();
+    renderJobList();
+    renderLiveControls();
+    updateFooterStatus();
+    const j = state.jobs.find(x => x.id === state.selectedJobId);
+    if(j) document.getElementById('orchestratorResponse').value = j.response || '';
+}
+
+function renderAdapterList() {
+    const list = document.getElementById('adapterList');
+    if(!list) return;
+    list.innerHTML = state.adapters.map(a => `
+        <div class="list-item ${state.selectedAdapterId === a.id ? 'active' : ''}" onclick="state.selectedAdapterId='${a.id}';saveState()">
+            <strong>${escapeHtml(a.name)}</strong>
+        </div>
+    `).join('');
+    
+    const editor = document.getElementById('adapterEditor');
+    const a = state.adapters.find(x => x.id === state.selectedAdapterId);
+    if(a) {
+        editor.innerHTML = `
+            <div class="section-title">Adapter: ${escapeHtml(a.name)}</div>
+            <div class="card">
+                <div class="input-group"><label>Platform</label><input type="text" class="input" id="ad-name" value="${escapeHtml(a.name)}"></div>
+                <div class="input-group"><label>Launch URL</label><input type="text" class="input mono" id="ad-url" value="${escapeHtml(a.url)}"></div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px">
+                    <div class="input-group"><label>Prompt Selector</label><input type="text" class="input mono" id="ad-prompt" value="${escapeHtml(a.selectors.prompt)}"></div>
+                    <div class="input-group"><label>Response Selector</label><input type="text" class="input mono" id="ad-response" value="${escapeHtml(a.selectors.response)}"></div>
+                </div>
+                <button class="btn btn-primary" onclick="applyAdapterChanges()">Save Adapter</button>
+            </div>
+            <div class="card">
+                <div class="section-title" style="font-size:13px">How to Train</div>
+                <p class="small">1. Use Orchestrator tab to launch AI site.<br>2. Thin client HUD will appear.<br>3. Paste your prompt manually once.<br>4. Inspect page or use long-press (in thin client) to find selectors.<br>5. Enter them above. <b>[aria-label]</b> is always best.</p>
+            </div>
+        `;
+    }
+}
+
+function applyAdapterChanges() {
+    const a = state.adapters.find(x => x.id === state.selectedAdapterId);
+    if(!a) return;
+    a.name = document.getElementById('ad-name').value;
+    a.url = document.getElementById('ad-url').value;
+    a.selectors.prompt = document.getElementById('ad-prompt').value;
+    a.selectors.response = document.getElementById('ad-response').value;
+    saveState();
+    toast("Adapter Updated");
+}
+
+function renderJobList() {
+    const list = document.getElementById('jobList');
+    if(!list) return;
+    list.innerHTML = state.jobs.map(j => `
+        <div class="list-item ${state.selectedJobId === j.id ? 'active' : ''}" onclick="state.selectedJobId='${j.id}';saveState()">
+            <strong>${escapeHtml(j.name)}</strong>
+        </div>
+    `).join('');
+    
+    const j = state.jobs.find(x => x.id === state.selectedJobId);
+    if(j) {
+        document.getElementById('jobEditor').innerHTML = `
+            <div class="section-title">Job: ${escapeHtml(j.name)}</div>
+            <div class="card">
+                <div class="input-group"><label>App Title</label><input type="text" class="input" id="jb-name" value="${escapeHtml(j.name)}"></div>
+                <div class="input-group"><label>Target Filename</label><input type="text" class="input mono" id="jb-file" value="${escapeHtml(j.fileName)}"></div>
+                <div class="input-group"><label>Prompt Instruction</label><textarea class="textarea" id="jb-prompt">${escapeHtml(j.prompt)}</textarea></div>
+                <button class="btn btn-primary" onclick="applyJobChanges()">Save Job</button>
+            </div>
+        `;
+    }
+}
+
+function applyJobChanges() {
+    const j = state.jobs.find(x => x.id === state.selectedJobId);
+    if(!j) return;
+    j.name = document.getElementById('jb-name').value;
+    j.fileName = document.getElementById('jb-file').value;
+    j.prompt = document.getElementById('jb-prompt').value;
+    saveState();
+    toast("Job Updated");
+}
+
+function renderLiveControls() {
+    const aSel = document.getElementById('liveAdapterSelect');
+    const jSel = document.getElementById('liveJobSelect');
+    if(!aSel) return;
+    aSel.innerHTML = state.adapters.map(a => `<option value="${a.id}">${a.name}</option>`).join('');
+    jSel.innerHTML = state.jobs.map(j => `<option value="${j.id}">${j.name}</option>`).join('');
+}
+
+// --- ORCHESTRATION ---
+function launchHandsFree() {
+    const a = state.adapters.find(x => x.id === document.getElementById('liveAdapterSelect').value);
+    const j = state.jobs.find(x => x.id === document.getElementById('liveJobSelect').value);
+    if(!a || !j) return toast("Select Adapter/Job first.");
+
+    log("Automating Loop: " + j.name);
+    
+    const packet = {
+        command: "orchestrate",
+        url: a.url,
+        selector: a.selectors.response,
+        prompt: j.prompt
+    };
+
+    if (window.AndroidHelper) {
+        window.AndroidHelper.postMessage(JSON.stringify(packet));
+        toast("Automation Loop Started");
+    } else {
+        window.open(a.url, '_blank');
+        toast("Manual Launch (No Bridge)");
+    }
+}
+
+function syncClipboard() {
+    if (window.AndroidHelper) {
+        window.AndroidHelper.postMessage(JSON.stringify({command: "clipboard.read"}));
+        toast("Requesting Code...");
+    } else {
+        navigator.clipboard.readText().then(t => {
+             const j = state.jobs.find(x => x.id === state.selectedJobId);
+             if(j) { j.response = t; saveState(); toast("Synced."); }
+        });
+    }
+}
+
+async function deployToGithub() {
+    const j = state.jobs.find(x => x.id === state.selectedJobId);
+    if(!j || !j.response) return toast("Empty Buffer");
+    if(!state.config.pat) return toast("PAT Required");
+
+    toast("Pushing...");
+    const url = `https://api.github.com/repos/${state.config.user}/${state.config.repo}/contents/${j.fileName}`;
+    const headers = { "Authorization": `token ${state.config.pat}`, "Accept": "application/vnd.github.v3+json" };
+    
+    try {
+        let sha = null;
+        const check = await fetch(url, { headers });
+        if(check.ok) { const data = await check.json(); sha = data.sha; }
+        const body = { message: `Automated Push: ${j.name}`, content: btoa(unescape(encodeURIComponent(j.response))), branch: "main" };
+        if(sha) body.sha = sha;
+        const res = await fetch(url, { method: "PUT", headers, body: JSON.stringify(body) });
+        if(res.ok) { toast("Deployed Successfully!"); log("Deployment Push OK."); } 
+        else { throw new Error("GitHub error"); }
+    } catch(e) { log("Push Error: " + e.message); toast("Push Failed."); }
+}
+
+// --- SETUP HELPERS ---
+function showInstall(id) {
+    const area = document.getElementById('installContent');
+    if (id === 'java') {
+        const code = `package com.sayit.orchestrator;\n\nimport android.app.Activity;\nimport android.os.Bundle;\nimport android.webkit.*;\nimport android.content.*;\nimport org.json.*;\n\npublic class MainActivity extends Activity {\n    private WebView webView;\n    private String activeSelector = "";\n\n    @Override\n    protected void onCreate(Bundle savedInstanceState) {\n        super.onCreate(savedInstanceState);\n        webView = new WebView(this);\n        WebSettings s = webView.getSettings();\n        s.setJavaScriptEnabled(true);\n        s.setDomStorageEnabled(true);\n        s.setMediaPlaybackRequiresUserGesture(false);\n\n        // REQUIRED FOR VOICE PERMISSIONS\n        webView.setWebChromeClient(new WebChromeClient() {\n            @Override\n            public void onPermissionRequest(PermissionRequest request) {\n                request.grant(request.getResources());\n            }\n        });\n\n        webView.setWebViewClient(new OrchestratorClient());\n        webView.addJavascriptInterface(new AndroidHelper(), "AndroidHelper");\n        setContentView(webView);\n        webView.loadUrl("https://YOUR_USER.github.io/YOUR_REPO/sayit.html");\n    }\n\n    private class OrchestratorClient extends WebViewClient {\n        @Override\n        public void onPageFinished(WebView view, String url) {\n            if (!activeSelector.isEmpty()) {\n                String js = "(function(){ /* Persistent HUD Injection */ })();";\n                view.evaluateJavascript(js, null);\n            }\n        }\n    }\n\n    public class AndroidHelper {\n        @JavascriptInterface\n        public void postMessage(String json) {\n            try {\n                JSONObject obj = new JSONObject(json);\n                String cmd = obj.getString("command");\n                if (cmd.equals("orchestrate")) {\n                    activeSelector = obj.getString("selector");\n                    String prompt = obj.getString("prompt");\n                    ClipboardManager cb = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);\n                    cb.setPrimaryClip(ClipData.newPlainText("SayIt", prompt));\n                    runOnUiThread(() -> webView.loadUrl(obj.getString("url")));\n                }\n                if (cmd.equals("clipboard.read")) {\n                    ClipboardManager cb = (ClipboardManager) getSystemService(CLIPBOARD_SERVICE);\n                    if (cb.hasPrimaryClip()) {\n                        String txt = cb.getPrimaryClip().getItemAt(0).getText().toString();\n                        runOnUiThread(() -> webView.loadUrl("javascript:window.receiveEvent('clipboard:'+ \\""+txt+"\\")"));\n                    }\n                }\n            } catch(Exception e) { }\n        }\n    }\n}`;
+        area.innerHTML = `<div class="section-title">MainActivity.java (Absolute Source)</div><div class="code-block"><button class="copy-btn" onclick="copyRaw(this)">COPY</button><code>${escapeHtml(code)}</code></div>`;
+    } else if (id === 'xml') {
+        const code = `<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.sayit.orchestrator">\n  <uses-permission android:name="android.permission.INTERNET" />\n  <uses-permission android:name="android.permission.RECORD_AUDIO" />\n  <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />\n  <application android:label="SayIt Studio" android:usesCleartextTraffic="true">\n    <activity android:name=".MainActivity" android:exported="true">\n      <intent-filter>\n        <action android:name="android.intent.action.MAIN" />\n        <category android:name="android.intent.category.LAUNCHER" />\n      </intent-filter>\n    </activity>\n  </application>\n</manifest>`;
+        area.innerHTML = `<div class="section-title">AndroidManifest.xml</div><div class="code-block"><button class="copy-btn" onclick="copyRaw(this)">COPY</button><code>${escapeHtml(code)}</code></div>`;
+    } else if (id === 'guide') {
+        area.innerHTML = `<div class="section-title">Hands-Free Checklist</div><div class="card">1. Build APK in AIDE using the source provided.<br>2. Upload this HTML file to GitHub.<br>3. Open APK. It should load this page.<br>4. Go to Orchestrator and🎙️ <b>Enable Voice Control</b>.<br>5. Say "Start Orchestrator" to begin the automation loop.</div>`;
+    }
+}
+
+function saveConfig() {
+    state.config.user = document.getElementById('cfgUser').value;
+    state.config.repo = document.getElementById('cfgRepo').value;
+    state.config.pat = document.getElementById('cfgPat').value;
+    state.config.wakePhrase = document.getElementById('cfgWake').value;
+    saveState();
+}
+
+function updateFooterStatus() {
+    const el = document.getElementById('bridge-status');
+    el.innerHTML = window.AndroidHelper ? '<span class="badge badge-ok">BRIDGE READY</span>' : '<span class="badge badge-warn">OFFLINE</span>';
+}
+
+function setupTabs() {
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.onclick = () => {
+            document.querySelectorAll('.tab-btn, .view').forEach(el => el.classList.remove('active'));
+            btn.classList.add('active');
+            document.getElementById('view-' + btn.dataset.view).classList.add('active');
+        };
+    });
+}
+
+function setupSidebarToggle() {
+    document.getElementById('toggleSidebarBtn').onclick = () => {
+        state.sidebarCollapsed = !state.sidebarCollapsed;
+        saveState();
+    };
+}
+
+function copyRaw(btn) {
+    const code = btn.nextElementSibling.innerText;
+    navigator.clipboard.writeText(code).then(() => {
+        const old = btn.innerText; btn.innerText = "COPIED";
+        setTimeout(() => btn.innerText = old, 1500);
+    });
+}
+
+function escapeHtml(text) {
+    if(!text) return "";
+    const map = {'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;'};
+    return text.toString().replace(/[&<>"']/g, m => map[m]);
+}
+
+window.receiveEvent = function(payload) {
+    log("Bridge Msg: " + payload);
+    if(payload.startsWith('clipboard:')) {
+        const text = payload.split('clipboard:')[1];
+        const j = state.jobs.find(x => x.id === state.selectedJobId);
+        if(j) { j.response = text; saveState(); toast("Captured via Bridge."); }
+    }
+};
+
+function addAdapter() {
+    const id = Date.now().toString();
+    state.adapters.push({ id, name: 'New AI', url: 'https://', selectors: { prompt: '', response: '' } });
+    saveState();
+}
+
+function addJob() {
+    const id = Date.now().toString();
+    state.jobs.push({ id, name: 'New Project', fileName: 'index.html', prompt: '', response: '' });
+    saveState();
+}
+
+window.onload = init;
+</script>
+</body>
+</html>
