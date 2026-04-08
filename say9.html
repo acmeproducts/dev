@@ -432,4 +432,165 @@ function renderHub() {
       <div style="background:var(--surface2); border:1px solid var(--border); border-radius:16px; padding:20px">
         <div class="input-group">
           <label>Issue Log (Overrides)</label>
-          <textarea class="textarea" id="fixLog" placeholder="D
+          <textarea class="textarea" id="fixLog" placeholder="Document issues for refinement...">${j.issues}</textarea>
+        </div>
+        <div style="display:flex; gap:10px">
+          <button class="btn" style="flex:1" onclick="applyFix()">FIX LOGIC</button>
+          <button class="btn btn-danger" style="flex:1" onclick="redoFail()">REDO RUN</button>
+        </div>
+      </div>
+    </div>
+  `;
+  if (responseArea) responseArea.value = j.response || '';
+}
+
+function updateJob(key, value) {
+  const j = state.jobs.find(x => x.id === state.selectedJobId);
+  if (j) { j[key] = value; save(); }
+}
+
+function addJob() {
+  const name = prompt("Enter Project Name:");
+  if (!name) return;
+  const id = 'job-' + Date.now();
+  state.jobs.unshift({
+    id: id, name: name, file: name.toLowerCase().replace(/\s+/g, '-') + '.html',
+    prompt: '', response: '', issues: '', status: 'idle'
+  });
+  state.selectedJobId = id;
+  save();
+}
+
+function saveSettings() {
+  state.config.user = document.getElementById('cfgUser').value;
+  state.config.repo = document.getElementById('cfgRepo').value;
+  state.config.pat = document.getElementById('cfgPat').value;
+  state.config.wake = document.getElementById('cfgWake').value;
+  save();
+  toast("Configuration Saved");
+}
+
+function openAIPlatform(url) {
+  if (window.AndroidHelper) {
+    window.AndroidHelper.postMessage(JSON.stringify({ command: "orchestrate", url: url, prompt: "" }));
+  } else {
+    window.open(url, '_blank');
+  }
+}
+
+function runAutonomousChain() {
+  const j = state.jobs.find(x => x.id === state.selectedJobId);
+  const a = state.adapters.find(x => x.id === state.selectedAdapterId);
+  if (!j || !a) return;
+
+  j.status = 'run';
+  save();
+
+  if (window.AndroidHelper) {
+    window.AndroidHelper.postMessage(JSON.stringify({ command: "orchestrate", url: a.url, prompt: j.prompt }));
+    toast("Courier Executing...");
+  } else {
+    window.open(a.url, '_blank');
+    toast("Standalone: Manual Copy Mode");
+  }
+}
+
+function applyFix() {
+  const j = state.jobs.find(x => x.id === state.selectedJobId);
+  const fix = document.getElementById('fixLog').value;
+  if (j && fix) {
+    const p = `Apply fix to code: ${j.response}. Issue: ${fix}. Output full HTML.`;
+    j.prompt = p;
+    j.issues = fix;
+    save();
+    runAutonomousChain();
+  }
+}
+
+function redoFail() {
+  const j = state.jobs.find(x => x.id === state.selectedJobId);
+  if (j) {
+    j.prompt = "Resending due to error. " + j.prompt;
+    j.response = '';
+    save();
+    runAutonomousChain();
+  }
+}
+
+function manualSync() {
+  if (window.AndroidHelper) {
+    window.AndroidHelper.postMessage(JSON.stringify({ command: "clipboard.read" }));
+  } else {
+    toast("Bridge Not Active");
+  }
+}
+
+async function shipToGithub() {
+  const j = state.jobs.find(x => x.id === state.selectedJobId);
+  if (!j || !j.response) return toast("No code to ship");
+  if (!state.config.pat) return toast("Setup Config First");
+
+  toast("Pushing to GitHub...");
+  log(`Initiating push for ${j.file}...`);
+  
+  const url = `https://api.github.com/repos/${state.config.user}/${state.config.repo}/contents/${j.file}`;
+  const headers = { "Authorization": `token ${state.config.pat}`, "Accept": "application/vnd.github.v3+json" };
+  
+  try {
+    const check = await fetch(url, { headers });
+    let sha = check.ok ? (await check.json()).sha : null;
+    
+    const body = { message: `SayIt v9.0 Sync: ${j.name}`, content: btoa(unescape(encodeURIComponent(j.response))), branch: "main" };
+    if (sha) body.sha = sha;
+    
+    const res = await fetch(url, { method: "PUT", headers, body: JSON.stringify(body) });
+    if (res.ok) {
+      j.status = 'ok';
+      save();
+      toast("Successfully Shipped");
+      log(`Successfully deployed ${j.file}`);
+      window.open(`https://${state.config.user}.github.io/${state.config.repo}/${j.file}`, '_blank');
+    } else {
+      throw new Error("API Rejected Push");
+    }
+  } catch (e) {
+    log(`Ship Error: ${e.message}`);
+    toast("Deployment Failed");
+  }
+}
+
+window.receiveEvent = function(payload) {
+  log(`Received Bridge Signal: ${payload.substring(0, 20)}...`);
+  if (payload.startsWith('clipboard:')) {
+    const code = payload.split('clipboard:')[1];
+    const j = state.jobs.find(x => x.id === state.selectedJobId);
+    if (j) {
+      j.response = code;
+      save();
+      toast("Code Synced from Courier");
+      shipToGithub();
+    }
+  }
+};
+
+function setupVoice() {
+  const Speech = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!Speech) return;
+  const recognition = new Speech();
+  recognition.continuous = true;
+  recognition.onresult = (e) => {
+    const text = e.results[e.results.length - 1][0].transcript.trim().toLowerCase();
+    log(`Voice In: ${text}`);
+    if (text.includes(state.config.wake.toLowerCase())) {
+      if (text.includes("build") || text.includes("start")) runAutonomousChain();
+      if (text.includes("ship") || text.includes("push")) shipToGithub();
+      if (text.includes("redo")) redoFail();
+    }
+  };
+  try { recognition.start(); } catch(e) { log("Voice setup failed"); }
+}
+
+window.onload = init;
+</script>
+</body>
+</html>
