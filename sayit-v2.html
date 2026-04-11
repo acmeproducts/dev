@@ -1,0 +1,774 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>SayIt Studio v2 Complete Package</title>
+<style>
+:root{
+  --bg:#09090b; --surface:#18181b; --surface2:#111827; --surface3:#27272a;
+  --border:#27272a; --border2:#3f3f46; --text:#f4f4f5; --muted:#a1a1aa;
+  --accent:#14b8a6; --accentHover:#0d9488; --ok:#22c55e; --warn:#f59e0b; --danger:#ef4444;
+  --mono:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,"Liberation Mono","Courier New",monospace;
+  --sans:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+  --headerH:58px; --footerH:34px; --sidebarW:290px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);font-size:14px;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+header{height:var(--headerH);background:var(--surface);border-bottom:1px solid var(--border);display:grid;grid-template-columns:42px auto 1fr;gap:10px;align-items:center;padding:0 12px;flex-shrink:0}
+.logo{font-size:18px;font-weight:700;white-space:nowrap}.logo span{color:var(--accent)}
+header .tab-nav{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px;min-width:0}
+.tab-btn,.icon-btn,.btn{border:1px solid var(--border2);background:var(--surface2);color:var(--text);border-radius:12px;cursor:pointer;transition:.18s;background-clip:padding-box}
+.tab-btn{padding:0 6px;height:38px;font-weight:700;font-size:12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tab-btn.active{background:var(--accent);color:#041414;border-color:transparent}
+.icon-btn{width:38px;height:38px;font-size:17px}.icon-btn.listening{background:var(--danger);animation:pulse 1s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.6}}
+.btn{padding:0 12px;min-height:38px;font-size:12px;display:inline-flex;align-items:center;justify-content:center;gap:8px}
+.btn:hover,.tab-btn:hover,.icon-btn:hover{background:var(--surface3)}
+.btn-primary{background:var(--accent);color:#041414;border:none;font-weight:700}.btn-primary:hover{background:var(--accentHover)}
+.btn-danger{background:var(--danger);color:#fff;border:none}.btn-warn{background:var(--warn);color:#111827;border:none}.btn-ok{background:var(--ok);color:#06140a;border:none}
+.app{flex:1;display:flex;overflow:hidden;min-height:0}
+.view{display:none;width:100%;height:100%}.view.active{display:flex}
+.sidebar{width:var(--sidebarW);min-width:var(--sidebarW);background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;transition:.18s}
+.sidebar.collapsed{width:0;min-width:0;border-right:none;overflow:hidden;opacity:0}
+.sidebar-header{padding:12px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;gap:8px}
+.sidebar-content{padding:12px;overflow-y:auto;flex:1}
+.main{flex:1;display:flex;flex-direction:column;min-width:0;background:var(--bg)}
+.split-top{flex:1;overflow-y:auto;padding:16px;background:var(--surface2)}
+.split-bottom{height:42%;min-height:220px;overflow-y:auto;padding:16px;background:var(--bg);border-top:1px solid var(--border)}
+.section-title{font-size:16px;font-weight:800;margin-bottom:10px}
+.sub-title{font-size:13px;font-weight:700;margin-bottom:8px;color:var(--muted)}
+.list-item{padding:12px;background:var(--surface2);border:1px solid var(--border);border-radius:12px;margin-bottom:8px;cursor:pointer}
+.list-item.selected{border-color:var(--accent);background:#0f2624}.list-item:hover{border-color:var(--border2)}
+.small{font-size:12px;color:var(--muted);line-height:1.45}.mono{font-family:var(--mono)}
+.grid2,.grid3{display:grid;gap:14px}.grid2{grid-template-columns:1fr 1fr}.grid3{grid-template-columns:repeat(3,1fr)}
+.input-group{margin-bottom:14px}.input-group label{display:block;font-size:12px;font-weight:700;color:var(--muted);margin-bottom:6px}
+.input,.textarea,.select{width:100%;border:1px solid var(--border2);background:#09090b;color:var(--text);border-radius:12px;padding:10px 12px;outline:none;font-size:13px}
+.textarea{min-height:110px;resize:vertical}.textarea.short{min-height:72px}.textarea.tall{min-height:220px}.input:focus,.textarea:focus,.select:focus{border-color:var(--accent)}
+.code{background:#050505;border:1px solid var(--border);border-radius:12px;padding:12px;font-family:var(--mono);font-size:12px;white-space:pre-wrap;line-height:1.5;overflow:auto}
+.note{padding:12px;border-radius:12px;border:1px solid #694b07;background:#3a2a05;color:#fde68a;line-height:1.5}
+.okbox{padding:12px;border-radius:12px;border:1px solid #14532d;background:#052e16;color:#bbf7d0;line-height:1.5}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.kv{display:grid;grid-template-columns:180px 1fr;gap:8px 12px}.key{font-size:12px;color:var(--muted)}.val{word-break:break-word}
+.pills{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}.pill{padding:6px 10px;border-radius:999px;border:1px solid var(--border);background:var(--surface);font-size:12px;display:inline-flex;align-items:center;gap:8px}
+.dot{width:8px;height:8px;border-radius:999px;background:var(--muted)}.dot.ok{background:var(--ok)}.dot.warn{background:var(--warn)}.dot.err{background:var(--danger)}
+.footer{height:var(--footerH);background:var(--surface);border-top:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:11px;color:var(--muted);font-family:var(--mono);flex-shrink:0;padding:0 10px}
+.console{background:#050505;border:1px solid var(--border);border-radius:12px;padding:12px;font-family:var(--mono);font-size:12px;line-height:1.45;white-space:pre-wrap;overflow:auto;height:100%}
+.badge{display:inline-flex;align-items:center;gap:8px;padding:5px 9px;border-radius:999px;border:1px solid var(--border);font-size:11px;font-weight:700}
+.badge.trained{background:#052e16;color:#bbf7d0;border-color:#166534}
+.badge.partial{background:#3a2a05;color:#fde68a;border-color:#92400e}
+.badge.broken{background:#450a0a;color:#fecaca;border-color:#991b1b}
+.badge.placeholder{background:#1f2937;color:#e5e7eb;border-color:#374151}
+.train-shell{display:grid;grid-template-columns:1.1fr .9fr;gap:16px}
+.selector-palette{display:grid;grid-template-columns:1fr 1fr;gap:8px;max-height:360px;overflow:auto}
+.selector-chip{padding:8px;border-radius:10px;border:1px solid var(--border2);background:#050505;font-family:var(--mono);font-size:11px;cursor:pointer;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.selector-chip:hover{border-color:var(--accent)}
+.assign-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.assign-btn{justify-content:flex-start;text-align:left;width:100%}
+.status-card{padding:12px;border-radius:12px;background:var(--surface);border:1px solid var(--border)}
+.control-shell{display:grid;grid-template-columns:1fr;gap:14px;max-width:980px;margin:0 auto}
+.control-actions{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}
+.toast{position:fixed;right:18px;bottom:18px;background:var(--accent);color:#041414;border-radius:12px;padding:10px 14px;font-weight:800;opacity:0;pointer-events:none;transform:translateY(8px);transition:.2s;z-index:20}
+.toast.show{opacity:1;pointer-events:auto;transform:none}.toast.err{background:var(--danger);color:#fff}.toast.warn{background:var(--warn);color:#111827}
+.modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.7);padding:18px;z-index:30}.modal.open{display:flex}
+.modal-card{width:min(860px,100%);max-height:92vh;overflow:auto;background:var(--surface);border:1px solid var(--border2);border-radius:16px;padding:18px}
+hr.sep{border:none;border-top:1px solid var(--border);margin:14px 0}
+.voice-indicator{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;border:1px solid var(--accent);background:rgba(20,184,166,0.1);font-size:12px;font-weight:700;color:var(--accent)}
+.voice-indicator.active{background:var(--danger);color:#fff;border-color:var(--danger)}
+@media (max-width:1040px){.grid2,.grid3,.train-shell,.assign-grid,.control-actions{grid-template-columns:1fr}.kv{grid-template-columns:1fr}.sidebar{width:220px;min-width:220px}header .tab-nav{grid-template-columns:repeat(4,minmax(0,1fr));grid-auto-rows:38px}header{height:auto;padding:10px 8px}}
+@media (max-width:720px){.split-top,.split-bottom{padding:12px}.sidebar{width:180px;min-width:180px}}
+</style>
+</head>
+<body>
+<header>
+  <button class="icon-btn" id="toggleSidebarBtn">☰</button>
+  <div class="logo">Say<span>It</span> Studio</div>
+  <div class="tab-nav">
+    <button class="tab-btn active" data-view="install">Install</button>
+    <button class="tab-btn" data-view="config">Config</button>
+    <button class="tab-btn" data-view="train">Train</button>
+    <button class="tab-btn" data-view="jobs">Jobs</button>
+    <button class="tab-btn" data-view="run">Run</button>
+    <button class="tab-btn" data-view="control">Control</button>
+    <button class="tab-btn" data-view="logs">Logs</button>
+  </div>
+</header>
+<div class="app">
+  <section class="view active" id="view-install">
+    <aside class="sidebar"><div class="sidebar-header"><strong>Install Package</strong></div><div class="sidebar-content" id="installNav"></div></aside>
+    <main class="main"><div class="split-top" id="installTop"></div><div class="split-bottom" id="installBottom"></div></main>
+  </section>
+  <section class="view" id="view-config">
+    <aside class="sidebar"><div class="sidebar-header"><strong>System Config</strong></div><div class="sidebar-content" id="configNav"></div></aside>
+    <main class="main"><div class="split-top" id="configTop"></div><div class="split-bottom" id="configBottom"></div></main>
+  </section>
+  <section class="view" id="view-train">
+    <aside class="sidebar"><div class="sidebar-header"><strong>AI Adapters</strong><button class="btn btn-primary" id="newAdapterBtn">New</button></div><div class="sidebar-content" id="adapterList"></div></aside>
+    <main class="main"><div class="split-top" id="trainTop"></div><div class="split-bottom" id="trainBottom"></div></main>
+  </section>
+  <section class="view" id="view-jobs">
+    <aside class="sidebar"><div class="sidebar-header"><strong>Jobs</strong><button class="btn btn-primary" id="newJobBtn">New</button></div><div class="sidebar-content" id="jobList"></div></aside>
+    <main class="main"><div class="split-top" id="jobsTop"></div><div class="split-bottom" id="jobsBottom"></div></main>
+  </section>
+  <section class="view" id="view-run">
+    <aside class="sidebar"><div class="sidebar-header"><strong>Execution</strong></div><div class="sidebar-content" id="runNav"></div></aside>
+    <main class="main"><div class="split-top" id="runTop"></div><div class="split-bottom" id="runBottom"></div></main>
+  </section>
+  <section class="view" id="view-control">
+    <aside class="sidebar"><div class="sidebar-header"><strong>Standalone Control</strong></div><div class="sidebar-content" id="controlNav"></div></aside>
+    <main class="main"><div class="split-top" id="controlTop"></div><div class="split-bottom" id="controlBottom"></div></main>
+  </section>
+  <section class="view" id="view-logs">
+    <aside class="sidebar"><div class="sidebar-header"><strong>Logs</strong></div><div class="sidebar-content" id="logsNav"></div></aside>
+    <main class="main"><div class="split-top" id="logsTop"></div><div class="split-bottom" id="logsBottom"></div></main>
+  </section>
+</div>
+<footer class="footer" id="footer"></footer>
+<div class="toast" id="toast"></div>
+<div class="modal" id="magicModal">
+  <div class="modal-card">
+    <div class="row" style="justify-content:space-between;margin-bottom:12px"><div class="section-title">Magic Trainer</div><button class="btn" onclick="closeMagic()">Close</button></div>
+    <div class="grid2">
+      <div class="input-group"><label>Target URL</label><input class="input mono" id="magicUrl" placeholder="https://chatgpt.com"></div>
+      <div class="input-group"><label>Target Adapter</label><div class="code" id="magicTargetName">No adapter selected</div></div>
+    </div>
+    <div class="row" style="margin-bottom:12px"><button class="btn btn-primary" onclick="runMagicTrainer()">Analyze And Apply</button></div>
+    <div class="code" id="magicOutput">Run analysis to classify the page and fill adapter fields automatically.</div>
+  </div>
+</div>
+<script>
+const APP_VERSION = 'SayIt Studio v2 Complete Package';
+const STORE_KEY = 'sayit_studio_v2_complete';
+const INSTALL_SECTIONS = [
+  {id:'overview', title:'Overview'},
+  {id:'manifest', title:'AndroidManifest.xml'},
+  {id:'activity', title:'MainActivity.java'},
+  {id:'pages', title:'GitHub Pages Upload'},
+  {id:'go-live', title:'Go Live Checklist'}
+];
+const CONFIG_SECTIONS = [
+  {id:'github', title:'GitHub'},
+  {id:'runtime', title:'Runtime'},
+  {id:'voice', title:'Voice'},
+  {id:'paths', title:'Computed Paths'}
+];
+const RUN_SECTIONS = [
+  {id:'overview', title:'Full Loop'},
+  {id:'manual', title:'Manual Controls'},
+  {id:'deploy', title:'GitHub Deploy'},
+  {id:'status', title:'Status'}
+];
+const CONTROL_SECTIONS = [
+  {id:'launcher', title:'Standalone Launcher'},
+  {id:'voice', title:'Voice Commands'},
+  {id:'monitor', title:'Monitor'}
+];
+const VOICE_COMMANDS = [
+  {pattern:/build\s+prompt/i, action:'buildPromptNow', label:'Build Prompt'},
+  {pattern:/start\s+job|run\s+full\s+job|run\s+job/i, action:'controlStart', label:'Run Full Job'},
+  {pattern:/capture\s+(response|clipboard|output)/i, action:'controlCapture', label:'Capture Response'},
+  {pattern:/deploy\s+(to\s+)?github|deploy\s+now/i, action:'controlDeploy', label:'Deploy to GitHub'},
+  {pattern:/open\s+(result|live|app)/i, action:'controlOpenResult', label:'Open Result'},
+  {pattern:/open\s+ai|open\s+surface/i, action:'openAiSurface', label:'Open AI Surface'},
+  {pattern:/copy\s+prompt/i, action:'copyCurrentPrompt', label:'Copy Prompt'},
+  {pattern:/fix\s+prompt/i, action:'fixPromptNow', label:'Fix Prompt'},
+  {pattern:/create\s+adapter/i, action:'createAdapter', label:'Create Adapter'},
+  {pattern:/create\s+job/i, action:'createJob', label:'Create Job'},
+  {pattern:/validate\s+adapter/i, action:'validateAdapter', label:'Validate Adapter'},
+  {pattern:/open\s+training/i, action:'openTrainingSurface', label:'Open Training Surface'},
+  {pattern:/stop\s+listening|stop\s+voice/i, action:'stopVoice', label:'Stop Voice'}
+];
+const DEFAULT_STATE = {
+  config: {
+    githubUser:'YOUR_USERNAME', githubRepo:'YOUR_REPO', controlFile:'sayit-v2.html', gitBranch:'main',
+    githubPat:'', apkName:'SayIt', packageName:'com.acme.sayit', launchMode:'standalone-control',
+    defaultAiUrl:'https://gemini.google.com/app', wakePhrase:'start job', speechEnabled:true, voiceLanguage:'en-US', voiceAutoRestart:true
+  },
+  adapters: [
+    makeAdapter('Gemini','https://gemini.google.com/app',['gemini.google.com']),
+    makeAdapter('ChatGPT','https://chatgpt.com',['chatgpt.com']),
+    makeAdapter('Claude','https://claude.ai',['claude.ai']),
+    makeAdapter('Perplexity','https://www.perplexity.ai',['perplexity.ai'])
+  ],
+  jobs: [], logs: [], diagnostics: {helperPresent:false,lastCommand:'',lastEvent:'',lastClipboard:''},
+  selectedAdapterId:null, selectedJobId:null, selectedInstall:'overview', selectedConfig:'github', selectedRun:'overview', selectedControl:'launcher', sidebarCollapsed:false
+};
+function makeAdapter(platform, launchUrl, hosts){
+  return {
+    id: uid(), platform, launchUrl, hosts: hosts||[], probeUrl: launchUrl, version:1, status:'placeholder', notes:'',
+    selectors: {
+      promptInput:'', sendButton:'', responseBlocks:'', latestResponse:'', copyButton:'', stopButton:'', newChatButton:'', fileInput:''
+    },
+    fallbacks: {promptInput:[], sendButton:[], latestResponse:[]},
+    states: {ready:'', busy:'', done:'', error:''},
+    actions: {
+      submitPrompt:[
+        {type:'focus', target:'promptInput'},
+        {type:'paste', target:'promptInput'},
+        {type:'click', target:'sendButton'}
+      ],
+      captureLatestResponse:[
+        {type:'waitFor', target:'responseBlocks', timeoutMs:60000},
+        {type:'read', target:'latestResponse'}
+      ]
+    },
+    validation: {lastRun:'', ok:false, checks:[]},
+    probeResults: []
+  };
+}
+function uid(){ return Math.random().toString(36).slice(2,10)+Date.now().toString(36).slice(-4); }
+function deepClone(v){ return JSON.parse(JSON.stringify(v)); }
+function loadState(){
+  const raw = localStorage.getItem(STORE_KEY);
+  if(!raw){ const s=deepClone(DEFAULT_STATE); s.selectedAdapterId=s.adapters[0].id; return s; }
+  try{
+    const parsed = JSON.parse(raw);
+    const state = Object.assign({}, deepClone(DEFAULT_STATE), parsed);
+    state.config = Object.assign({}, DEFAULT_STATE.config, parsed.config||{});
+    state.adapters = Array.isArray(parsed.adapters)&&parsed.adapters.length ? parsed.adapters : deepClone(DEFAULT_STATE.adapters);
+    state.jobs = Array.isArray(parsed.jobs) ? parsed.jobs : [];
+    state.logs = Array.isArray(parsed.logs) ? parsed.logs : [];
+    state.diagnostics = Object.assign({}, DEFAULT_STATE.diagnostics, parsed.diagnostics||{});
+    if(!state.selectedAdapterId && state.adapters[0]) state.selectedAdapterId=state.adapters[0].id;
+    return state;
+  }catch{
+    localStorage.removeItem(STORE_KEY);
+    const s=deepClone(DEFAULT_STATE); s.selectedAdapterId=s.adapters[0].id; return s;
+  }
+}
+let state = loadState();
+let currentView = 'install';
+const PROXIES = {
+  codetabs: u => `https://api.codetabs.com/v1/proxy?quest=${encodeURIComponent(u)}`,
+  allorigins: u => `https://api.allorigins.win/get?url=${encodeURIComponent(u)}`,
+  corsproxy: u => `https://corsproxy.io/?${encodeURIComponent(u)}`
+};
+let selectedProbeTarget = 'promptInput';
+let recognition = null;
+let voiceActive = false;
+
+function saveState(){ localStorage.setItem(STORE_KEY, JSON.stringify(state)); renderAll(); }
+function toast(msg,type='ok'){ const t=document.getElementById('toast'); t.textContent=msg; t.className='toast show'+(type==='err'?' err':type==='warn'?' warn':''); clearTimeout(t._tt); t._tt=setTimeout(()=>t.className='toast',2800); }
+function esc(v){ return String(v??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;').replaceAll('"','&quot;'); }
+function log(type,msg,detail=''){ state.logs.unshift({ts:new Date().toLocaleString(),type,msg,detail}); if(state.logs.length>700) state.logs=state.logs.slice(0,700); state.diagnostics.lastEvent=`${type}: ${msg}`; localStorage.setItem(STORE_KEY, JSON.stringify(state)); if(currentView==='logs') renderLogs(); }
+function repoUrl(){ return `https://github.com/${state.config.githubUser}/${state.config.githubRepo}`; }
+function controlUrl(){ return `https://${state.config.githubUser}.github.io/${state.config.githubRepo}/${state.config.controlFile}`; }
+function standaloneControlUrl(){ return `${controlUrl()}#control`; }
+function jobLiveUrl(job){ return `https://${state.config.githubUser}.github.io/${state.config.githubRepo}/${job.fileName}`; }
+function currentAdapter(){ return state.adapters.find(a=>a.id===state.selectedAdapterId)||null; }
+function currentJob(){ return state.jobs.find(j=>j.id===state.selectedJobId)||null; }
+function ensureAdapter(){ const a=currentAdapter(); if(!a){ toast('Create or select an adapter','warn'); return null; } return a; }
+function ensureJob(){ const j=currentJob(); if(!j){ toast('Create or select a job','warn'); return null; } return j; }
+function setView(name){ currentView=name; renderAll(); }
+function selectInstall(id){ state.selectedInstall=id; renderInstall(); }
+function selectConfig(id){ state.selectedConfig=id; renderConfig(); }
+function selectRun(id){ state.selectedRun=id; renderRun(); }
+function selectControl(id){ state.selectedControl=id; renderControl(); }
+function setSelectedAdapter(id){ state.selectedAdapterId=id; saveState(); }
+function setSelectedJob(id){ state.selectedJobId=id; saveState(); }
+function copyText(text){ navigator.clipboard.writeText(text).then(()=>{ toast('Copied'); log('event','Copied to clipboard'); }).catch(()=>{ toast('Clipboard copy failed','err'); log('error','Clipboard copy failed'); }); }
+function openUrl(url){ state.diagnostics.lastCommand='openUrl'; if(window.AndroidHelper&&typeof window.AndroidHelper.postMessage==='function'){ window.AndroidHelper.postMessage('openUrl:'+url); } else { window.open(url,'_blank'); } log('command','Open URL',url); saveDiag(); }
+function saveDiag(){ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }
+function writeClipboard(text){ state.diagnostics.lastCommand='clipboard.write'; if(window.AndroidHelper&&typeof window.AndroidHelper.postMessage==='function'){ window.AndroidHelper.postMessage('clipboard.write:'+text); log('command','Clipboard write via helper'); } else { navigator.clipboard.writeText(text).then(()=>log('command','Clipboard write via browser')).catch(()=>log('error','Clipboard write failed')); } saveDiag(); }
+function readClipboardIntoJob(){ const job=ensureJob(); if(!job) return; state.diagnostics.lastCommand='clipboard.read'; if(window.AndroidHelper&&typeof window.AndroidHelper.postMessage==='function'){ window.AndroidHelper.postMessage('clipboard.read'); log('command','Clipboard read via helper'); } else { navigator.clipboard.readText().then(text=>{ job.response=text; state.diagnostics.lastClipboard=text; log('event','Clipboard captured via browser'); saveState(); }).catch(()=>{ toast('Clipboard read failed','err'); log('error','Clipboard read failed'); }); } saveDiag(); }
+window.receiveEvent = function(payload){
+  if(typeof payload!=='string') return;
+  state.diagnostics.lastEvent=payload;
+  if(payload==='helper.ready'){ state.diagnostics.helperPresent=true; log('event','Helper ready'); saveState(); return; }
+  if(payload.startsWith('clipboard:')){ const text=payload.slice('clipboard:'.length); state.diagnostics.lastClipboard=text; const job=currentJob(); if(job){ job.response=text; job.updatedAt=new Date().toLocaleString(); log('event','Clipboard captured into current job'); saveState(); } return; }
+  if(payload.startsWith('notify:')){ log('event','Helper notification',payload.slice('notify:'.length)); saveState(); }
+};
+function pingHelper(){ state.diagnostics.lastCommand='ping'; if(window.AndroidHelper&&typeof window.AndroidHelper.postMessage==='function'){ window.AndroidHelper.postMessage('ping'); log('command','Sent helper ping'); } else { state.diagnostics.helperPresent=false; log('warn','AndroidHelper not present'); saveState(); } }
+function createJob(){
+  const title = prompt('Job/app name?'); if(!title) return;
+  const clean = title.trim(); if(!clean) return;
+  const safeName = clean.toLowerCase().replace(/[^a-z0-9]+/g,'-').replace(/^-|-$/g,'') || 'job';
+  const job = { id:uid(), title:clean, description:'', prompt:'', response:'', issues:'', fileName:`${safeName}.html`, createdAt:new Date().toLocaleString(), updatedAt:new Date().toLocaleString(), status:'idle', lastRun:'' };
+  state.jobs.unshift(job); state.selectedJobId=job.id; log('event','Created job',clean); saveState();
+}
+function deleteJob(){ const job=ensureJob(); if(!job) return; state.jobs=state.jobs.filter(j=>j.id!==job.id); state.selectedJobId=state.jobs[0]?.id||null; log('event','Deleted job',job.title); saveState(); }
+function saveJobForm(){
+  const job=ensureJob(); if(!job) return;
+  job.title=document.getElementById('jobTitle').value.trim()||job.title;
+  job.description=document.getElementById('jobDesc').value;
+  job.prompt=document.getElementById('jobPrompt').value;
+  job.response=document.getElementById('jobResponse').value;
+  job.issues=document.getElementById('jobIssues').value;
+  job.fileName=document.getElementById('jobFile').value.trim()||job.fileName;
+  job.updatedAt=new Date().toLocaleString();
+  log('event','Saved job',job.title); saveState();
+}
+function compileBuildPrompt(job){
+  return `Create a complete self-contained HTML application.\n\nApp name: ${job.title}\n\nWhat it is and what it does:\n${job.description || '[ADD DESCRIPTION]'}\n\nRequirements:\n- single HTML file\n- mobile friendly\n- preserve working functionality\n- return full HTML only\n\nFilename: ${job.fileName}\n\nGO!`;
+}
+function compileFixPrompt(job){
+  return `Update the existing ${job.title} application.\n\nPreserve all working functionality unless the issue requires change.\n\nIssue to fix:\n${job.issues || '[ADD ISSUE]'}\n\nReturn full updated HTML only.\n\nFilename: ${job.fileName}\n\nGO!`;
+}
+function saveConfigForm(section){
+  if(section==='github'){
+    state.config.githubUser=document.getElementById('cfgUser').value.trim()||state.config.githubUser;
+    state.config.githubRepo=document.getElementById('cfgRepo').value.trim()||state.config.githubRepo;
+    state.config.controlFile=document.getElementById('cfgControlFile').value.trim()||state.config.controlFile;
+    state.config.gitBranch=document.getElementById('cfgBranch').value.trim()||state.config.gitBranch;
+    state.config.githubPat=document.getElementById('cfgPat').value;
+    log('event','Saved GitHub config');
+  }
+  if(section==='runtime'){
+    state.config.apkName=document.getElementById('cfgApk').value.trim()||state.config.apkName;
+    state.config.packageName=document.getElementById('cfgPkg').value.trim()||state.config.packageName;
+    state.config.defaultAiUrl=document.getElementById('cfgAi').value.trim()||state.config.defaultAiUrl;
+    state.config.launchMode=document.getElementById('cfgLaunchMode').value;
+    log('event','Saved runtime config');
+  }
+  if(section==='voice'){
+    state.config.wakePhrase=document.getElementById('cfgWake').value.trim()||state.config.wakePhrase;
+    state.config.speechEnabled=document.getElementById('cfgSpeechEnabled').checked;
+    state.config.voiceLanguage=document.getElementById('cfgVoiceLang').value;
+    state.config.voiceAutoRestart=document.getElementById('cfgVoiceAutoRestart').checked;
+    log('event','Saved voice config');
+  }
+  saveState();
+}
+function createAdapter(){
+  const platform=prompt('Adapter/platform name?'); if(!platform) return;
+  const url=prompt('Launch URL?', 'https://');
+  const adapter=makeAdapter(platform.trim(), url||'', []);
+  adapter.probeUrl=url||'';
+  state.adapters.unshift(adapter); state.selectedAdapterId=adapter.id; log('event','Created adapter',adapter.platform); saveState();
+}
+function deleteAdapter(){ const a=ensureAdapter(); if(!a) return; state.adapters=state.adapters.filter(x=>x.id!==a.id); state.selectedAdapterId=state.adapters[0]?.id||null; log('event','Deleted adapter',a.platform); saveState(); }
+function saveAdapterForm(){
+  const a=ensureAdapter(); if(!a) return;
+  a.platform=document.getElementById('adPlatform').value.trim()||a.platform;
+  a.launchUrl=document.getElementById('adLaunch').value.trim();
+  a.probeUrl=document.getElementById('adProbe').value.trim()||a.launchUrl;
+  a.version=parseInt(document.getElementById('adVersion').value,10)||a.version||1;
+  a.status=document.getElementById('adStatus').value;
+  a.notes=document.getElementById('adNotes').value;
+  a.hosts=document.getElementById('adHosts').value.split(/\n|,/).map(v=>v.trim()).filter(Boolean);
+  ['promptInput','sendButton','responseBlocks','latestResponse','copyButton','stopButton','newChatButton','fileInput'].forEach(k=>{
+    a.selectors[k]=document.getElementById('sel_'+k).value.trim();
+  });
+  a.states.ready=document.getElementById('state_ready').value.trim();
+  a.states.busy=document.getElementById('state_busy').value.trim();
+  a.states.done=document.getElementById('state_done').value.trim();
+  a.states.error=document.getElementById('state_error').value.trim();
+  try{
+    a.actions.submitPrompt=JSON.parse(document.getElementById('actionsSubmit').value);
+    a.actions.captureLatestResponse=JSON.parse(document.getElementById('actionsCapture').value);
+  }catch(e){ toast('Action JSON is invalid','err'); return; }
+  log('event','Saved adapter',a.platform); saveState();
+}
+function exportAdapter(){ const a=ensureAdapter(); if(!a) return; copyText(JSON.stringify(a,null,2)); }
+function importAdapter(){ const raw=prompt('Paste adapter JSON'); if(!raw) return; try{ const parsed=JSON.parse(raw); parsed.id=parsed.id||uid(); state.adapters.unshift(parsed); state.selectedAdapterId=parsed.id; log('event','Imported adapter',parsed.platform||parsed.id); saveState(); }catch{ toast('Invalid adapter JSON','err'); } }
+function openTrainingSurface(){ const a=ensureAdapter(); if(!a) return; openUrl(a.probeUrl||a.launchUrl||state.config.defaultAiUrl); }
+async function runProbe(){
+  const a=ensureAdapter(); if(!a) return;
+  const url=document.getElementById('probeUrl').value.trim() || a.probeUrl || a.launchUrl;
+  if(!url){ toast('Probe URL required','warn'); return; }
+  const resultBox=document.getElementById('probeResults');
+  resultBox.innerHTML='Probing page structure...';
+  try{
+    const res=await fetch(PROXIES.codetabs(url));
+    const html=await res.text();
+    const doc=new DOMParser().parseFromString(html,'text/html');
+    const found=new Set();
+    doc.querySelectorAll('*').forEach(el=>{
+      if(el.id) found.add('#'+el.id);
+      el.classList.forEach(c=>found.add('.'+c));
+      if(el.getAttribute('role')) found.add(`[role="${el.getAttribute('role')}"]`);
+      if(el.name) found.add(`[name="${el.name}"]`);
+      if(el.getAttribute('data-testid')) found.add(`[data-testid="${el.getAttribute('data-testid')}"]`);
+      const tag=el.tagName.toLowerCase();
+      if(['textarea','button','form','article','main'].includes(tag)) found.add(tag);
+    });
+    const list=Array.from(found).filter(Boolean).slice(0,280);
+    a.probeResults=list;
+    a.probeUrl=url;
+    resultBox.innerHTML=list.length ? list.map(s=>`<div class="selector-chip" onclick="assignSelector('${encodeURIComponent(s)}')">${esc(s)}</div>`).join('') : 'No selectors found.';
+    log('event','Probe completed',url); saveState();
+  }catch(e){ resultBox.innerHTML='Probe failed: '+esc(e.message); log('error','Probe failed',e.message); toast('Probe failed','err'); }
+}
+function assignSelector(encoded){
+  const selector=decodeURIComponent(encoded); const a=ensureAdapter(); if(!a) return;
+  a.selectors[selectedProbeTarget]=selector; saveState(); toast(`Assigned to ${selectedProbeTarget}`);
+}
+function chooseProbeTarget(target){ selectedProbeTarget=target; renderTrain(); }
+async function runMagicTrainer(){
+  const a=ensureAdapter(); if(!a) return;
+  const url=document.getElementById('magicUrl').value.trim() || a.probeUrl || a.launchUrl;
+  if(!url){ toast('Target URL required','warn'); return; }
+  const out=document.getElementById('magicOutput');
+  out.textContent='Fetching and classifying DOM...';
+  try{
+    const res=await fetch(PROXIES.codetabs(url));
+    const html=await res.text();
+    const doc=new DOMParser().parseFromString(html,'text/html');
+    const textareas=doc.querySelectorAll('textarea, [contenteditable="true"], div[role="textbox"]');
+    const buttons=doc.querySelectorAll('button, [role="button"]');
+    const articles=doc.querySelectorAll('article, main, [data-message-author-role], [role="article"]');
+    const buttonByText = (terms) => Array.from(buttons).find(b=>terms.some(t=>(b.textContent||'').toLowerCase().includes(t)));
+    const firstText = textareas[0];
+    const sendBtn = buttonByText(['send','submit','arrow']) || buttons[0];
+    const stopBtn = buttonByText(['stop','cancel']);
+    const newChat = buttonByText(['new chat','new conversation','new thread']);
+    if(firstText){ a.selectors.promptInput = bestSelector(firstText); }
+    if(sendBtn){ a.selectors.sendButton = bestSelector(sendBtn); }
+    if(articles.length){ a.selectors.responseBlocks = bestSelector(articles[0]); a.selectors.latestResponse = bestSelector(articles[articles.length-1]); }
+    if(stopBtn){ a.selectors.stopButton = bestSelector(stopBtn); }
+    if(newChat){ a.selectors.newChatButton = bestSelector(newChat); }
+    a.probeUrl=url; a.launchUrl=a.launchUrl||url; a.hosts=[...new Set([...(a.hosts||[]), new URL(url).hostname])];
+    a.status = a.selectors.promptInput && a.selectors.sendButton ? 'partial' : a.status;
+    const report = {
+      url,
+      promptInput:a.selectors.promptInput || null,
+      sendButton:a.selectors.sendButton || null,
+      responseBlocks:a.selectors.responseBlocks || null,
+      latestResponse:a.selectors.latestResponse || null,
+      stopButton:a.selectors.stopButton || null,
+      newChatButton:a.selectors.newChatButton || null
+    };
+    out.textContent = JSON.stringify(report,null,2);
+    log('event','Magic trainer applied',a.platform); saveState();
+  }catch(e){ out.textContent='Magic trainer failed: '+e.message; log('error','Magic trainer failed',e.message); toast('Magic trainer failed','err'); }
+}
+function bestSelector(el){
+  if(el.id) return '#'+CSS.escape(el.id);
+  if(el.getAttribute('data-testid')) return `[data-testid="${el.getAttribute('data-testid')}"]`;
+  if(el.name) return `[name="${el.name}"]`;
+  const tag=el.tagName.toLowerCase();
+  const cls=[...el.classList].slice(0,2).map(c=>'.'+CSS.escape(c)).join('');
+  if(cls) return tag+cls;
+  if(el.getAttribute('role')) return `${tag}[role="${el.getAttribute('role')}"]`;
+  return tag;
+}
+function closeMagic(){ document.getElementById('magicModal').classList.remove('open'); }
+function openMagic(){ const a=currentAdapter(); document.getElementById('magicTargetName').textContent = a ? a.platform : 'No adapter selected'; document.getElementById('magicUrl').value = a ? (a.probeUrl||a.launchUrl||'') : ''; document.getElementById('magicOutput').textContent='Run analysis to classify the page and fill adapter fields automatically.'; document.getElementById('magicModal').classList.add('open'); }
+function validateAdapter(){
+  const a=ensureAdapter(); if(!a) return;
+  const checks=[];
+  const required=['promptInput','sendButton','latestResponse'];
+  required.forEach(k=>checks.push({name:`selector:${k}`, ok:!!a.selectors[k], detail:a.selectors[k]||'missing'}));
+  checks.push({name:'submitPrompt actions', ok:Array.isArray(a.actions.submitPrompt)&&a.actions.submitPrompt.length>0, detail:`${(a.actions.submitPrompt||[]).length} steps`});
+  checks.push({name:'captureLatestResponse actions', ok:Array.isArray(a.actions.captureLatestResponse)&&a.actions.captureLatestResponse.length>0, detail:`${(a.actions.captureLatestResponse||[]).length} steps`});
+  a.validation={lastRun:new Date().toLocaleString(), ok:checks.every(c=>c.ok), checks};
+  a.status=a.validation.ok?'trained':(a.selectors.promptInput&&a.selectors.sendButton?'partial':'broken');
+  log('event','Validated adapter',`${a.platform} => ${a.validation.ok?'OK':'FAIL'}`); saveState();
+}
+function adapterRuntimeConfig(a){
+  return {
+    adapterId:a.id, platform:a.platform, version:a.version, launchUrl:a.launchUrl, hosts:a.hosts,
+    selectors:a.selectors, fallbacks:a.fallbacks, states:a.states, actions:a.actions, status:a.status
+  };
+}
+function saveRunForms(){
+  const job=currentJob(); if(job){
+    const p=document.getElementById('runPromptArea'); const r=document.getElementById('runResponseArea'); const i=document.getElementById('runIssuesArea');
+    if(p) job.prompt=p.value; if(r) job.response=r.value; if(i) job.issues=i.value; job.updatedAt=new Date().toLocaleString();
+  }
+  localStorage.setItem(STORE_KEY, JSON.stringify(state));
+}
+function buildPromptNow(){ const job=ensureJob(); if(!job) return; saveJobFormIfPresent(); job.prompt=compileBuildPrompt(job); job.updatedAt=new Date().toLocaleString(); log('event','Generated build prompt',job.title); saveState(); notify('Build prompt generated'); }
+function fixPromptNow(){ const job=ensureJob(); if(!job) return; saveRunForms(); job.prompt=compileFixPrompt(job); job.updatedAt=new Date().toLocaleString(); log('event','Generated fix prompt',job.title); saveState(); notify('Fix prompt generated'); }
+function saveJobFormIfPresent(){ if(document.getElementById('jobTitle')) saveJobForm(); }
+function openAiSurface(){ const a=ensureAdapter(); if(!a) return; openUrl(a.launchUrl||state.config.defaultAiUrl); }
+function copyCurrentPrompt(){ const job=currentJob(); if(!job) return; copyText(job.prompt||''); }
+async function deployToGitHub(content, path, message){
+  const pat=state.config.githubPat.trim(); if(!pat) throw new Error('GitHub PAT is required');
+  const owner=state.config.githubUser.trim(), repo=state.config.githubRepo.trim(), branch=state.config.gitBranch.trim()||'main';
+  const api=`https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/contents/${encodeURIComponent(path)}`;
+  const headers={ 'Authorization':'token '+pat, 'Accept':'application/vnd.github+json', 'Content-Type':'application/json' };
+  let sha=null;
+  const existing=await fetch(`${api}?ref=${encodeURIComponent(branch)}`,{headers});
+  if(existing.ok){ const data=await existing.json(); sha=data.sha; }
+  const payload={message, content:btoa(unescape(encodeURIComponent(content))), branch}; if(sha) payload.sha=sha;
+  const res=await fetch(api,{method:'PUT',headers,body:JSON.stringify(payload)});
+  if(!res.ok){ const txt=await res.text(); throw new Error('GitHub commit failed: '+txt); }
+  return res.json();
+}
+async function runFullJob(){
+  const job=ensureJob(), adapter=ensureAdapter(); if(!job||!adapter) return;
+  saveRunForms(); job.status='running'; job.lastRun=new Date().toLocaleString(); log('event','RUN FULL JOB started',job.title); saveState();
+  try{
+    if(!job.prompt) job.prompt=compileBuildPrompt(job);
+    writeClipboard(job.prompt);
+    openUrl(adapter.launchUrl||state.config.defaultAiUrl);
+    notify('Prompt copied and AI surface opened');
+    log('event','Prompt sent to clipboard and AI launched',adapter.platform);
+  }catch(e){ job.status='failed'; log('error','RUN FULL JOB failed',e.message); saveState(); toast(e.message,'err'); }
+}
+async function deployCurrentResponse(){
+  const job=ensureJob(); if(!job) return; saveRunForms(); if(!job.response.trim()){ toast('Current job response is empty','warn'); return; }
+  try{
+    const resp=await deployToGitHub(job.response, job.fileName, `Update ${job.fileName}`);
+    job.status='deployed'; job.updatedAt=new Date().toLocaleString();
+    log('event','Deployed to GitHub', resp.commit?.sha?.slice(0,7)||job.fileName); saveState();
+    notify('Deployed to GitHub');
+  }catch(e){ log('error','Deploy failed',e.message); toast(e.message,'err'); }
+}
+function openLiveApp(){ const job=ensureJob(); if(!job) return; openUrl(jobLiveUrl(job)); }
+function markRunComplete(){ const job=ensureJob(); if(!job) return; job.status='complete'; job.updatedAt=new Date().toLocaleString(); log('event','Marked job complete',job.title); saveState(); }
+function controlStart(){ runFullJob(); }
+function controlCapture(){ readClipboardIntoJob(); }
+async function controlDeploy(){ await deployCurrentResponse(); }
+function controlOpenResult(){ openLiveApp(); }
+function notify(msg){ if(window.AndroidHelper&&typeof window.AndroidHelper.postMessage==='function'){ try{ window.AndroidHelper.postMessage('notify:'+msg); }catch{} } toast(msg); log('event','Notify',msg); }
+function setupVoice(){
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if(!SR){ toast('Speech recognition not supported','warn'); log('warn','Speech recognition not supported'); return; }
+  recognition = new SR();
+  recognition.continuous=true;
+  recognition.interimResults=true;
+  recognition.lang=state.config.voiceLanguage||'en-US';
+  recognition.onstart = () => {
+    voiceActive=true;
+    document.getElementById('voiceStatus')&&(document.getElementById('voiceStatus').textContent='Listening...');
+    log('event','Voice recognition started');
+  };
+  recognition.onresult = (event) => {
+    let transcript = '';
+    for(let i=event.resultIndex;i<event.results.length;i++){
+      const t = event.results[i][0].transcript;
+      transcript += t;
+      if(event.results[i].isFinal) transcript += ' ';
+    }
+    transcript = transcript.trim();
+    if(document.getElementById('voiceTranscript')) document.getElementById('voiceTranscript').value = transcript;
+    if(event.results[event.results.length-1].isFinal){
+      handleVoiceCommand(transcript);
+    }
+  };
+  recognition.onerror = (e) => {
+    voiceActive=false;
+    log('error','Voice error',e.error||'unknown');
+    toast('Voice error: '+(e.error||'unknown'),'err');
+  };
+  recognition.onend = () => {
+    voiceActive=false;
+    if(document.getElementById('voiceStatus')) document.getElementById('voiceStatus').textContent='Ready';
+    if(state.config.voiceAutoRestart && document.getElementById('voiceAutoRestart')?.checked){
+      try{ recognition.start(); }catch{}
+    }
+  };
+}
+function startVoice(){
+  if(!state.config.speechEnabled){ toast('Voice is disabled in Config','warn'); return; }
+  if(!recognition) setupVoice();
+  if(!recognition) return;
+  try{
+    voiceActive=true;
+    recognition.start();
+    log('event','Voice listening started');
+    notify('Listening...');
+  }catch(e){
+    toast('Voice start failed','err');
+    log('error','Voice start error',e.message);
+  }
+}
+function stopVoice(){
+  voiceActive=false;
+  if(recognition){
+    try{
+      recognition.stop();
+      log('event','Voice listening stopped');
+      notify('Stopped listening');
+    }catch(e){
+      log('error','Voice stop error',e.message);
+    }
+  }
+}
+function handleVoiceCommand(text){
+  log('event','Voice command captured',text);
+  for(const cmd of VOICE_COMMANDS){
+    if(cmd.pattern.test(text)){
+      log('event','Voice command matched',cmd.label);
+      const func=window[cmd.action];
+      if(typeof func==='function'){
+        try{
+          const result=func();
+          if(result instanceof Promise) result.catch(e=>log('error','Voice action error',e.message));
+          notify(`${cmd.label} executed`);
+        }catch(e){
+          log('error','Voice action error',e.message);
+          notify(`${cmd.label} failed`,'err');
+        }
+      }
+      return;
+    }
+  }
+  notify('Command not recognized');
+  log('warn','Voice command not recognized',text);
+}
+function renderInstall(){
+  document.getElementById('installNav').innerHTML = INSTALL_SECTIONS.map(s=>`<div class="list-item ${state.selectedInstall===s.id?'selected':''}" onclick="selectInstall('${s.id}')"><strong>${s.title}</strong></div>`).join('');
+  const top=document.getElementById('installTop'), bottom=document.getElementById('installBottom');
+  const manifest = `<manifest xmlns:android="http://schemas.android.com/apk/res/android"\n    package="${state.config.packageName}">\n\n    <uses-permission android:name="android.permission.INTERNET" />\n    <uses-permission android:name="android.permission.RECORD_AUDIO" />\n\n    <application\n        android:label="${state.config.apkName}"\n        android:usesCleartextTraffic="true">\n\n        <activity\n            android:name=".MainActivity"\n            android:exported="true">\n\n            <intent-filter>\n                <action android:name="android.intent.action.MAIN" />\n                <category android:name="android.intent.category.LAUNCHER" />\n            </intent-filter>\n\n        </activity>\n\n    </application>\n</manifest>`;
+  const activity = `package ${state.config.packageName};\n\nimport android.app.Activity;\nimport android.os.Bundle;\nimport android.webkit.WebView;\nimport android.webkit.WebViewClient;\nimport android.webkit.WebSettings;\nimport android.webkit.JavascriptInterface;\nimport android.content.ClipboardManager;\nimport android.content.ClipData;\nimport android.content.Context;\nimport android.content.Intent;\nimport android.net.Uri;\n\npublic class MainActivity extends Activity {\n\n    private WebView webView;\n\n    @Override\n    protected void onCreate(Bundle savedInstanceState) {\n        super.onCreate(savedInstanceState);\n\n        webView = new WebView(this);\n        setContentView(webView);\n\n        WebSettings settings = webView.getSettings();\n        settings.setJavaScriptEnabled(true);\n        settings.setDomStorageEnabled(true);\n\n        webView.setWebViewClient(new WebViewClient());\n        webView.addJavascriptInterface(new AndroidHelper(), \"AndroidHelper\");\n\n        webView.loadUrl(\"${standaloneControlUrl()}\");\n    }\n\n    public class AndroidHelper {\n\n        @JavascriptInterface\n        public void postMessage(String msg) {\n            if (msg == null) return;\n\n            if (msg.startsWith(\"clipboard.write:\")) {\n                String text = msg.substring(\"clipboard.write:\".length());\n                ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);\n                clipboard.setPrimaryClip(ClipData.newPlainText(\"${state.config.apkName}\", text));\n                return;\n            }\n\n            if (msg.equals(\"clipboard.read\")) {\n                ClipboardManager clipboard = (ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);\n                if (clipboard != null && clipboard.hasPrimaryClip()) {\n                    CharSequence text = clipboard.getPrimaryClip().getItemAt(0).coerceToText(MainActivity.this);\n                    if (text != null) sendToWeb(\"clipboard:\" + text.toString().replace(\"'\", \\\"\\'\\\"));\n                }\n                return;\n            }\n\n            if (msg.startsWith(\"openUrl:\")) {\n                String url = msg.substring(\"openUrl:\".length());\n                Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));\n                startActivity(intent);\n                return;\n            }\n\n            if (msg.equals(\"ping\")) {\n                sendToWeb(\"helper.ready\");\n                return;\n            }\n        }\n\n        private void sendToWeb(String payload) {\n            webView.post(() ->\n                webView.evaluateJavascript(\"window.receiveEvent && window.receiveEvent('\" + payload + \"')\", null)\n            );\n        }\n    }\n}`;
+  if(state.selectedInstall==='overview'){
+    top.innerHTML=`<div class="section-title">One File Package</div><div class="okbox">This HTML file is the complete package. Upload this exact file to GitHub Pages using the configured name. Build the thin client with the generated manifest and activity below. After install, the thin client opens the standalone control page automatically at <strong>${esc(standaloneControlUrl())}</strong>.</div><hr class="sep"><div class="kv"><div class="key">Preferred mode</div><div class="val">Standalone control page that interacts with the thin client</div><div class="key">Second mode</div><div class="val">Integrated workflow tabs inside the same file</div><div class="key">GitHub Pages file</div><div class="val mono">${esc(state.config.controlFile)}</div><div class="key">Thin client launch URL</div><div class="val mono">${esc(standaloneControlUrl())}</div></div>`;
+    bottom.innerHTML=`<div class="section-title">Exact install order</div><div class="code">1. Configure GitHub user, repo, branch, and control file in the Config tab.\n2. Upload this file to the repository root with the exact configured name.\n3. Enable GitHub Pages on branch ${esc(state.config.gitBranch)} root.\n4. Build the thin client in AIDE using the generated AndroidManifest.xml and MainActivity.java.\n5. Install the APK on the tablet or phone.\n6. Launch the APK. It should open ${esc(standaloneControlUrl())}.\n7. Go to Train and train one AI property.\n8. Create a Job.\n9. Use Control or Run to send prompt, capture output, deploy to GitHub, and open result.\n10. Voice commands available: say 'build prompt', 'run job', 'capture response', 'deploy now', 'open result'.</div>`;
+  }
+  if(state.selectedInstall==='manifest'){
+    top.innerHTML=`<div class="row" style="justify-content:space-between;margin-bottom:10px"><div class="section-title">AndroidManifest.xml</div><button class="btn btn-primary" onclick="copyText(document.getElementById('manifestCode').textContent)">Copy</button></div><div class="code" id="manifestCode">${esc(manifest)}</div>`;
+    bottom.innerHTML=`<div class="small">Paste this as AndroidManifest.xml in the AIDE project. Internet and microphone permissions are included. Voice uses browser speech recognition when the embedded WebView/browser supports it. The rest of the control loop does not depend on voice support.</div>`;
+  }
+  if(state.selectedInstall==='activity'){
+    top.innerHTML=`<div class="row" style="justify-content:space-between;margin-bottom:10px"><div class="section-title">MainActivity.java</div><button class="btn btn-primary" onclick="copyText(document.getElementById('activityCode').textContent)">Copy</button></div><div class="code" id="activityCode">${esc(activity)}</div>`;
+    bottom.innerHTML=`<div class="note">The thin client is intentionally thin. It provides: openUrl, clipboard.write, clipboard.read, and helper ping. The HTML control surface handles installation guidance, training, jobs, logging, deployment, and the preferred standalone control experience with full voice command support.</div>`;
+  }
+  if(state.selectedInstall==='pages'){
+    top.innerHTML=`<div class="section-title">GitHub Pages Upload</div><div class="code">Repository: ${esc(repoUrl())}\nBranch: ${esc(state.config.gitBranch)}\nRoot file name: ${esc(state.config.controlFile)}\nHosted URL: ${esc(controlUrl())}\nStandalone control URL: ${esc(standaloneControlUrl())}</div><hr class="sep"><div class="small">Upload this exact file as <strong>${esc(state.config.controlFile)}</strong>. Do not upload a renamed copy unless you also update the Config tab and the generated MainActivity.java.</div>`;
+    bottom.innerHTML=`<div class="section-title">Training after upload</div><div class="code">1. Open the uploaded page in a browser and verify the app loads.\n2. Open the APK and verify it loads the same hosted page.\n3. Go to Train.\n4. Select or create an adapter.\n5. Run Magic Trainer or Probe.\n6. Save and validate the adapter.\n7. Go to Jobs and create the target app job.\n8. Use Control or Run to execute, or use voice commands for hands-free operation.</div>`;
+  }
+  if(state.selectedInstall==='go-live'){
+    top.innerHTML=`<div class="section-title">Go Live Checklist</div><div class="code">[ ] GitHub user and repo configured\n[ ] GitHub PAT pasted in Config\n[ ] This file uploaded as ${esc(state.config.controlFile)}\n[ ] GitHub Pages enabled\n[ ] Thin client built in AIDE\n[ ] Thin client installed on device\n[ ] APK opens ${esc(standaloneControlUrl())}\n[ ] At least one adapter trained and validated\n[ ] At least one job created\n[ ] Clipboard bridge tested\n[ ] Voice commands configured and tested (optional)\n[ ] Full loop tested: prompt -> capture -> deploy -> open result</div>`;
+    bottom.innerHTML=`<div class="okbox">When every box above is true, you are ready to go forward with training an AI property and creating something through the thin client + hosted control surface. Voice commands can be enabled anytime from the Control tab.</div>`;
+  }
+}
+function renderConfig(){
+  document.getElementById('configNav').innerHTML = CONFIG_SECTIONS.map(s=>`<div class="list-item ${state.selectedConfig===s.id?'selected':''}" onclick="selectConfig('${s.id}')"><strong>${s.title}</strong></div>`).join('');
+  const top=document.getElementById('configTop'), bottom=document.getElementById('configBottom');
+  if(state.selectedConfig==='github'){
+    top.innerHTML=`<div class="section-title">GitHub Config</div><div class="grid2"><div class="input-group"><label>User</label><input class="input" id="cfgUser" value="${esc(state.config.githubUser)}"></div><div class="input-group"><label>Repo</label><input class="input" id="cfgRepo" value="${esc(state.config.githubRepo)}"></div></div><div class="grid3"><div class="input-group"><label>Branch</label><input class="input mono" id="cfgBranch" value="${esc(state.config.gitBranch)}"></div><div class="input-group"><label>Control HTML file</label><input class="input mono" id="cfgControlFile" value="${esc(state.config.controlFile)}"></div><div class="input-group"><label>GitHub PAT</label><input class="input mono" id="cfgPat" value="${esc(state.config.githubPat)}"></div></div><div class="row"><button class="btn btn-primary" onclick="saveConfigForm('github')">Save GitHub Config</button></div>`;
+    bottom.innerHTML=`<div class="section-title">Deploy behavior</div><div class="small">The Deploy controls use the GitHub Contents API directly from this page. The PAT must have repository contents write access. Deploy writes the current job response to the selected job file and then you can open the live Pages URL.</div>`;
+  }
+  if(state.selectedConfig==='runtime'){
+    top.innerHTML=`<div class="section-title">Runtime</div><div class="grid3"><div class="input-group"><label>APK Name</label><input class="input" id="cfgApk" value="${esc(state.config.apkName)}"></div><div class="input-group"><label>Package</label><input class="input mono" id="cfgPkg" value="${esc(state.config.packageName)}"></div><div class="input-group"><label>Launch mode</label><select class="select" id="cfgLaunchMode"><option value="standalone-control" ${state.config.launchMode==='standalone-control'?'selected':''}>standalone-control</option><option value="integrated-workflow" ${state.config.launchMode==='integrated-workflow'?'selected':''}>integrated-workflow</option></select></div></div><div class="input-group"><label>Default AI URL</label><input class="input mono" id="cfgAi" value="${esc(state.config.defaultAiUrl)}"></div><div class="row"><button class="btn btn-primary" onclick="saveConfigForm('runtime')">Save Runtime Config</button></div>`;
+    bottom.innerHTML=`<div class="small">Preferred mode is <strong>standalone-control</strong>. The generated MainActivity.java always loads the standalone control URL. The integrated workflow remains available inside the same file and can be opened directly in a browser.</div>`;
+  }
+  if(state.selectedConfig==='voice'){
+    top.innerHTML=`<div class="section-title">Voice Configuration</div><div class="grid2"><div class="input-group"><label>Speech recognition enabled</label><div class="row" style="padding-top:10px"><input type="checkbox" id="cfgSpeechEnabled" ${state.config.speechEnabled?'checked':''}><span class="small">Allow browser speech recognition in Control tab</span></div></div><div class="input-group"><label>Voice language</label><select class="select" id="cfgVoiceLang"><option value="en-US" ${state.config.voiceLanguage==='en-US'?'selected':''}>English (US)</option><option value="en-GB" ${state.config.voiceLanguage==='en-GB'?'selected':''}>English (UK)</option><option value="es-ES" ${state.config.voiceLanguage==='es-ES'?'selected':''}>Spanish</option><option value="fr-FR" ${state.config.voiceLanguage==='fr-FR'?'selected':''}>French</option><option value="de-DE" ${state.config.voiceLanguage==='de-DE'?'selected':''}>German</option></select></div></div><div class="input-group"><label>Wake phrase (unused yet)</label><input class="input" id="cfgWake" value="${esc(state.config.wakePhrase)}"></div><div class="input-group"><label>Auto-restart listening</label><div class="row" style="padding-top:10px"><input type="checkbox" id="cfgVoiceAutoRestart" ${state.config.voiceAutoRestart?'checked':''}><span class="small">Automatically restart voice when it stops</span></div></div><div class="row"><button class="btn btn-primary" onclick="saveConfigForm('voice')">Save Voice Config</button></div>`;
+    bottom.innerHTML=`<div class="okbox">Voice is optional. Supported commands: 'build prompt', 'start job', 'capture response', 'deploy now', 'open result', 'open ai', 'copy prompt', 'fix prompt', 'validate adapter', 'open training', and more. Commands are matched by keyword, so 'run job' works for 'run full job'. Configure language and enable/disable in this section.</div>`;
+  }
+  if(state.selectedConfig==='paths'){
+    top.innerHTML=`<div class="section-title">Computed Paths</div><div class="code">Repo URL: ${esc(repoUrl())}\nControl URL: ${esc(controlUrl())}\nStandalone control URL: ${esc(standaloneControlUrl())}</div>`;
+    bottom.innerHTML=`<div class="small">These paths are used by the install instructions, generated Android code, and deployment/open-result controls.</div>`;
+  }
+}
+function renderTrain(){
+  document.getElementById('adapterList').innerHTML = state.adapters.map(a=>`<div class="list-item ${state.selectedAdapterId===a.id?'selected':''}" onclick="setSelectedAdapter('${a.id}')"><strong>${esc(a.platform)}</strong><div class="small">v${esc(a.version)}</div><div class="small"><span class="badge ${esc(a.status)}">${esc(a.status)}</span></div></div>`).join('') || '<div class="small">No adapters</div>';
+  const a=currentAdapter(), top=document.getElementById('trainTop'), bottom=document.getElementById('trainBottom');
+  if(!a){ top.innerHTML='<div class="section-title">No adapter selected</div>'; bottom.innerHTML=''; return; }
+  const selectorFields=['promptInput','sendButton','responseBlocks','latestResponse','copyButton','stopButton','newChatButton','fileInput'];
+  top.innerHTML=`<div class="row" style="justify-content:space-between;margin-bottom:10px"><div class="section-title">Train Adapter</div><div class="row"><button class="btn" onclick="openMagic()">Magic Trainer</button><button class="btn btn-warn" onclick="openTrainingSurface()">Open Training Surface</button><button class="btn btn-primary" onclick="saveAdapterForm()">Save Adapter</button></div></div>
+  <div class="train-shell">
+    <div>
+      <div class="grid2">
+        <div class="input-group"><label>Platform</label><input class="input" id="adPlatform" value="${esc(a.platform)}"></div>
+        <div class="input-group"><label>Launch URL</label><input class="input mono" id="adLaunch" value="${esc(a.launchUrl)}"></div>
+      </div>
+      <div class="grid3">
+        <div class="input-group"><label>Probe URL</label><input class="input mono" id="adProbe" value="${esc(a.probeUrl||'')}"></div>
+        <div class="input-group"><label>Version</label><input class="input mono" id="adVersion" value="${esc(a.version)}"></div>
+        <div class="input-group"><label>Status</label><select class="select" id="adStatus"><option ${a.status==='trained'?'selected':''}>trained</option><option ${a.status==='partial'?'selected':''}>partial</option><option ${a.status==='placeholder'?'selected':''}>placeholder</option><option ${a.status==='broken'?'selected':''}>broken</option></select></div>
+      </div>
+      <div class="input-group"><label>Hosts (one per line or comma-separated)</label><textarea class="textarea short mono" id="adHosts">${esc((a.hosts||[]).join('\n'))}</textarea></div>
+      <div class="input-group"><label>Notes</label><textarea class="textarea short" id="adNotes">${esc(a.notes||'')}</textarea></div>
+      <div class="section-title" style="font-size:14px">Named selectors</div>
+      <div class="assign-grid">
+        ${selectorFields.map(k=>`<div class="input-group"><label>${k}</label><input class="input mono" id="sel_${k}" value="${esc(a.selectors[k]||'')}"></div>`).join('')}
+      </div>
+      <hr class="sep">
+      <div class="section-title" style="font-size:14px">State selectors</div>
+      <div class="grid2">
+        <div class="input-group"><label>ready</label><input class="input mono" id="state_ready" value="${esc(a.states.ready||'')}"></div>
+        <div class="input-group"><label>busy</label><input class="input mono" id="state_busy" value="${esc(a.states.busy||'')}"></div>
+        <div class="input-group"><label>done</label><input class="input mono" id="state_done" value="${esc(a.states.done||'')}"></div>
+        <div class="input-group"><label>error</label><input class="input mono" id="state_error" value="${esc(a.states.error||'')}"></div>
+      </div>
+      <hr class="sep">
+      <div class="section-title" style="font-size:14px">Actions JSON</div>
+      <div class="input-group"><label>submitPrompt</label><textarea class="textarea mono" id="actionsSubmit">${esc(JSON.stringify(a.actions.submitPrompt,null,2))}</textarea></div>
+      <div class="input-group"><label>captureLatestResponse</label><textarea class="textarea mono" id="actionsCapture">${esc(JSON.stringify(a.actions.captureLatestResponse,null,2))}</textarea></div>
+      <div class="row"><button class="btn" onclick="validateAdapter()">Validate Adapter</button><button class="btn" onclick="exportAdapter()">Export JSON</button><button class="btn" onclick="importAdapter()">Import JSON</button><button class="btn btn-danger" onclick="deleteAdapter()">Delete Adapter</button></div>
+    </div>
+    <div>
+      <div class="status-card">
+        <div class="sub-title">Probe and assign</div>
+        <div class="input-group"><label>Probe URL</label><input class="input mono" id="probeUrl" value="${esc(a.probeUrl||a.launchUrl||'')}"></div>
+        <div class="row" style="margin-bottom:10px"><button class="btn btn-primary" onclick="runProbe()">Run Probe</button><div class="badge ${esc(a.status)}">${esc(a.status)}</div></div>
+        <div class="small" style="margin-bottom:8px">Choose the target field, then tap a selector below to assign it.</div>
+        <div class="assign-grid" style="margin-bottom:10px">
+          ${selectorFields.map(k=>`<button class="btn assign-btn ${selectedProbeTarget===k?'btn-primary':''}" onclick="chooseProbeTarget('${k}')">${k}</button>`).join('')}
+        </div>
+        <div class="selector-palette" id="probeResults">${(a.probeResults||[]).length ? a.probeResults.map(s=>`<div class="selector-chip" onclick="assignSelector('${encodeURIComponent(s)}')">${esc(s)}</div>`).join('') : 'Run Probe to harvest selectors.'}</div>
+      </div>
+    </div>
+  </div>`;
+  bottom.innerHTML=`<div class="grid2"><div><div class="section-title">Validation</div><div class="code">${esc(JSON.stringify(a.validation||{},null,2))}</div></div><div><div class="section-title">Thin client runtime config</div><div class="code">${esc(JSON.stringify(adapterRuntimeConfig(a),null,2))}</div></div></div><hr class="sep"><div class="okbox">Train tab instructions: 1. Create or select an adapter. 2. Open the AI property once with Open Training Surface. 3. Run Magic Trainer for first-pass mapping. 4. Run Probe to harvest selectors from the property. 5. Assign selectors to named fields until promptInput, sendButton, and latestResponse are filled. 6. Save Adapter. 7. Validate Adapter. 8. Use the saved runtime config as the thin-client-operable configuration.</div>`;
+}
+function renderJobs(){
+  document.getElementById('jobList').innerHTML = state.jobs.length ? state.jobs.map(j=>`<div class="list-item ${state.selectedJobId===j.id?'selected':''}" onclick="setSelectedJob('${j.id}')"><strong>${esc(j.title)}</strong><div class="small mono">${esc(j.fileName)}</div><div class="small">${esc(j.status||'idle')}</div></div>`).join('') : '<div class="small">No jobs</div>';
+  const job=currentJob(), top=document.getElementById('jobsTop'), bottom=document.getElementById('jobsBottom');
+  if(!job){ top.innerHTML='<div class="section-title">Create or select a job</div>'; bottom.innerHTML=''; return; }
+  top.innerHTML=`<div class="row" style="justify-content:space-between;margin-bottom:10px"><div class="section-title">Job Editor</div><div class="row"><button class="btn btn-primary" onclick="saveJobForm()">Save Job</button><button class="btn" onclick="buildPromptNow()">Build Prompt</button><button class="btn" onclick="fixPromptNow()">Fix Prompt</button><button class="btn btn-danger" onclick="deleteJob()">Delete Job</button></div></div>
+  <div class="grid2">
+    <div class="input-group"><label>Job name</label><input class="input" id="jobTitle" value="${esc(job.title)}"></div>
+    <div class="input-group"><label>File name</label><input class="input mono" id="jobFile" value="${esc(job.fileName)}"></div>
+  </div>
+  <div class="input-group"><label>Description</label><textarea class="textarea short" id="jobDesc">${esc(job.description||'')}</textarea></div>
+  <div class="input-group"><label>Prompt</label><textarea class="textarea mono" id="jobPrompt">${esc(job.prompt||'')}</textarea></div>
+  <div class="input-group"><label>Response</label><textarea class="textarea mono tall" id="jobResponse">${esc(job.response||'')}</textarea></div>
+  <div class="input-group"><label>Issue summary</label><textarea class="textarea short" id="jobIssues">${esc(job.issues||'')}</textarea></div>`;
+  bottom.innerHTML=`<div class="section-title">Job metadata</div><div class="kv"><div class="key">Created</div><div class="val">${esc(job.createdAt)}</div><div class="key">Updated</div><div class="val">${esc(job.updatedAt)}</div><div class="key">Status</div><div class="val">${esc(job.status||'idle')}</div><div class="key">Live URL</div><div class="val mono">${esc(jobLiveUrl(job))}</div></div><hr class="sep"><div class="small">Jobs define the target app and target output file. Build Prompt generates the first prompt. Fix Prompt generates an update prompt using the issue summary.</div>`;
+}
+function renderRun(){
+  document.getElementById('runNav').innerHTML = RUN_SECTIONS.map(s=>`<div class="list-item ${state.selectedRun===s.id?'selected':''}" onclick="selectRun('${s.id}')"><strong>${s.title}</strong></div>`).join('');
+  const job=currentJob(), a=currentAdapter(), top=document.getElementById('runTop'), bottom=document.getElementById('runBottom');
+  const pills=`<div class="pills"><div class="pill"><span class="dot ${state.diagnostics.helperPresent?'ok':'warn'}"></span>${state.diagnostics.helperPresent?'Helper present':'Browser mode'}</div><div class="pill"><span class="dot ok"></span>${esc(a?a.platform:'No adapter')}</div><div class="pill"><span class="dot ok"></span>${esc(job?job.title:'No job')}</div></div>`;
+  if(state.selectedRun==='overview'){
+    top.innerHTML=`${pills}<div class="section-title">Full loop</div><div class="okbox">This is the integrated workflow surface. Preferred mode is the Control tab or the standalone control URL. This integrated Run view remains available for logging and manual supervision.</div><hr class="sep"><div class="code">1. Build or update the prompt from the selected job.\n2. Run Full Job copies the prompt and opens the trained AI property.\n3. Capture Response pulls the model output from the clipboard into the current job.\n4. Deploy writes the current job response to GitHub.\n5. Open Result opens the live GitHub Pages app.</div>`;
+    bottom.innerHTML=`<div class="row"><button class="btn" onclick="buildPromptNow()">Build Prompt</button><button class="btn btn-primary" onclick="runFullJob()">Run Full Job</button><button class="btn" onclick="readClipboardIntoJob()">Capture Response</button><button class="btn" onclick="deployCurrentResponse()">Deploy</button><button class="btn" onclick="openLiveApp()">Open Result</button></div>`;
+  }
+  if(state.selectedRun==='manual'){
+    top.innerHTML=`${pills}<div class="section-title">Manual controls</div><div class="input-group"><label>Prompt</label><textarea class="textarea mono" id="runPromptArea">${esc(job?.prompt||'')}</textarea></div><div class="input-group"><label>Response</label><textarea class="textarea mono tall" id="runResponseArea">${esc(job?.response||'')}</textarea></div><div class="input-group"><label>Issues</label><textarea class="textarea" id="runIssuesArea">${esc(job?.issues||'')}</textarea></div>`;
+    bottom.innerHTML=`<div class="row"><button class="btn" onclick="buildPromptNow()">Generate Build Prompt</button><button class="btn" onclick="fixPromptNow()">Generate Fix Prompt</button><button class="btn btn-primary" onclick="runFullJob()">Run Full Job</button><button class="btn" onclick="writeClipboard(document.getElementById('runPromptArea').value)">Copy Prompt To Clipboard</button><button class="btn" onclick="openAiSurface()">Open AI</button><button class="btn" onclick="readClipboardIntoJob()">Capture Clipboard</button></div>`;
+  }
+  if(state.selectedRun==='deploy'){
+    top.innerHTML=`${pills}<div class="section-title">GitHub Deploy</div><div class="kv"><div class="key">Repo</div><div class="val mono">${esc(repoUrl())}</div><div class="key">Branch</div><div class="val mono">${esc(state.config.gitBranch)}</div><div class="key">Target file</div><div class="val mono">${esc(job?.fileName||'-')}</div><div class="key">Live URL</div><div class="val mono">${esc(job?jobLiveUrl(job):'-')}</div></div><hr class="sep"><div class="input-group"><label>Artifact to deploy</label><textarea class="textarea mono tall" id="runResponseArea">${esc(job?.response||'')}</textarea></div>`;
+    bottom.innerHTML=`<div class="row"><button class="btn btn-primary" onclick="deployCurrentResponse()">Deploy Current Response</button><button class="btn" onclick="openLiveApp()">Open Result</button></div><div class="small" style="margin-top:10px">This writes the current job response into the configured repository file using the GitHub PAT from Config.</div>`;
+  }
+  if(state.selectedRun==='status'){
+    top.innerHTML=`${pills}<div class="section-title">Status</div><div class="kv"><div class="key">Last command</div><div class="val">${esc(state.diagnostics.lastCommand||'-')}</div><div class="key">Last helper/browser event</div><div class="val">${esc(state.diagnostics.lastEvent||'-')}</div><div class="key">Last clipboard</div><div class="val">${esc((state.diagnostics.lastClipboard||'').slice(0,220)||'-')}</div><div class="key">Job status</div><div class="val">${esc(job?.status||'-')}</div></div>`;
+    bottom.innerHTML=`<div class="row"><button class="btn" onclick="pingHelper()">Ping Helper</button><button class="btn" onclick="markRunComplete()">Mark Complete</button></div>`;
+  }
+}
+function renderControl(){
+  document.getElementById('controlNav').innerHTML = CONTROL_SECTIONS.map(s=>`<div class="list-item ${state.selectedControl===s.id?'selected':''}" onclick="selectControl('${s.id}')"><strong>${s.title}</strong></div>`).join('');
+  const job=currentJob(), a=currentAdapter(), top=document.getElementById('controlTop'), bottom=document.getElementById('controlBottom');
+  const summary=`<div class="pills"><div class="pill"><span class="dot ${state.diagnostics.helperPresent?'ok':'warn'}"></span>${state.diagnostics.helperPresent?'Thin client bridge ready':'Browser mode'}</div><div class="pill"><span class="dot ok"></span>${esc(a?a.platform:'No adapter')}</div><div class="pill"><span class="dot ok"></span>${esc(job?job.title:'No job')}</div></div>`;
+  if(state.selectedControl==='launcher'){
+    top.innerHTML=`${summary}<div class="control-shell"><div class="section-title">Preferred standalone control page</div><div class="okbox">This surface is the preferred companion page for the thin client. The generated MainActivity opens this page directly using <strong>${esc(standaloneControlUrl())}</strong>. All buttons below can be triggered by voice commands.</div><div class="control-actions"><button class="btn" onclick="buildPromptNow()">Build Prompt</button><button class="btn btn-primary" onclick="controlStart()">Run Full Job</button><button class="btn" onclick="controlCapture()">Capture Response</button><button class="btn" onclick="controlDeploy()">Deploy</button></div><div class="control-actions"><button class="btn" onclick="controlOpenResult()">Open Result</button><button class="btn" onclick="openAiSurface()">Open AI Surface</button><button class="btn" onclick="writeClipboard((currentJob()||{}).prompt||'')">Copy Prompt</button><button class="btn" onclick="pingHelper()">Ping Helper</button></div><div class="input-group"><label>Current prompt</label><textarea class="textarea mono" id="runPromptArea">${esc(job?.prompt||'')}</textarea></div><div class="input-group"><label>Current response</label><textarea class="textarea mono tall" id="runResponseArea">${esc(job?.response||'')}</textarea></div></div>`;
+    bottom.innerHTML=`<div class="section-title">Standalone instructions</div><div class="code">1. Install the thin client with the generated MainActivity.\n2. Upload this file to GitHub Pages as ${esc(state.config.controlFile)}.\n3. Launch the APK. It opens ${esc(standaloneControlUrl())}.\n4. Train an adapter in Train.\n5. Create a job in Jobs.\n6. Use the buttons above to run the loop.\n7. Optional: use the Voice section below for hands-free control.</div>`;
+  }
+  if(state.selectedControl==='voice'){
+    const voiceSupported = !!(window.SpeechRecognition||window.webkitSpeechRecognition);
+    top.innerHTML=`${summary}<div class="section-title">Voice commands</div><div class="small">Click "Start Listening" and speak a command. Supported keywords:</div><div class="code">${VOICE_COMMANDS.map(c=>`- ${c.label.toLowerCase()}`).join('\n')}</div><div style="margin:16px 0"><span class="voice-indicator ${voiceActive?'active':''}" id="voiceStatus">${voiceActive?'🔴 Listening...':'Ready'}</span></div><div class="row" style="margin:12px 0"><button class="btn ${voiceActive?'btn-danger':''} btn-primary" onclick="startVoice()" ${!state.config.speechEnabled?'disabled':''}>${voiceActive?'Stop Listening':'Start Listening'}</button><label class="small"><input type="checkbox" id="voiceAutoRestart" ${state.config.voiceAutoRestart?'checked':''}> auto restart</label></div><div class="input-group"><label>Last transcript</label><textarea class="textarea mono short" id="voiceTranscript"></textarea></div>`;
+    bottom.innerHTML=`<div class="${voiceSupported?'okbox':'note'}">${voiceSupported?'Voice recognition is supported in your browser.':'Speech recognition not supported in this browser. Check browser compatibility or use the button controls above.'}</div>`;
+  }
+  if(state.selectedControl==='monitor'){
+    top.innerHTML=`${summary}<div class="section-title">Monitor</div><div class="kv"><div class="key">Standalone URL</div><div class="val mono">${esc(standaloneControlUrl())}</div><div class="key">Last event</div><div class="val">${esc(state.diagnostics.lastEvent||'-')}</div><div class="key">Last clipboard</div><div class="val">${esc((state.diagnostics.lastClipboard||'').slice(0,220)||'-')}</div><div class="key">Current job status</div><div class="val">${esc(job?.status||'-')}</div></div>`;
+    bottom.innerHTML=`<div class="console">${state.logs.slice(0,80).map(l=>`[${l.ts}] ${l.type.toUpperCase()} | ${l.msg}${l.detail?' | '+l.detail:''}`).join('\n') || 'No logs yet.'}</div>`;
+  }
+}
+function renderLogs(){
+  document.getElementById('logsNav').innerHTML = `<div class="list-item selected"><strong>Event log</strong></div>`;
+  document.getElementById('logsTop').innerHTML = `<div class="row" style="justify-content:space-between;margin-bottom:10px"><div class="section-title">Logs</div><div class="row"><button class="btn" onclick="copyText(JSON.stringify(state.logs,null,2))">Copy Logs</button><button class="btn btn-danger" onclick="state.logs=[]; saveState();">Clear Logs</button></div></div><div class="console">${state.logs.map(l=>`[${l.ts}] ${l.type.toUpperCase()} | ${l.msg}${l.detail?' | '+l.detail:''}`).join('\n') || 'No logs yet.'}</div>`;
+  document.getElementById('logsBottom').innerHTML = `<div class="section-title">Diagnostics</div><div class="kv"><div class="key">Helper present</div><div class="val">${state.diagnostics.helperPresent?'Yes':'No'}</div><div class="key">Last command</div><div class="val">${esc(state.diagnostics.lastCommand||'-')}</div><div class="key">Last event</div><div class="val">${esc(state.diagnostics.lastEvent||'-')}</div><div class="key">Current adapter</div><div class="val">${esc(currentAdapter()?.platform||'-')}</div><div class="key">Current job</div><div class="val">${esc(currentJob()?.title||'-')}</div></div>`;
+}
+function renderFooter(){ document.getElementById('footer').textContent = `${APP_VERSION} | ${state.config.githubUser}/${state.config.githubRepo}/${state.config.controlFile} | ${standaloneControlUrl()}`; }
+function renderViews(){ document.querySelectorAll('.view').forEach(v=>v.classList.toggle('active', v.id==='view-'+currentView)); document.querySelectorAll('.tab-btn').forEach(b=>b.classList.toggle('active', b.dataset.view===currentView)); document.querySelectorAll('.sidebar').forEach(sb=>sb.classList.toggle('collapsed', !!state.sidebarCollapsed)); }
+function renderAll(){ renderViews(); renderInstall(); renderConfig(); renderTrain(); renderJobs(); renderRun(); renderControl(); renderLogs(); renderFooter(); }
+document.querySelectorAll('.tab-btn').forEach(btn=>btn.addEventListener('click',()=>setView(btn.dataset.view)));
+document.getElementById('toggleSidebarBtn').addEventListener('click',()=>{ state.sidebarCollapsed=!state.sidebarCollapsed; saveState(); });
+document.getElementById('newAdapterBtn').addEventListener('click',createAdapter);
+document.getElementById('newJobBtn').addEventListener('click',createJob);
+if(window.AndroidHelper&&typeof window.AndroidHelper.postMessage==='function'){ state.diagnostics.helperPresent=true; localStorage.setItem(STORE_KEY, JSON.stringify(state)); }
+if(location.hash==='#control'){ currentView='control'; }
+setupVoice();
+renderAll();
+</script>
+</body>
+</html>
