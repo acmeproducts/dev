@@ -291,9 +291,14 @@
                     const fileEl = document.createElement('div');
                     fileEl.className = 'p-3 bg-gray-50 rounded hover:bg-gray-100 cursor-pointer';
                     fileEl.innerHTML = `
-                        <div class="text-sm font-medium text-gray-900">${file.name}</div>
+                        <a href="${pagesUrl}" target="_blank" rel="noopener noreferrer" class="text-sm font-medium text-blue-700 hover:text-blue-900 hover:underline app-link">${file.name}</a>
                         <div class="text-xs text-gray-600 mt-1">${file.path}</div>
                     `;
+
+                    const appLink = fileEl.querySelector('.app-link');
+                    appLink.addEventListener('click', (event) => {
+                        event.stopPropagation();
+                    });
                     
                     fileEl.addEventListener('click', () => {
                         const iframe = document.getElementById('pageViewer');
