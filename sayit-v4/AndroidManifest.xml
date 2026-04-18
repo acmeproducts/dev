@@ -1,0 +1,143 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    ═══════════════════════════════════════════════════════════════════════════
+    SayIt Studio - AndroidManifest.xml
+    Package: com.acmeproducts.sayit
+
+    This file tells Android what your app is allowed to do and how it behaves.
+    You normally do NOT need to edit this file unless AIDE asks you to change
+    the package name.
+
+    To use in AIDE:
+    1. Open your AIDE project
+    2. Find the AndroidManifest.xml in the project root (same level as src/)
+    3. Replace the entire contents with this file
+    ═══════════════════════════════════════════════════════════════════════════
+-->
+<manifest
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    package="com.acmeproducts.sayit">
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         PERMISSIONS
+         These tell Android what system features the app needs access to.
+         The user will be prompted to approve some of these on first run.
+    ═══════════════════════════════════════════════════════════════════════ -->
+
+    <!-- INTERNET: Required for loading GitHub Pages and AI platforms -->
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <!-- RECORD_AUDIO: Required for Web Speech API (voice recognition in Chrome) -->
+    <uses-permission android:name="android.permission.RECORD_AUDIO" />
+
+    <!-- READ_MEDIA_IMAGES: Required on Android 13+ to read clipboard images -->
+    <uses-permission android:name="android.permission.READ_MEDIA_IMAGES" />
+
+    <!-- CLIPBOARD permissions (used on older Android versions) -->
+    <uses-permission android:name="android.permission.READ_CLIPBOARD_IN_BACKGROUND" />
+
+    <!-- ACCESS_NETWORK_STATE: Lets the app check if internet is available -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         APPLICATION
+         Defines the overall app behaviour.
+    ═══════════════════════════════════════════════════════════════════════ -->
+    <application
+        android:allowBackup="true"
+        android:icon="@mipmap/ic_launcher"
+        android:label="@string/app_name"
+        android:roundIcon="@mipmap/ic_launcher_round"
+        android:supportsRtl="true"
+
+        <!--
+            Theme: No action bar, full-screen WebView.
+            This removes the Android title bar so the WebView fills the
+            entire screen — matching the SayIt mobile-first design.
+        -->
+        android:theme="@style/Theme.AppCompat.NoActionBar"
+
+        <!--
+            Hardware acceleration: Required for smooth WebView rendering,
+            especially for animations and the voice waveform UI.
+        -->
+        android:hardwareAccelerated="true"
+
+        <!--
+            usesCleartextTraffic: Allows http:// connections in addition to https://.
+            GitHub Pages uses https://, but some local test servers or older
+            redirects may use http. Set to true for maximum compatibility.
+        -->
+        android:usesCleartextTraffic="true"
+
+        <!--
+            networkSecurityConfig: Optional, used for fine-grained network rules.
+            Remove this line if you don't have a network_security_config.xml file.
+        -->
+        <!-- android:networkSecurityConfig="@xml/network_security_config" -->
+        >
+
+        <!-- ═══════════════════════════════════════════════════════════════
+             MAIN ACTIVITY
+             This is the only screen in the app — a full-screen WebView.
+        ═══════════════════════════════════════════════════════════════════ -->
+        <activity
+            android:name=".MainActivity"
+
+            <!--
+                Portrait orientation locked.
+                The SayIt UI is designed for portrait (phone) use.
+                Remove android:screenOrientation if you want rotation support.
+            -->
+            android:screenOrientation="portrait"
+
+            <!--
+                configChanges: Prevents the Activity from restarting when
+                the keyboard opens/closes or screen density changes.
+                This keeps the WebView alive when the soft keyboard appears.
+            -->
+            android:configChanges="orientation|screenSize|keyboardHidden|keyboard"
+
+            <!--
+                windowSoftInputMode: The WebView adjusts its height when the
+                keyboard appears, so text fields stay visible.
+            -->
+            android:windowSoftInputMode="adjustResize"
+
+            <!--
+                exported: Must be true for the launcher to open this Activity.
+            -->
+            android:exported="true">
+
+            <!-- This intent-filter makes MainActivity the app's launch screen -->
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+
+            <!--
+                Deep link support (optional):
+                Allows the app to handle sayit:// URLs from other apps or
+                NFC tags. Remove if not needed.
+            -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="sayit" />
+            </intent-filter>
+
+        </activity>
+
+    </application>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         SDK VERSIONS
+         minSdkVersion 24 = Android 7.0 (released 2016) — widely compatible.
+         targetSdkVersion 34 = Android 14 — modern behaviour and security.
+    ═══════════════════════════════════════════════════════════════════════ -->
+    <uses-sdk
+        android:minSdkVersion="24"
+        android:targetSdkVersion="34" />
+
+</manifest>

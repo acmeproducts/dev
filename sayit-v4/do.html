@@ -1,0 +1,1634 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SayIt Studio — Running Job</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #020617;
+    --bg-card:   #0f172a;
+    --bg-raised: #1e293b;
+    --border:    #1e293b;
+    --border-hi: #334155;
+    --accent:    #16a34a;
+    --accent-lo: #14532d;
+    --accent-hi: #22c55e;
+    --text:      #f8fafc;
+    --text-muted:#94a3b8;
+    --text-dim:  #475569;
+    --warn:      #f59e0b;
+    --danger:    #ef4444;
+    --danger-lo: #450a0a;
+    --info:      #38bdf8;
+    --radius:    12px;
+    --radius-sm: 8px;
+    --font:      system-ui, -apple-system, 'Segoe UI', sans-serif;
+    --mono:      'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+  }
+
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 16px;
+    line-height: 1.5;
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── Layout ── */
+  .shell {
+    max-width: 480px;
+    margin: 0 auto;
+    padding: 0 16px 80px;
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+  }
+
+  /* ── Header ── */
+  .topbar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 20px 0 16px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 24px;
+  }
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    color: var(--text);
+  }
+  .logo-icon {
+    width: 32px;
+    height: 32px;
+    flex-shrink: 0;
+  }
+  .logo-name {
+    font-size: 17px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    color: var(--text);
+  }
+  .logo-name span { color: var(--accent-hi); }
+  .topbar-right {
+    margin-left: auto;
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px;
+    margin-bottom: 16px;
+  }
+  .card-title {
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-bottom: 12px;
+  }
+
+  /* ── Job Card ── */
+  .job-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 18px;
+    margin-bottom: 16px;
+    position: relative;
+    overflow: hidden;
+  }
+  .job-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--accent);
+    transform: scaleX(0);
+    transform-origin: left;
+    transition: transform 0.4s ease;
+  }
+  .job-card.active::before { transform: scaleX(1); }
+  .job-card.live::before { background: var(--accent-hi); transform: scaleX(1); }
+  .job-card.failed::before { background: var(--danger); transform: scaleX(1); }
+
+  .job-meta {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+  .job-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-sm);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 18px;
+    background: var(--bg-raised);
+  }
+  .job-info { flex: 1; min-width: 0; }
+  .job-name {
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .job-sub {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 2px;
+  }
+
+  /* Status badge */
+  .status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 99px;
+    background: var(--bg-raised);
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+    transition: all 0.3s;
+  }
+  .status-badge.queued   { color: var(--text-muted); }
+  .status-badge.sending  { color: var(--warn); border-color: var(--warn); background: #451a0330; }
+  .status-badge.waiting  { color: var(--info); border-color: var(--info); background: #0c2e4230; }
+  .status-badge.captured { color: var(--accent-hi); border-color: var(--accent); background: var(--accent-lo); }
+  .status-badge.validating { color: var(--warn); border-color: var(--warn); background: #451a0330; }
+  .status-badge.publishing { color: var(--info); border-color: var(--info); background: #0c2e4230; }
+  .status-badge.live     { color: var(--accent-hi); border-color: var(--accent-hi); background: var(--accent-lo); }
+  .status-badge.failed   { color: var(--danger); border-color: var(--danger); background: var(--danger-lo); }
+
+  .status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+  }
+  .status-badge.sending .status-dot,
+  .status-badge.waiting .status-dot,
+  .status-badge.publishing .status-dot {
+    animation: pulse-dot 1s infinite;
+  }
+  @keyframes pulse-dot {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.3; }
+  }
+
+  .job-prompt {
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.5;
+    border-top: 1px solid var(--border);
+    padding-top: 12px;
+    margin-top: 4px;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    -webkit-box-orient: vertical;
+  }
+
+  /* ── Progress Steps ── */
+  .steps {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    margin-bottom: 16px;
+  }
+  .step {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 10px 0;
+    border-left: 2px solid var(--border);
+    padding-left: 16px;
+    position: relative;
+    transition: border-color 0.3s;
+  }
+  .step::before {
+    content: '';
+    position: absolute;
+    left: -5px;
+    top: 14px;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--border);
+    border: 2px solid var(--bg);
+    transition: all 0.3s;
+  }
+  .step:last-child { border-color: transparent; }
+  .step.done { border-color: var(--accent); }
+  .step.done::before { background: var(--accent); }
+  .step.active { border-color: var(--accent); }
+  .step.active::before { background: var(--accent-hi); box-shadow: 0 0 0 3px var(--accent-lo); }
+  .step.failed::before { background: var(--danger); box-shadow: 0 0 0 3px var(--danger-lo); }
+
+  .step-text {
+    flex: 1;
+  }
+  .step-label {
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-muted);
+    transition: color 0.3s;
+  }
+  .step.done .step-label,
+  .step.active .step-label { color: var(--text); }
+  .step.failed .step-label { color: var(--danger); }
+  .step-detail {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 1px;
+  }
+  .step.active .step-detail { color: var(--text-muted); }
+
+  /* ── Instruction Box ── */
+  .instr-box {
+    background: #0f2318;
+    border: 1px solid var(--accent-lo);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 16px;
+    display: none;
+  }
+  .instr-box.visible { display: block; }
+  .instr-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--accent-hi);
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .instr-body {
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+  .instr-body ol { padding-left: 18px; }
+  .instr-body li { margin-bottom: 4px; }
+
+  /* ── Preview Card ── */
+  .preview-card {
+    background: var(--bg-card);
+    border: 1px solid var(--accent);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 16px;
+    display: none;
+  }
+  .preview-card.visible { display: block; }
+  .preview-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+  }
+  .preview-icon {
+    font-size: 22px;
+  }
+  .preview-name {
+    font-size: 15px;
+    font-weight: 700;
+    flex: 1;
+  }
+  .preview-size {
+    font-size: 11px;
+    color: var(--text-dim);
+    font-family: var(--mono);
+  }
+  .preview-url {
+    font-size: 12px;
+    font-family: var(--mono);
+    color: var(--accent-hi);
+    word-break: break-all;
+    text-decoration: none;
+    display: block;
+    padding: 8px;
+    background: var(--bg-raised);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    margin-top: 8px;
+    transition: background 0.2s;
+  }
+  .preview-url:hover { background: var(--accent-lo); }
+
+  /* ── Error Box ── */
+  .error-box {
+    background: var(--danger-lo);
+    border: 1px solid var(--danger);
+    border-radius: var(--radius);
+    padding: 16px;
+    margin-bottom: 16px;
+    display: none;
+  }
+  .error-box.visible { display: block; }
+  .error-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--danger);
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .error-body {
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.5;
+    margin-bottom: 12px;
+  }
+
+  /* ── Buttons ── */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 12px 20px;
+    border-radius: var(--radius-sm);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  .btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+  }
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+  }
+  .btn-primary:hover:not(:disabled) { background: var(--accent-hi); }
+  .btn-secondary {
+    background: var(--bg-raised);
+    color: var(--text);
+    border: 1px solid var(--border-hi);
+  }
+  .btn-secondary:hover:not(:disabled) { background: var(--border-hi); }
+  .btn-danger {
+    background: var(--danger);
+    color: #fff;
+  }
+  .btn-danger:hover:not(:disabled) { background: #dc2626; }
+  .btn-ghost {
+    background: transparent;
+    color: var(--text-muted);
+    border: 1px solid var(--border);
+  }
+  .btn-ghost:hover:not(:disabled) { background: var(--bg-raised); color: var(--text); }
+  .btn-lg {
+    padding: 16px 24px;
+    font-size: 16px;
+    border-radius: var(--radius);
+    width: 100%;
+  }
+
+  .btn-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+  .btn-row .btn { flex: 1; min-width: 120px; }
+
+  /* ── Manual Mode ── */
+  .manual-section {
+    display: none;
+  }
+  .manual-section.visible { display: block; }
+
+  .checklist {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .checklist li {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.5;
+  }
+  .check-num {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: var(--bg-raised);
+    border: 1px solid var(--border-hi);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    flex-shrink: 0;
+    color: var(--text-dim);
+  }
+  .checklist li.done .check-num {
+    background: var(--accent);
+    border-color: var(--accent);
+    color: #fff;
+  }
+  .checklist li.done { color: var(--text-dim); text-decoration: line-through; }
+
+  .manual-copy-btn {
+    width: 100%;
+    margin-bottom: 12px;
+  }
+
+  .paste-area {
+    width: 100%;
+    min-height: 180px;
+    background: var(--bg-raised);
+    border: 1px solid var(--border-hi);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.5;
+    padding: 12px;
+    resize: vertical;
+    margin-bottom: 12px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+  .paste-area:focus { border-color: var(--accent); }
+  .paste-area::placeholder { color: var(--text-dim); }
+
+  /* ── Fallback Save ── */
+  .fallback-section {
+    display: none;
+  }
+  .fallback-section.visible { display: block; }
+
+  /* ── Loading Spinner ── */
+  .spinner {
+    width: 16px;
+    height: 16px;
+    border: 2px solid transparent;
+    border-top-color: currentColor;
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    display: inline-block;
+    vertical-align: middle;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Divider ── */
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 8px 0;
+  }
+
+  /* ── Pill tags ── */
+  .tag {
+    display: inline-flex;
+    align-items: center;
+    font-size: 10px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 2px 7px;
+    border-radius: 99px;
+    background: var(--bg-raised);
+    color: var(--text-dim);
+    border: 1px solid var(--border);
+  }
+  .tag.platform-claude     { color: #a78bfa; border-color: #4c1d95; background: #1e0a3c; }
+  .tag.platform-chatgpt    { color: #34d399; border-color: #065f46; background: #022c22; }
+  .tag.platform-gemini     { color: #60a5fa; border-color: #1e3a5f; background: #0c1e35; }
+  .tag.platform-perplexity { color: #f472b6; border-color: #831843; background: #3b0a2e; }
+  .tag.platform-codex      { color: #fbbf24; border-color: #78350f; background: #2c1a05; }
+  .tag.verb-create { color: var(--accent-hi); border-color: var(--accent-lo); background: #071a0d; }
+  .tag.verb-fork   { color: var(--info); border-color: #0c2e42; background: #050e18; }
+
+  /* ── Config missing ── */
+  .config-missing {
+    background: #1c1000;
+    border: 1px solid #78350f;
+    border-radius: var(--radius);
+    padding: 18px;
+    margin-bottom: 16px;
+    display: none;
+  }
+  .config-missing.visible { display: block; }
+  .config-missing-title {
+    font-size: 14px;
+    font-weight: 700;
+    color: var(--warn);
+    margin-bottom: 8px;
+  }
+  .config-missing-body {
+    font-size: 13px;
+    color: var(--text-muted);
+    margin-bottom: 12px;
+  }
+
+  /* ── Poll timer ── */
+  .poll-timer {
+    font-size: 11px;
+    color: var(--text-dim);
+    font-family: var(--mono);
+    text-align: center;
+    margin-top: 8px;
+  }
+
+  /* ── Elapsed ── */
+  .elapsed {
+    font-size: 11px;
+    font-family: var(--mono);
+    color: var(--text-dim);
+    margin-top: 4px;
+  }
+
+  /* ── Live confetti-ish flash ── */
+  @keyframes live-flash {
+    0%   { box-shadow: 0 0 0 0 rgba(34,197,94,0.4); }
+    70%  { box-shadow: 0 0 0 12px rgba(34,197,94,0); }
+    100% { box-shadow: 0 0 0 0 rgba(34,197,94,0); }
+  }
+  .job-card.live {
+    animation: live-flash 0.8s ease-out;
+  }
+
+  /* ── Switch platform ── */
+  .platform-switcher {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 10px;
+  }
+  .platform-btn {
+    padding: 6px 12px;
+    border-radius: 99px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 1px solid var(--border-hi);
+    background: var(--bg-raised);
+    color: var(--text-muted);
+    transition: all 0.2s;
+  }
+  .platform-btn:hover { color: var(--text); background: var(--border-hi); }
+  .platform-btn.active {
+    border-color: var(--accent);
+    color: var(--accent-hi);
+    background: var(--accent-lo);
+  }
+
+  /* ── Misc helpers ── */
+  .hidden  { display: none !important; }
+  .mt-4  { margin-top: 4px; }
+  .mt-8  { margin-top: 8px; }
+  .mt-12 { margin-top: 12px; }
+  .text-muted { color: var(--text-muted); font-size: 13px; }
+  .text-sm    { font-size: 13px; }
+  .text-xs    { font-size: 12px; }
+  .center { text-align: center; }
+</style>
+</head>
+<body><script>(function(){var c={"SAYIT_GH_USER":"acmeproducts","SAYIT_GH_REPO":"dev","SAYIT_SUBDIR":"sayit-v3","SAYIT_DISPLAY_NAME":"SayIt","SAYIT_WAKE_WORD":"sayit"};Object.keys(c).forEach(function(k){try{localStorage.setItem(k,c[k]);}catch(e){}});try{localStorage.setItem("SAYIT_GH_PAT","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");}catch(e){}})();</script>
+<div class="shell">
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <a href="home.html" class="logo" aria-label="SayIt Studio home">
+      <svg class="logo-icon" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+        <rect width="32" height="32" rx="8" fill="#14532d"/>
+        <path d="M8 22 C8 22 10 10 16 10 C22 10 24 22 24 22" stroke="#22c55e" stroke-width="2.5" stroke-linecap="round" fill="none"/>
+        <circle cx="16" cy="18" r="4" fill="#22c55e"/>
+        <rect x="14" y="22" width="4" height="4" rx="1" fill="#22c55e"/>
+      </svg>
+      <span class="logo-name">Say<span>It</span> Studio</span>
+    </a>
+    <span class="topbar-right" id="topbar-time"></span>
+  </div>
+
+  <!-- Config missing warning -->
+  <div class="config-missing" id="config-missing">
+    <div class="config-missing-title">⚠ Setup Required</div>
+    <div class="config-missing-body" id="config-missing-body">GitHub credentials are not configured. Please set up your account before running jobs.</div>
+    <a href="home.html#settings" class="btn btn-secondary btn-sm" style="font-size:13px;padding:8px 14px;display:inline-flex;gap:6px;align-items:center;text-decoration:none;">
+      ← Go to Settings
+    </a>
+  </div>
+
+  <!-- Job Card -->
+  <div class="job-card" id="job-card">
+    <div class="job-meta">
+      <div class="job-icon" id="job-icon">⚙️</div>
+      <div class="job-info">
+        <div class="job-name" id="job-name">Loading…</div>
+        <div class="job-sub">
+          <span class="tag" id="tag-platform">—</span>
+          &nbsp;
+          <span class="tag" id="tag-verb">—</span>
+          &nbsp;
+          <span class="elapsed" id="elapsed-time"></span>
+        </div>
+      </div>
+      <div>
+        <div class="status-badge" id="status-badge">
+          <span class="status-dot"></span>
+          <span id="status-text">QUEUED</span>
+        </div>
+      </div>
+    </div>
+    <div class="job-prompt" id="job-prompt"></div>
+  </div>
+
+  <!-- Steps -->
+  <div class="steps" id="steps">
+    <div class="step" id="step-load"     data-step="load">
+      <div class="step-text">
+        <div class="step-label">Loading profile</div>
+        <div class="step-detail" id="detail-load">Fetching platform config from GitHub</div>
+      </div>
+    </div>
+    <div class="step" id="step-registry" data-step="registry">
+      <div class="step-text">
+        <div class="step-label">Checking registry</div>
+        <div class="step-detail" id="detail-registry">Looking up existing projects</div>
+      </div>
+    </div>
+    <div class="step" id="step-prompt"   data-step="prompt">
+      <div class="step-text">
+        <div class="step-label">Building prompt</div>
+        <div class="step-detail" id="detail-prompt">Composing instruction for AI</div>
+      </div>
+    </div>
+    <div class="step" id="step-send"     data-step="send">
+      <div class="step-text">
+        <div class="step-label">Sending to AI</div>
+        <div class="step-detail" id="detail-send">Opening platform &amp; writing prompt to clipboard</div>
+      </div>
+    </div>
+    <div class="step" id="step-capture"  data-step="capture">
+      <div class="step-text">
+        <div class="step-label">Capturing response</div>
+        <div class="step-detail" id="detail-capture">Waiting for AI to finish…</div>
+      </div>
+    </div>
+    <div class="step" id="step-validate" data-step="validate">
+      <div class="step-text">
+        <div class="step-label">Validating HTML</div>
+        <div class="step-detail" id="detail-validate">Checking response structure</div>
+      </div>
+    </div>
+    <div class="step" id="step-publish"  data-step="publish">
+      <div class="step-text">
+        <div class="step-label">Publishing</div>
+        <div class="step-detail" id="detail-publish">Committing to GitHub Pages</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Instruction box (bridge mode waiting) -->
+  <div class="instr-box" id="instr-box">
+    <div class="instr-title">
+      <span>📋</span>
+      <span id="instr-title-text">Action Required</span>
+    </div>
+    <div class="instr-body" id="instr-body"></div>
+    <div class="poll-timer" id="poll-timer"></div>
+  </div>
+
+  <!-- Manual mode section -->
+  <div class="manual-section" id="manual-section">
+    <div class="card">
+      <div class="card-title">Manual Mode</div>
+      <ul class="checklist" id="manual-checklist">
+        <li id="mc-1">
+          <span class="check-num">1</span>
+          <span>Open <span id="mc-platform-link"></span> — your prompt is ready to paste</span>
+        </li>
+        <li id="mc-2">
+          <span class="check-num">2</span>
+          <span>Copy the prompt to clipboard</span>
+        </li>
+        <li id="mc-3">
+          <span class="check-num">3</span>
+          <span>Paste the prompt and send it to the AI</span>
+        </li>
+        <li id="mc-4">
+          <span class="check-num">4</span>
+          <span>When the response is complete, copy the entire response</span>
+        </li>
+        <li id="mc-5">
+          <span class="check-num">5</span>
+          <span>Paste the response below and tap <strong>Extract &amp; Publish</strong></span>
+        </li>
+      </ul>
+
+      <button class="btn btn-secondary manual-copy-btn" id="manual-copy-btn">
+        📋 Copy Prompt to Clipboard
+      </button>
+
+      <textarea
+        class="paste-area"
+        id="paste-area"
+        placeholder="Paste the complete AI response here (including the ```html block)…"
+        spellcheck="false"
+      ></textarea>
+      <button class="btn btn-primary btn-lg" id="extract-btn">
+        Extract &amp; Publish
+      </button>
+    </div>
+  </div>
+
+  <!-- Preview card -->
+  <div class="preview-card" id="preview-card">
+    <div class="preview-header">
+      <span class="preview-icon">🎉</span>
+      <span class="preview-name" id="preview-name">project.html</span>
+      <span class="preview-size" id="preview-size"></span>
+    </div>
+    <div class="text-muted">Your project is live on GitHub Pages</div>
+    <a class="preview-url" id="preview-url" href="#" target="_blank" rel="noopener"></a>
+  </div>
+
+  <!-- Error box -->
+  <div class="error-box" id="error-box">
+    <div class="error-title">
+      <span>❌</span>
+      <span id="error-title-text">Something went wrong</span>
+    </div>
+    <div class="error-body" id="error-body"></div>
+    <div class="btn-row" id="error-actions"></div>
+  </div>
+
+  <!-- Fallback save (GH publish failed) -->
+  <div class="fallback-section" id="fallback-section">
+    <div class="card">
+      <div class="card-title">Manual Save</div>
+      <div class="text-muted" style="margin-bottom:12px;">
+        Publishing to GitHub failed. You can save this file manually.
+      </div>
+      <textarea class="paste-area" id="fallback-html" style="min-height:200px;" readonly spellcheck="false"></textarea>
+      <div class="btn-row mt-8">
+        <button class="btn btn-secondary" id="copy-html-btn">📋 Copy HTML</button>
+        <a id="gh-upload-link" class="btn btn-ghost" href="#" target="_blank" rel="noopener">Open GitHub Upload</a>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /shell -->
+
+<script>
+(function () {
+  'use strict';
+
+  /* ─── Platform config ─── */
+  const PLATFORMS = {
+    claude: {
+      name: 'Claude',
+      icon: '🟣',
+      url:  'https://claude.ai/new',
+      key:  'claude',
+    },
+    chatgpt: {
+      name: 'ChatGPT',
+      icon: '🟢',
+      url:  'https://chat.openai.com/',
+      key:  'chatgpt',
+    },
+    gemini: {
+      name: 'Gemini',
+      icon: '🔵',
+      url:  'https://gemini.google.com/app',
+      key:  'gemini',
+    },
+    perplexity: {
+      name: 'Perplexity',
+      icon: '🩷',
+      url:  'https://www.perplexity.ai/',
+      key:  'perplexity',
+    },
+    codex: {
+      name: 'Codex',
+      icon: '🟡',
+      url:  'https://chatgpt.com/',
+      key:  'codex',
+    },
+  };
+
+  /* ─── State ─── */
+  let state = {
+    verb:        '',
+    project:     '',
+    platform:    '',
+    prompt:      '',
+    newname:     '',
+    ghUser:      '',
+    ghRepo:      '',
+    ghPat:       '',
+    subdir:      '',
+    profile:     null,
+    registry:    null,
+    registrySha: null,
+    fullPrompt:  '',
+    capturedHtml:'',
+    pagesUrl:    '',
+    jobStart:    Date.now(),
+    elapsedInterval: null,
+    pollInterval:    null,
+    pollCount:       0,
+    manualMode:      false,
+    currentStep:     '',
+    existingFileSha: null,
+  };
+
+  /* ─── Bridge detection ─── */
+  const Bridge = window.SayItBridge || null;
+  const hasBridge = Bridge
+    && typeof Bridge.readClipboard  === 'function'
+    && typeof Bridge.writeClipboard === 'function'
+    && typeof Bridge.openUrl        === 'function'
+    && typeof Bridge.focusRuntime   === 'function'
+    && typeof Bridge.captureRuntime === 'function';
+
+  /* ─── DOM helpers ─── */
+  const $  = (id) => document.getElementById(id);
+  const show = (id) => { const el = $(id); if(el) el.classList.add('visible'); };
+  const hide = (id) => { const el = $(id); if(el) el.classList.remove('visible'); };
+
+  /* ─── Elapsed timer ─── */
+  function startElapsed() {
+    state.elapsedInterval = setInterval(() => {
+      const s = Math.floor((Date.now() - state.jobStart) / 1000);
+      const m = Math.floor(s / 60);
+      const sec = s % 60;
+      $('elapsed-time').textContent = m > 0
+        ? `${m}m ${sec}s`
+        : `${sec}s`;
+    }, 1000);
+  }
+
+  /* ─── Topbar clock ─── */
+  function startClock() {
+    function tick() {
+      const now = new Date();
+      $('topbar-time').textContent = now.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+    }
+    tick();
+    setInterval(tick, 10000);
+  }
+
+  /* ─── Status badge ─── */
+  const STATUS_LABELS = {
+    QUEUED:     'QUEUED',
+    SENDING:    'SENDING',
+    WAITING:    'WAITING',
+    CAPTURED:   'CAPTURED',
+    VALIDATING: 'VALIDATING',
+    PUBLISHING: 'PUBLISHING',
+    LIVE:       'LIVE',
+    FAILED:     'FAILED',
+  };
+  function setStatus(key) {
+    const badge = $('status-badge');
+    const label = $('status-text');
+    badge.className = 'status-badge ' + key.toLowerCase();
+    label.textContent = STATUS_LABELS[key] || key;
+    // Update job card class
+    const card = $('job-card');
+    card.classList.remove('active','live','failed');
+    if (key === 'LIVE') card.classList.add('live');
+    else if (key === 'FAILED') card.classList.add('failed');
+    else card.classList.add('active');
+  }
+
+  /* ─── Step management ─── */
+  function setStep(stepId, state_) {
+    // state_ = 'active' | 'done' | 'failed'
+    const el = $('step-' + stepId);
+    if (!el) return;
+    el.classList.remove('active','done','failed');
+    el.classList.add(state_);
+  }
+  function completeStep(stepId, detail) {
+    setStep(stepId, 'done');
+    if (detail) $('detail-' + stepId).textContent = detail;
+  }
+  function failStep(stepId, detail) {
+    setStep(stepId, 'failed');
+    if (detail) $('detail-' + stepId).textContent = detail;
+  }
+
+  /* ─── Voice feedback ─── */
+  function speak(text) {
+    if (!window.speechSynthesis) return;
+    const utt = new SpeechSynthesisUtterance(text);
+    utt.rate = 1.0;
+    utt.pitch = 1.0;
+    window.speechSynthesis.cancel();
+    window.speechSynthesis.speak(utt);
+  }
+
+  /* ─── Show error ─── */
+  function showError(title, body, actions) {
+    // actions = [{label, fn, style}]
+    $('error-title-text').textContent = title;
+    $('error-body').textContent = body;
+    const actionsEl = $('error-actions');
+    actionsEl.innerHTML = '';
+    (actions || []).forEach(a => {
+      const btn = document.createElement('button');
+      btn.className = 'btn ' + (a.style || 'btn-secondary');
+      btn.textContent = a.label;
+      btn.onclick = a.fn;
+      actionsEl.appendChild(btn);
+    });
+    show('error-box');
+    setStatus('FAILED');
+    if (state.elapsedInterval) clearInterval(state.elapsedInterval);
+    if (state.pollInterval)    clearInterval(state.pollInterval);
+  }
+
+  /* ─── GitHub API helpers ─── */
+  async function ghGet(path) {
+    const url = `https://api.github.com/repos/${state.ghUser}/${state.ghRepo}/contents/${path}`;
+    const res = await fetch(url, {
+      headers: {
+        'Authorization': 'Bearer ' + state.ghPat,
+        'Accept': 'application/vnd.github.v3+json',
+      }
+    });
+    if (res.status === 404) return null;
+    if (!res.ok) throw new Error(`GH GET ${path} → ${res.status}`);
+    return res.json();
+  }
+
+  async function ghPut(path, content, sha, message) {
+    const url = `https://api.github.com/repos/${state.ghUser}/${state.ghRepo}/contents/${path}`;
+    const body = {
+      message: message || `SayIt: update ${path}`,
+      content: btoa(unescape(encodeURIComponent(content))),
+    };
+    if (sha) body.sha = sha;
+    const res = await fetch(url, {
+      method: 'PUT',
+      headers: {
+        'Authorization': 'Bearer ' + state.ghPat,
+        'Accept': 'application/vnd.github.v3+json',
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err.message || `GH PUT ${path} → ${res.status}`);
+    }
+    return res.json();
+  }
+
+  async function ghGetDecoded(path) {
+    const data = await ghGet(path);
+    if (!data) return null;
+    const content = atob(data.content.replace(/\n/g, ''));
+    return { content, sha: data.sha };
+  }
+
+  /* ─── Fetch GH Pages raw file ─── */
+  async function fetchPagesFile(project) {
+    const url = `https://${state.ghUser}.github.io/${state.ghRepo}/${state.subdir}/${project}.html`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error(`Could not fetch ${url} (${res.status})`);
+    return res.text();
+  }
+
+  /* ─── Build the subdirectory-aware path ─── */
+  function ghPath(filename) {
+    return state.subdir ? `${state.subdir}/${filename}` : filename;
+  }
+
+  /* ─── Extract HTML from AI response ─── */
+  function extractHtml(raw) {
+    // 1. Prefer fenced ```html block
+    const fence = raw.match(/```html\s*([\s\S]*?)```/i);
+    if (fence) return fence[1].trim();
+    // 2. Prefer any fenced block that looks like HTML
+    const anyFence = raw.match(/```[a-z]*\s*(<!DOCTYPE html[\s\S]*?)```/i);
+    if (anyFence) return anyFence[1].trim();
+    // 3. Fallback: find <!DOCTYPE html or <html anywhere
+    const doctype = raw.match(/(<!DOCTYPE html[\s\S]*)/i);
+    if (doctype) return doctype[1].trim();
+    const htmlTag = raw.match(/(<html[\s\S]*)/i);
+    if (htmlTag) return htmlTag[1].trim();
+    return null;
+  }
+
+  /* ─── Validate HTML ─── */
+  function validateHtml(html) {
+    const t = html.trim();
+    return t.toLowerCase().startsWith('<!doctype html') || t.toLowerCase().startsWith('<html');
+  }
+
+  /* ─── Build display name ─── */
+  function toDisplayName(key) {
+    return key.replace(/[-_]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+  }
+
+  /* ─── Format bytes ─── */
+  function fmtBytes(n) {
+    if (n < 1024) return n + ' B';
+    if (n < 1024*1024) return (n/1024).toFixed(1) + ' KB';
+    return (n/1024/1024).toFixed(2) + ' MB';
+  }
+
+  /* ─── Registry helpers ─── */
+  function makeRegistryRecord(verb, project, platform, prompt, sha, pagesUrl) {
+    const now = new Date().toISOString();
+    return {
+      key:         project,
+      filename:    project + '.html',
+      displayName: toDisplayName(project),
+      platform:    platform,
+      verb:        verb,
+      createdAt:   now,
+      updatedAt:   now,
+      versions:    [{ sha, at: now, note: verb === 'fork' ? 'fork' : 'initial' }],
+      pagesUrl:    pagesUrl,
+      prompt:      prompt,
+      status:      'live',
+    };
+  }
+
+  /* ─── Main flow ─── */
+  async function run() {
+    startClock();
+    startElapsed();
+    parseParams();
+    renderJobCard();
+
+    // Validate config
+    if (!state.ghUser || !state.ghRepo || !state.ghPat) {
+      const missing = [];
+      if (!state.ghUser) missing.push('GitHub username (SAYIT_GH_USER)');
+      if (!state.ghRepo) missing.push('GitHub repo (SAYIT_GH_REPO)');
+      if (!state.ghPat)  missing.push('Personal access token (SAYIT_GH_PAT)');
+      $('config-missing-body').textContent = `Missing: ${missing.join(', ')}. Please configure in Settings.`;
+      show('config-missing');
+      setStatus('FAILED');
+      return;
+    }
+
+    // Validate URL params
+    if (!state.verb || !state.project || !state.platform || !state.prompt) {
+      showError(
+        'Invalid Job Parameters',
+        'Missing required URL parameters: verb, project, platform, prompt.',
+        [{ label: '← Home', fn: () => location.href = 'home.html', style: 'btn-secondary' }]
+      );
+      return;
+    }
+
+    try {
+      // Step 1: Load profiles.json
+      setStep('load', 'active');
+      setStatus('QUEUED');
+      const profileData = await loadProfile();
+      completeStep('load', `Profile loaded for ${PLATFORMS[state.platform]?.name || state.platform}`);
+
+      // Step 2: Load registry.json
+      setStep('registry', 'active');
+      const { registry, registrySha, existingProject } = await loadRegistry();
+      state.registry    = registry;
+      state.registrySha = registrySha;
+      completeStep('registry', `Registry loaded (${registry.length} projects)`);
+
+      // Step 3: Build prompt
+      setStep('prompt', 'active');
+      const fullPrompt = await buildPrompt(existingProject);
+      state.fullPrompt = fullPrompt;
+      completeStep('prompt', `Prompt ready (${fmtBytes(fullPrompt.length)})`);
+
+      // Step 4 onward: send
+      setStep('send', 'active');
+      setStatus('SENDING');
+      speak(`Sending to ${PLATFORMS[state.platform]?.name || state.platform}…`);
+
+      if (hasBridge) {
+        await bridgeFlow();
+      } else {
+        manualFlow();
+      }
+
+    } catch (err) {
+      console.error(err);
+      showError('Job Failed', err.message, [
+        { label: '← Home', fn: () => location.href = 'home.html', style: 'btn-ghost' },
+        { label: '🔄 Retry', fn: () => location.reload(), style: 'btn-secondary' },
+      ]);
+    }
+  }
+
+  /* ─── Parse URL params ─── */
+  function parseParams() {
+    const p = new URLSearchParams(location.search);
+    state.verb     = (p.get('verb')     || '').toLowerCase().trim();
+    state.project  = (p.get('project')  || '').toLowerCase().replace(/[^a-z0-9_-]/g, '-').trim();
+    state.platform = (p.get('platform') || '').toLowerCase().trim();
+    state.prompt   = (p.get('prompt')   || '').trim();
+    state.newname  = (p.get('newname')  || '').toLowerCase().replace(/[^a-z0-9_-]/g, '-').trim();
+
+    state.ghUser  = localStorage.getItem('SAYIT_GH_USER')  || '';
+    state.ghRepo  = localStorage.getItem('SAYIT_GH_REPO')  || '';
+    state.ghPat   = localStorage.getItem('SAYIT_GH_PAT')   || '';
+    state.subdir  = (localStorage.getItem('SAYIT_SUBDIR')  || '').replace(/\/+$/, '');
+  }
+
+  /* ─── Render job card ─── */
+  function renderJobCard() {
+    const pInfo = PLATFORMS[state.platform] || { name: state.platform, icon: '🤖' };
+
+    $('job-icon').textContent = pInfo.icon;
+    $('job-name').textContent = toDisplayName(state.project || 'Unknown Project');
+
+    const tagP = $('tag-platform');
+    tagP.textContent = pInfo.name || state.platform;
+    tagP.className = `tag platform-${state.platform}`;
+
+    const tagV = $('tag-verb');
+    tagV.textContent = state.verb === 'fork' ? 'FORK' : 'CREATE';
+    tagV.className = `tag verb-${state.verb}`;
+
+    $('job-prompt').textContent = state.prompt;
+
+    setStatus('QUEUED');
+  }
+
+  /* ─── Load platform profile ─── */
+  async function loadProfile() {
+    let profile = null;
+    try {
+      const data = await ghGetDecoded(ghPath('profiles.json'));
+      if (data) {
+        const profiles = JSON.parse(data.content);
+        profile = Array.isArray(profiles)
+          ? profiles.find(p => p.platform === state.platform || p.key === state.platform)
+          : profiles[state.platform];
+      }
+    } catch (e) {
+      // profiles.json may not exist yet — that's okay, we'll proceed without it
+      console.warn('profiles.json not found or invalid:', e);
+    }
+    state.profile = profile;
+    return profile;
+  }
+
+  /* ─── Load registry ─── */
+  async function loadRegistry() {
+    let registry = [];
+    let registrySha = null;
+    let existingProject = null;
+
+    try {
+      const data = await ghGetDecoded(ghPath('registry.json'));
+      if (data) {
+        registry    = JSON.parse(data.content);
+        registrySha = data.sha;
+        if (!Array.isArray(registry)) registry = Object.values(registry);
+      }
+    } catch (e) {
+      console.warn('registry.json not found or invalid:', e);
+    }
+
+    const lookupKey = state.verb === 'fork' ? state.project : state.project;
+    existingProject = registry.find(r => r.key === lookupKey);
+
+    return { registry, registrySha, existingProject };
+  }
+
+  /* ─── Build the full prompt ─── */
+  async function buildPrompt(existingProject) {
+    const reqs = [
+      'Single self-contained HTML file.',
+      'Pure JavaScript only.',
+      'No external JS files, no external images.',
+      'No subfiles.',
+      'Works offline.',
+    ].join(' ');
+
+    if (state.verb === 'create') {
+      return `${state.prompt}. Requirements: ${reqs}`;
+    }
+
+    // FORK: fetch existing HTML
+    if (state.verb === 'fork') {
+      const sourceKey = state.project;
+      let existingHtml = '';
+      try {
+        existingHtml = await fetchPagesFile(sourceKey);
+      } catch (e) {
+        // Fallback: try GH contents API
+        try {
+          const data = await ghGetDecoded(ghPath(sourceKey + '.html'));
+          if (data) existingHtml = data.content;
+        } catch (e2) {
+          console.warn('Could not fetch source project HTML:', e2);
+        }
+      }
+
+      // Determine target project name
+      const targetProject = state.newname || state.project;
+
+      // Build fork prompt
+      let prompt = '';
+      if (existingHtml) {
+        prompt = `Here is an existing app:\n\n${existingHtml}\n\nFork it with these changes: ${state.prompt}. Return complete modified HTML only. Requirements: ${reqs}`;
+      } else {
+        prompt = `Fork the app called "${state.project}" with these changes: ${state.prompt}. Return complete modified HTML only. Requirements: ${reqs}`;
+      }
+
+      // Update state project to target if newname given
+      if (state.newname) state.project = state.newname;
+
+      return prompt;
+    }
+
+    return `${state.prompt}. Requirements: ${reqs}`;
+  }
+
+  /* ─── Bridge flow ─── */
+  async function bridgeFlow() {
+    const pInfo = PLATFORMS[state.platform] || {};
+
+    // Write prompt to clipboard
+    try {
+      Bridge.writeClipboard(state.fullPrompt);
+    } catch (e) {
+      console.warn('writeClipboard failed:', e);
+    }
+
+    // Open the AI platform
+    try {
+      Bridge.focusRuntime(state.platform);
+    } catch (e) {
+      try { Bridge.openUrl(pInfo.url || 'about:blank'); } catch(e2) {}
+    }
+
+    completeStep('send', 'Platform opened, prompt on clipboard');
+    setStatus('WAITING');
+    setStep('capture', 'active');
+    speak('Prompt sent. Waiting for response…');
+
+    // Show instruction box
+    $('instr-title-text').textContent = 'Action Required';
+    $('instr-body').innerHTML = `
+      <ol>
+        <li>The AI platform is open.</li>
+        <li>Paste the prompt (it's already on your clipboard) and send it.</li>
+        <li>We'll automatically capture the result when done.</li>
+      </ol>
+    `;
+    show('instr-box');
+
+    // Poll via captureRuntime
+    let pollSecs = 0;
+    state.pollInterval = setInterval(async () => {
+      pollSecs++;
+      $('poll-timer').textContent = `Polling… ${pollSecs}s elapsed`;
+
+      let result;
+      try {
+        result = await (async () => {
+          const r = Bridge.captureRuntime();
+          // captureRuntime may return a string or an object
+          if (typeof r === 'string') return JSON.parse(r);
+          return r;
+        })();
+      } catch (e) {
+        return; // not ready
+      }
+
+      if (!result) return;
+
+      // Check for content_complete event or a content field
+      const isComplete =
+        result.event === 'content_complete' ||
+        result.status === 'complete'        ||
+        result.done   === true              ||
+        (result.content && result.content.length > 100);
+
+      if (isComplete) {
+        clearInterval(state.pollInterval);
+        hide('instr-box');
+        const raw = result.content || result.text || result.html || '';
+        await handleCaptured(raw);
+      }
+
+      // Timeout after 10 minutes
+      if (pollSecs >= 600) {
+        clearInterval(state.pollInterval);
+        showError(
+          'Platform Unresponsive',
+          'No response captured after 10 minutes.',
+          [
+            { label: '🔄 Retry', fn: () => location.reload(), style: 'btn-secondary' },
+            { label: '✏ Manual Mode', fn: switchToManual, style: 'btn-ghost' },
+          ]
+        );
+      }
+    }, 3000);
+  }
+
+  /* ─── Manual flow ─── */
+  function manualFlow() {
+    state.manualMode = true;
+    completeStep('send', 'Manual mode — use clipboard');
+    setStatus('WAITING');
+    setStep('capture', 'active');
+
+    const pInfo = PLATFORMS[state.platform] || {};
+
+    // Platform link
+    const link = document.createElement('a');
+    link.href = pInfo.url || '#';
+    link.target = '_blank';
+    link.rel = 'noopener';
+    link.style.color = 'var(--accent-hi)';
+    link.textContent = pInfo.name || state.platform;
+    $('mc-platform-link').appendChild(link);
+
+    show('manual-section');
+
+    // Copy prompt btn
+    $('manual-copy-btn').addEventListener('click', async () => {
+      try {
+        await navigator.clipboard.writeText(state.fullPrompt);
+        $('manual-copy-btn').textContent = '✓ Copied!';
+        setTimeout(() => { $('manual-copy-btn').textContent = '📋 Copy Prompt to Clipboard'; }, 2000);
+      } catch (e) {
+        // Fallback: select a textarea
+        const ta = document.createElement('textarea');
+        ta.value = state.fullPrompt;
+        ta.style.position = 'fixed';
+        ta.style.opacity = '0';
+        document.body.appendChild(ta);
+        ta.select();
+        document.execCommand('copy');
+        document.body.removeChild(ta);
+        $('manual-copy-btn').textContent = '✓ Copied!';
+        setTimeout(() => { $('manual-copy-btn').textContent = '📋 Copy Prompt to Clipboard'; }, 2000);
+      }
+    });
+
+    // Extract & publish
+    $('extract-btn').addEventListener('click', async () => {
+      const raw = $('paste-area').value.trim();
+      if (!raw) {
+        $('paste-area').focus();
+        return;
+      }
+      hide('manual-section');
+      await handleCaptured(raw);
+    });
+  }
+
+  /* ─── Switch to manual ─── */
+  function switchToManual() {
+    hide('error-box');
+    if (state.pollInterval) clearInterval(state.pollInterval);
+    hide('instr-box');
+    manualFlow();
+  }
+
+  /* ─── Handle captured raw content ─── */
+  async function handleCaptured(raw) {
+    completeStep('capture', `Response received (${fmtBytes(raw.length)})`);
+    setStatus('VALIDATING');
+    setStep('validate', 'active');
+    speak('Got the response…');
+
+    // Extract HTML
+    const html = extractHtml(raw);
+
+    if (!html) {
+      failStep('validate', 'No HTML found in response');
+      showError(
+        'No HTML Found',
+        'The response doesn\'t appear to contain a valid HTML document.',
+        [
+          {
+            label: '🔄 Retry',
+            fn: () => {
+              hide('error-box');
+              show('manual-section');
+              $('paste-area').value = '';
+              $('paste-area').focus();
+            },
+            style: 'btn-secondary',
+          },
+          {
+            label: '✏ Edit & Retry',
+            fn: () => {
+              hide('error-box');
+              $('paste-area').value = raw;
+              show('manual-section');
+              $('paste-area').focus();
+            },
+            style: 'btn-ghost',
+          }
+        ]
+      );
+      return;
+    }
+
+    if (!validateHtml(html)) {
+      failStep('validate', 'Response doesn\'t start with valid HTML');
+      showError(
+        'Invalid HTML',
+        'The response doesn\'t look like valid HTML (must start with <!DOCTYPE html> or <html>). Retry?',
+        [
+          {
+            label: '🔄 Retry',
+            fn: () => {
+              hide('error-box');
+              show('manual-section');
+              $('paste-area').value = '';
+              $('paste-area').focus();
+            },
+            style: 'btn-secondary',
+          },
+        ]
+      );
+      return;
+    }
+
+    state.capturedHtml = html;
+    completeStep('validate', `Valid HTML — ${fmtBytes(html.length)}`);
+
+    // Show preview
+    $('preview-name').textContent = state.project + '.html';
+    $('preview-size').textContent = fmtBytes(html.length);
+
+    // Publish
+    await publishToGitHub(html);
+  }
+
+  /* ─── Publish to GitHub ─── */
+  async function publishToGitHub(html) {
+    setStatus('PUBLISHING');
+    setStep('publish', 'active');
+    speak('Publishing to GitHub…');
+
+    const filename  = state.project + '.html';
+    const filePath  = ghPath(filename);
+    const pagesUrl  = `https://${state.ghUser}.github.io/${state.ghRepo}/${state.subdir ? state.subdir + '/' : ''}${filename}`;
+    state.pagesUrl  = pagesUrl;
+
+    // Check existing SHA to avoid conflicts
+    let existingSha = null;
+    try {
+      const existing = await ghGet(filePath);
+      if (existing) existingSha = existing.sha;
+    } catch (e) {
+      console.warn('Could not check existing file SHA:', e);
+    }
+
+    // Commit the HTML file
+    let commitResult;
+    try {
+      commitResult = await ghPut(
+        filePath,
+        html,
+        existingSha,
+        `SayIt: ${state.verb} ${state.project} via ${state.platform}`
+      );
+    } catch (e) {
+      console.error('GH publish failed:', e);
+      // Show fallback
+      failStep('publish', 'GitHub publish failed');
+      $('fallback-html').value = html;
+      const repoUrl = `https://github.com/${state.ghUser}/${state.ghRepo}/upload/main/${state.subdir || ''}`;
+      $('gh-upload-link').href = repoUrl;
+      show('fallback-section');
+      showError(
+        'Publish Failed',
+        `Could not commit to GitHub: ${e.message}. The HTML is shown below — you can save it manually.`,
+        [
+          { label: '← Try Again', fn: () => { hide('error-box'); publishToGitHub(html); }, style: 'btn-secondary' },
+        ]
+      );
+      return;
+    }
+
+    // Get SHA from result
+    const newSha = commitResult?.content?.sha || existingSha || '';
+
+    // Update registry
+    await updateRegistry(newSha, pagesUrl);
+
+    // Done!
+    completeStep('publish', 'Live on GitHub Pages');
+    setStatus('LIVE');
+    $('job-card').className = 'job-card live';
+
+    // Show preview
+    $('preview-url').href        = pagesUrl;
+    $('preview-url').textContent = pagesUrl;
+    show('preview-card');
+
+    // Voice
+    speak(`${toDisplayName(state.project)} is live. Opening now.`);
+
+    // Update topbar
+    if (state.elapsedInterval) clearInterval(state.elapsedInterval);
+
+    // Open GH Pages after short delay
+    setTimeout(() => {
+      try {
+        if (hasBridge) Bridge.openUrl(pagesUrl);
+        else window.open(pagesUrl, '_blank', 'noopener');
+      } catch (e) {}
+    }, 2000);
+  }
+
+  /* ─── Update registry ─── */
+  async function updateRegistry(sha, pagesUrl) {
+    let registry    = state.registry    || [];
+    let registrySha = state.registrySha || null;
+
+    // Re-fetch registry SHA to avoid conflicts
+    try {
+      const fresh = await ghGetDecoded(ghPath('registry.json'));
+      if (fresh) {
+        registry    = JSON.parse(fresh.content);
+        registrySha = fresh.sha;
+        if (!Array.isArray(registry)) registry = Object.values(registry);
+      }
+    } catch (e) {
+      console.warn('Could not re-fetch registry:', e);
+    }
+
+    const now = new Date().toISOString();
+    const existingIdx = registry.findIndex(r => r.key === state.project);
+
+    if (existingIdx >= 0) {
+      // Update
+      registry[existingIdx].updatedAt = now;
+      registry[existingIdx].pagesUrl  = pagesUrl;
+      registry[existingIdx].status    = 'live';
+      registry[existingIdx].platform  = state.platform;
+      registry[existingIdx].versions  = registry[existingIdx].versions || [];
+      registry[existingIdx].versions.unshift({ sha, at: now, note: state.verb });
+      // Keep max 20 versions
+      if (registry[existingIdx].versions.length > 20) {
+        registry[existingIdx].versions = registry[existingIdx].versions.slice(0, 20);
+      }
+    } else {
+      // Create
+      registry.push(makeRegistryRecord(state.verb, state.project, state.platform, state.prompt, sha, pagesUrl));
+    }
+
+    try {
+      await ghPut(
+        ghPath('registry.json'),
+        JSON.stringify(registry, null, 2),
+        registrySha,
+        `SayIt: update registry for ${state.project}`
+      );
+    } catch (e) {
+      console.warn('Could not update registry:', e);
+      // Non-fatal — don't block the happy path
+    }
+  }
+
+  /* ─── Boot ─── */
+  document.addEventListener('DOMContentLoaded', run);
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,1930 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SayIt Studio — Train a Platform</title>
+<style>
+/* ═══════════════════════════════════════════════
+   RESET & BASE
+═══════════════════════════════════════════════ */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg:        #020617;
+  --bg-card:   #0f172a;
+  --bg-inset:  #1e293b;
+  --border:    #334155;
+  --border-hi: #475569;
+  --green:     #16a34a;
+  --green-hi:  #22c55e;
+  --green-dim: #166534;
+  --text:      #f8fafc;
+  --text-muted:#94a3b8;
+  --text-dim:  #64748b;
+  --amber:     #f59e0b;
+  --red:       #ef4444;
+  --blue:      #3b82f6;
+  --radius:    12px;
+  --radius-sm: 8px;
+  --transition: 200ms cubic-bezier(0.4,0,0.2,1);
+}
+
+html, body {
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  font-size: 16px;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+body {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* ═══════════════════════════════════════════════
+   LAYOUT
+═══════════════════════════════════════════════ */
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: rgba(2,6,23,0.92);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-decoration: none;
+}
+
+.logo-mark {
+  width: 32px;
+  height: 32px;
+  flex-shrink: 0;
+}
+
+.logo-text {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.3px;
+}
+
+.logo-text span {
+  color: var(--green-hi);
+}
+
+.header-badge {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--green-hi);
+  background: rgba(22,163,74,0.15);
+  border: 1px solid rgba(22,163,74,0.3);
+  border-radius: 20px;
+  padding: 3px 10px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.main {
+  flex: 1;
+  padding: 24px 20px 48px;
+  max-width: 540px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* ═══════════════════════════════════════════════
+   PANELS / STEPS
+═══════════════════════════════════════════════ */
+.panel {
+  display: none;
+  animation: fadeSlideIn 280ms cubic-bezier(0.4,0,0.2,1) forwards;
+}
+.panel.active { display: block; }
+
+@keyframes fadeSlideIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ═══════════════════════════════════════════════
+   CARDS
+═══════════════════════════════════════════════ */
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+.card-inset {
+  background: var(--bg-inset);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  margin-top: 12px;
+}
+
+/* ═══════════════════════════════════════════════
+   TYPOGRAPHY
+═══════════════════════════════════════════════ */
+.panel-title {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.4px;
+  color: var(--text);
+  margin-bottom: 6px;
+  line-height: 1.3;
+}
+
+.panel-subtitle {
+  font-size: 14px;
+  color: var(--text-muted);
+  margin-bottom: 24px;
+  line-height: 1.5;
+}
+
+.section-label {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--text-dim);
+  margin-bottom: 12px;
+}
+
+/* ═══════════════════════════════════════════════
+   PLATFORM GRID
+═══════════════════════════════════════════════ */
+.platform-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.platform-btn {
+  position: relative;
+  background: var(--bg-card);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 12px 14px;
+  cursor: pointer;
+  text-align: center;
+  transition: border-color var(--transition), background var(--transition), transform var(--transition);
+  -webkit-tap-highlight-color: transparent;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  overflow: hidden;
+}
+
+.platform-btn:hover, .platform-btn:focus-visible {
+  border-color: var(--green);
+  background: rgba(22,163,74,0.06);
+  outline: none;
+}
+
+.platform-btn:active { transform: scale(0.97); }
+
+.platform-btn.trained {
+  border-color: var(--green-dim);
+  background: rgba(22,163,74,0.04);
+}
+
+.trained-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 18px;
+  height: 18px;
+  background: var(--green);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.trained-badge svg {
+  width: 10px;
+  height: 10px;
+  stroke: #fff;
+  stroke-width: 2.5;
+  fill: none;
+}
+
+.platform-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  font-weight: 800;
+  letter-spacing: -1px;
+  flex-shrink: 0;
+}
+
+.platform-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.platform-status {
+  font-size: 11px;
+  color: var(--text-dim);
+  line-height: 1.2;
+}
+
+/* Platform color themes */
+.icon-claude   { background: rgba(205,127,50,0.15); color: #cd7f32; }
+.icon-chatgpt  { background: rgba(16,163,127,0.15); color: #10a37f; }
+.icon-gemini   { background: rgba(66,133,244,0.15); color: #4285f4; }
+.icon-perplexity { background: rgba(32,178,170,0.15); color: #20b2aa; }
+.icon-codex    { background: rgba(100,116,139,0.15); color: #94a3b8; }
+
+/* ═══════════════════════════════════════════════
+   STEP INDICATORS
+═══════════════════════════════════════════════ */
+.step-indicators {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  margin-bottom: 28px;
+}
+
+.step-dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text-dim);
+  font-size: 12px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all var(--transition);
+}
+
+.step-dot.done {
+  background: var(--green);
+  border-color: var(--green);
+  color: #fff;
+}
+
+.step-dot.active {
+  background: var(--bg);
+  border-color: var(--green-hi);
+  color: var(--green-hi);
+  box-shadow: 0 0 0 3px rgba(34,197,94,0.15);
+}
+
+.step-line {
+  flex: 1;
+  height: 2px;
+  background: var(--border);
+  transition: background var(--transition);
+}
+
+.step-line.done { background: var(--green); }
+
+/* ═══════════════════════════════════════════════
+   INSTRUCTION STEPS
+═══════════════════════════════════════════════ */
+.instruction-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  margin: 20px 0;
+}
+
+.instruction-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+}
+
+.step-num {
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: rgba(22,163,74,0.15);
+  border: 1.5px solid rgba(22,163,74,0.4);
+  color: var(--green-hi);
+  font-size: 13px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.step-text {
+  font-size: 15px;
+  color: var(--text);
+  line-height: 1.5;
+}
+
+.step-text strong {
+  color: var(--green-hi);
+}
+
+/* ═══════════════════════════════════════════════
+   TEST PROMPT CALLOUT
+═══════════════════════════════════════════════ */
+.prompt-callout {
+  background: var(--bg-inset);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--green);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  padding: 12px 16px;
+  margin: 16px 0;
+  font-family: 'Courier New', Courier, monospace;
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.6;
+  position: relative;
+}
+
+.prompt-callout-label {
+  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--green);
+  margin-bottom: 6px;
+}
+
+/* ═══════════════════════════════════════════════
+   WATCHING PANEL
+═══════════════════════════════════════════════ */
+.pulse-ring {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: rgba(22,163,74,0.12);
+  border: 2px solid var(--green);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+  position: relative;
+}
+
+.pulse-ring::before, .pulse-ring::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  border: 2px solid var(--green);
+  animation: pulseRing 2s ease-out infinite;
+}
+
+.pulse-ring::before {
+  width: 80px;
+  height: 80px;
+  animation-delay: 0s;
+}
+
+.pulse-ring::after {
+  width: 100px;
+  height: 100px;
+  animation-delay: 0.5s;
+}
+
+@keyframes pulseRing {
+  0%   { opacity: 0.6; transform: scale(0.85); }
+  100% { opacity: 0; transform: scale(1.2); }
+}
+
+.pulse-icon {
+  font-size: 26px;
+}
+
+.event-log {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 16px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.event-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: var(--bg-inset);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 12px;
+  animation: fadeSlideIn 200ms ease forwards;
+}
+
+.event-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.event-dot.green  { background: var(--green-hi); }
+.event-dot.amber  { background: var(--amber); }
+.event-dot.blue   { background: var(--blue); }
+.event-dot.dim    { background: var(--text-dim); }
+
+.event-text {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+
+.event-time {
+  margin-left: auto;
+  font-size: 11px;
+  color: var(--text-dim);
+  flex-shrink: 0;
+}
+
+.watching-hint {
+  text-align: center;
+  font-size: 14px;
+  color: var(--text-muted);
+  margin-top: 20px;
+}
+
+/* ═══════════════════════════════════════════════
+   CAPTURED PANEL
+═══════════════════════════════════════════════ */
+.captured-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 20px 0;
+}
+
+.captured-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--bg-inset);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+}
+
+.check-circle {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--green);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.check-circle svg {
+  width: 14px;
+  height: 14px;
+  stroke: #fff;
+  stroke-width: 2.5;
+  fill: none;
+}
+
+.captured-label {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.captured-detail {
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+
+.confidence-bar-wrap {
+  background: var(--bg-inset);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  margin-top: 4px;
+}
+
+.confidence-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 13px;
+  margin-bottom: 8px;
+}
+
+.confidence-label span:first-child { color: var(--text-muted); }
+.confidence-label span:last-child  { color: var(--green-hi); font-weight: 700; }
+
+.confidence-bar-bg {
+  height: 6px;
+  background: var(--border);
+  border-radius: 3px;
+  overflow: hidden;
+}
+
+.confidence-bar-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--green-dim), var(--green-hi));
+  border-radius: 3px;
+  transition: width 800ms cubic-bezier(0.4,0,0.2,1);
+  width: 0%;
+}
+
+/* ═══════════════════════════════════════════════
+   SAVE PANEL
+═══════════════════════════════════════════════ */
+.profile-summary {
+  background: var(--bg-inset);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 16px;
+  margin: 16px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.profile-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 12px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.profile-row:last-child {
+  padding-bottom: 0;
+  border-bottom: none;
+}
+
+.profile-key {
+  font-size: 12px;
+  color: var(--text-dim);
+  font-weight: 600;
+  min-width: 110px;
+  flex-shrink: 0;
+}
+
+.profile-val {
+  font-size: 13px;
+  color: var(--text-muted);
+  text-align: right;
+}
+
+.profile-val.good  { color: var(--green-hi); font-weight: 600; }
+.profile-val.mono  { font-family: 'Courier New', monospace; font-size: 12px; }
+
+/* ═══════════════════════════════════════════════
+   SUCCESS PANEL
+═══════════════════════════════════════════════ */
+.success-icon {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, rgba(22,163,74,0.25), rgba(34,197,94,0.1));
+  border: 2px solid var(--green);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px;
+}
+
+.success-icon svg {
+  width: 36px;
+  height: 36px;
+  stroke: var(--green-hi);
+  stroke-width: 2;
+  fill: none;
+}
+
+/* ═══════════════════════════════════════════════
+   MANUAL MODE
+═══════════════════════════════════════════════ */
+.manual-banner {
+  background: rgba(245,158,11,0.1);
+  border: 1px solid rgba(245,158,11,0.3);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.manual-banner svg {
+  width: 18px;
+  height: 18px;
+  stroke: var(--amber);
+  stroke-width: 2;
+  fill: none;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.manual-banner-text {
+  font-size: 13px;
+  color: var(--amber);
+  line-height: 1.5;
+}
+
+.paste-area {
+  width: 100%;
+  min-height: 140px;
+  background: var(--bg-inset);
+  border: 1.5px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 14px;
+  color: var(--text);
+  font-size: 13px;
+  font-family: 'Courier New', Courier, monospace;
+  resize: vertical;
+  line-height: 1.6;
+  transition: border-color var(--transition);
+  outline: none;
+}
+
+.paste-area:focus { border-color: var(--green); }
+.paste-area::placeholder { color: var(--text-dim); }
+
+/* ═══════════════════════════════════════════════
+   ERROR STATES
+═══════════════════════════════════════════════ */
+.error-card {
+  background: rgba(239,68,68,0.08);
+  border: 1px solid rgba(239,68,68,0.3);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  margin: 12px 0;
+  display: none;
+}
+
+.error-card.visible { display: block; }
+
+.error-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--red);
+  margin-bottom: 4px;
+}
+
+.error-body {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.json-fallback {
+  margin-top: 12px;
+  background: var(--bg-inset);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 12px;
+  font-family: 'Courier New', monospace;
+  font-size: 11px;
+  color: var(--text-muted);
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 200px;
+  overflow-y: auto;
+  display: none;
+}
+
+.json-fallback.visible { display: block; }
+
+/* ═══════════════════════════════════════════════
+   RETRAIN NOTICE
+═══════════════════════════════════════════════ */
+.retrain-notice {
+  background: rgba(22,163,74,0.08);
+  border: 1px solid rgba(22,163,74,0.25);
+  border-radius: var(--radius-sm);
+  padding: 14px 16px;
+  margin-bottom: 16px;
+  display: none;
+}
+
+.retrain-notice.visible { display: block; }
+
+.retrain-notice-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--green-hi);
+  margin-bottom: 4px;
+}
+
+.retrain-notice-body {
+  font-size: 13px;
+  color: var(--text-muted);
+  margin-bottom: 10px;
+  line-height: 1.5;
+}
+
+/* ═══════════════════════════════════════════════
+   BUTTONS
+═══════════════════════════════════════════════ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: 600;
+  border: none;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  padding: 13px 22px;
+  transition: all var(--transition);
+  -webkit-tap-highlight-color: transparent;
+  white-space: nowrap;
+  outline: none;
+  text-decoration: none;
+}
+
+.btn:focus-visible { box-shadow: 0 0 0 3px rgba(34,197,94,0.35); }
+.btn:active { transform: scale(0.97); }
+.btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+
+.btn-primary {
+  background: var(--green);
+  color: #fff;
+  width: 100%;
+}
+.btn-primary:hover:not(:disabled) { background: var(--green-hi); }
+
+.btn-secondary {
+  background: var(--bg-inset);
+  color: var(--text-muted);
+  border: 1.5px solid var(--border);
+  width: 100%;
+}
+.btn-secondary:hover:not(:disabled) {
+  border-color: var(--border-hi);
+  color: var(--text);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-dim);
+  border: none;
+  padding: 8px 0;
+  font-size: 13px;
+  font-weight: 500;
+}
+.btn-ghost:hover { color: var(--text-muted); }
+
+.btn-sm {
+  font-size: 13px;
+  padding: 9px 16px;
+}
+
+.btn-icon svg {
+  width: 16px;
+  height: 16px;
+  stroke: currentColor;
+  fill: none;
+  stroke-width: 2;
+}
+
+.btn-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+/* ═══════════════════════════════════════════════
+   SPINNER
+═══════════════════════════════════════════════ */
+.spinner {
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: spin 0.7s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ═══════════════════════════════════════════════
+   MISC UTILITIES
+═══════════════════════════════════════════════ */
+.text-center { text-align: center; }
+.mt-4 { margin-top: 16px; }
+.mt-6 { margin-top: 24px; }
+.mb-2 { margin-bottom: 8px; }
+.dimmed { color: var(--text-dim); font-size: 13px; }
+
+.divider {
+  height: 1px;
+  background: var(--border);
+  margin: 20px 0;
+}
+
+.platform-chosen-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--bg-inset);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 10px 14px;
+  margin-bottom: 20px;
+}
+
+.platform-chosen-icon {
+  width: 36px;
+  height: 36px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  font-weight: 800;
+  flex-shrink: 0;
+}
+
+.platform-chosen-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.platform-chosen-url {
+  font-size: 11px;
+  color: var(--text-dim);
+}
+
+/* ═══════════════════════════════════════════════
+   TIMEOUT/RETRY DISPLAY
+═══════════════════════════════════════════════ */
+.timeout-counter {
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-dim);
+  margin-top: 12px;
+}
+
+#timeout-bar-wrap {
+  height: 3px;
+  background: var(--border);
+  border-radius: 2px;
+  margin-top: 20px;
+  overflow: hidden;
+  display: none;
+}
+
+#timeout-bar-fill {
+  height: 100%;
+  background: var(--green);
+  border-radius: 2px;
+  transition: width 1s linear;
+  width: 100%;
+}
+
+/* ═══════════════════════════════════════════════
+   SCROLLBAR
+═══════════════════════════════════════════════ */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+</style>
+</head>
+<body><script>(function(){var c={"SAYIT_GH_USER":"acmeproducts","SAYIT_GH_REPO":"dev","SAYIT_SUBDIR":"sayit-v3","SAYIT_DISPLAY_NAME":"SayIt","SAYIT_WAKE_WORD":"sayit"};Object.keys(c).forEach(function(k){try{localStorage.setItem(k,c[k]);}catch(e){}});try{localStorage.setItem("SAYIT_GH_PAT","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");}catch(e){}})();</script>
+
+<!-- ─── HEADER ─────────────────────────────────── -->
+<header class="app-header">
+  <a href="home.html" class="logo" aria-label="SayIt Studio home">
+    <svg class="logo-mark" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+      <rect width="32" height="32" rx="8" fill="#16a34a" fill-opacity="0.15"/>
+      <rect x="1" y="1" width="30" height="30" rx="7" stroke="#16a34a" stroke-opacity="0.4" stroke-width="1"/>
+      <path d="M8 10 Q16 6 24 10 Q16 14 8 10Z" fill="#22c55e" opacity="0.9"/>
+      <path d="M8 16 Q16 12 24 16 Q16 20 8 16Z" fill="#16a34a" opacity="0.7"/>
+      <circle cx="16" cy="22" r="3" fill="#22c55e" opacity="0.6"/>
+    </svg>
+    <span class="logo-text">SayIt <span>Studio</span></span>
+  </a>
+  <span class="header-badge">Training</span>
+</header>
+
+<!-- ─── MAIN ──────────────────────────────────── -->
+<main class="main">
+
+  <!-- ══════════════════════════════════════════
+       PANEL 1 — PLATFORM PICKER
+  ══════════════════════════════════════════ -->
+  <section id="panel-pick" class="panel active" aria-label="Pick a platform to train">
+
+    <h1 class="panel-title">Train a platform</h1>
+    <p class="panel-subtitle">Pick an AI platform to teach SayIt how to use it. This takes about 2&nbsp;minutes and you only need to do it once.</p>
+
+    <div class="retrain-notice" id="retrain-notice">
+      <div class="retrain-notice-title" id="retrain-notice-title"></div>
+      <div class="retrain-notice-body" id="retrain-notice-body"></div>
+      <button class="btn btn-secondary btn-sm" id="btn-retrain-anyway" onclick="onRetrainAnyway()">Retrain anyway</button>
+    </div>
+
+    <p class="section-label">Choose a platform</p>
+    <div class="platform-grid" id="platform-grid">
+      <!-- Rendered by JS -->
+    </div>
+
+    <p class="dimmed text-center">Tap a platform to begin. Already trained platforms show a green&nbsp;check.</p>
+
+    <div class="error-card" id="err-config">
+      <div class="error-title">GitHub not configured</div>
+      <div class="error-body">Profiles can't be loaded or saved yet. Go to Settings and enter your GitHub details before training.</div>
+    </div>
+
+  </section>
+
+  <!-- ══════════════════════════════════════════
+       PANEL 2 — INSTRUCTIONS
+  ══════════════════════════════════════════ -->
+  <section id="panel-instructions" class="panel" aria-label="What to do">
+
+    <div id="step-indicators-inst" class="step-indicators">
+      <div class="step-dot done">✓</div>
+      <div class="step-line done"></div>
+      <div class="step-dot active">2</div>
+      <div class="step-line"></div>
+      <div class="step-dot">3</div>
+      <div class="step-line"></div>
+      <div class="step-dot">4</div>
+    </div>
+
+    <div class="platform-chosen-bar" id="chosen-bar-inst"></div>
+
+    <h2 class="panel-title">What you'll do</h2>
+    <p class="panel-subtitle" id="inst-subtitle">SayIt will open the platform for you and watch what happens while you use it once.</p>
+
+    <div class="manual-banner" id="manual-banner" style="display:none">
+      <svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/></svg>
+      <div class="manual-banner-text">The SayIt app bridge isn't active. You'll do this manually — it just takes a few extra steps.</div>
+    </div>
+
+    <div id="inst-bridge-steps" class="instruction-list">
+      <div class="instruction-item">
+        <div class="step-num">1</div>
+        <div class="step-text">Tap <strong>Open Platform</strong> below. It'll open inside the SayIt browser.</div>
+      </div>
+      <div class="instruction-item">
+        <div class="step-num">2</div>
+        <div class="step-text">Type the test prompt shown and tap the send button — just like you normally would.</div>
+      </div>
+      <div class="instruction-item">
+        <div class="step-num">3</div>
+        <div class="step-text">Wait for the full response to appear. <strong>Don't close the browser</strong> until it's done.</div>
+      </div>
+      <div class="instruction-item">
+        <div class="step-num">4</div>
+        <div class="step-text">Come back here — SayIt will have everything it needs.</div>
+      </div>
+    </div>
+
+    <div id="inst-manual-steps" class="instruction-list" style="display:none">
+      <div class="instruction-item">
+        <div class="step-num">1</div>
+        <div class="step-text">Open <strong id="manual-url-link"></strong> in another tab and log in.</div>
+      </div>
+      <div class="instruction-item">
+        <div class="step-num">2</div>
+        <div class="step-text">Type the test prompt below exactly as shown and send it.</div>
+      </div>
+      <div class="instruction-item">
+        <div class="step-num">3</div>
+        <div class="step-text">When the full response appears, <strong>select all of it and copy it.</strong></div>
+      </div>
+      <div class="instruction-item">
+        <div class="step-num">4</div>
+        <div class="step-text">Come back here and paste it in the box on the next screen.</div>
+      </div>
+    </div>
+
+    <div class="prompt-callout">
+      <div class="prompt-callout-label">Test prompt — type this exactly</div>
+      Write Hello World in HTML. One file only. Show the complete code.
+    </div>
+
+    <div class="btn-stack">
+      <button class="btn btn-primary btn-icon" id="btn-open-platform" onclick="onOpenPlatform()">
+        <svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13.5 6H5.25A2.25 2.25 0 003 8.25v10.5A2.25 2.25 0 005.25 21h10.5A2.25 2.25 0 0018 18.75V10.5m-10.5 6L21 3m0 0h-5.25M21 3v5.25"/></svg>
+        <span id="btn-open-label">Open Platform</span>
+      </button>
+      <button class="btn btn-ghost" onclick="goToPanel('panel-pick')">← Back</button>
+    </div>
+
+  </section>
+
+  <!-- ══════════════════════════════════════════
+       PANEL 3 — WATCHING
+  ══════════════════════════════════════════ -->
+  <section id="panel-watching" class="panel" aria-label="Watching for activity">
+
+    <div class="step-indicators">
+      <div class="step-dot done">✓</div>
+      <div class="step-line done"></div>
+      <div class="step-dot done">✓</div>
+      <div class="step-line done"></div>
+      <div class="step-dot active">3</div>
+      <div class="step-line"></div>
+      <div class="step-dot">4</div>
+    </div>
+
+    <div class="platform-chosen-bar" id="chosen-bar-watch"></div>
+
+    <!-- Bridge mode -->
+    <div id="watch-bridge-mode">
+      <div class="pulse-ring" aria-hidden="true">
+        <span class="pulse-icon">👁</span>
+      </div>
+
+      <h2 class="panel-title text-center">We're watching</h2>
+      <p class="panel-subtitle text-center">Go to the platform browser now. Type the test prompt and send it. We'll track everything automatically.</p>
+
+      <div class="prompt-callout">
+        <div class="prompt-callout-label">Type this exactly</div>
+        Write Hello World in HTML. One file only. Show the complete code.
+      </div>
+
+      <div id="event-log" class="event-log" aria-live="polite"></div>
+
+      <div id="timeout-bar-wrap">
+        <div id="timeout-bar-fill"></div>
+      </div>
+      <p class="timeout-counter" id="timeout-counter" style="display:none"></p>
+
+      <div class="btn-stack">
+        <button class="btn btn-secondary btn-sm" id="btn-manual-fallback" onclick="switchToManual()" style="display:none">
+          Switch to manual mode
+        </button>
+        <button class="btn btn-ghost" onclick="goToPanel('panel-instructions')">← Back</button>
+      </div>
+    </div>
+
+    <!-- Manual (clipboard) mode -->
+    <div id="watch-manual-mode" style="display:none">
+      <h2 class="panel-title">Paste the response</h2>
+      <p class="panel-subtitle">Go to <strong id="manual-plat-link"></strong>, type the test prompt, wait for the full answer, then copy and paste it here.</p>
+
+      <div class="prompt-callout">
+        <div class="prompt-callout-label">Test prompt</div>
+        Write Hello World in HTML. One file only. Show the complete code.
+      </div>
+
+      <label for="paste-area" style="display:block; font-size:13px; color:var(--text-dim); margin-bottom:8px; font-weight:600;">Paste the full response here</label>
+      <textarea class="paste-area" id="paste-area" placeholder="Paste the AI's response here…" aria-label="Paste AI response"></textarea>
+
+      <div class="error-card" id="err-paste" style="display:none">
+        <div class="error-title">Response too short</div>
+        <div class="error-body">Make sure you copied the entire response, not just part of it.</div>
+      </div>
+
+      <div class="btn-stack">
+        <button class="btn btn-primary" onclick="onManualPasteSubmit()">Continue</button>
+        <button class="btn btn-ghost" onclick="goToPanel('panel-instructions')">← Back</button>
+      </div>
+    </div>
+
+  </section>
+
+  <!-- ══════════════════════════════════════════
+       PANEL 4 — CAPTURED
+  ══════════════════════════════════════════ -->
+  <section id="panel-captured" class="panel" aria-label="What we captured">
+
+    <div class="step-indicators">
+      <div class="step-dot done">✓</div>
+      <div class="step-line done"></div>
+      <div class="step-dot done">✓</div>
+      <div class="step-line done"></div>
+      <div class="step-dot done">✓</div>
+      <div class="step-line done"></div>
+      <div class="step-dot active">4</div>
+    </div>
+
+    <div class="platform-chosen-bar" id="chosen-bar-captured"></div>
+
+    <h2 class="panel-title">Training complete</h2>
+    <p class="panel-subtitle">Here's what SayIt learned about this platform. Everything looks good.</p>
+
+    <div class="captured-list" id="captured-list">
+      <!-- Rendered by JS -->
+    </div>
+
+    <div class="confidence-bar-wrap">
+      <div class="confidence-label">
+        <span>Confidence score</span>
+        <span id="confidence-pct">–</span>
+      </div>
+      <div class="confidence-bar-bg">
+        <div class="confidence-bar-fill" id="confidence-bar-fill"></div>
+      </div>
+    </div>
+
+    <div class="error-card" id="err-capture">
+      <div class="error-title">We didn't catch a response</div>
+      <div class="error-body">The platform didn't respond as expected. This can happen if the page didn't fully load or the session timed out.</div>
+    </div>
+
+    <div class="btn-stack">
+      <button class="btn btn-primary" onclick="goToPanel('panel-save')">Save training →</button>
+      <button class="btn btn-secondary" onclick="onRetryCapture()">Try again</button>
+    </div>
+
+  </section>
+
+  <!-- ══════════════════════════════════════════
+       PANEL 5 — SAVE TO GITHUB
+  ══════════════════════════════════════════ -->
+  <section id="panel-save" class="panel" aria-label="Save to GitHub">
+
+    <h2 class="panel-title">Save to GitHub?</h2>
+    <p class="panel-subtitle">This saves the training so every future automated run knows how to use <strong id="save-plat-name"></strong>.</p>
+
+    <div class="profile-summary" id="profile-summary">
+      <!-- Rendered by JS -->
+    </div>
+
+    <div class="error-card" id="err-save">
+      <div class="error-title" id="err-save-title">Couldn't save to GitHub</div>
+      <div class="error-body" id="err-save-body"></div>
+      <div class="json-fallback" id="json-fallback"></div>
+      <button class="btn btn-secondary btn-sm mt-4" id="btn-copy-json" onclick="copyFallbackJson()" style="display:none; margin-top:12px">Copy JSON</button>
+    </div>
+
+    <div class="btn-stack">
+      <button class="btn btn-primary btn-icon" id="btn-save" onclick="onSaveToGitHub()">
+        <svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+        Save to GitHub
+      </button>
+      <button class="btn btn-ghost" onclick="goToPanel('panel-captured')">← Back</button>
+    </div>
+
+  </section>
+
+  <!-- ══════════════════════════════════════════
+       PANEL — SUCCESS
+  ══════════════════════════════════════════ -->
+  <section id="panel-success" class="panel" aria-label="Success">
+
+    <div class="success-icon" aria-hidden="true">
+      <svg viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+    </div>
+
+    <h2 class="panel-title text-center" id="success-title"></h2>
+    <p class="panel-subtitle text-center" id="success-body"></p>
+
+    <div class="card" style="text-align:center; padding:18px 16px;">
+      <p style="font-size:13px; color:var(--text-dim); margin-bottom:4px;">Saved to</p>
+      <p style="font-size:12px; color:var(--text-muted); font-family:'Courier New',monospace; word-break:break-all;" id="success-gh-path"></p>
+    </div>
+
+    <div class="btn-stack">
+      <button class="btn btn-primary" onclick="onTrainAnother()">Train another platform</button>
+      <a href="home.html" class="btn btn-secondary">Back to home</a>
+    </div>
+
+  </section>
+
+</main>
+
+<!-- ─── JAVASCRIPT ─────────────────────────────── -->
+<script>
+'use strict';
+
+/* ══════════════════════════════════════════════════
+   CONFIG & STATE
+══════════════════════════════════════════════════ */
+const PLATFORMS = [
+  { id: 'claude',      name: 'Claude',      url: 'https://claude.ai/new',           icon: 'Cl', color: 'icon-claude'      },
+  { id: 'chatgpt',     name: 'ChatGPT',     url: 'https://chatgpt.com',             icon: 'GP', color: 'icon-chatgpt'     },
+  { id: 'gemini',      name: 'Gemini',      url: 'https://gemini.google.com',       icon: 'Ge', color: 'icon-gemini'      },
+  { id: 'perplexity',  name: 'Perplexity',  url: 'https://www.perplexity.ai',       icon: 'Px', color: 'icon-perplexity'  },
+  { id: 'codex',       name: 'Codex',       url: 'https://codex.openai.com',        icon: 'Cx', color: 'icon-codex'       },
+];
+
+const TEST_PROMPT = 'Write Hello World in HTML. One file only. Show the complete code.';
+
+const state = {
+  platform: null,       // selected platform object
+  hasBridge: false,
+  captureMode: 'clipboard_manual',
+  events: [],           // bridge events received
+  profile: null,        // built profile
+  profiles: {},         // all profiles from GH
+  profilesSha: null,    // for GH update
+  pastedResponse: '',
+  ghUser: '',
+  ghRepo: '',
+  ghPat: '',
+  ghSubdir: '',
+  watchTimeout: null,
+  watchTimer: null,
+};
+
+/* ══════════════════════════════════════════════════
+   BRIDGE DETECTION
+══════════════════════════════════════════════════ */
+function detectBridge() {
+  try {
+    return !!(window.SayItBridge && typeof window.SayItBridge.openUrl === 'function');
+  } catch(e) { return false; }
+}
+
+/* ══════════════════════════════════════════════════
+   INIT
+══════════════════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded', async () => {
+  state.hasBridge = detectBridge();
+  loadConfig();
+  renderPlatformGrid();
+  await loadProfilesFromGH();
+  updateGridTrainedStatus();
+  checkConfigWarning();
+
+  // Bridge event listener
+  window.receiveEvent = receiveEvent;
+});
+
+function loadConfig() {
+  state.ghUser   = localStorage.getItem('SAYIT_GH_USER')  || '';
+  state.ghRepo   = localStorage.getItem('SAYIT_GH_REPO')  || '';
+  state.ghPat    = localStorage.getItem('SAYIT_GH_PAT')   || '';
+  state.ghSubdir = localStorage.getItem('SAYIT_SUBDIR')   || '';
+}
+
+function checkConfigWarning() {
+  const missing = !state.ghUser || !state.ghRepo || !state.ghPat;
+  document.getElementById('err-config').classList.toggle('visible', missing);
+}
+
+/* ══════════════════════════════════════════════════
+   PLATFORM GRID
+══════════════════════════════════════════════════ */
+function renderPlatformGrid() {
+  const grid = document.getElementById('platform-grid');
+  grid.innerHTML = PLATFORMS.map(p => `
+    <button class="platform-btn" id="plat-btn-${p.id}" onclick="onPickPlatform('${p.id}')" aria-label="Train ${p.name}">
+      <div class="platform-icon ${p.color}">${p.icon}</div>
+      <div class="platform-name">${p.name}</div>
+      <div class="platform-status" id="plat-status-${p.id}">Tap to train</div>
+    </button>
+  `).join('');
+}
+
+function updateGridTrainedStatus() {
+  PLATFORMS.forEach(p => {
+    const prof = state.profiles[p.id];
+    const btn  = document.getElementById(`plat-btn-${p.id}`);
+    const stat = document.getElementById(`plat-status-${p.id}`);
+    if (!btn || !stat) return;
+    if (prof) {
+      btn.classList.add('trained');
+      const d = new Date(prof.learnedAt);
+      stat.textContent = 'Trained ' + d.toLocaleDateString();
+      // Add check badge
+      if (!btn.querySelector('.trained-badge')) {
+        const badge = document.createElement('div');
+        badge.className = 'trained-badge';
+        badge.innerHTML = `<svg viewBox="0 0 12 12"><path stroke-linecap="round" stroke-linejoin="round" d="M2 6l3 3 5-5"/></svg>`;
+        btn.prepend(badge);
+      }
+    } else {
+      btn.classList.remove('trained');
+      stat.textContent = 'Tap to train';
+      const b = btn.querySelector('.trained-badge');
+      if (b) b.remove();
+    }
+  });
+}
+
+/* ══════════════════════════════════════════════════
+   PLATFORM PICK
+══════════════════════════════════════════════════ */
+function onPickPlatform(id) {
+  state.platform = PLATFORMS.find(p => p.id === id);
+  const existing = state.profiles[id];
+
+  if (existing) {
+    // Show retrain notice
+    const notice  = document.getElementById('retrain-notice');
+    const ntitle  = document.getElementById('retrain-notice-title');
+    const nbody   = document.getElementById('retrain-notice-body');
+    const d = new Date(existing.learnedAt);
+    ntitle.textContent = `${state.platform.name} is already trained`;
+    nbody.textContent  = `Last trained on ${d.toLocaleDateString()}. Do you want to retrain? Your current profile will be replaced.`;
+    notice.classList.add('visible');
+    notice.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    return;
+  }
+
+  proceedToInstructions();
+}
+
+function onRetrainAnyway() {
+  document.getElementById('retrain-notice').classList.remove('visible');
+  proceedToInstructions();
+}
+
+function proceedToInstructions() {
+  const p = state.platform;
+  state.hasBridge = detectBridge();
+  state.captureMode = state.hasBridge ? 'bridge_observed' : 'clipboard_manual';
+  state.events = [];
+
+  // Populate chosen bars
+  renderChosenBar('chosen-bar-inst');
+  renderChosenBar('chosen-bar-watch');
+  renderChosenBar('chosen-bar-captured');
+
+  // Manual vs bridge instructions
+  const manualBanner = document.getElementById('manual-banner');
+  const bridgeSteps  = document.getElementById('inst-bridge-steps');
+  const manualSteps  = document.getElementById('inst-manual-steps');
+  const openLabel    = document.getElementById('btn-open-label');
+
+  if (state.hasBridge) {
+    manualBanner.style.display = 'none';
+    bridgeSteps.style.display  = 'flex';
+    manualSteps.style.display  = 'none';
+    openLabel.textContent      = `Open ${p.name}`;
+  } else {
+    manualBanner.style.display = 'flex';
+    bridgeSteps.style.display  = 'none';
+    manualSteps.style.display  = 'flex';
+    openLabel.textContent      = `I'm ready — Continue`;
+    document.getElementById('manual-url-link').textContent = p.url;
+  }
+
+  goToPanel('panel-instructions');
+}
+
+function renderChosenBar(containerId) {
+  const p = state.platform;
+  const el = document.getElementById(containerId);
+  if (!el || !p) return;
+  el.innerHTML = `
+    <div class="platform-chosen-icon ${p.color}">${p.icon}</div>
+    <div>
+      <div class="platform-chosen-name">${p.name}</div>
+      <div class="platform-chosen-url">${p.url}</div>
+    </div>
+  `;
+}
+
+/* ══════════════════════════════════════════════════
+   INSTRUCTIONS → WATCHING
+══════════════════════════════════════════════════ */
+function onOpenPlatform() {
+  const p = state.platform;
+  if (state.hasBridge) {
+    try {
+      window.SayItBridge.openUrl(p.url);
+      window.SayItBridge.focusRuntime(p.id);
+    } catch(e) {
+      console.warn('Bridge openUrl failed:', e);
+    }
+    goToPanel('panel-watching');
+    startBridgeWatch();
+  } else {
+    // No bridge — go to watching panel, manual mode
+    document.getElementById('watch-bridge-mode').style.display = 'none';
+    document.getElementById('watch-manual-mode').style.display = 'block';
+    document.getElementById('manual-plat-link').textContent = p.url;
+    goToPanel('panel-watching');
+  }
+}
+
+/* ══════════════════════════════════════════════════
+   BRIDGE WATCHING
+══════════════════════════════════════════════════ */
+const EVENT_DESCRIPTIONS = {
+  input_focus:        { text: 'Found the text input — ready for your prompt',  color: 'green' },
+  submit_action:      { text: 'Detected you clicked Send',                      color: 'green' },
+  content_streaming:  { text: 'Response is coming in…',                         color: 'blue'  },
+  content_complete:   { text: 'Response complete',                               color: 'green' },
+  code_block_detected:{ text: 'Found code in the response',                      color: 'amber' },
+};
+
+function startBridgeWatch() {
+  state.events = [];
+  const log = document.getElementById('event-log');
+  log.innerHTML = '';
+
+  const TIMEOUT_MS = 3 * 60 * 1000; // 3 minutes
+  let elapsed = 0;
+
+  // Show timeout bar after 10s
+  setTimeout(() => {
+    document.getElementById('timeout-bar-wrap').style.display = 'block';
+    document.getElementById('timeout-counter').style.display = 'block';
+  }, 10000);
+
+  state.watchTimer = setInterval(() => {
+    elapsed += 1000;
+    const remaining = Math.max(0, Math.round((TIMEOUT_MS - elapsed) / 1000));
+    const fill = document.getElementById('timeout-bar-fill');
+    fill.style.width = (100 - (elapsed / TIMEOUT_MS * 100)) + '%';
+    document.getElementById('timeout-counter').textContent = `Waiting… ${remaining}s remaining`;
+
+    if (elapsed >= TIMEOUT_MS) {
+      clearInterval(state.watchTimer);
+      onWatchTimeout();
+    }
+  }, 1000);
+
+  // Poll appState every 2s as a fallback
+  state.pollInterval = setInterval(pollAppState, 2000);
+}
+
+function pollAppState() {
+  if (!window.SayItBridge) return;
+  try {
+    const raw = window.SayItBridge.appState();
+    if (!raw) return;
+    const appState = (typeof raw === 'string') ? JSON.parse(raw) : raw;
+    if (appState && appState.lastEvent) {
+      receiveEvent(appState.lastEvent);
+    }
+    // If content_complete is in state
+    if (appState && appState.contentComplete) {
+      receiveEvent({ type: 'content_complete', data: { text: appState.responseText || '' } });
+    }
+  } catch(e) { /* silent */ }
+}
+
+function receiveEvent(evt) {
+  // Deduplicate
+  if (state.events.some(e => e.type === evt.type && evt.type !== 'content_streaming')) return;
+
+  state.events.push(evt);
+  renderEventItem(evt);
+
+  // Auto-advance after content_complete
+  if (evt.type === 'content_complete') {
+    clearWatchTimers();
+    setTimeout(() => buildBridgeProfile(evt), 800);
+  }
+
+  // Show manual fallback after input_focus but no completion in 90s
+  if (evt.type === 'submit_action') {
+    setTimeout(() => {
+      if (!state.events.some(e => e.type === 'content_complete')) {
+        document.getElementById('btn-manual-fallback').style.display = 'flex';
+      }
+    }, 90000);
+  }
+}
+
+function renderEventItem(evt) {
+  const info = EVENT_DESCRIPTIONS[evt.type] || { text: evt.type, color: 'dim' };
+  const log = document.getElementById('event-log');
+  const now = new Date();
+  const time = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const item = document.createElement('div');
+  item.className = 'event-item';
+  item.innerHTML = `
+    <div class="event-dot ${info.color}"></div>
+    <div class="event-text">${escHtml(info.text)}</div>
+    <div class="event-time">${time}</div>
+  `;
+  log.appendChild(item);
+  item.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function onWatchTimeout() {
+  clearWatchTimers();
+  // Show switch to manual
+  document.getElementById('btn-manual-fallback').style.display = 'flex';
+  appendEventMsg('Timed out waiting. Switch to manual mode below.', 'dim');
+}
+
+function clearWatchTimers() {
+  if (state.watchTimer) { clearInterval(state.watchTimer); state.watchTimer = null; }
+  if (state.pollInterval) { clearInterval(state.pollInterval); state.pollInterval = null; }
+}
+
+function appendEventMsg(text, color) {
+  const log = document.getElementById('event-log');
+  const item = document.createElement('div');
+  item.className = 'event-item';
+  item.innerHTML = `<div class="event-dot ${color}"></div><div class="event-text">${escHtml(text)}</div>`;
+  log.appendChild(item);
+}
+
+function switchToManual() {
+  clearWatchTimers();
+  document.getElementById('watch-bridge-mode').style.display = 'none';
+  document.getElementById('watch-manual-mode').style.display = 'block';
+  document.getElementById('manual-plat-link').textContent = state.platform.url;
+  state.captureMode = 'clipboard_manual';
+}
+
+/* ══════════════════════════════════════════════════
+   BRIDGE PROFILE BUILD
+══════════════════════════════════════════════════ */
+function buildBridgeProfile(completeEvt) {
+  const p = state.platform;
+  const hasInput  = state.events.some(e => e.type === 'input_focus');
+  const hasSubmit = state.events.some(e => e.type === 'submit_action');
+  const hasOutput = state.events.some(e => e.type === 'content_complete');
+  const hasCode   = state.events.some(e => e.type === 'code_block_detected');
+
+  // Derive hints from events
+  const inputEvt  = state.events.find(e => e.type === 'input_focus');
+  const submitEvt = state.events.find(e => e.type === 'submit_action');
+  const outputEvt = state.events.find(e => e.type === 'content_complete');
+
+  const responseText = (outputEvt && outputEvt.data && outputEvt.data.text)
+    ? String(outputEvt.data.text) : '';
+
+  // Confidence calc
+  let confidence = 0;
+  if (hasInput)  confidence += 0.25;
+  if (hasSubmit) confidence += 0.25;
+  if (hasOutput) confidence += 0.35;
+  if (hasCode)   confidence += 0.15;
+  confidence = Math.min(1, confidence);
+
+  state.profile = {
+    platform:           p.id,
+    baseUrl:            p.url,
+    displayName:        p.name,
+    captureMode:        'bridge_observed',
+    learnedAt:          new Date().toISOString(),
+    lastVerified:       new Date().toISOString(),
+    version:            1,
+    inputHint:          (inputEvt && inputEvt.data && inputEvt.data.selector) || 'textarea or contenteditable near top',
+    submitHint:         (submitEvt && submitEvt.data && submitEvt.data.selector) || 'button after input area',
+    completionSignal:   'no new DOM mutations for 2s',
+    outputHint:         (outputEvt && outputEvt.data && outputEvt.data.region) || 'largest text block after submit',
+    extractionRule:     hasCode ? 'prefer fenced code block, fallback full response' : 'full response text',
+    testPromptUsed:     TEST_PROMPT,
+    testResponseSample: responseText.substring(0, 200),
+    confidence:         Math.round(confidence * 100) / 100,
+    notes:              buildNotes(hasInput, hasSubmit, hasOutput, hasCode),
+  };
+
+  renderCapturedPanel(hasInput, hasSubmit, hasOutput, hasCode, confidence);
+  goToPanel('panel-captured');
+}
+
+function buildNotes(hasInput, hasSubmit, hasOutput, hasCode) {
+  const parts = [];
+  if (hasInput)  parts.push('input field located');
+  if (hasSubmit) parts.push('submit action detected');
+  if (hasOutput) parts.push('response captured');
+  if (hasCode)   parts.push('code block present');
+  if (!hasOutput) parts.push('response not fully captured — manual verification recommended');
+  return parts.join('; ');
+}
+
+/* ══════════════════════════════════════════════════
+   MANUAL PASTE SUBMIT
+══════════════════════════════════════════════════ */
+function onManualPasteSubmit() {
+  const text = document.getElementById('paste-area').value.trim();
+  const errEl = document.getElementById('err-paste');
+
+  if (text.length < 30) {
+    errEl.style.display = 'block';
+    return;
+  }
+  errEl.style.display = 'none';
+
+  state.pastedResponse = text;
+  const p = state.platform;
+
+  state.profile = {
+    platform:           p.id,
+    baseUrl:            p.url,
+    displayName:        p.name,
+    captureMode:        'clipboard_manual',
+    learnedAt:          new Date().toISOString(),
+    lastVerified:       new Date().toISOString(),
+    version:            1,
+    inputHint:          'manual — user typed directly',
+    submitHint:         'manual — user clicked send',
+    completionSignal:   'manual — user waited for response',
+    outputHint:         'clipboard paste',
+    extractionRule:     'clipboard paste',
+    testPromptUsed:     TEST_PROMPT,
+    testResponseSample: text.substring(0, 200),
+    confidence:         0.65,
+    notes:              'Trained in manual clipboard mode. No bridge available.',
+  };
+
+  renderCapturedPanel(true, true, true, text.toLowerCase().includes('```'), 0.65);
+  goToPanel('panel-captured');
+}
+
+/* ══════════════════════════════════════════════════
+   CAPTURED PANEL RENDER
+══════════════════════════════════════════════════ */
+function renderCapturedPanel(hasInput, hasSubmit, hasOutput, hasCode, confidence) {
+  const list = document.getElementById('captured-list');
+  const items = [
+    { ok: hasInput,  label: 'Found the input field',         detail: state.profile.inputHint     },
+    { ok: hasSubmit, label: 'Detected the send action',      detail: state.profile.submitHint    },
+    { ok: hasOutput, label: 'Captured the response',         detail: state.profile.outputHint    },
+    { ok: hasCode,   label: 'Found code in the response',    detail: 'HTML code block detected'  },
+  ];
+
+  list.innerHTML = items.map(item => `
+    <div class="captured-item">
+      <div class="check-circle" style="${item.ok ? '' : 'background:var(--bg-inset);border:1.5px solid var(--border)'}">
+        <svg viewBox="0 0 24 24" style="${item.ok ? '' : 'stroke:var(--text-dim)'}">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4.5 12.75l6 6 9-13.5"/>
+        </svg>
+      </div>
+      <div>
+        <div class="captured-label" style="${item.ok ? '' : 'color:var(--text-dim)'}">${item.label}</div>
+        <div class="captured-detail">${escHtml(item.detail || '')}</div>
+      </div>
+    </div>
+  `).join('');
+
+  // Confidence bar
+  const pct = Math.round(confidence * 100);
+  document.getElementById('confidence-pct').textContent = pct + '%';
+  setTimeout(() => {
+    document.getElementById('confidence-bar-fill').style.width = pct + '%';
+  }, 100);
+
+  // Error if no output
+  document.getElementById('err-capture').classList.toggle('visible', !hasOutput);
+
+  // Save panel name
+  document.getElementById('save-plat-name').textContent = state.platform.name;
+
+  // Profile summary
+  renderProfileSummary();
+}
+
+function renderProfileSummary() {
+  const prof = state.profile;
+  const rows = [
+    { k: 'Platform',      v: prof.displayName,                          cls: '' },
+    { k: 'Method',        v: prof.captureMode === 'bridge_observed' ? 'Auto-observed' : 'Manual (clipboard)', cls: '' },
+    { k: 'Confidence',    v: Math.round(prof.confidence * 100) + '%',   cls: 'good' },
+    { k: 'Capture mode',  v: prof.captureMode,                          cls: 'mono' },
+    { k: 'Input method',  v: prof.inputHint,                            cls: '' },
+    { k: 'Trained',       v: new Date(prof.learnedAt).toLocaleString(), cls: '' },
+    { k: 'Sample',        v: prof.testResponseSample ? '"' + prof.testResponseSample.substring(0, 60) + '…"' : 'None', cls: '' },
+  ];
+
+  document.getElementById('profile-summary').innerHTML = rows.map(r => `
+    <div class="profile-row">
+      <div class="profile-key">${r.k}</div>
+      <div class="profile-val ${r.cls}">${escHtml(String(r.v))}</div>
+    </div>
+  `).join('');
+}
+
+/* ══════════════════════════════════════════════════
+   RETRY CAPTURE
+══════════════════════════════════════════════════ */
+function onRetryCapture() {
+  state.events = [];
+  document.getElementById('event-log').innerHTML = '';
+  document.getElementById('paste-area').value = '';
+  goToPanel('panel-instructions');
+}
+
+/* ══════════════════════════════════════════════════
+   GITHUB — LOAD PROFILES
+══════════════════════════════════════════════════ */
+async function loadProfilesFromGH() {
+  loadConfig();
+  if (!state.ghUser || !state.ghRepo || !state.ghPat) return;
+
+  const path    = buildGHPath('profiles.json');
+  const url     = `https://api.github.com/repos/${state.ghUser}/${state.ghRepo}/contents/${path}`;
+
+  try {
+    const res = await fetch(url, {
+      headers: {
+        'Authorization': `token ${state.ghPat}`,
+        'Accept': 'application/vnd.github.v3+json',
+      }
+    });
+
+    if (res.status === 404) {
+      state.profiles = {};
+      state.profilesSha = null;
+      return;
+    }
+
+    if (!res.ok) return;
+
+    const data    = await res.json();
+    state.profilesSha = data.sha;
+    const decoded = JSON.parse(atob(data.content.replace(/\n/g, '')));
+    state.profiles = decoded;
+  } catch(e) {
+    console.warn('Could not load profiles:', e);
+    state.profiles = {};
+  }
+}
+
+/* ══════════════════════════════════════════════════
+   GITHUB — SAVE PROFILES
+══════════════════════════════════════════════════ */
+async function onSaveToGitHub() {
+  const btn = document.getElementById('btn-save');
+  btn.disabled = true;
+  btn.innerHTML = '<div class="spinner"></div> Saving…';
+
+  // Clear previous error
+  document.getElementById('err-save').classList.remove('visible');
+  document.getElementById('json-fallback').classList.remove('visible');
+  document.getElementById('btn-copy-json').style.display = 'none';
+
+  loadConfig();
+
+  if (!state.ghUser || !state.ghRepo || !state.ghPat) {
+    showSaveError('GitHub not configured', 'Go to Settings and enter your GitHub user, repo, and personal access token.');
+    resetSaveBtn();
+    return;
+  }
+
+  // Merge profile
+  const merged = Object.assign({}, state.profiles);
+  merged[state.platform.id] = state.profile;
+
+  const content  = btoa(unescape(encodeURIComponent(JSON.stringify(merged, null, 2))));
+  const path     = buildGHPath('profiles.json');
+  const apiUrl   = `https://api.github.com/repos/${state.ghUser}/${state.ghRepo}/contents/${path}`;
+
+  const body = {
+    message: `chore: update ${state.platform.id} training profile`,
+    content: content,
+  };
+  if (state.profilesSha) body.sha = state.profilesSha;
+
+  try {
+    const res = await fetch(apiUrl, {
+      method:  'PUT',
+      headers: {
+        'Authorization': `token ${state.ghPat}`,
+        'Accept':        'application/vnd.github.v3+json',
+        'Content-Type':  'application/json',
+      },
+      body: JSON.stringify(body),
+    });
+
+    if (!res.ok) {
+      const errData = await res.json().catch(() => ({}));
+      const msg = errData.message || `HTTP ${res.status}`;
+      showSaveError(`GitHub returned an error: ${msg}`, 'Check your token has write permission to this repo.', merged);
+      resetSaveBtn();
+      return;
+    }
+
+    const saved = await res.json();
+    state.profilesSha = saved.content ? saved.content.sha : state.profilesSha;
+    state.profiles = merged;
+
+    showSuccessPanel(path);
+
+  } catch(e) {
+    showSaveError('Network error', 'Could not reach GitHub. Check your internet connection.', merged);
+    resetSaveBtn();
+  }
+}
+
+function buildGHPath(filename) {
+  const sub = state.ghSubdir ? state.ghSubdir.replace(/\/$/, '') + '/' : '';
+  return sub + filename;
+}
+
+function showSaveError(title, body, jsonData) {
+  document.getElementById('err-save-title').textContent = title;
+  document.getElementById('err-save-body').textContent  = body;
+  document.getElementById('err-save').classList.add('visible');
+
+  if (jsonData) {
+    const jf = document.getElementById('json-fallback');
+    const prettyJson = JSON.stringify(jsonData, null, 2);
+    jf.textContent = prettyJson;
+    jf.classList.add('visible');
+    document.getElementById('btn-copy-json').style.display = 'block';
+    // Store for copy
+    document.getElementById('btn-copy-json')._json = prettyJson;
+  }
+}
+
+function copyFallbackJson() {
+  const btn = document.getElementById('btn-copy-json');
+  navigator.clipboard.writeText(btn._json || '').then(() => {
+    const orig = btn.textContent;
+    btn.textContent = 'Copied!';
+    setTimeout(() => { btn.textContent = orig; }, 2000);
+  }).catch(() => {
+    // Fallback for non-clipboard environments
+    const ta = document.createElement('textarea');
+    ta.value = btn._json || '';
+    document.body.appendChild(ta);
+    ta.select();
+    document.execCommand('copy');
+    document.body.removeChild(ta);
+    btn.textContent = 'Copied!';
+    setTimeout(() => { btn.textContent = 'Copy JSON'; }, 2000);
+  });
+}
+
+function resetSaveBtn() {
+  const btn = document.getElementById('btn-save');
+  btn.disabled = false;
+  btn.innerHTML = `
+    <svg class="btn-icon" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+    Save to GitHub
+  `;
+}
+
+/* ══════════════════════════════════════════════════
+   SUCCESS
+══════════════════════════════════════════════════ */
+function showSuccessPanel(ghPath) {
+  const p = state.platform;
+  document.getElementById('success-title').textContent =
+    `${p.name} is trained and ready`;
+  document.getElementById('success-body').textContent =
+    `You can now use ${p.name} in your SayIt Studio projects. All future automated runs will use this profile.`;
+  document.getElementById('success-gh-path').textContent =
+    `${state.ghUser}/${state.ghRepo}/${ghPath}`;
+
+  // Update grid
+  updateGridTrainedStatus();
+
+  goToPanel('panel-success');
+}
+
+function onTrainAnother() {
+  state.platform = null;
+  state.profile  = null;
+  state.events   = [];
+  state.pastedResponse = '';
+  document.getElementById('retrain-notice').classList.remove('visible');
+  goToPanel('panel-pick');
+}
+
+/* ══════════════════════════════════════════════════
+   PANEL NAVIGATION
+══════════════════════════════════════════════════ */
+function goToPanel(id) {
+  document.querySelectorAll('.panel').forEach(el => el.classList.remove('active'));
+  const target = document.getElementById(id);
+  if (target) {
+    target.classList.add('active');
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+}
+
+/* ══════════════════════════════════════════════════
+   UTIL
+══════════════════════════════════════════════════ */
+function escHtml(str) {
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+</script>
+</body>
+</html>

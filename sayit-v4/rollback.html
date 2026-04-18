@@ -1,0 +1,905 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rollback · SayIt Studio</title>
+<style>
+  /* ── Reset & Base ─────────────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg:        #020617;
+    --bg-card:   #0f172a;
+    --bg-modal:  #1e293b;
+    --border:    #1e293b;
+    --border-hi: #334155;
+    --accent:    #16a34a;
+    --accent-hi: #22c55e;
+    --accent-dim:#14532d;
+    --text:      #f8fafc;
+    --text-muted:#94a3b8;
+    --text-dim:  #475569;
+    --danger:    #dc2626;
+    --warning:   #d97706;
+    --sha-bg:    #1e293b;
+    --current-bg:#14532d;
+    --current-text:#86efac;
+    --radius:    10px;
+    --radius-sm: 6px;
+    --shadow:    0 4px 24px rgba(0,0,0,0.5);
+  }
+
+  html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    font-size: 16px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ── Layout ───────────────────────────────────────────────────── */
+  .app { min-height: 100vh; display: flex; flex-direction: column; }
+
+  header {
+    background: var(--bg-card);
+    border-bottom: 1px solid var(--border);
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+  }
+
+  header .back-btn {
+    background: none;
+    border: 1px solid var(--border-hi);
+    color: var(--text-muted);
+    border-radius: var(--radius-sm);
+    padding: 6px 10px;
+    cursor: pointer;
+    font-size: 14px;
+    transition: color 0.15s, border-color 0.15s;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  header .back-btn:hover { color: var(--text); border-color: var(--border-hi); }
+
+  header h1 {
+    font-size: 17px;
+    font-weight: 600;
+    color: var(--text);
+    flex: 1;
+  }
+  header h1 span { color: var(--accent-hi); }
+
+  .repo-badge {
+    font-size: 11px;
+    color: var(--text-dim);
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 20px;
+    padding: 3px 10px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 160px;
+  }
+
+  main {
+    flex: 1;
+    padding: 20px 16px 40px;
+    max-width: 680px;
+    margin: 0 auto;
+    width: 100%;
+  }
+
+  /* ── Status bar ───────────────────────────────────────────────── */
+  #status-bar {
+    display: none;
+    align-items: center;
+    gap: 10px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 14px;
+    margin-bottom: 18px;
+    font-size: 14px;
+    color: var(--text-muted);
+  }
+  #status-bar.visible { display: flex; }
+  #status-bar.error { border-color: var(--danger); color: #fca5a5; background: rgba(220,38,38,0.08); }
+  #status-bar.success { border-color: var(--accent); color: var(--current-text); background: rgba(22,163,74,0.08); }
+
+  .spinner {
+    width: 18px; height: 18px;
+    border: 2px solid var(--border-hi);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    flex-shrink: 0;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Section heading ──────────────────────────────────────────── */
+  .section-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 14px;
+  }
+  .section-head h2 {
+    font-size: 14px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--text-dim);
+  }
+  .count-badge {
+    font-size: 12px;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    border-radius: 20px;
+    padding: 2px 8px;
+  }
+
+  /* ── Timeline ─────────────────────────────────────────────────── */
+  #timeline {
+    display: flex;
+    flex-direction: column;
+    gap: 0;
+    position: relative;
+  }
+
+  /* Vertical line */
+  #timeline::before {
+    content: '';
+    position: absolute;
+    left: 18px;
+    top: 24px;
+    bottom: 24px;
+    width: 2px;
+    background: linear-gradient(to bottom, var(--accent-dim), var(--border));
+    border-radius: 2px;
+    z-index: 0;
+  }
+
+  /* ── Version Card ─────────────────────────────────────────────── */
+  .version-card {
+    display: flex;
+    gap: 14px;
+    position: relative;
+    padding-bottom: 0;
+  }
+  .version-card + .version-card { margin-top: 14px; }
+
+  .timeline-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: var(--bg-card);
+    border: 2px solid var(--border-hi);
+    flex-shrink: 0;
+    margin-top: 18px;
+    z-index: 1;
+    transition: border-color 0.2s;
+  }
+  .version-card.current .timeline-dot {
+    background: var(--accent);
+    border-color: var(--accent-hi);
+    box-shadow: 0 0 0 3px rgba(22,163,74,0.2);
+  }
+
+  .card-body {
+    flex: 1;
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    transition: border-color 0.2s;
+  }
+  .version-card:hover .card-body { border-color: var(--border-hi); }
+  .version-card.current .card-body { border-color: var(--accent-dim); }
+
+  .card-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+    margin-bottom: 8px;
+  }
+
+  .card-date {
+    font-size: 12px;
+    color: var(--text-dim);
+    white-space: nowrap;
+  }
+
+  .badges {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .badge-current {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    background: var(--current-bg);
+    color: var(--current-text);
+    border-radius: 4px;
+    padding: 2px 7px;
+    border: 1px solid var(--accent-dim);
+  }
+
+  .badge-rollback {
+    font-size: 10px;
+    font-weight: 600;
+    background: rgba(217,119,6,0.15);
+    color: #fbbf24;
+    border-radius: 4px;
+    padding: 2px 7px;
+    border: 1px solid rgba(217,119,6,0.3);
+  }
+
+  .sha-badge {
+    font-size: 11px;
+    font-family: 'SF Mono', 'Fira Code', 'Cascadia Code', monospace;
+    background: var(--sha-bg);
+    color: var(--text-muted);
+    border-radius: 4px;
+    padding: 2px 7px;
+    border: 1px solid var(--border-hi);
+    letter-spacing: 0.04em;
+  }
+
+  .card-message {
+    font-size: 14px;
+    color: var(--text);
+    font-weight: 500;
+    line-height: 1.4;
+    margin-bottom: 12px;
+    word-break: break-word;
+  }
+
+  .card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+  }
+
+  .card-author {
+    font-size: 12px;
+    color: var(--text-dim);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .restore-btn {
+    background: none;
+    border: 1px solid var(--accent-dim);
+    color: var(--accent-hi);
+    border-radius: var(--radius-sm);
+    padding: 6px 14px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, transform 0.1s;
+    white-space: nowrap;
+  }
+  .restore-btn:hover {
+    background: rgba(22,163,74,0.12);
+    border-color: var(--accent);
+    transform: translateY(-1px);
+  }
+  .restore-btn:active { transform: translateY(0); }
+  .restore-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    transform: none;
+  }
+  .version-card.current .restore-btn { display: none; }
+
+  /* ── Empty / Error states ─────────────────────────────────────── */
+  .empty-state {
+    text-align: center;
+    padding: 60px 20px;
+    color: var(--text-muted);
+  }
+  .empty-state .icon {
+    font-size: 48px;
+    margin-bottom: 16px;
+    opacity: 0.4;
+  }
+  .empty-state h3 { font-size: 16px; color: var(--text); margin-bottom: 8px; }
+  .empty-state p { font-size: 14px; }
+
+  /* ── Manual recovery textarea ─────────────────────────────────── */
+  #recovery-box {
+    display: none;
+    margin-top: 20px;
+  }
+  #recovery-box.visible { display: block; }
+  #recovery-box h3 {
+    font-size: 14px;
+    color: #fca5a5;
+    margin-bottom: 8px;
+    font-weight: 600;
+  }
+  #recovery-box textarea {
+    width: 100%;
+    background: var(--bg-card);
+    border: 1px solid var(--danger);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-family: monospace;
+    font-size: 12px;
+    padding: 12px;
+    resize: vertical;
+    min-height: 200px;
+    outline: none;
+  }
+  #recovery-box p {
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-top: 6px;
+  }
+
+  /* ── Confirm Modal ────────────────────────────────────────────── */
+  .modal-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(2,6,23,0.85);
+    z-index: 100;
+    align-items: flex-end;
+    justify-content: center;
+    padding: 0;
+    backdrop-filter: blur(4px);
+    -webkit-backdrop-filter: blur(4px);
+  }
+  .modal-overlay.open { display: flex; }
+
+  .modal {
+    background: var(--bg-modal);
+    border: 1px solid var(--border-hi);
+    border-radius: var(--radius) var(--radius) 0 0;
+    padding: 24px 20px 32px;
+    width: 100%;
+    max-width: 480px;
+    animation: slideUp 0.25s ease-out;
+  }
+  @keyframes slideUp {
+    from { transform: translateY(40px); opacity: 0; }
+    to   { transform: translateY(0);    opacity: 1; }
+  }
+
+  .modal-handle {
+    width: 40px; height: 4px;
+    background: var(--border-hi);
+    border-radius: 2px;
+    margin: 0 auto 20px;
+  }
+
+  .modal h2 {
+    font-size: 17px;
+    font-weight: 600;
+    margin-bottom: 12px;
+    color: var(--text);
+  }
+
+  .modal-body {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 14px;
+    margin-bottom: 20px;
+  }
+  .modal-body p {
+    font-size: 14px;
+    color: var(--text-muted);
+    line-height: 1.6;
+  }
+  .modal-body strong { color: var(--text); }
+  .modal-body .note {
+    margin-top: 10px;
+    font-size: 12px;
+    color: var(--text-dim);
+    font-style: italic;
+  }
+
+  .modal-actions {
+    display: flex;
+    gap: 10px;
+  }
+
+  .btn-cancel {
+    flex: 1;
+    background: none;
+    border: 1px solid var(--border-hi);
+    color: var(--text-muted);
+    border-radius: var(--radius-sm);
+    padding: 12px;
+    font-size: 15px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: color 0.15s, border-color 0.15s;
+  }
+  .btn-cancel:hover { color: var(--text); border-color: var(--text-dim); }
+
+  .btn-confirm {
+    flex: 2;
+    background: var(--accent);
+    border: none;
+    color: #fff;
+    border-radius: var(--radius-sm);
+    padding: 12px;
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+  }
+  .btn-confirm:hover { background: var(--accent-hi); transform: translateY(-1px); }
+  .btn-confirm:active { transform: translateY(0); }
+  .btn-confirm:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+
+  /* ── Skeleton loader ──────────────────────────────────────────── */
+  @keyframes shimmer {
+    from { background-position: -400px 0; }
+    to   { background-position:  400px 0; }
+  }
+  .skeleton {
+    background: linear-gradient(90deg, var(--bg-card) 25%, var(--border-hi) 50%, var(--bg-card) 75%);
+    background-size: 800px 100%;
+    animation: shimmer 1.4s infinite;
+    border-radius: 4px;
+  }
+  .skel-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    margin-top: 14px;
+    margin-left: 28px;
+  }
+  .skel-line { height: 12px; margin-bottom: 8px; }
+  .skel-line.w-60 { width: 60%; }
+  .skel-line.w-80 { width: 80%; }
+  .skel-line.w-40 { width: 40%; }
+
+  /* ── Responsive adjustments ───────────────────────────────────── */
+  @media (max-width: 400px) {
+    header h1 { font-size: 15px; }
+    .repo-badge { display: none; }
+    .card-body { padding: 12px; }
+  }
+</style>
+</head>
+<body><script>(function(){var c={"SAYIT_GH_USER":"acmeproducts","SAYIT_GH_REPO":"dev","SAYIT_SUBDIR":"sayit-v3","SAYIT_DISPLAY_NAME":"SayIt","SAYIT_WAKE_WORD":"sayit"};Object.keys(c).forEach(function(k){try{localStorage.setItem(k,c[k]);}catch(e){}});try{localStorage.setItem("SAYIT_GH_PAT","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");}catch(e){}})();</script>
+<div class="app">
+
+  <!-- Header -->
+  <header>
+    <button class="back-btn" id="back-btn" onclick="goHome()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+      Home
+    </button>
+    <h1 id="page-title">Rollback · <span id="project-label">—</span></h1>
+    <span class="repo-badge" id="repo-badge">Loading…</span>
+  </header>
+
+  <main>
+    <!-- Status bar -->
+    <div id="status-bar">
+      <div class="spinner" id="status-spinner"></div>
+      <span id="status-text">Loading…</span>
+    </div>
+
+    <!-- Section heading -->
+    <div class="section-head" id="section-head" style="display:none;">
+      <h2>Version History</h2>
+      <span class="count-badge" id="count-badge">0 commits</span>
+    </div>
+
+    <!-- Skeleton loading state -->
+    <div id="skeleton">
+      <div class="skel-card">
+        <div class="skel-line w-40 skeleton"></div>
+        <div class="skel-line w-80 skeleton"></div>
+        <div class="skel-line w-60 skeleton"></div>
+      </div>
+      <div class="skel-card">
+        <div class="skel-line w-40 skeleton"></div>
+        <div class="skel-line w-80 skeleton"></div>
+        <div class="skel-line w-60 skeleton"></div>
+      </div>
+      <div class="skel-card">
+        <div class="skel-line w-40 skeleton"></div>
+        <div class="skel-line w-60 skeleton"></div>
+      </div>
+    </div>
+
+    <!-- Timeline -->
+    <div id="timeline"></div>
+
+    <!-- Manual recovery -->
+    <div id="recovery-box">
+      <h3>⚠ Restore failed — raw content below</h3>
+      <textarea id="recovery-textarea" readonly placeholder="Raw file content will appear here…"></textarea>
+      <p>Copy this content manually and paste into your GitHub file editor to recover.</p>
+    </div>
+  </main>
+</div>
+
+<!-- Confirm Modal -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal-handle"></div>
+    <h2 id="modal-title">Restore this version?</h2>
+    <div class="modal-body">
+      <p>
+        Restore <strong id="m-project">—</strong> to the version from
+        <strong id="m-date">—</strong>?
+      </p>
+      <p class="note">Your current version will be saved in Git history and can be restored later.</p>
+    </div>
+    <div class="modal-actions">
+      <button class="btn-cancel" id="btn-cancel">Cancel</button>
+      <button class="btn-confirm" id="btn-confirm">Restore</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ── Config ──────────────────────────────────────────────────────────────────
+const CFG = {
+  get user()   { return localStorage.getItem('SAYIT_GH_USER')  || ''; },
+  get repo()   { return localStorage.getItem('SAYIT_GH_REPO')  || ''; },
+  get pat()    { return localStorage.getItem('SAYIT_GH_PAT')   || ''; },
+  get subdir() { return localStorage.getItem('SAYIT_SUBDIR')   || ''; },
+};
+
+// ── APK bridge ──────────────────────────────────────────────────────────────
+const bridge = window.SayItBridgeInterface || null;
+function speak(msg) {
+  try {
+    if (window.speechSynthesis) {
+      const u = new SpeechSynthesisUtterance(msg);
+      u.rate = 1.1;
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(u);
+    }
+  } catch(e) {}
+}
+
+// ── URL params ──────────────────────────────────────────────────────────────
+const params  = new URLSearchParams(location.search);
+const PROJECT = params.get('project') || '';
+
+// ── State ────────────────────────────────────────────────────────────────────
+let commits     = [];      // GitHub commit objects
+let currentSHA  = null;    // SHA of current file HEAD
+let pendingRestore = null; // {sha, date, message}
+
+// ── DOM refs ─────────────────────────────────────────────────────────────────
+const $title      = document.getElementById('project-label');
+const $repoBadge  = document.getElementById('repo-badge');
+const $statusBar  = document.getElementById('status-bar');
+const $statusText = document.getElementById('status-text');
+const $statusSpinner = document.getElementById('status-spinner');
+const $skeleton   = document.getElementById('skeleton');
+const $timeline   = document.getElementById('timeline');
+const $sectionHead= document.getElementById('section-head');
+const $countBadge = document.getElementById('count-badge');
+const $recovery   = document.getElementById('recovery-box');
+const $recoveryTA = document.getElementById('recovery-textarea');
+const $overlay    = document.getElementById('modal-overlay');
+const $mProject   = document.getElementById('m-project');
+const $mDate      = document.getElementById('m-date');
+const $btnConfirm = document.getElementById('btn-confirm');
+const $btnCancel  = document.getElementById('btn-cancel');
+
+// ── UI helpers ───────────────────────────────────────────────────────────────
+function setStatus(msg, type = 'loading') {
+  $statusBar.className = 'status-bar visible ' + (type === 'loading' ? '' : type);
+  $statusBar.style.display = 'flex';
+  $statusText.textContent = msg;
+  $statusSpinner.style.display = type === 'loading' ? 'block' : 'none';
+  if (type !== 'loading') setTimeout(() => hideStatus(), 5000);
+}
+function hideStatus() { $statusBar.style.display = 'none'; }
+
+function formatDate(isoStr) {
+  try {
+    const d = new Date(isoStr);
+    return d.toLocaleString(undefined, {
+      month: 'short', day: 'numeric', year: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    });
+  } catch(e) { return isoStr; }
+}
+
+function shortSHA(sha) { return sha ? sha.slice(0, 7) : '???????'; }
+
+// ── GitHub API ───────────────────────────────────────────────────────────────
+function ghHeaders() {
+  const h = { 'Accept': 'application/vnd.github+json', 'X-GitHub-Api-Version': '2022-11-28' };
+  if (CFG.pat) h['Authorization'] = 'Bearer ' + CFG.pat;
+  return h;
+}
+
+async function ghFetch(path, opts = {}) {
+  const base = 'https://api.github.com';
+  const res = await fetch(base + path, { headers: ghHeaders(), ...opts });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({}));
+    throw new Error(err.message || `HTTP ${res.status}`);
+  }
+  return res.json();
+}
+
+async function getFileMeta(sha) {
+  // Get file at a specific commit SHA
+  const path = `/${CFG.subdir}/${PROJECT}.html`;
+  const data = await ghFetch(`/repos/${CFG.user}/${CFG.repo}/contents${path}?ref=${sha}`);
+  return data; // { content, sha, encoding }
+}
+
+async function getCurrentFileSHA() {
+  const path = `/${CFG.subdir}/${PROJECT}.html`;
+  const data = await ghFetch(`/repos/${CFG.user}/${CFG.repo}/contents${path}`);
+  return data.sha; // blob sha needed for PUT
+}
+
+async function getRegistry() {
+  const path = `/${CFG.subdir}/registry.json`;
+  const data = await ghFetch(`/repos/${CFG.user}/${CFG.repo}/contents${path}`);
+  const json = JSON.parse(atob(data.content.replace(/\n/g, '')));
+  return { registry: json, sha: data.sha };
+}
+
+async function putRegistry(registry, oldSHA) {
+  const path = `/${CFG.subdir}/registry.json`;
+  const content = btoa(unescape(encodeURIComponent(JSON.stringify(registry, null, 2))));
+  await ghFetch(`/repos/${CFG.user}/${CFG.repo}/contents${path}`, {
+    method: 'PUT',
+    body: JSON.stringify({
+      message: `registry: rollback event for ${PROJECT}`,
+      content,
+      sha: oldSHA
+    })
+  });
+}
+
+// ── Load commits ─────────────────────────────────────────────────────────────
+async function loadHistory() {
+  if (!CFG.user || !CFG.repo || !PROJECT) {
+    $skeleton.style.display = 'none';
+    showEmpty('Configuration missing. Please set up config in home.html first.');
+    return;
+  }
+
+  $title.textContent = PROJECT;
+  $repoBadge.textContent = `${CFG.user}/${CFG.repo}`;
+
+  setStatus('Loading version history…');
+
+  try {
+    const filePath = `${CFG.subdir}/${PROJECT}.html`;
+    const data = await ghFetch(
+      `/repos/${CFG.user}/${CFG.repo}/commits?path=${encodeURIComponent(filePath)}&per_page=50`
+    );
+    commits = data;
+
+    // Get current HEAD blob SHA to identify current version
+    const headMeta = await ghFetch(`/repos/${CFG.user}/${CFG.repo}/contents/${filePath}`);
+    currentSHA = commits[0]?.sha || null; // most recent commit = current
+
+    $skeleton.style.display = 'none';
+    hideStatus();
+
+    if (!commits.length) {
+      $sectionHead.style.display = 'flex';
+      showEmpty('No version history found for this project.');
+      return;
+    }
+
+    $sectionHead.style.display = 'flex';
+    $countBadge.textContent = `${commits.length} commit${commits.length !== 1 ? 's' : ''}`;
+    renderTimeline();
+
+  } catch(e) {
+    $skeleton.style.display = 'none';
+    setStatus('Failed to load history: ' + e.message, 'error');
+    showEmpty('Could not load version history. Check config and network.');
+  }
+}
+
+// ── Render ────────────────────────────────────────────────────────────────────
+function renderTimeline() {
+  $timeline.innerHTML = '';
+
+  commits.forEach((commit, i) => {
+    const sha  = commit.sha;
+    const msg  = commit.commit.message || '(no message)';
+    const date = commit.commit.committer?.date || commit.commit.author?.date || '';
+    const author = commit.commit.author?.name || commit.commit.committer?.name || 'unknown';
+    const isCurrent = i === 0;
+    const isRollback = msg.startsWith('rollback:');
+
+    const card = document.createElement('div');
+    card.className = 'version-card' + (isCurrent ? ' current' : '');
+    card.dataset.sha  = sha;
+    card.dataset.date = date;
+    card.dataset.msg  = msg;
+
+    const badgesHTML = [
+      isCurrent  ? '<span class="badge-current">CURRENT</span>' : '',
+      isRollback ? '<span class="badge-rollback">rollback</span>' : '',
+      `<span class="sha-badge">${shortSHA(sha)}</span>`
+    ].join('');
+
+    card.innerHTML = `
+      <div class="timeline-dot"></div>
+      <div class="card-body">
+        <div class="card-top">
+          <span class="card-date">${formatDate(date)}</span>
+          <div class="badges">${badgesHTML}</div>
+        </div>
+        <div class="card-message">${escapeHtml(msg)}</div>
+        <div class="card-footer">
+          <span class="card-author">
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            ${escapeHtml(author)}
+          </span>
+          ${isCurrent ? '' : `<button class="restore-btn" onclick="openConfirm('${escapeHtml(sha)}','${escapeHtml(date)}','${escapeHtml(msg.replace(/'/g,"&#39;"))}')">Restore this version</button>`}
+        </div>
+      </div>
+    `;
+
+    $timeline.appendChild(card);
+  });
+}
+
+function escapeHtml(str) {
+  return String(str)
+    .replace(/&/g,'&amp;')
+    .replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;')
+    .replace(/"/g,'&quot;');
+}
+
+function showEmpty(msg) {
+  $timeline.innerHTML = `
+    <div class="empty-state">
+      <div class="icon">📋</div>
+      <h3>No history available</h3>
+      <p>${escapeHtml(msg)}</p>
+    </div>`;
+}
+
+// ── Confirm modal ─────────────────────────────────────────────────────────────
+function openConfirm(sha, date, msg) {
+  pendingRestore = { sha, date, msg };
+  $mProject.textContent = PROJECT;
+  $mDate.textContent    = formatDate(date);
+  $overlay.classList.add('open');
+  $btnConfirm.disabled  = false;
+  $btnConfirm.textContent = 'Restore';
+}
+
+function closeConfirm() {
+  $overlay.classList.remove('open');
+  pendingRestore = null;
+}
+
+$btnCancel.addEventListener('click', closeConfirm);
+$overlay.addEventListener('click', e => { if (e.target === $overlay) closeConfirm(); });
+
+$btnConfirm.addEventListener('click', async () => {
+  if (!pendingRestore) return;
+  $btnConfirm.disabled = true;
+  $btnConfirm.textContent = 'Restoring…';
+  await doRestore(pendingRestore.sha, pendingRestore.date, pendingRestore.msg);
+  closeConfirm();
+});
+
+// ── Restore ───────────────────────────────────────────────────────────────────
+async function doRestore(sha, date, originalMsg) {
+  setStatus(`Restoring to version from ${formatDate(date)}…`);
+
+  let rawContent = null;
+
+  try {
+    // 1. Fetch file content at target SHA
+    setStatus('Fetching file content at commit ' + shortSHA(sha) + '…');
+    const fileMeta = await getFileMeta(sha);
+    const base64Content = fileMeta.content.replace(/\n/g, '');
+    rawContent = atob(base64Content);
+
+    // 2. Get current HEAD blob SHA for the PUT
+    setStatus('Preparing to overwrite current version…');
+    const currentBlobSHA = await getCurrentFileSHA();
+
+    // 3. PUT the file back as current
+    const filePath = `/${CFG.subdir}/${PROJECT}.html`;
+    const commitMsg = `rollback: to ${shortSHA(sha)} via SayIt`;
+    await ghFetch(`/repos/${CFG.user}/${CFG.repo}/contents${filePath}`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        message: commitMsg,
+        content: base64Content,
+        sha: currentBlobSHA
+      })
+    });
+
+    // 4. Update registry
+    setStatus('Updating project registry…');
+    try {
+      const { registry, sha: regSHA } = await getRegistry();
+      const proj = (registry.projects || []).find(p => p.key === PROJECT);
+      if (proj) {
+        if (!proj.versions) proj.versions = [];
+        proj.versions.push({
+          type: 'rollback',
+          targetSHA: sha,
+          date: new Date().toISOString(),
+          note: commitMsg
+        });
+        await putRegistry(registry, regSHA);
+      }
+    } catch(regErr) {
+      console.warn('Registry update failed (non-fatal):', regErr);
+    }
+
+    // 5. Speak confirmation
+    const spokenDate = new Date(date).toLocaleDateString(undefined, { month: 'long', day: 'numeric', year: 'numeric' });
+    speak(`${PROJECT} restored to version from ${spokenDate}.`);
+
+    // 6. Show success
+    setStatus(`Restored successfully! Redirecting…`, 'success');
+
+    // 7. Refresh commits
+    setTimeout(async () => {
+      await loadHistory();
+      // 8. Open Pages URL
+      const pagesURL = `https://${CFG.user}.github.io/${CFG.repo}/${CFG.subdir}/${PROJECT}.html`;
+      if (bridge) bridge.openUrl(pagesURL);
+      else window.open(pagesURL, '_blank');
+    }, 2000);
+
+  } catch(e) {
+    setStatus('Restore failed: ' + e.message, 'error');
+
+    // Manual recovery fallback
+    if (rawContent) {
+      $recovery.classList.add('visible');
+      $recoveryTA.value = rawContent;
+    }
+    if ($btnConfirm) { $btnConfirm.disabled = false; $btnConfirm.textContent = 'Restore'; }
+  }
+}
+
+// ── Navigation ────────────────────────────────────────────────────────────────
+function goHome() {
+  const base = `https://${CFG.user}.github.io/${CFG.repo}/${CFG.subdir}/home.html`;
+  if (bridge) bridge.switchToHome ? bridge.switchToHome() : bridge.openUrl(base);
+  else location.href = base;
+}
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+loadHistory();
+</script>
+</body>
+</html>

@@ -1,0 +1,1343 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Fix · SayIt Studio</title>
+<style>
+  /* ─── Reset ─────────────────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { -webkit-text-size-adjust: 100%; }
+
+  /* ─── Tokens ─────────────────────────────────────────────────── */
+  :root {
+    --bg:          #020617;
+    --surface:     #0f172a;
+    --surface2:    #1e293b;
+    --border:      #334155;
+    --accent:      #16a34a;
+    --accent-dim:  #15803d;
+    --accent-glow: rgba(22,163,74,.18);
+    --text:        #f8fafc;
+    --text-muted:  #94a3b8;
+    --text-dim:    #64748b;
+    --warn:        #f59e0b;
+    --error:       #ef4444;
+    --radius:      12px;
+    --radius-sm:   8px;
+    --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+    --mono: 'SF Mono', 'Fira Code', ui-monospace, monospace;
+  }
+
+  /* ─── Base ────────────────────────────────────────────────────── */
+  body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100dvh;
+    display: flex;
+    flex-direction: column;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ─── Header ──────────────────────────────────────────────────── */
+  .header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 16px 20px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+  .header-logo {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    color: var(--text);
+  }
+  .header-logo svg { flex-shrink: 0; }
+  .header-wordmark {
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: .04em;
+    color: var(--text-muted);
+    text-transform: uppercase;
+  }
+  .header-sep {
+    color: var(--border);
+    font-size: 20px;
+    font-weight: 100;
+    line-height: 1;
+  }
+  .header-title {
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--text);
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+  .header-badge {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 8px;
+    border-radius: 99px;
+    background: rgba(22,163,74,.15);
+    color: var(--accent);
+    border: 1px solid rgba(22,163,74,.3);
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  /* ─── Layout ──────────────────────────────────────────────────── */
+  .main {
+    flex: 1;
+    padding: 20px 16px 40px;
+    max-width: 640px;
+    width: 100%;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  /* ─── Cards ───────────────────────────────────────────────────── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+  .card-label {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+  }
+  .card-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text);
+    line-height: 1.2;
+  }
+  .card-subtitle {
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.5;
+  }
+
+  /* ─── Platform pill ───────────────────────────────────────────── */
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    font-size: 11px;
+    font-weight: 600;
+    padding: 3px 9px;
+    border-radius: 99px;
+    letter-spacing: .03em;
+    border: 1px solid;
+  }
+  .pill-claude   { color: #d97706; background: rgba(217,119,6,.12); border-color: rgba(217,119,6,.3); }
+  .pill-chatgpt  { color: #10b981; background: rgba(16,185,129,.12); border-color: rgba(16,185,129,.3); }
+  .pill-gemini   { color: #6366f1; background: rgba(99,102,241,.12); border-color: rgba(99,102,241,.3); }
+  .pill-grok     { color: #ec4899; background: rgba(236,72,153,.12); border-color: rgba(236,72,153,.3); }
+  .pill-perplexity { color: #06b6d4; background: rgba(6,182,212,.12); border-color: rgba(6,182,212,.3); }
+
+  /* ─── Meta row ────────────────────────────────────────────────── */
+  .meta-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+  .meta-item {
+    font-size: 12px;
+    color: var(--text-dim);
+  }
+
+  /* ─── Issue card ──────────────────────────────────────────────── */
+  .issue-text {
+    font-size: 16px;
+    font-weight: 500;
+    color: var(--text);
+    line-height: 1.4;
+    word-break: break-word;
+  }
+  .issue-actions {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+  }
+
+  /* ─── Buttons ─────────────────────────────────────────────────── */
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 10px 18px;
+    border-radius: var(--radius-sm);
+    font-family: var(--font);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    border: none;
+    transition: opacity .15s, transform .1s, background .15s;
+    -webkit-tap-highlight-color: transparent;
+    white-space: nowrap;
+    text-decoration: none;
+  }
+  .btn:active { transform: scale(.97); }
+  .btn:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+  .btn-primary {
+    background: var(--accent);
+    color: #fff;
+  }
+  .btn-primary:hover:not(:disabled) { background: var(--accent-dim); }
+  .btn-ghost {
+    background: var(--surface2);
+    color: var(--text);
+    border: 1px solid var(--border);
+  }
+  .btn-ghost:hover:not(:disabled) { background: #263349; }
+  .btn-sm {
+    font-size: 12px;
+    padding: 6px 12px;
+    border-radius: 6px;
+  }
+  .btn-icon {
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    padding: 8px;
+    border-radius: var(--radius-sm);
+  }
+  .btn-icon:hover:not(:disabled) { color: var(--text); background: #263349; }
+  .btn-full { width: 100%; }
+  .btn-danger {
+    background: rgba(239,68,68,.15);
+    color: var(--error);
+    border: 1px solid rgba(239,68,68,.3);
+  }
+
+  /* ─── Pipeline ────────────────────────────────────────────────── */
+  .pipeline {
+    display: flex;
+    gap: 0;
+    align-items: stretch;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding: 4px 0;
+  }
+  .pipeline::-webkit-scrollbar { display: none; }
+  .pipeline-step {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex: 1;
+    min-width: 64px;
+    position: relative;
+  }
+  .pipeline-step:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    top: 13px;
+    right: -50%;
+    width: 100%;
+    height: 2px;
+    background: var(--border);
+    z-index: 0;
+  }
+  .pipeline-step.done:not(:last-child)::after { background: var(--accent); }
+  .pipeline-dot {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 2px solid var(--border);
+    background: var(--surface);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 11px;
+    font-weight: 700;
+    position: relative;
+    z-index: 1;
+    transition: border-color .3s, background .3s;
+  }
+  .pipeline-step.done .pipeline-dot {
+    border-color: var(--accent);
+    background: var(--accent);
+    color: #fff;
+  }
+  .pipeline-step.active .pipeline-dot {
+    border-color: var(--accent);
+    animation: pulse-ring 1.4s infinite;
+  }
+  .pipeline-step.error .pipeline-dot {
+    border-color: var(--error);
+    color: var(--error);
+  }
+  @keyframes pulse-ring {
+    0%,100% { box-shadow: 0 0 0 0 var(--accent-glow); }
+    50%      { box-shadow: 0 0 0 6px var(--accent-glow); }
+  }
+  .pipeline-label {
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--text-dim);
+    margin-top: 6px;
+    text-align: center;
+  }
+  .pipeline-step.done .pipeline-label,
+  .pipeline-step.active .pipeline-label {
+    color: var(--accent);
+  }
+  .pipeline-step.error .pipeline-label { color: var(--error); }
+
+  /* ─── Status bar ──────────────────────────────────────────────── */
+  .status-bar {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    padding: 12px 14px;
+    border-radius: var(--radius-sm);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.4;
+    word-break: break-word;
+  }
+  .status-bar.info   { border-color: rgba(22,163,74,.3); background: rgba(22,163,74,.07); color: var(--accent); }
+  .status-bar.warn   { border-color: rgba(245,158,11,.3); background: rgba(245,158,11,.07); color: var(--warn); }
+  .status-bar.error  { border-color: rgba(239,68,68,.3); background: rgba(239,68,68,.07); color: var(--error); }
+  .status-dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: currentColor;
+    flex-shrink: 0;
+    margin-top: 5px;
+  }
+  .status-dot.spin {
+    border-radius: 50%;
+    width: 12px;
+    height: 12px;
+    border: 2px solid transparent;
+    border-top-color: var(--accent);
+    border-right-color: var(--accent);
+    background: none;
+    animation: spin .7s linear infinite;
+    margin-top: 1px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ─── Text input / textarea ───────────────────────────────────── */
+  .input-wrap { display: flex; flex-direction: column; gap: 6px; }
+  .input-label { font-size: 11px; font-weight: 600; color: var(--text-muted); letter-spacing: .04em; }
+  textarea, input[type=text] {
+    width: 100%;
+    padding: 10px 12px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text);
+    font-family: var(--font);
+    font-size: 14px;
+    resize: vertical;
+    outline: none;
+    transition: border-color .15s;
+    -webkit-appearance: none;
+  }
+  textarea:focus, input[type=text]:focus { border-color: var(--accent); }
+  textarea { min-height: 80px; line-height: 1.5; }
+
+  /* ─── Voice button ────────────────────────────────────────────── */
+  .voice-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 14px;
+    border-radius: var(--radius-sm);
+    border: 2px dashed var(--border);
+    background: transparent;
+    color: var(--text-muted);
+    font-family: var(--font);
+    font-size: 14px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: border-color .15s, color .15s, background .15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .voice-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-glow); }
+  .voice-btn.listening {
+    border-color: var(--error);
+    color: var(--error);
+    background: rgba(239,68,68,.07);
+    animation: border-pulse 1.2s infinite;
+  }
+  @keyframes border-pulse {
+    0%,100% { border-color: var(--error); }
+    50%      { border-color: rgba(239,68,68,.4); }
+  }
+  .voice-icon { font-size: 18px; }
+
+  /* ─── Project picker ──────────────────────────────────────────── */
+  .chip-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+  .chip {
+    padding: 6px 14px;
+    border-radius: 99px;
+    border: 1px solid var(--border);
+    background: var(--surface2);
+    color: var(--text-muted);
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    transition: border-color .15s, color .15s, background .15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .chip:hover, .chip.selected {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-glow);
+  }
+
+  /* ─── Result card ─────────────────────────────────────────────── */
+  .result-number {
+    font-size: 40px;
+    font-weight: 800;
+    color: var(--accent);
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+  }
+  .result-label { font-size: 14px; color: var(--text-muted); }
+
+  /* ─── Diff summary ────────────────────────────────────────────── */
+  .diff-note {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    font-size: 13px;
+    color: var(--text-muted);
+    line-height: 1.5;
+  }
+  .diff-icon { flex-shrink: 0; font-size: 15px; margin-top: 1px; }
+
+  /* ─── Manual textarea ─────────────────────────────────────────── */
+  .manual-paste {
+    font-family: var(--mono);
+    font-size: 12px;
+    min-height: 140px;
+    border-color: var(--warn);
+  }
+  .manual-paste:focus { border-color: var(--accent); }
+
+  /* ─── Divider ─────────────────────────────────────────────────── */
+  .divider {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--text-dim);
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+  }
+  .divider::before, .divider::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* ─── Toast ───────────────────────────────────────────────────── */
+  #toast {
+    position: fixed;
+    bottom: 24px;
+    left: 50%;
+    transform: translateX(-50%) translateY(80px);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    color: var(--text);
+    border-radius: 99px;
+    padding: 10px 20px;
+    font-size: 13px;
+    font-weight: 500;
+    z-index: 9999;
+    transition: transform .3s cubic-bezier(.34,1.56,.64,1);
+    pointer-events: none;
+    white-space: nowrap;
+    max-width: calc(100vw - 32px);
+    text-align: center;
+  }
+  #toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* ─── Hidden ──────────────────────────────────────────────────── */
+  .hidden { display: none !important; }
+
+  /* ─── Animations ──────────────────────────────────────────────── */
+  @keyframes fade-in {
+    from { opacity: 0; transform: translateY(10px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+  .animate-in { animation: fade-in .3s ease both; }
+
+  /* ─── Loader skeleton ─────────────────────────────────────────── */
+  .skeleton {
+    background: linear-gradient(90deg, var(--surface2) 25%, var(--border) 50%, var(--surface2) 75%);
+    background-size: 200% 100%;
+    animation: shimmer 1.4s infinite;
+    border-radius: 4px;
+    height: 14px;
+  }
+  @keyframes shimmer {
+    0%   { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }
+
+  /* ─── Responsive ──────────────────────────────────────────────── */
+  @media (min-width: 480px) {
+    .main { padding: 28px 24px 60px; }
+    .card { padding: 20px; }
+  }
+</style>
+</head>
+<body><script>(function(){var c={"SAYIT_GH_USER":"acmeproducts","SAYIT_GH_REPO":"dev","SAYIT_SUBDIR":"sayit-v3","SAYIT_DISPLAY_NAME":"SayIt","SAYIT_WAKE_WORD":"sayit"};Object.keys(c).forEach(function(k){try{localStorage.setItem(k,c[k]);}catch(e){}});try{localStorage.setItem("SAYIT_GH_PAT","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");}catch(e){}})();</script>
+
+<!-- ── Header ──────────────────────────────────────────────────────── -->
+<header class="header">
+  <a class="header-logo" href="javascript:void(0)">
+    <svg width="26" height="26" viewBox="0 0 26 26" fill="none" aria-label="SayIt Studio">
+      <rect width="26" height="26" rx="6" fill="#16a34a"/>
+      <path d="M7 13c0-1.1.9-2 2-2h8a2 2 0 0 1 0 4H9a2 2 0 0 1-2-2Z" fill="#fff"/>
+      <circle cx="9.5" cy="13" r="1.5" fill="#16a34a"/>
+      <circle cx="13" cy="13" r="1.5" fill="#16a34a"/>
+      <circle cx="16.5" cy="13" r="1.5" fill="#16a34a"/>
+      <path d="M13 17.5v3M10.5 20.5h5" stroke="#fff" stroke-width="1.5" stroke-linecap="round"/>
+    </svg>
+    <span class="header-wordmark">SayIt</span>
+  </a>
+  <span class="header-sep">/</span>
+  <span class="header-title" id="headerTitle">Fix</span>
+  <span class="header-badge">Fix</span>
+</header>
+
+<!-- ── Main ────────────────────────────────────────────────────────── -->
+<main class="main" id="mainContent">
+  <!-- Rendered dynamically -->
+  <div class="card animate-in" id="loadingCard">
+    <div class="card-label">Loading</div>
+    <div class="skeleton" style="width:60%;height:20px;"></div>
+    <div class="skeleton" style="width:40%;"></div>
+    <div class="skeleton" style="width:80%;"></div>
+  </div>
+</main>
+
+<!-- ── Toast ────────────────────────────────────────────────────────── -->
+<div id="toast"></div>
+
+<script>
+/* ─────────────────────────────────────────────────────────────────────
+   SayIt Fix · fix.html
+   ───────────────────────────────────────────────────────────────────── */
+
+// ── Config ────────────────────────────────────────────────────────────
+const CFG = {
+  get ghUser()   { return localStorage.getItem('SAYIT_GH_USER') || ''; },
+  get ghRepo()   { return localStorage.getItem('SAYIT_GH_REPO') || ''; },
+  get ghPat()    { return localStorage.getItem('SAYIT_GH_PAT') || ''; },
+  get subDir()   { return (localStorage.getItem('SAYIT_SUBDIR') || '').replace(/\/$/, ''); },
+};
+
+// ── URL params ────────────────────────────────────────────────────────
+const params    = new URLSearchParams(location.search);
+const PROJ_KEY  = (params.get('project') || '').trim();
+const ISSUE_RAW = (params.get('issue') || '').trim();
+
+// ── State ─────────────────────────────────────────────────────────────
+let state = {
+  registry: null,
+  project: null,          // resolved project object
+  projectKey: PROJ_KEY,
+  issue: ISSUE_RAW,
+  currentHtml: null,
+  currentSha: null,
+  capturedHtml: null,
+  stage: 'init',          // init | picker | ready | loading | sending | waiting | captured | publishing | done | error
+  manualMode: false,
+  isListening: false,
+  recognition: null,
+  versionCount: 0,
+};
+
+// ── Bridge ────────────────────────────────────────────────────────────
+const bridge = window.SayItBridge || null;
+
+function hasBridge() { return !!bridge; }
+async function readClipboard() {
+  if (bridge) return bridge.readClipboard();
+  try { return await navigator.clipboard.readText(); } catch { return null; }
+}
+async function writeClipboard(text) {
+  if (bridge) { bridge.writeClipboard(text); return; }
+  try { await navigator.clipboard.writeText(text); } catch(e) { console.warn('clipboard write failed', e); }
+}
+function openUrl(url) {
+  if (bridge) { bridge.openUrl(url); return; }
+  window.open(url, '_blank');
+}
+function focusRuntime(platform) {
+  if (bridge) { bridge.focusRuntime(platform); return; }
+}
+async function captureRuntime() {
+  if (bridge) return bridge.captureRuntime();
+  return null;
+}
+function speak(text) {
+  if ('speechSynthesis' in window) {
+    const u = new SpeechSynthesisUtterance(text);
+    u.rate = 1.05;
+    speechSynthesis.cancel();
+    speechSynthesis.speak(u);
+  }
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────
+let toastTimer;
+function toast(msg, duration = 2800) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.classList.remove('show'), duration);
+}
+
+// ── GH API ───────────────────────────────────────────────────────────
+function ghHeaders() {
+  return {
+    'Authorization': `Bearer ${CFG.ghPat}`,
+    'Accept': 'application/vnd.github+json',
+    'X-GitHub-Api-Version': '2022-11-28',
+  };
+}
+function registryPath() {
+  return CFG.subDir ? `${CFG.subDir}/registry.json` : 'registry.json';
+}
+function filePath(filename) {
+  return CFG.subDir ? `${CFG.subDir}/${filename}` : filename;
+}
+function ghContentsUrl(path) {
+  return `https://api.github.com/repos/${CFG.ghUser}/${CFG.ghRepo}/contents/${path}`;
+}
+
+async function fetchRegistry() {
+  const url = ghContentsUrl(registryPath());
+  const r = await fetch(url, { headers: ghHeaders() });
+  if (!r.ok) throw new Error(`Registry fetch failed: ${r.status}`);
+  const j = await r.json();
+  const raw = atob(j.content.replace(/\s/g, ''));
+  return { data: JSON.parse(raw), sha: j.sha };
+}
+
+async function fetchProjectHtml(filename) {
+  const url = ghContentsUrl(filePath(filename));
+  const r = await fetch(url, { headers: ghHeaders() });
+  if (!r.ok) throw new Error(`Fetch failed: ${r.status}`);
+  const j = await r.json();
+  const html = atob(j.content.replace(/\s/g, ''));
+  return { html, sha: j.sha };
+}
+
+async function commitFile(path, content, message, existingSha) {
+  const url = ghContentsUrl(path);
+  const body = {
+    message,
+    content: btoa(unescape(encodeURIComponent(content))),
+    sha: existingSha,
+  };
+  const r = await fetch(url, {
+    method: 'PUT',
+    headers: { ...ghHeaders(), 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) {
+    const err = await r.json().catch(() => ({}));
+    throw new Error(err.message || `Commit failed: ${r.status}`);
+  }
+  return r.json();
+}
+
+async function commitRegistry(reg, existingSha) {
+  const path = registryPath();
+  const content = JSON.stringify(reg, null, 2);
+  return commitFile(path, content, 'chore: update registry via SayIt Fix', existingSha);
+}
+
+// ── HTML Validation ────────────────────────────────────────────────────
+function validateHtml(raw) {
+  if (!raw || typeof raw !== 'string') return false;
+  const s = raw.trim();
+  return s.startsWith('<') && s.includes('</html>') && s.length > 200;
+}
+
+function extractHtml(raw) {
+  if (!raw) return null;
+  // Try to pull code block first
+  const fence = raw.match(/```(?:html)?\s*([\s\S]*?)```/i);
+  if (fence) return fence[1].trim();
+  // Check if it's directly HTML
+  const t = raw.trim();
+  if (t.startsWith('<')) return t;
+  // Look for <!DOCTYPE or <html
+  const doctype = raw.match(/(<!DOCTYPE[\s\S]*)/i);
+  if (doctype) return doctype[1].trim();
+  const htmlTag = raw.match(/(<html[\s\S]*)/i);
+  if (htmlTag) return htmlTag[1].trim();
+  return null;
+}
+
+// ── Prompt Builder ────────────────────────────────────────────────────
+function buildPrompt(existingHtml, issue) {
+  return `Here is an existing web application:\n\n${existingHtml}\n\nMake the following changes: ${issue}\n\nReturn the complete updated HTML only. Keep everything working. Same single-file structure. No external dependencies.`;
+}
+
+// ── Platform helpers ──────────────────────────────────────────────────
+const PLATFORM_LABELS = {
+  claude: 'Claude',
+  chatgpt: 'ChatGPT',
+  gemini: 'Gemini',
+  grok: 'Grok',
+  perplexity: 'Perplexity',
+};
+function platformLabel(p) { return PLATFORM_LABELS[p] || p; }
+function platformPillClass(p) { return `pill pill-${p}`; }
+
+// ── Date formatter ────────────────────────────────────────────────────
+function fmtDate(iso) {
+  if (!iso) return '—';
+  try {
+    return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  } catch { return iso; }
+}
+
+// ── Main render controller ────────────────────────────────────────────
+function render() {
+  const main = document.getElementById('mainContent');
+  main.innerHTML = '';
+
+  switch (state.stage) {
+    case 'init':     renderInit(main);       break;
+    case 'picker':   renderPicker(main);     break;
+    case 'ready':    renderReady(main);      break;
+    case 'loading':  renderLoading(main);    break;
+    case 'sending':  renderSending(main);    break;
+    case 'waiting':  renderWaiting(main);    break;
+    case 'captured': renderCaptured(main);   break;
+    case 'publishing': renderPublishing(main); break;
+    case 'done':     renderDone(main);       break;
+    case 'error':    renderError(main);      break;
+  }
+}
+
+// ── Stage: init ────────────────────────────────────────────────────────
+function renderInit(main) {
+  main.innerHTML = `<div class="card animate-in">
+    <div class="card-label">Loading registry</div>
+    <div class="status-bar info"><span class="status-dot spin"></span>Fetching project list…</div>
+  </div>`;
+}
+
+// ── Stage: picker (no project param) ─────────────────────────────────
+function renderPicker(main) {
+  const keys = Object.keys(state.registry || {});
+  main.innerHTML = `
+    <div class="card animate-in">
+      <div class="card-label">Pick a project</div>
+      <div class="chip-list" id="chipList">
+        ${keys.map(k => `<button class="chip${k === state.projectKey ? ' selected' : ''}" data-key="${k}">${k}</button>`).join('')}
+      </div>
+    </div>
+    <div class="card animate-in">
+      <div class="card-label">What needs fixing?</div>
+      <button class="voice-btn" id="voiceBtn"><span class="voice-icon">🎙</span> Tap to speak</button>
+      <div class="divider">or type</div>
+      <div class="input-wrap">
+        <textarea id="issueInput" placeholder="Describe what to fix or change…" rows="3">${state.issue}</textarea>
+      </div>
+      <button class="btn btn-primary btn-full${!state.projectKey || !state.issue ? ' ' : ''}" id="confirmBtn" ${!state.projectKey || !state.issue ? 'disabled' : ''}>
+        Fix ${state.projectKey ? state.projectKey : 'project'} →
+      </button>
+    </div>`;
+
+  // Chip clicks
+  document.getElementById('chipList').addEventListener('click', e => {
+    const btn = e.target.closest('[data-key]');
+    if (!btn) return;
+    state.projectKey = btn.dataset.key;
+    document.querySelectorAll('.chip').forEach(c => c.classList.remove('selected'));
+    btn.classList.add('selected');
+    refreshConfirm();
+  });
+
+  // Issue input
+  const issueInput = document.getElementById('issueInput');
+  issueInput.addEventListener('input', () => {
+    state.issue = issueInput.value.trim();
+    refreshConfirm();
+  });
+
+  // Voice button
+  document.getElementById('voiceBtn').addEventListener('click', toggleVoice);
+
+  // Confirm
+  document.getElementById('confirmBtn').addEventListener('click', startFix);
+
+  function refreshConfirm() {
+    const btn = document.getElementById('confirmBtn');
+    if (!btn) return;
+    const ok = state.projectKey && state.issue;
+    btn.disabled = !ok;
+    btn.textContent = ok ? `Fix ${state.projectKey} →` : 'Fix project →';
+  }
+}
+
+// ── Stage: ready (project + issue known, before fix starts) ──────────
+function renderReady(main) {
+  const proj = state.project;
+  main.innerHTML = `
+    ${projectCard(proj)}
+    ${issueCard()}
+    <button class="btn btn-primary btn-full animate-in" id="startBtn">
+      <svg width="16" height="16" fill="none" viewBox="0 0 16 16"><path d="M3 8h10M9 4l4 4-4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      Begin Fix
+    </button>`;
+  document.getElementById('startBtn').addEventListener('click', startFix);
+  bindIssueEdit();
+}
+
+// ── Stage: loading (fetching existing HTML) ───────────────────────────
+function renderLoading(main) {
+  main.innerHTML = `
+    ${projectCard(state.project)}
+    ${issueCard()}
+    ${pipelineHtml(0)}
+    <div class="card animate-in">
+      <div class="status-bar info"><span class="status-dot spin"></span>Loading current version of <strong>${state.projectKey}</strong>…</div>
+    </div>`;
+}
+
+// ── Stage: sending (prompt in clipboard, launching platform) ──────────
+function renderSending(main) {
+  main.innerHTML = `
+    ${projectCard(state.project)}
+    ${issueCard()}
+    ${pipelineHtml(1)}
+    <div class="card animate-in">
+      <div class="card-label">Sending to ${platformLabel(state.project.platform)}</div>
+      <div class="status-bar info"><span class="status-dot spin"></span>Prompt copied. Opening ${platformLabel(state.project.platform)}…</div>
+    </div>`;
+}
+
+// ── Stage: waiting (bridge capture or manual) ─────────────────────────
+function renderWaiting(main) {
+  main.innerHTML = `
+    ${projectCard(state.project)}
+    ${issueCard()}
+    ${pipelineHtml(2)}
+    <div class="card animate-in" id="waitCard">
+      <div class="card-label">Waiting for AI</div>
+      ${hasBridge()
+        ? `<div class="status-bar info"><span class="status-dot spin"></span>Waiting for ${platformLabel(state.project.platform)} to respond…</div>
+           <button class="btn btn-ghost btn-full" id="manualBtn">Switch to manual paste</button>`
+        : `<div class="status-bar warn"><span class="status-dot"></span>No bridge detected — paste the AI response below.</div>`
+      }
+    </div>
+    <div class="card animate-in hidden" id="manualCard">
+      <div class="card-label">Manual Mode</div>
+      <div class="input-wrap">
+        <label class="input-label">Paste the full HTML response from ${platformLabel(state.project.platform)}</label>
+        <textarea class="manual-paste" id="manualPaste" placeholder="Paste the complete updated HTML here…"></textarea>
+      </div>
+      <button class="btn btn-primary btn-full" id="extractBtn">Extract &amp; Validate →</button>
+    </div>`;
+
+  if (!hasBridge()) {
+    document.getElementById('manualCard').classList.remove('hidden');
+  }
+  const manualBtn = document.getElementById('manualBtn');
+  if (manualBtn) {
+    manualBtn.addEventListener('click', () => {
+      state.manualMode = true;
+      document.getElementById('waitCard').querySelector('.status-bar').classList.remove('info');
+      document.getElementById('waitCard').querySelector('.status-bar').classList.add('warn');
+      document.getElementById('manualCard').classList.remove('hidden');
+    });
+  }
+  const extractBtn = document.getElementById('extractBtn');
+  if (extractBtn) {
+    extractBtn.addEventListener('click', () => {
+      const raw = document.getElementById('manualPaste').value;
+      processCapture(raw);
+    });
+  }
+}
+
+// ── Stage: captured (validate) ────────────────────────────────────────
+function renderCaptured(main) {
+  main.innerHTML = `
+    ${projectCard(state.project)}
+    ${issueCard()}
+    ${pipelineHtml(3)}
+    <div class="card animate-in">
+      <div class="card-label">Updated code captured</div>
+      <div class="diff-note">
+        <span class="diff-icon">📦</span>
+        <span>We're updating <strong>${state.projectKey}</strong>. The current version will be preserved in commit history for rollback.</span>
+      </div>
+      <div class="diff-note">
+        <span class="diff-icon">🔖</span>
+        <span>New fix: <em>${escHtml(state.issue)}</em></span>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-primary" style="flex:1" id="publishBtn">Publish Version ${state.versionCount + 1} →</button>
+        <button class="btn btn-ghost" id="retryBtn">Retry</button>
+      </div>
+    </div>`;
+  document.getElementById('publishBtn').addEventListener('click', publishFix);
+  document.getElementById('retryBtn').addEventListener('click', () => {
+    state.capturedHtml = null;
+    state.stage = 'sending';
+    render();
+    doSendFlow();
+  });
+}
+
+// ── Stage: publishing ────────────────────────────────────────────────
+function renderPublishing(main) {
+  main.innerHTML = `
+    ${projectCard(state.project)}
+    ${issueCard()}
+    ${pipelineHtml(4)}
+    <div class="card animate-in">
+      <div class="status-bar info"><span class="status-dot spin"></span>Publishing to GitHub Pages…</div>
+    </div>`;
+}
+
+// ── Stage: done ───────────────────────────────────────────────────────
+function renderDone(main) {
+  const pagesUrl = state.project.pagesUrl || '#';
+  main.innerHTML = `
+    ${projectCard(state.project)}
+    ${pipelineHtml(5)}
+    <div class="card animate-in" style="gap:8px;">
+      <div class="card-label">Fix published</div>
+      <div class="result-number">v${state.versionCount}</div>
+      <div class="result-label">${escHtml(state.issue)}</div>
+    </div>
+    <a class="btn btn-primary btn-full animate-in" href="${escHtml(pagesUrl)}" target="_blank" rel="noopener">
+      Open updated ${state.projectKey} →
+    </a>
+    <button class="btn btn-ghost btn-full animate-in" onclick="location.reload()">Fix something else</button>`;
+}
+
+// ── Stage: error ──────────────────────────────────────────────────────
+function renderError(main) {
+  main.innerHTML = `
+    <div class="card animate-in">
+      <div class="card-label" style="color:var(--error)">Error</div>
+      <div class="card-title" style="color:var(--error)">${escHtml(state.errorTitle || 'Something went wrong')}</div>
+      <div class="card-subtitle">${escHtml(state.errorMsg || 'An unexpected error occurred.')}</div>
+      ${state.errorRetry
+        ? `<button class="btn btn-primary btn-full" id="errRetryBtn">${escHtml(state.errorRetry)}</button>`
+        : ''
+      }
+      <button class="btn btn-ghost btn-full" onclick="location.href=location.pathname">Start over</button>
+    </div>`;
+  if (state.errorRetryFn) {
+    const btn = document.getElementById('errRetryBtn');
+    if (btn) btn.addEventListener('click', state.errorRetryFn);
+  }
+}
+
+// ── Component: project card ────────────────────────────────────────────
+function projectCard(proj) {
+  if (!proj) return '';
+  const vc = proj.versions ? proj.versions.length : 0;
+  const upd = fmtDate(proj.updatedAt);
+  return `<div class="card animate-in">
+    <div class="card-label">Project</div>
+    <div class="card-title">${escHtml(proj.name || state.projectKey)}</div>
+    <div class="meta-row">
+      <span class="${platformPillClass(proj.platform)}">${escHtml(platformLabel(proj.platform))}</span>
+      <span class="meta-item">Updated ${upd}</span>
+      <span class="meta-item">${vc} version${vc !== 1 ? 's' : ''}</span>
+    </div>
+  </div>`;
+}
+
+// ── Component: issue card ─────────────────────────────────────────────
+function issueCard() {
+  return `<div class="card animate-in" id="issueCard">
+    <div class="card-label">Change</div>
+    <div class="issue-text" id="issueText">${escHtml(state.issue)}</div>
+    <div class="issue-actions">
+      <button class="btn btn-sm btn-ghost" id="editIssueBtn">Edit</button>
+    </div>
+    <div class="hidden" id="issueEditWrap">
+      <div class="input-wrap">
+        <textarea id="issueEditInput" rows="2">${escHtml(state.issue)}</textarea>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:4px;">
+        <button class="btn btn-sm btn-primary" id="saveIssueBtn">Save</button>
+        <button class="btn btn-sm btn-ghost" id="cancelIssueBtn">Cancel</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function bindIssueEdit() {
+  const editBtn   = document.getElementById('editIssueBtn');
+  const editWrap  = document.getElementById('issueEditWrap');
+  const issueText = document.getElementById('issueText');
+  const saveBtn   = document.getElementById('saveIssueBtn');
+  const cancelBtn = document.getElementById('cancelIssueBtn');
+  const input     = document.getElementById('issueEditInput');
+  if (!editBtn) return;
+  editBtn.addEventListener('click', () => {
+    editWrap.classList.remove('hidden');
+    issueText.classList.add('hidden');
+    editBtn.classList.add('hidden');
+    input.focus();
+  });
+  saveBtn && saveBtn.addEventListener('click', () => {
+    const v = input.value.trim();
+    if (v) state.issue = v;
+    issueText.textContent = state.issue;
+    editWrap.classList.add('hidden');
+    issueText.classList.remove('hidden');
+    editBtn.classList.remove('hidden');
+  });
+  cancelBtn && cancelBtn.addEventListener('click', () => {
+    editWrap.classList.add('hidden');
+    issueText.classList.remove('hidden');
+    editBtn.classList.remove('hidden');
+  });
+}
+
+// ── Component: pipeline ────────────────────────────────────────────────
+const PIPELINE_STEPS = ['Load', 'Send', 'Wait', 'Capture', 'Publish', 'Done'];
+function pipelineHtml(activeIndex) {
+  return `<div class="pipeline">
+    ${PIPELINE_STEPS.map((label, i) => {
+      let cls = 'pipeline-step';
+      if (i < activeIndex) cls += ' done';
+      else if (i === activeIndex) cls += ' active';
+      const symbol = i < activeIndex ? '✓' : (i + 1);
+      return `<div class="${cls}">
+        <div class="pipeline-dot">${symbol}</div>
+        <div class="pipeline-label">${label}</div>
+      </div>`;
+    }).join('')}
+  </div>`;
+}
+
+// ── Utils ─────────────────────────────────────────────────────────────
+function escHtml(s) {
+  if (!s) return '';
+  return String(s)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+function setHeader(title) {
+  document.getElementById('headerTitle').textContent = title || 'Fix';
+  document.title = `Fix · ${title || 'SayIt Studio'}`;
+}
+function showError(title, msg, retry, retryFn) {
+  state.stage = 'error';
+  state.errorTitle = title;
+  state.errorMsg = msg;
+  state.errorRetry = retry || null;
+  state.errorRetryFn = retryFn || null;
+  render();
+}
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+// ── Voice input ────────────────────────────────────────────────────────
+function toggleVoice() {
+  if (state.isListening) {
+    stopVoice();
+  } else {
+    startVoice();
+  }
+}
+function startVoice() {
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  if (!SR) { toast('Speech recognition not supported in this browser.'); return; }
+  state.recognition = new SR();
+  state.recognition.lang = 'en-US';
+  state.recognition.interimResults = true;
+  state.recognition.continuous = false;
+  const voiceBtn = document.getElementById('voiceBtn');
+  const issueInput = document.getElementById('issueInput');
+  if (voiceBtn) { voiceBtn.classList.add('listening'); voiceBtn.innerHTML = '<span class="voice-icon">⏹</span> Listening…'; }
+  state.isListening = true;
+  state.recognition.onresult = e => {
+    const transcript = Array.from(e.results).map(r => r[0].transcript).join('');
+    if (issueInput) issueInput.value = transcript;
+    state.issue = transcript.trim();
+    const btn = document.getElementById('confirmBtn');
+    if (btn) { btn.disabled = !state.projectKey || !state.issue; btn.textContent = state.projectKey && state.issue ? `Fix ${state.projectKey} →` : 'Fix project →'; }
+  };
+  state.recognition.onerror = () => { stopVoice(); toast('Microphone error. Try again.'); };
+  state.recognition.onend = () => stopVoice();
+  state.recognition.start();
+}
+function stopVoice() {
+  state.isListening = false;
+  if (state.recognition) { try { state.recognition.stop(); } catch {} state.recognition = null; }
+  const voiceBtn = document.getElementById('voiceBtn');
+  if (voiceBtn) { voiceBtn.classList.remove('listening'); voiceBtn.innerHTML = '<span class="voice-icon">🎙</span> Tap to speak'; }
+}
+
+// ── Fix Flow ─────────────────────────────────────────────────────────
+async function boot() {
+  // Validate config
+  if (!CFG.ghUser || !CFG.ghRepo || !CFG.ghPat) {
+    showError(
+      'Not configured',
+      'SayIt Studio needs GitHub credentials. Set SAYIT_GH_USER, SAYIT_GH_REPO, and SAYIT_GH_PAT in Settings.',
+      null, null
+    );
+    return;
+  }
+
+  state.stage = 'init';
+  render();
+
+  // Load registry
+  let regData, regSha;
+  try {
+    const res = await fetchRegistry();
+    regData = res.data;
+    regSha  = res.sha;
+    state.registry   = regData;
+    state.registrySha = regSha;
+  } catch (e) {
+    showError('Registry unavailable', `Could not load project list: ${e.message}`, 'Retry', boot);
+    return;
+  }
+
+  // Determine flow
+  if (!state.projectKey) {
+    // Picker mode
+    state.stage = 'picker';
+    render();
+    return;
+  }
+
+  // Resolve project
+  const proj = regData[state.projectKey];
+  if (!proj) {
+    showError(
+      'Project not found',
+      `"${state.projectKey}" is not in the registry. Check the name and try again.`,
+      null, null
+    );
+    return;
+  }
+  state.project = { ...proj };
+  state.versionCount = Array.isArray(proj.versions) ? proj.versions.length : 0;
+  setHeader(`Fix · ${proj.name || state.projectKey}`);
+
+  if (!state.issue) {
+    state.stage = 'ready';
+    render();
+    bindIssueEdit();
+    return;
+  }
+
+  // We have both project + issue — start immediately
+  await startFix();
+}
+
+async function startFix() {
+  const proj = state.project || state.registry[state.projectKey];
+  if (!proj) {
+    showError('Project not found', `"${state.projectKey}" is not in the registry.`);
+    return;
+  }
+  state.project = { ...proj };
+  state.versionCount = Array.isArray(proj.versions) ? proj.versions.length : 0;
+  setHeader(`Fix · ${proj.name || state.projectKey}`);
+
+  // STEP 1 — LOADING
+  state.stage = 'loading';
+  render();
+
+  let currentHtml, currentSha;
+  try {
+    const res = await fetchProjectHtml(proj.filename);
+    currentHtml = res.html;
+    currentSha  = res.sha;
+  } catch (e) {
+    showError(
+      "Can't load the current version",
+      `Failed to fetch ${proj.filename}: ${e.message}`,
+      'Retry',
+      startFix
+    );
+    return;
+  }
+  state.currentHtml = currentHtml;
+  state.currentSha  = currentSha;
+
+  // STEP 2 — SENDING
+  state.stage = 'sending';
+  render();
+  await doSendFlow();
+}
+
+async function doSendFlow() {
+  const prompt = buildPrompt(state.currentHtml, state.issue);
+
+  await writeClipboard(prompt);
+  await sleep(200);
+  focusRuntime(state.project.platform);
+  await sleep(600);
+
+  // STEP 3 — WAITING
+  state.stage = 'waiting';
+  render();
+
+  if (!hasBridge()) return; // manual mode — handler in renderWaiting
+
+  // Bridge capture loop
+  const MAX_POLLS = 60; // up to 5 min (5s intervals)
+  let polls = 0;
+  const poll = async () => {
+    polls++;
+    const raw = await captureRuntime();
+    if (raw && raw.trim().length > 100) {
+      processCapture(raw);
+      return;
+    }
+    if (polls < MAX_POLLS) {
+      await sleep(5000);
+      await poll();
+    } else {
+      // Timeout — fall to manual
+      state.manualMode = true;
+      render();
+    }
+  };
+  await sleep(3000);
+  await poll();
+}
+
+function processCapture(raw) {
+  if (!raw || !raw.trim()) {
+    toast('Nothing captured yet. Try pasting the full response.');
+    return;
+  }
+  const html = extractHtml(raw);
+  if (!html || !validateHtml(html)) {
+    toast('Could not find valid HTML. Make sure to copy the full response.');
+    return;
+  }
+  state.capturedHtml = html;
+  state.stage = 'captured';
+  render();
+  bindIssueEdit();
+}
+
+async function publishFix() {
+  state.stage = 'publishing';
+  render();
+
+  const proj      = state.project;
+  const path      = filePath(proj.filename);
+  const message   = `fix: ${state.issue} via SayIt`;
+  const oldSha    = state.currentSha;
+  const newHtml   = state.capturedHtml;
+
+  // Commit updated HTML
+  let commitRes;
+  try {
+    commitRes = await commitFile(path, newHtml, message, oldSha);
+  } catch (e) {
+    showError('Publish failed', `Could not commit the updated file: ${e.message}`, 'Try again', publishFix);
+    return;
+  }
+
+  const newSha = commitRes.content?.sha || '';
+
+  // Update registry — version tracking
+  const now = new Date().toISOString();
+  const versionEntry = {
+    sha: newSha,
+    at: now,
+    note: `fix: ${state.issue}`,
+    previousSha: oldSha,
+  };
+
+  // Refresh registry sha (might have changed)
+  let freshRegSha = state.registrySha;
+  try {
+    const fresh = await fetchRegistry();
+    state.registry = fresh.data;
+    freshRegSha = fresh.sha;
+  } catch { /* use cached sha */ }
+
+  const updatedRegistry = { ...state.registry };
+  const updatedProj = { ...updatedRegistry[state.projectKey] };
+  updatedProj.updatedAt = now;
+  if (!Array.isArray(updatedProj.versions)) updatedProj.versions = [];
+  updatedProj.versions = [...updatedProj.versions, versionEntry];
+  updatedRegistry[state.projectKey] = updatedProj;
+
+  try {
+    await commitRegistry(updatedRegistry, freshRegSha);
+  } catch (e) {
+    // Non-fatal — project was still updated
+    toast('Warning: registry update failed but project was published.');
+  }
+
+  state.versionCount++;
+  state.stage = 'done';
+  render();
+
+  // Speak + open
+  speak(`${proj.name || state.projectKey} has been updated. Opening now.`);
+  await sleep(1800);
+  if (proj.pagesUrl) openUrl(proj.pagesUrl);
+}
+
+// ── Kick off ──────────────────────────────────────────────────────────
+boot();
+</script>
+</body>
+</html>
