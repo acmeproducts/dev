@@ -48,6 +48,13 @@
                     <div id="error" class="hidden mt-4 text-sm text-red-600 bg-red-50 p-3 rounded"></div>
 
                     <div id="results" class="mt-6 space-y-2"></div>
+                    <div class="mt-4 border-t pt-3">
+                        <button id="deletedToggle" class="w-full flex items-center justify-between text-left text-sm font-medium text-gray-700 py-1">
+                            <span>Deleted items</span>
+                            <span id="deletedChevron" class="text-xs transition-transform">▶</span>
+                        </button>
+                        <div id="deletedPanel" class="hidden mt-2 space-y-2"></div>
+                    </div>
                 </div>
             </aside>
 
@@ -172,6 +179,9 @@
         });
 
         let selectedElement = null;
+        let activeHtmlFiles = [];
+        let deletedHtmlFiles = [];
+        let deletedPanelOpen = false;
 
         // Owner input event listeners
         const ownerInput = document.getElementById('owner');
@@ -195,6 +205,9 @@
                 document.getElementById('searchButton').disabled = true;
                 document.getElementById('searchButton').classList.add('opacity-50', 'cursor-not-allowed');
                 document.getElementById('results').innerHTML = '';
+                activeHtmlFiles = [];
+                deletedHtmlFiles = [];
+                renderDeletedFiles();
                 return;
             }
 
@@ -205,6 +218,15 @@
 
             document.getElementById('repoLink').href = selectedRepository.html_url;
             document.getElementById('results').innerHTML = '';
+            activeHtmlFiles = [];
+            deletedHtmlFiles = [];
+            renderDeletedFiles();
+        });
+
+        const deletedToggle = document.getElementById('deletedToggle');
+        deletedToggle.addEventListener('click', () => {
+            deletedPanelOpen = !deletedPanelOpen;
+            renderDeletedFiles();
         });
 
         // Load repositories for the given owner
@@ -286,50 +308,128 @@
                     return;
                 }
 
-                htmlFiles.forEach(file => {
-                    const pagesUrl = `https://${selectedRepository.owner.login}.github.io/${selectedRepository.name}/${file.path}`;
-                    const fileEl = document.createElement('div');
-                    fileEl.className = 'p-3 bg-gray-50 rounded hover:bg-gray-100 cursor-pointer';
-                    fileEl.innerHTML = `
-                        <a href="${pagesUrl}" target="_blank" rel="noopener noreferrer" class="text-sm font-medium text-blue-700 hover:text-blue-900 hover:underline app-link">${file.name}</a>
-                        <div class="text-xs text-gray-600 mt-1">${file.path}</div>
-                    `;
-
-                    const appLink = fileEl.querySelector('.app-link');
-                    appLink.addEventListener('click', (event) => {
-                        event.stopPropagation();
-                    });
-                    
-                    fileEl.addEventListener('click', () => {
-                        const iframe = document.getElementById('pageViewer');
-                        iframe.src = pagesUrl;
-                        iframe.classList.remove('hidden');
-                        document.getElementById('currentFile').textContent = file.name;
-                        
-                        // Update selected item highlighting
-                        if (selectedElement) {
-                            selectedElement.classList.remove('bg-gray-200');
-                            selectedElement.classList.add('bg-gray-50');
-                        }
-                        fileEl.classList.remove('bg-gray-50');
-                        fileEl.classList.add('bg-gray-200');
-                        selectedElement = fileEl;
-
-                        resetZoom();
-                        
-                        if (window.innerWidth < 768) {
-                            sidebar.classList.add('w-0');
-                            sidebar.classList.remove('w-80');
-                        }
-                    });
-                    
-                    resultsEl.appendChild(fileEl);
-                });
+                activeHtmlFiles = htmlFiles.map(file => ({ ...file }));
+                deletedHtmlFiles = [];
+                selectedElement = null;
+                renderActiveFiles();
+                renderDeletedFiles();
             } catch (err) {
                 showError(err.message);
             } finally {
                 loadingEl.classList.add('hidden');
             }
+        }
+
+        function renderActiveFiles() {
+            const resultsEl = document.getElementById('results');
+            resultsEl.innerHTML = '';
+
+            activeHtmlFiles.forEach(file => {
+                const pagesUrl = `https://${selectedRepository.owner.login}.github.io/${selectedRepository.name}/${file.path}`;
+                const fileEl = document.createElement('div');
+                fileEl.className = 'p-3 bg-gray-50 rounded hover:bg-gray-100 cursor-pointer flex items-start justify-between gap-2';
+                fileEl.innerHTML = `
+                    <div class="min-w-0">
+                        <a href="${pagesUrl}" target="_blank" rel="noopener noreferrer" class="text-sm font-medium text-blue-700 hover:text-blue-900 hover:underline app-link">${file.name}</a>
+                        <div class="text-xs text-gray-600 mt-1 truncate">${file.path}</div>
+                    </div>
+                    <button class="delete-file text-red-600 hover:text-red-800 text-sm font-bold px-2 py-1 rounded" title="Delete from list" aria-label="Delete ${file.name}">✕</button>
+                `;
+
+                const appLink = fileEl.querySelector('.app-link');
+                const deleteBtn = fileEl.querySelector('.delete-file');
+
+                appLink.addEventListener('click', (event) => {
+                    event.stopPropagation();
+                });
+
+                deleteBtn.addEventListener('click', (event) => {
+                    event.stopPropagation();
+                    deleteFileFromList(file.path);
+                });
+
+                fileEl.addEventListener('click', () => {
+                    const iframe = document.getElementById('pageViewer');
+                    iframe.src = pagesUrl;
+                    iframe.classList.remove('hidden');
+                    document.getElementById('currentFile').textContent = file.name;
+                    
+                    if (selectedElement) {
+                        selectedElement.classList.remove('bg-gray-200');
+                        selectedElement.classList.add('bg-gray-50');
+                    }
+                    fileEl.classList.remove('bg-gray-50');
+                    fileEl.classList.add('bg-gray-200');
+                    selectedElement = fileEl;
+
+                    resetZoom();
+                    
+                    if (window.innerWidth < 768) {
+                        sidebar.classList.add('w-0');
+                        sidebar.classList.remove('w-80');
+                    }
+                });
+                
+                resultsEl.appendChild(fileEl);
+            });
+        }
+
+        function renderDeletedFiles() {
+            const panel = document.getElementById('deletedPanel');
+            const chevron = document.getElementById('deletedChevron');
+            panel.classList.toggle('hidden', !deletedPanelOpen);
+            chevron.style.transform = deletedPanelOpen ? 'rotate(90deg)' : 'rotate(0deg)';
+
+            if (!deletedPanelOpen) {
+                return;
+            }
+
+            if (deletedHtmlFiles.length === 0) {
+                panel.innerHTML = '<div class="text-xs text-gray-500">No deleted items</div>';
+                return;
+            }
+
+            panel.innerHTML = '';
+            deletedHtmlFiles.forEach(file => {
+                const row = document.createElement('div');
+                row.className = 'p-2 bg-gray-50 rounded';
+                row.innerHTML = `
+                    <div class="text-sm text-gray-700 truncate">${file.name}</div>
+                    <div class="text-xs text-gray-500 truncate mb-2">${file.path}</div>
+                    <div class="flex gap-2">
+                        <button class="restore-item text-xs px-2 py-1 bg-green-100 text-green-700 rounded hover:bg-green-200">Restore</button>
+                        <button class="purge-item text-xs px-2 py-1 bg-red-100 text-red-700 rounded hover:bg-red-200">Delete forever</button>
+                    </div>
+                `;
+
+                row.querySelector('.restore-item').addEventListener('click', () => restoreFileToList(file.path));
+                row.querySelector('.purge-item').addEventListener('click', () => permanentlyDeleteFile(file.path));
+                panel.appendChild(row);
+            });
+        }
+
+        function deleteFileFromList(path) {
+            const index = activeHtmlFiles.findIndex(file => file.path === path);
+            if (index === -1) return;
+            const [removed] = activeHtmlFiles.splice(index, 1);
+            deletedHtmlFiles.unshift(removed);
+            selectedElement = null;
+            renderActiveFiles();
+            renderDeletedFiles();
+        }
+
+        function restoreFileToList(path) {
+            const index = deletedHtmlFiles.findIndex(file => file.path === path);
+            if (index === -1) return;
+            const [restored] = deletedHtmlFiles.splice(index, 1);
+            activeHtmlFiles.push(restored);
+            renderActiveFiles();
+            renderDeletedFiles();
+        }
+
+        function permanentlyDeleteFile(path) {
+            deletedHtmlFiles = deletedHtmlFiles.filter(file => file.path !== path);
+            renderDeletedFiles();
         }
 
         function showError(message) {
