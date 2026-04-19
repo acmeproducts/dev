@@ -1183,10 +1183,446 @@ img, svg {
   text-transform: uppercase;
   letter-spacing: 0.08em;
 }
+
+/* =========================================================
+   START HERE / PREFLIGHT — overlay tab
+   ========================================================= */
+.starthere-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  background: #020617;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+}
+.starthere-overlay.hidden { display: none; }
+
+.sh-header {
+  background: #0f172a;
+  border-bottom: 1px solid #1e293b;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+.sh-logo { font-size: 18px; font-weight: 700; }
+.sh-logo span { color: #16a34a; }
+.sh-badge {
+  margin-left: auto;
+  font-size: 10px;
+  font-family: monospace;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 999px;
+  padding: 2px 10px;
+  color: #94a3b8;
+}
+
+.sh-body {
+  flex: 1;
+  padding: 24px 20px;
+  max-width: 640px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.sh-intro {
+  background: #0f172a;
+  border: 1px solid #1e293b;
+  border-radius: 14px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+.sh-intro h1 {
+  font-size: 20px;
+  font-weight: 700;
+  margin-bottom: 8px;
+}
+.sh-intro p {
+  font-size: 13px;
+  color: #94a3b8;
+  line-height: 1.7;
+}
+.sh-intro strong { color: #f8fafc; }
+
+.sh-section {
+  background: #0f172a;
+  border: 1px solid #1e293b;
+  border-radius: 14px;
+  padding: 18px 20px;
+  margin-bottom: 16px;
+}
+.sh-section-title {
+  font-size: 13px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: .6px;
+  color: #94a3b8;
+  margin-bottom: 14px;
+}
+
+/* PAT entry */
+.sh-pat-row {
+  display: flex;
+  gap: 10px;
+  align-items: stretch;
+}
+.sh-pat-input-wrap {
+  flex: 1;
+  position: relative;
+}
+.sh-pat-input {
+  width: 100%;
+  background: #020617;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 10px 44px 10px 12px;
+  color: #f8fafc;
+  font-size: 13px;
+  font-family: monospace;
+  transition: border-color .15s;
+}
+.sh-pat-input:focus { outline: none; border-color: #16a34a; }
+.sh-pat-toggle {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: #94a3b8;
+  font-size: 11px;
+  cursor: pointer;
+  padding: 4px;
+}
+.sh-save-btn {
+  background: #16a34a;
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: 10px 18px;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background .15s;
+}
+.sh-save-btn:hover { background: #15803d; }
+.sh-save-btn:disabled { opacity: .4; cursor: not-allowed; }
+
+.sh-pat-hint {
+  font-size: 11px;
+  color: #94a3b8;
+  margin-top: 6px;
+  line-height: 1.5;
+}
+.sh-pat-status {
+  font-size: 12px;
+  font-weight: 600;
+  margin-top: 8px;
+  padding: 6px 10px;
+  border-radius: 6px;
+  display: none;
+}
+.sh-pat-status.ok  { display:block; background:#021a0e; border:1px solid #166534; color:#86efac; }
+.sh-pat-status.err { display:block; background:#1a0505; border:1px solid #7f1d1d; color:#fca5a5; }
+.sh-pat-status.testing { display:block; background:#0c1a35; border:1px solid #1d4ed8; color:#93c5fd; }
+
+/* Checklist */
+.sh-check-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.sh-check-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 10px 12px;
+  background: #020617;
+  border: 1px solid #1e293b;
+  border-radius: 8px;
+  transition: border-color .2s;
+}
+.sh-check-item.ok   { border-color: #166534; }
+.sh-check-item.fail { border-color: #7f1d1d; }
+.sh-check-item.testing { border-color: #1d4ed8; }
+
+.sh-check-icon {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  border: 2px solid #334155;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 11px;
+  flex-shrink: 0;
+  margin-top: 1px;
+  transition: all .2s;
+}
+.sh-check-item.ok .sh-check-icon   { background:#166534; border-color:#16a34a; color:#fff; }
+.sh-check-item.fail .sh-check-icon { background:#7f1d1d; border-color:#ef4444; color:#fff; }
+.sh-check-item.testing .sh-check-icon { background:#1d4ed8; border-color:#3b82f6; color:#fff; }
+
+.sh-check-body { flex: 1; }
+.sh-check-label { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
+.sh-check-detail { font-size: 11px; color: #94a3b8; line-height: 1.5; }
+.sh-check-item.ok .sh-check-detail   { color: #86efac; }
+.sh-check-item.fail .sh-check-detail { color: #fca5a5; }
+.sh-check-item.testing .sh-check-detail { color: #93c5fd; }
+.sh-check-action {
+  font-size: 11px;
+  color: #16a34a;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 600;
+  margin-top: 4px;
+  display: inline-block;
+}
+.sh-check-action:hover { background: #021a0e; }
+
+/* Run all button */
+.sh-run-btn {
+  width: 100%;
+  background: #0f172a;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  padding: 10px;
+  color: #f8fafc;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  margin-bottom: 12px;
+  transition: border-color .15s;
+}
+.sh-run-btn:hover { border-color: #16a34a; color: #16a34a; }
+
+/* Logging */
+.sh-log-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 4px 0;
+}
+.sh-log-label { font-size: 13px; }
+.sh-toggle-switch {
+  position: relative;
+  width: 40px;
+  height: 22px;
+}
+.sh-toggle-switch input { opacity: 0; width: 0; height: 0; }
+.sh-toggle-slider {
+  position: absolute;
+  inset: 0;
+  background: #1e293b;
+  border-radius: 999px;
+  cursor: pointer;
+  transition: background .2s;
+}
+.sh-toggle-slider:before {
+  content: '';
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  background: #94a3b8;
+  border-radius: 50%;
+  top: 3px;
+  left: 3px;
+  transition: transform .2s, background .2s;
+}
+.sh-toggle-switch input:checked + .sh-toggle-slider { background: #166534; }
+.sh-toggle-switch input:checked + .sh-toggle-slider:before { transform: translateX(18px); background: #16a34a; }
+.sh-log-output {
+  background: #020617;
+  border: 1px solid #1e293b;
+  border-radius: 8px;
+  padding: 10px;
+  font-family: monospace;
+  font-size: 10px;
+  color: #94a3b8;
+  line-height: 1.6;
+  max-height: 160px;
+  overflow-y: auto;
+  margin-top: 10px;
+  display: none;
+}
+.sh-log-output.visible { display: block; }
+.log-line-info  { color: #93c5fd; }
+.log-line-ok    { color: #86efac; }
+.log-line-warn  { color: #fcd34d; }
+.log-line-err   { color: #fca5a5; }
+
+/* Continue button */
+.sh-continue-btn {
+  width: 100%;
+  background: #16a34a;
+  color: #fff;
+  border: none;
+  border-radius: 10px;
+  padding: 14px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  margin-top: 8px;
+  transition: background .15s, opacity .15s;
+}
+.sh-continue-btn:hover { background: #15803d; }
+.sh-continue-btn:disabled { opacity: .4; cursor: not-allowed; }
+
 </style>
 </head>
 
-<body><script>(function(){var c={"SAYIT_GH_USER":"acmeproducts","SAYIT_GH_REPO":"dev","SAYIT_SUBDIR":"sayit-v3","SAYIT_DISPLAY_NAME":"SayIt","SAYIT_WAKE_WORD":"sayit"};Object.keys(c).forEach(function(k){try{localStorage.setItem(k,c[k]);}catch(e){}});try{localStorage.setItem("SAYIT_GH_PAT","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");}catch(e){}})();</script>
+<body><script>(function(){var c={"SAYIT_GH_USER":"acmeproducts","SAYIT_GH_REPO":"dev","SAYIT_SUBDIR":"sayit-v4","SAYIT_DISPLAY_NAME":"sayit","SAYIT_WAKE_WORD":"sayit"};Object.keys(c).forEach(function(k){try{localStorage.setItem(k,c[k]);}catch(e){}});// PAT: bootstrap into localStorage only — never sent to Android prefstry{localStorage.setItem("SAYIT_GH_PAT",undefined);}catch(e){}})();</script>
+
+<!-- ═══════════════════════════════════════════════════════
+     START HERE — Preflight overlay (shown when PAT missing)
+     ═══════════════════════════════════════════════════════ -->
+<div class="starthere-overlay hidden" id="startHereOverlay">
+  <div class="sh-header">
+    <div class="sh-logo">Say<span>It</span> Studio</div>
+    <span class="sh-badge">Start Here</span>
+  </div>
+  <div class="sh-body">
+
+    <div class="sh-intro">
+      <h1>Welcome to SayIt Studio</h1>
+      <p>Before you can create, fix, or deploy projects you need to complete this one-time setup. Once done, this screen will not appear again unless your GitHub token expires.</p>
+      <p>Your <strong>GitHub token (PAT)</strong> is entered here and saved to this browser only. It is never stored in any file, never uploaded to GitHub, and never seen by the APK.</p>
+    </div>
+
+    <!-- PAT ENTRY -->
+    <div class="sh-section">
+      <div class="sh-section-title">Step 1 — GitHub Token</div>
+      <div class="sh-pat-row">
+        <div class="sh-pat-input-wrap">
+          <input class="sh-pat-input" type="password" id="shPatInput" placeholder="github_pat_..." autocomplete="off" spellcheck="false"/>
+          <button class="sh-pat-toggle" id="shPatToggle" onclick="shTogglePat()">show</button>
+        </div>
+        <button class="sh-save-btn" id="shSavePatBtn" onclick="shSavePat()">Save</button>
+      </div>
+      <div class="sh-pat-hint">
+        Fine-grained PAT · repo Contents read+write · <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" style="color:#16a34a;">Create one on GitHub</a>
+      </div>
+      <div class="sh-pat-status" id="shPatStatus"></div>
+    </div>
+
+    <!-- PREFLIGHT CHECKLIST -->
+    <div class="sh-section">
+      <div class="sh-section-title">Step 2 — Preflight Checks</div>
+      <button class="sh-run-btn" onclick="shRunAllChecks()">Run All Checks</button>
+      <div class="sh-check-list" id="shCheckList">
+
+        <div class="sh-check-item" id="shck-pat">
+          <div class="sh-check-icon" id="shck-pat-icon">—</div>
+          <div class="sh-check-body">
+            <div class="sh-check-label">GitHub Token</div>
+            <div class="sh-check-detail" id="shck-pat-detail">Not checked yet</div>
+          </div>
+        </div>
+
+        <div class="sh-check-item" id="shck-pages">
+          <div class="sh-check-icon" id="shck-pages-icon">—</div>
+          <div class="sh-check-body">
+            <div class="sh-check-label">GitHub Pages — home.html reachable</div>
+            <div class="sh-check-detail" id="shck-pages-detail">Not checked yet</div>
+          </div>
+        </div>
+
+        <div class="sh-check-item" id="shck-learn">
+          <div class="sh-check-icon" id="shck-learn-icon">—</div>
+          <div class="sh-check-body">
+            <div class="sh-check-label">learn.html reachable</div>
+            <div class="sh-check-detail" id="shck-learn-detail">Not checked yet</div>
+          </div>
+        </div>
+
+        <div class="sh-check-item" id="shck-do">
+          <div class="sh-check-icon" id="shck-do-icon">—</div>
+          <div class="sh-check-body">
+            <div class="sh-check-label">do.html reachable</div>
+            <div class="sh-check-detail" id="shck-do-detail">Not checked yet</div>
+          </div>
+        </div>
+
+        <div class="sh-check-item" id="shck-fix">
+          <div class="sh-check-icon" id="shck-fix-icon">—</div>
+          <div class="sh-check-body">
+            <div class="sh-check-label">fix.html reachable</div>
+            <div class="sh-check-detail" id="shck-fix-detail">Not checked yet</div>
+          </div>
+        </div>
+
+        <div class="sh-check-item" id="shck-rollback">
+          <div class="sh-check-icon" id="shck-rollback-icon">—</div>
+          <div class="sh-check-body">
+            <div class="sh-check-label">rollback.html reachable</div>
+            <div class="sh-check-detail" id="shck-rollback-detail">Not checked yet</div>
+          </div>
+        </div>
+
+        <div class="sh-check-item" id="shck-bridge">
+          <div class="sh-check-icon" id="shck-bridge-icon">—</div>
+          <div class="sh-check-body">
+            <div class="sh-check-label">APK Bridge</div>
+            <div class="sh-check-detail" id="shck-bridge-detail">Not checked yet</div>
+            <div style="font-size:11px;color:#94a3b8;margin-top:3px;">Bridge is optional — app works without it in manual mode</div>
+          </div>
+        </div>
+
+        <div class="sh-check-item" id="shck-mic">
+          <div class="sh-check-icon" id="shck-mic-icon">—</div>
+          <div class="sh-check-body">
+            <div class="sh-check-label">Microphone permission</div>
+            <div class="sh-check-detail" id="shck-mic-detail">Not checked yet</div>
+            <button class="sh-check-action hidden" id="shck-mic-btn" onclick="shCheckMic()">Request permission</button>
+          </div>
+        </div>
+
+        <div class="sh-check-item" id="shck-voice">
+          <div class="sh-check-icon" id="shck-voice-icon">—</div>
+          <div class="sh-check-body">
+            <div class="sh-check-label">Speech recognition (Web Speech API)</div>
+            <div class="sh-check-detail" id="shck-voice-detail">Not checked yet</div>
+          </div>
+        </div>
+
+        <div class="sh-check-item" id="shck-registry">
+          <div class="sh-check-icon" id="shck-registry-icon">—</div>
+          <div class="sh-check-body">
+            <div class="sh-check-label">registry.json readable from GitHub</div>
+            <div class="sh-check-detail" id="shck-registry-detail">Not checked yet — requires PAT and Pages</div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- LOGGING -->
+    <div class="sh-section">
+      <div class="sh-section-title">Logging</div>
+      <div class="sh-log-toggle">
+        <span class="sh-log-label">Enable debug logging</span>
+        <label class="sh-toggle-switch">
+          <input type="checkbox" id="shLogToggle" onchange="shToggleLog(this.checked)"/>
+          <span class="sh-toggle-slider"></span>
+        </label>
+      </div>
+      <div class="sh-log-output" id="shLogOutput"></div>
+    </div>
+
+    <button class="sh-continue-btn" id="shContinueBtn" onclick="shContinue()" disabled>
+      Continue to SayIt Studio →
+    </button>
+
+  </div><!-- /sh-body -->
+</div><!-- /starthere-overlay -->
+
 <div class="app" id="app" data-orb-state="idle">
 
   <!-- Banners -->
@@ -1408,7 +1844,7 @@ img, svg {
       </div>
       <div class="settings-row">
         <span class="settings-key">PAT</span>
-        <span class="settings-val" id="cfgPat">—</span>
+        <span class="settings-val" id="cfgPat" title="Runtime only — not in any file">—</span>
       </div>
     </div>
 
@@ -1427,6 +1863,7 @@ img, svg {
     <div class="settings-actions">
       <button class="btn btn--primary" id="settingsReconfigure">Reconfigure Workbook</button>
       <button class="btn btn--secondary" id="settingsTrainPlatform">Train New Platform</button>
+      <button class="btn btn--secondary" onclick="closeSettings(); showStartHere();" style="margin-top:6px;">Start Here / Preflight</button>
     </div>
 
     <p class="version-line" id="versionLine">SayIt Studio v1.0.0</p>
@@ -2285,7 +2722,7 @@ function openSettings() {
   fill('cfgUser',        cfg.ghUser);
   fill('cfgRepo',        cfg.ghRepo);
   fill('cfgSubdir',      cfg.subdir || '(root)');
-  fill('cfgPat',         cfg.ghPat);
+  fill('cfgPat',         cfg.ghPat ? cfg.ghPat.slice(0,8) + '…' : '');
   fill('cfgWakeWord',    cfg.wakeWord);
   fill('cfgDisplayName', cfg.displayName);
   $('versionLine').textContent = `SayIt Studio v${APP_VERSION}`;
@@ -2450,7 +2887,312 @@ function init() {
 }
 
 // Boot
-document.addEventListener('DOMContentLoaded', init);
+document.addEventListener('DOMContentLoaded', function() {
+  // Show Start Here preflight if PAT not yet saved
+  if (!maybeShowStartHere()) {
+    init();
+  }
+});
+
+// ═══════════════════════════════════════════════════════════
+// START HERE — Preflight module
+// ═══════════════════════════════════════════════════════════
+
+const startHereOverlay = document.getElementById('startHereOverlay');
+
+// Logging
+let shLoggingEnabled = false;
+const shLogLines = [];
+
+function shLog(msg, level) {
+  level = level || 'info';
+  const ts = new Date().toTimeString().slice(0,8);
+  const line = `[${ts}] ${msg}`;
+  shLogLines.push({ line, level });
+  if (shLoggingEnabled) shRenderLog();
+  if (level === 'err') console.error('[SayIt preflight]', msg);
+  else if (level === 'warn') console.warn('[SayIt preflight]', msg);
+  else console.log('[SayIt preflight]', msg);
+}
+
+function shRenderLog() {
+  const el = document.getElementById('shLogOutput');
+  if (!el) return;
+  el.innerHTML = shLogLines.slice(-60).map(function(e) {
+    var cls = 'log-line-' + (e.level === 'ok' ? 'ok' : e.level === 'warn' ? 'warn' : e.level === 'err' ? 'err' : 'info');
+    return '<div class="' + cls + '">' + e.line.replace(/</g,'&lt;') + '</div>';
+  }).join('');
+  el.scrollTop = el.scrollHeight;
+}
+
+function shToggleLog(on) {
+  shLoggingEnabled = on;
+  const out = document.getElementById('shLogOutput');
+  if (on) { out.classList.add('visible'); shRenderLog(); }
+  else { out.classList.remove('visible'); }
+  try { localStorage.setItem('SAYIT_LOGGING', on ? '1' : '0'); } catch(e) {}
+}
+
+// Show/hide Start Here overlay
+function showStartHere() {
+  startHereOverlay.classList.remove('hidden');
+  shLog('Start Here overlay opened');
+  // Pre-fill PAT if already saved (token rotation scenario)
+  const existing = (function(){ try { return localStorage.getItem('SAYIT_GH_PAT') || ''; } catch(e){ return ''; } })();
+  if (existing) {
+    document.getElementById('shPatInput').value = existing;
+    shSetPatStatus('ok', 'Token loaded from previous session');
+    shUpdateContinueBtn();
+  }
+  // Restore logging pref
+  try {
+    const logPref = localStorage.getItem('SAYIT_LOGGING');
+    if (logPref === '1') {
+      document.getElementById('shLogToggle').checked = true;
+      shToggleLog(true);
+    }
+  } catch(e) {}
+}
+
+function hideStartHere() {
+  startHereOverlay.classList.add('hidden');
+}
+
+// PAT handling
+function shTogglePat() {
+  const inp = document.getElementById('shPatInput');
+  const btn = document.getElementById('shPatToggle');
+  if (inp.type === 'password') { inp.type = 'text'; btn.textContent = 'hide'; }
+  else { inp.type = 'password'; btn.textContent = 'show'; }
+}
+
+function shSavePat() {
+  const val = (document.getElementById('shPatInput').value || '').trim();
+  if (!val || val.length < 10) {
+    shSetPatStatus('err', 'Enter a valid GitHub token first');
+    return;
+  }
+  shSetPatStatus('testing', 'Validating token…');
+  shLog('Validating PAT with GitHub API…');
+  // Validate by calling the GitHub user endpoint
+  fetch('https://api.github.com/user', {
+    headers: { 'Authorization': 'token ' + val, 'Accept': 'application/vnd.github.v3+json' }
+  }).then(function(r) {
+    if (r.ok) {
+      return r.json().then(function(data) {
+        try { localStorage.setItem('SAYIT_GH_PAT', val); } catch(e) {}
+        shSetPatStatus('ok', 'Valid token — GitHub user: ' + (data.login || 'confirmed'));
+        shLog('PAT validated for user: ' + (data.login || '?'), 'ok');
+        shCheckItem('shck-pat', 'ok', 'Token valid — GitHub user: ' + (data.login || 'confirmed'));
+        shUpdateContinueBtn();
+      });
+    } else {
+      shSetPatStatus('err', 'Token rejected by GitHub (status ' + r.status + ') — check permissions');
+      shLog('PAT validation failed: HTTP ' + r.status, 'err');
+      shCheckItem('shck-pat', 'fail', 'Token rejected — check it has Contents read+write');
+    }
+  }).catch(function(e) {
+    shSetPatStatus('err', 'Network error — check internet connection');
+    shLog('PAT validation network error: ' + e.message, 'err');
+    shCheckItem('shck-pat', 'fail', 'Network error during validation');
+  });
+}
+
+function shSetPatStatus(type, msg) {
+  const el = document.getElementById('shPatStatus');
+  el.className = 'sh-pat-status ' + type;
+  el.textContent = msg;
+}
+
+// Individual check helpers
+function shCheckItem(id, state, detail) {
+  const item = document.getElementById(id);
+  const icon = document.getElementById(id + '-icon');
+  const det  = document.getElementById(id + '-detail');
+  if (!item) return;
+  item.className = 'sh-check-item ' + (state === 'ok' ? 'ok' : state === 'fail' ? 'fail' : state === 'testing' ? 'testing' : '');
+  if (icon) icon.textContent = state === 'ok' ? '✓' : state === 'fail' ? '✗' : state === 'testing' ? '…' : '—';
+  if (det && detail) det.textContent = detail;
+}
+
+function shCheckUrl(checkId, url) {
+  shCheckItem(checkId, 'testing', 'Checking ' + url + '…');
+  shLog('Checking URL: ' + url);
+  return fetch(url, { method: 'HEAD', cache: 'no-cache' })
+    .then(function(r) {
+      if (r.ok || r.status === 304) {
+        shCheckItem(checkId, 'ok', 'Reachable — HTTP ' + r.status);
+        shLog(url + ' → ' + r.status, 'ok');
+        return true;
+      } else {
+        shCheckItem(checkId, 'fail', 'HTTP ' + r.status + ' — not published yet?');
+        shLog(url + ' → HTTP ' + r.status, 'warn');
+        return false;
+      }
+    })
+    .catch(function(e) {
+      shCheckItem(checkId, 'fail', 'Unreachable — ' + e.message);
+      shLog(url + ' → error: ' + e.message, 'err');
+      return false;
+    });
+}
+
+function shCheckMic() {
+  shCheckItem('shck-mic', 'testing', 'Requesting microphone permission…');
+  navigator.mediaDevices.getUserMedia({ audio: true })
+    .then(function(stream) {
+      stream.getTracks().forEach(function(t){ t.stop(); });
+      shCheckItem('shck-mic', 'ok', 'Microphone permission granted');
+      shLog('Microphone permission granted', 'ok');
+      shUpdateContinueBtn();
+    })
+    .catch(function(e) {
+      shCheckItem('shck-mic', 'fail', 'Denied — ' + e.message);
+      shLog('Microphone permission denied: ' + e.message, 'err');
+      document.getElementById('shck-mic-btn').classList.remove('hidden');
+    });
+}
+
+async function shRunAllChecks() {
+  shLog('--- Running all preflight checks ---');
+  const cfg = getConfig();
+  const baseUrl = 'https://' + cfg.ghUser + '.github.io/' + cfg.ghRepo + (cfg.subdir ? '/' + cfg.subdir : '');
+
+  // 1. PAT
+  const pat = (function(){ try { return localStorage.getItem('SAYIT_GH_PAT') || ''; } catch(e){ return ''; } })();
+  if (pat) {
+    shCheckItem('shck-pat', 'testing', 'Validating…');
+    try {
+      const r = await fetch('https://api.github.com/user', { headers: {'Authorization': 'token ' + pat} });
+      if (r.ok) {
+        const d = await r.json();
+        shCheckItem('shck-pat', 'ok', 'Valid — GitHub user: ' + (d.login || 'confirmed'));
+        shLog('PAT valid for ' + d.login, 'ok');
+      } else {
+        shCheckItem('shck-pat', 'fail', 'Invalid — HTTP ' + r.status);
+        shLog('PAT invalid: ' + r.status, 'err');
+      }
+    } catch(e) {
+      shCheckItem('shck-pat', 'fail', 'Network error: ' + e.message);
+    }
+  } else {
+    shCheckItem('shck-pat', 'fail', 'No token saved — enter it in Step 1 above');
+  }
+
+  // 2-6. Page reachability
+  if (cfg.ghUser && cfg.ghRepo) {
+    await shCheckUrl('shck-pages',    baseUrl + '/home.html');
+    await shCheckUrl('shck-learn',    baseUrl + '/learn.html');
+    await shCheckUrl('shck-do',       baseUrl + '/do.html');
+    await shCheckUrl('shck-fix',      baseUrl + '/fix.html');
+    await shCheckUrl('shck-rollback', baseUrl + '/rollback.html');
+  } else {
+    ['shck-pages','shck-learn','shck-do','shck-fix','shck-rollback'].forEach(function(id) {
+      shCheckItem(id, 'fail', 'GH user/repo not configured — check workbook config');
+    });
+  }
+
+  // 7. APK bridge
+  if (typeof window.SayItBridge !== 'undefined' && window.SayItBridge !== null) {
+    try {
+      const st = window.SayItBridge.appState ? window.SayItBridge.appState() : null;
+      shCheckItem('shck-bridge', 'ok', 'Bridge active' + (st ? ' — ' + st : ''));
+      shLog('APK bridge present and responding', 'ok');
+    } catch(e) {
+      shCheckItem('shck-bridge', 'fail', 'Bridge present but errored: ' + e.message);
+    }
+  } else {
+    shCheckItem('shck-bridge', 'fail', 'Bridge not detected — running in browser/manual mode (this is OK)');
+    shLog('APK bridge not present — manual mode', 'warn');
+  }
+
+  // 8. Microphone
+  if (navigator.permissions) {
+    try {
+      const perm = await navigator.permissions.query({ name: 'microphone' });
+      if (perm.state === 'granted') {
+        shCheckItem('shck-mic', 'ok', 'Microphone permission granted');
+        shLog('Mic: granted', 'ok');
+      } else if (perm.state === 'denied') {
+        shCheckItem('shck-mic', 'fail', 'Microphone denied — grant in browser/app settings');
+        shLog('Mic: denied', 'err');
+        document.getElementById('shck-mic-btn').classList.remove('hidden');
+      } else {
+        shCheckItem('shck-mic', 'testing', 'Permission not yet granted — tap "Request permission"');
+        document.getElementById('shck-mic-btn').classList.remove('hidden');
+      }
+    } catch(e) {
+      shCheckItem('shck-mic', 'testing', 'Cannot query — tap "Request permission" to check');
+      document.getElementById('shck-mic-btn').classList.remove('hidden');
+    }
+  } else {
+    shCheckItem('shck-mic', 'testing', 'Tap "Request permission" to check');
+    document.getElementById('shck-mic-btn').classList.remove('hidden');
+  }
+
+  // 9. Speech API
+  const hasSpeech = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+  shCheckItem('shck-voice', hasSpeech ? 'ok' : 'fail',
+    hasSpeech ? 'Web Speech API available' : 'Web Speech API not available — voice commands disabled');
+  shLog('Speech API: ' + (hasSpeech ? 'available' : 'not available'), hasSpeech ? 'ok' : 'warn');
+
+  // 10. Registry read
+  if (pat && cfg.ghUser && cfg.ghRepo) {
+    shCheckItem('shck-registry', 'testing', 'Reading registry.json…');
+    const regUrl = 'https://raw.githubusercontent.com/' + cfg.ghUser + '/' + cfg.ghRepo + '/main/' + (cfg.subdir ? cfg.subdir + '/' : '') + 'registry.json';
+    try {
+      const rr = await fetch(regUrl, { headers: {'Authorization': 'token ' + pat} });
+      if (rr.ok) {
+        shCheckItem('shck-registry', 'ok', 'registry.json found and readable');
+        shLog('registry.json readable', 'ok');
+      } else {
+        shCheckItem('shck-registry', 'fail', 'HTTP ' + rr.status + ' — file may not be uploaded yet');
+        shLog('registry.json: HTTP ' + rr.status, 'warn');
+      }
+    } catch(e) {
+      shCheckItem('shck-registry', 'fail', 'Error: ' + e.message);
+    }
+  } else {
+    shCheckItem('shck-registry', 'fail', 'Cannot check — PAT or GH config missing');
+  }
+
+  shUpdateContinueBtn();
+  shLog('--- Preflight complete ---');
+}
+
+function shUpdateContinueBtn() {
+  const pat = (function(){ try { return localStorage.getItem('SAYIT_GH_PAT') || ''; } catch(e){ return ''; } })();
+  const btn = document.getElementById('shContinueBtn');
+  if (pat && pat.length > 10) {
+    btn.disabled = false;
+    btn.textContent = 'Continue to SayIt Studio →';
+  } else {
+    btn.disabled = true;
+    btn.textContent = 'Save a valid token first';
+  }
+}
+
+function shContinue() {
+  hideStartHere();
+  // Re-init the main app now that PAT is available
+  init();
+  shLog('Continuing to main app', 'ok');
+}
+
+// Auto-show Start Here if PAT is missing
+function maybeShowStartHere() {
+  const pat = (function(){ try { return localStorage.getItem('SAYIT_GH_PAT') || ''; } catch(e){ return ''; } })();
+  if (!pat || pat.length < 10) {
+    showStartHere();
+    return true;
+  }
+  return false;
+}
+
+// Expose for settings panel "Start Here" button
+window.openStartHere = showStartHere;
+
+
 </script>
 </body>
 </html>
