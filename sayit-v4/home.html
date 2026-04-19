@@ -13,45 +13,28 @@
    DESIGN TOKENS
    ========================================================= */
 :root {
-  /* Type scale */
-  --text-xs: clamp(0.75rem, 0.7rem + 0.25vw, 0.875rem);
-  --text-sm: clamp(0.875rem, 0.8rem + 0.35vw, 1rem);
-  --text-base: clamp(1rem, 0.95rem + 0.25vw, 1.125rem);
-  --text-lg: clamp(1.125rem, 1rem + 0.75vw, 1.5rem);
-  --text-xl: clamp(1.5rem, 1.2rem + 1.25vw, 2.25rem);
+  --text-xs:   clamp(0.75rem,  0.7rem  + 0.25vw, 0.875rem);
+  --text-sm:   clamp(0.875rem, 0.8rem  + 0.35vw, 1rem);
+  --text-base: clamp(1rem,     0.95rem + 0.25vw, 1.125rem);
+  --text-lg:   clamp(1.125rem, 1rem    + 0.75vw, 1.5rem);
+  --text-xl:   clamp(1.5rem,   1.2rem  + 1.25vw, 2.25rem);
 
-  /* Spacing (4px base) */
-  --space-1: 0.25rem;
-  --space-2: 0.5rem;
-  --space-3: 0.75rem;
-  --space-4: 1rem;
-  --space-5: 1.25rem;
-  --space-6: 1.5rem;
-  --space-8: 2rem;
-  --space-10: 2.5rem;
-  --space-12: 3rem;
-  --space-16: 4rem;
+  --space-1: 0.25rem;  --space-2: 0.5rem;   --space-3: 0.75rem;
+  --space-4: 1rem;     --space-5: 1.25rem;  --space-6: 1.5rem;
+  --space-8: 2rem;     --space-10: 2.5rem;  --space-12: 3rem;
 
-  /* Radius */
-  --radius-sm: 0.375rem;
-  --radius-md: 0.5rem;
-  --radius-lg: 0.75rem;
-  --radius-xl: 1rem;
-  --radius-full: 9999px;
+  --radius-sm: 0.375rem; --radius-md: 0.5rem; --radius-lg: 0.75rem;
+  --radius-xl: 1rem;     --radius-full: 9999px;
 
-  /* Transitions */
-  --transition-interactive: 180ms cubic-bezier(0.16, 1, 0.3, 1);
-  --transition-slow: 400ms cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-fast: 120ms cubic-bezier(0.16,1,0.3,1);
+  --transition-base: 180ms cubic-bezier(0.16,1,0.3,1);
+  --transition-slow: 400ms cubic-bezier(0.16,1,0.3,1);
 
-  /* Fonts */
-  --font-body: -apple-system, 'Segoe UI', system-ui, sans-serif;
-  --font-mono: 'SF Mono', 'Fira Code', 'Consolas', monospace;
+  --font-body: -apple-system,'Segoe UI',system-ui,sans-serif;
+  --font-mono: 'SF Mono','Fira Code','Consolas',monospace;
 }
 
-/* SayIt dark theme — fixed as per spec (bg #020617, accent #16a34a, text #f8fafc) */
-:root,
-[data-theme="dark"] {
-  /* Surfaces */
+:root, [data-theme="dark"] {
   --color-bg:              #020617;
   --color-surface:         #0a0f1e;
   --color-surface-2:       #0f172a;
@@ -61,1568 +44,576 @@
   --color-border:          #334155;
   --color-border-subtle:   #1e293b;
 
-  /* Text */
   --color-text:            #f8fafc;
   --color-text-muted:      #94a3b8;
   --color-text-faint:      #475569;
   --color-text-inverse:    #020617;
 
-  /* Accent green */
   --color-primary:         #16a34a;
   --color-primary-hover:   #15803d;
   --color-primary-active:  #166534;
-  --color-primary-glow:    rgba(22, 163, 74, 0.25);
-  --color-primary-glow-lg: rgba(22, 163, 74, 0.12);
+  --color-primary-glow:    rgba(22,163,74,0.25);
+  --color-primary-glow-lg: rgba(22,163,74,0.12);
 
-  /* Status */
-  --color-success:         #16a34a;
-  --color-error:           #ef4444;
-  --color-warning:         #f59e0b;
-  --color-info:            #3b82f6;
+  --color-success: #16a34a;
+  --color-error:   #ef4444;
+  --color-warning: #f59e0b;
+  --color-info:    #3b82f6;
 
-  /* State-specific orb colors */
-  --orb-idle:              #1e293b;
-  --orb-listening:         #16a34a;
-  --orb-processing:        #3b82f6;
-  --orb-speaking:          #8b5cf6;
-  --orb-error:             #ef4444;
+  --orb-idle:       #1e293b;
+  --orb-listening:  #16a34a;
+  --orb-processing: #3b82f6;
+  --orb-speaking:   #8b5cf6;
+  --orb-error:      #ef4444;
 
-  /* Shadows */
-  --shadow-sm:  0 1px 3px rgba(0,0,0,0.4);
-  --shadow-md:  0 4px 16px rgba(0,0,0,0.5);
-  --shadow-lg:  0 12px 40px rgba(0,0,0,0.6);
+  --shadow-sm:   0 1px 3px rgba(0,0,0,0.4);
+  --shadow-md:   0 4px 16px rgba(0,0,0,0.5);
+  --shadow-lg:   0 12px 40px rgba(0,0,0,0.6);
   --shadow-glow: 0 0 40px var(--color-primary-glow), 0 0 80px var(--color-primary-glow-lg);
 }
 
-/* =========================================================
-   BASE RESET
-   ========================================================= */
-*, *::before, *::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 html {
-  -webkit-text-size-adjust: none;
-  text-size-adjust: none;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
-  text-rendering: optimizeLegibility;
-  scroll-behavior: smooth;
-  height: 100%;
-  /* Safe area for notched/punched phones */
+  -webkit-text-size-adjust: none; text-size-adjust: none;
+  -webkit-font-smoothing: antialiased; text-rendering: optimizeLegibility;
+  scroll-behavior: smooth; height: 100%;
   padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
 }
 body {
-  min-height: 100dvh;
-  font-family: var(--font-body);
-  font-size: var(--text-base);
-  color: var(--color-text);
-  background-color: var(--color-bg);
-  line-height: 1.6;
-  overflow-x: hidden;
-  display: flex;
-  flex-direction: column;
+  min-height: 100dvh; font-family: var(--font-body); font-size: var(--text-base);
+  color: var(--color-text); background-color: var(--color-bg); line-height: 1.6;
+  overflow-x: hidden; display: flex; flex-direction: column;
 }
-button {
-  cursor: pointer;
-  background: none;
-  border: none;
-  font: inherit;
-  color: inherit;
-}
-input, textarea, select {
-  font: inherit;
-  color: inherit;
-}
-img, svg {
-  display: block;
-}
-:focus-visible {
-  outline: 2px solid var(--color-primary);
-  outline-offset: 3px;
-  border-radius: var(--radius-sm);
-}
+button { cursor: pointer; background: none; border: none; font: inherit; color: inherit; }
+input, textarea, select { font: inherit; color: inherit; }
+img, svg { display: block; }
+:focus-visible { outline: 2px solid var(--color-primary); outline-offset: 3px; border-radius: var(--radius-sm); }
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
 }
+.hidden { display: none !important; }
 
 /* =========================================================
    LAYOUT
    ========================================================= */
 .app {
-  display: flex;
-  flex-direction: column;
-  min-height: 100dvh;
-  max-width: 640px;
-  margin: 0 auto;
-  width: 100%;
-  position: relative;
+  display: flex; flex-direction: column; min-height: 100dvh;
+  max-width: 640px; margin: 0 auto; width: 100%; position: relative;
 }
 
 /* =========================================================
-   BANNER NOTIFICATIONS
+   BANNERS
    ========================================================= */
-.banners {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-1);
-  position: sticky;
-  top: 0;
-  z-index: 100;
-}
-.banner {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-2) var(--space-4);
-  font-size: var(--text-sm);
-  font-weight: 500;
-  line-height: 1.4;
-  animation: slideDown 0.3s ease;
-}
-.banner--offline {
-  background: rgba(245, 158, 11, 0.15);
-  border-bottom: 1px solid rgba(245, 158, 11, 0.3);
-  color: #fbbf24;
-}
-.banner--browser {
-  background: rgba(59, 130, 246, 0.12);
-  border-bottom: 1px solid rgba(59, 130, 246, 0.25);
-  color: #93c5fd;
-}
-.banner--nomic {
-  background: rgba(239, 68, 68, 0.12);
-  border-bottom: 1px solid rgba(239, 68, 68, 0.25);
-  color: #fca5a5;
-}
-.banner-icon {
-  flex-shrink: 0;
-  width: 16px;
-  height: 16px;
-}
-@keyframes slideDown {
-  from { transform: translateY(-100%); opacity: 0; }
-  to   { transform: translateY(0);     opacity: 1; }
-}
-.hidden { display: none !important; }
+.banners { display: flex; flex-direction: column; gap: var(--space-1); position: sticky; top: 0; z-index: 100; }
+.banner { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-4); font-size: var(--text-sm); font-weight: 500; line-height: 1.4; animation: slideDown 0.3s ease; }
+.banner--offline  { background: rgba(245,158,11,0.15); border-bottom: 1px solid rgba(245,158,11,0.3); color: #fbbf24; }
+.banner--browser  { background: rgba(59,130,246,0.12); border-bottom: 1px solid rgba(59,130,246,0.25); color: #93c5fd; }
+.banner--nomic    { background: rgba(239,68,68,0.12);  border-bottom: 1px solid rgba(239,68,68,0.25);  color: #fca5a5; }
+.banner-icon { flex-shrink: 0; width: 16px; height: 16px; }
+@keyframes slideDown { from { transform: translateY(-100%); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
 
 /* =========================================================
    HEADER
    ========================================================= */
 .header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
+  display: flex; align-items: center; justify-content: space-between;
   padding: var(--space-4) var(--space-5);
   border-bottom: 1px solid var(--color-border-subtle);
-  background: var(--color-surface);
-  flex-shrink: 0;
+  background: var(--color-surface); flex-shrink: 0;
 }
-.header-left {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-}
-.logo {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
-.logo-mark {
-  width: 32px;
-  height: 32px;
-  flex-shrink: 0;
-}
-.logo-text {
-  font-size: var(--text-lg);
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  line-height: 1;
-  color: var(--color-text);
-}
-.logo-text span {
-  color: var(--color-primary);
-}
+.header-left  { display: flex; align-items: center; gap: var(--space-3); }
+.logo         { display: flex; align-items: center; gap: var(--space-2); }
+.logo-mark    { width: 32px; height: 32px; flex-shrink: 0; }
+.logo-text    { font-size: var(--text-lg); font-weight: 700; letter-spacing: -0.02em; line-height: 1; color: var(--color-text); }
+.logo-text span { color: var(--color-primary); }
 .project-badge {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 22px;
-  height: 22px;
-  padding: 0 var(--space-2);
-  background: var(--color-primary);
-  color: var(--color-text-inverse);
-  font-size: var(--text-xs);
-  font-weight: 700;
-  border-radius: var(--radius-full);
-  line-height: 1;
-  transition: background var(--transition-interactive);
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 22px; height: 22px; padding: 0 var(--space-2);
+  background: var(--color-primary); color: var(--color-text-inverse);
+  font-size: var(--text-xs); font-weight: 700; border-radius: var(--radius-full); line-height: 1;
+  transition: background var(--transition-base);
 }
-.project-badge[data-count="0"] {
-  background: var(--color-surface-dynamic);
-  color: var(--color-text-faint);
-}
-.header-right {
-  display: flex;
-  align-items: center;
-  gap: var(--space-2);
-}
+.project-badge[data-count="0"] { background: var(--color-surface-dynamic); color: var(--color-text-faint); }
+.header-right { display: flex; align-items: center; gap: var(--space-2); }
 .icon-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  border-radius: var(--radius-lg);
-  color: var(--color-text-muted);
-  transition: color var(--transition-interactive), background var(--transition-interactive);
+  display: flex; align-items: center; justify-content: center;
+  width: 40px; height: 40px; border-radius: var(--radius-lg); color: var(--color-text-muted);
+  transition: color var(--transition-base), background var(--transition-base);
   -webkit-tap-highlight-color: transparent;
 }
-.icon-btn:hover,
-.icon-btn:focus-visible {
-  color: var(--color-text);
-  background: var(--color-surface-dynamic);
+.icon-btn:hover, .icon-btn:focus-visible { color: var(--color-text); background: var(--color-surface-dynamic); }
+.icon-btn svg { pointer-events: none; }
+
+/* =========================================================
+   JOB TRAY — multi-job strip below header
+   ========================================================= */
+.job-tray {
+  background: var(--color-surface-2);
+  border-bottom: 1px solid var(--color-border-subtle);
+  padding: var(--space-2) var(--space-5);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  flex-shrink: 0;
 }
-.icon-btn svg {
-  pointer-events: none;
+.job-tray::-webkit-scrollbar { display: none; }
+.job-tray-label { font-size: var(--text-xs); color: var(--color-text-faint); font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; white-space: nowrap; flex-shrink: 0; }
+.job-chip {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  background: var(--color-surface); border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-full);
+  font-size: var(--text-xs); color: var(--color-text-muted); white-space: nowrap;
+  cursor: pointer; transition: border-color var(--transition-base), background var(--transition-base);
+  -webkit-tap-highlight-color: transparent;
+  min-height: 28px;
 }
+.job-chip:hover { background: var(--color-surface-dynamic); border-color: var(--color-border); }
+.job-chip--active { background: rgba(22,163,74,0.12); border-color: rgba(22,163,74,0.35); color: #4ade80; }
+.job-chip--running { background: rgba(59,130,246,0.1); border-color: rgba(59,130,246,0.3); color: #93c5fd; }
+.job-chip--error   { background: rgba(239,68,68,0.1);  border-color: rgba(239,68,68,0.3);  color: #fca5a5; }
+.job-dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+.job-dot--pulse { animation: dotPulse 1.5s ease-in-out infinite; }
+.job-tray-empty { font-size: var(--text-xs); color: var(--color-text-faint); font-style: italic; }
 
 /* =========================================================
    MAIN LISTENING SURFACE
    ========================================================= */
-.listening-surface {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: var(--space-8) var(--space-5) var(--space-5);
-  flex-shrink: 0;
-}
+.listening-surface { display: flex; flex-direction: column; align-items: center; padding: var(--space-8) var(--space-5) var(--space-5); flex-shrink: 0; }
 
 /* Orb */
-.orb-container {
-  position: relative;
-  width: 200px;
-  height: 200px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  -webkit-tap-highlight-color: transparent;
-}
-.orb-rings {
-  position: absolute;
-  inset: 0;
-}
-.orb-ring {
-  position: absolute;
-  border-radius: 50%;
-  border: 1px solid var(--color-primary);
-  opacity: 0;
-  transform: scale(0.85);
-}
-.orb-ring-1 { inset: -12px; }
-.orb-ring-2 { inset: -24px; }
-.orb-ring-3 { inset: -38px; }
-
+.orb-container { position: relative; width: 200px; height: 200px; display: flex; align-items: center; justify-content: center; -webkit-tap-highlight-color: transparent; }
+.orb-rings { position: absolute; inset: 0; }
+.orb-ring { position: absolute; border-radius: 50%; border: 1px solid var(--color-primary); opacity: 0; transform: scale(0.85); }
+.orb-ring-1 { inset: -12px; } .orb-ring-2 { inset: -24px; } .orb-ring-3 { inset: -38px; }
 .orb {
-  width: 160px;
-  height: 160px;
-  border-radius: 50%;
+  width: 160px; height: 160px; border-radius: 50%;
   background: radial-gradient(circle at 38% 35%, var(--color-surface-dynamic) 0%, var(--color-surface-offset) 60%, var(--color-surface) 100%);
   border: 2px solid var(--color-border);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  position: relative;
-  z-index: 1;
-  transition:
-    border-color 0.4s ease,
-    box-shadow 0.4s ease,
-    background 0.4s ease;
-  -webkit-tap-highlight-color: transparent;
-  user-select: none;
+  display: flex; align-items: center; justify-content: center;
+  cursor: pointer; position: relative; z-index: 1;
+  transition: border-color 0.4s ease, box-shadow 0.4s ease, background 0.4s ease;
+  -webkit-tap-highlight-color: transparent; user-select: none;
 }
-.orb-icon {
-  color: var(--color-text-faint);
-  transition: color 0.4s ease, transform 0.3s ease;
-}
-.orb-label {
-  position: absolute;
-  bottom: -28px;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: var(--text-xs);
-  font-weight: 600;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  color: var(--color-text-faint);
-  white-space: nowrap;
-  transition: color 0.4s ease;
-}
+.orb-icon  { color: var(--color-text-faint); transition: color 0.4s ease, transform 0.3s ease; }
+.orb-label { position: absolute; bottom: -28px; left: 50%; transform: translateX(-50%); font-size: var(--text-xs); font-weight: 600; letter-spacing: 0.1em; text-transform: uppercase; color: var(--color-text-faint); white-space: nowrap; transition: color 0.4s ease; }
 
 /* Orb States */
-[data-orb-state="idle"] .orb {
-  border-color: var(--color-border);
-  box-shadow: none;
-}
-[data-orb-state="idle"] .orb-icon { color: var(--color-text-faint); }
+[data-orb-state="idle"] .orb       { border-color: var(--color-border); box-shadow: none; }
+[data-orb-state="idle"] .orb-icon  { color: var(--color-text-faint); }
 [data-orb-state="idle"] .orb-label { color: var(--color-text-faint); }
 
-[data-orb-state="listening"] .orb {
-  border-color: var(--color-primary);
-  box-shadow: 0 0 0 4px var(--color-primary-glow), var(--shadow-glow);
-  background: radial-gradient(circle at 38% 35%, #0f2818 0%, #0a1f12 60%, #060e0b 100%);
-}
-[data-orb-state="listening"] .orb-icon { color: var(--color-primary); }
+[data-orb-state="listening"] .orb       { border-color: var(--color-primary); box-shadow: 0 0 0 4px var(--color-primary-glow), var(--shadow-glow); background: radial-gradient(circle at 38% 35%, #0f2818 0%, #0a1f12 60%, #060e0b 100%); }
+[data-orb-state="listening"] .orb-icon  { color: var(--color-primary); }
 [data-orb-state="listening"] .orb-label { color: var(--color-primary); }
-[data-orb-state="listening"] .orb-ring-1 {
-  animation: ripple 2s ease-out infinite;
-}
-[data-orb-state="listening"] .orb-ring-2 {
-  animation: ripple 2s ease-out 0.4s infinite;
-}
-[data-orb-state="listening"] .orb-ring-3 {
-  animation: ripple 2s ease-out 0.8s infinite;
-}
+[data-orb-state="listening"] .orb-ring-1 { animation: ripple 2s ease-out infinite; }
+[data-orb-state="listening"] .orb-ring-2 { animation: ripple 2s ease-out 0.4s infinite; }
+[data-orb-state="listening"] .orb-ring-3 { animation: ripple 2s ease-out 0.8s infinite; }
 
-[data-orb-state="processing"] .orb {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 4px rgba(59,130,246,0.2), 0 0 60px rgba(59,130,246,0.15);
-  background: radial-gradient(circle at 38% 35%, #0f1829 0%, #090e1c 60%, #050810 100%);
-}
-[data-orb-state="processing"] .orb-icon { color: #60a5fa; }
+[data-orb-state="processing"] .orb       { border-color: #3b82f6; box-shadow: 0 0 0 4px rgba(59,130,246,0.2), 0 0 60px rgba(59,130,246,0.15); background: radial-gradient(circle at 38% 35%, #0f1829 0%, #090e1c 60%, #050810 100%); animation: pulse-glow 1.2s ease-in-out infinite; }
+[data-orb-state="processing"] .orb-icon  { color: #60a5fa; }
 [data-orb-state="processing"] .orb-label { color: #60a5fa; }
-[data-orb-state="processing"] .orb {
-  animation: pulse-glow 1.2s ease-in-out infinite;
-}
-[data-orb-state="processing"] .orb-ring {
-  border-color: #3b82f6;
-  animation: none;
-}
+[data-orb-state="processing"] .orb-ring  { border-color: #3b82f6; animation: none; }
 
-[data-orb-state="speaking"] .orb {
-  border-color: #8b5cf6;
-  box-shadow: 0 0 0 4px rgba(139,92,246,0.2), 0 0 60px rgba(139,92,246,0.12);
-  background: radial-gradient(circle at 38% 35%, #140a29 0%, #0d0618 60%, #070410 100%);
-}
-[data-orb-state="speaking"] .orb-icon { color: #a78bfa; }
+[data-orb-state="speaking"] .orb       { border-color: #8b5cf6; box-shadow: 0 0 0 4px rgba(139,92,246,0.2), 0 0 60px rgba(139,92,246,0.12); background: radial-gradient(circle at 38% 35%, #140a29 0%, #0d0618 60%, #070410 100%); }
+[data-orb-state="speaking"] .orb-icon  { color: #a78bfa; }
 [data-orb-state="speaking"] .orb-label { color: #a78bfa; }
-[data-orb-state="speaking"] .orb-ring-1 {
-  border-color: #8b5cf6;
-  animation: ripple-speaking 1s ease-out infinite;
-}
-[data-orb-state="speaking"] .orb-ring-2 {
-  border-color: #8b5cf6;
-  animation: ripple-speaking 1s ease-out 0.25s infinite;
-}
+[data-orb-state="speaking"] .orb-ring-1 { border-color: #8b5cf6; animation: ripple-speaking 1s ease-out infinite; }
+[data-orb-state="speaking"] .orb-ring-2 { border-color: #8b5cf6; animation: ripple-speaking 1s ease-out 0.25s infinite; }
 [data-orb-state="speaking"] .orb-ring-3 { animation: none; opacity: 0; }
 
-[data-orb-state="error"] .orb {
-  border-color: var(--color-error);
-  box-shadow: 0 0 0 4px rgba(239,68,68,0.2);
-}
-[data-orb-state="error"] .orb-icon { color: var(--color-error); }
+[data-orb-state="error"] .orb       { border-color: var(--color-error); box-shadow: 0 0 0 4px rgba(239,68,68,0.2); }
+[data-orb-state="error"] .orb-icon  { color: var(--color-error); }
 [data-orb-state="error"] .orb-label { color: var(--color-error); }
 
-@keyframes ripple {
-  0%   { transform: scale(0.85); opacity: 0.6; }
-  100% { transform: scale(1.1);  opacity: 0; }
-}
-@keyframes ripple-speaking {
-  0%   { transform: scale(0.9);  opacity: 0.5; }
-  100% { transform: scale(1.05); opacity: 0; }
-}
-@keyframes pulse-glow {
-  0%, 100% { box-shadow: 0 0 0 4px rgba(59,130,246,0.2), 0 0 40px rgba(59,130,246,0.12); }
-  50%       { box-shadow: 0 0 0 8px rgba(59,130,246,0.3), 0 0 80px rgba(59,130,246,0.2); }
-}
+@keyframes ripple         { 0% { transform: scale(0.85); opacity: 0.6; } 100% { transform: scale(1.1);  opacity: 0; } }
+@keyframes ripple-speaking{ 0% { transform: scale(0.9);  opacity: 0.5; } 100% { transform: scale(1.05); opacity: 0; } }
+@keyframes pulse-glow     { 0%,100% { box-shadow: 0 0 0 4px rgba(59,130,246,0.2), 0 0 40px rgba(59,130,246,0.12); } 50% { box-shadow: 0 0 0 8px rgba(59,130,246,0.3), 0 0 80px rgba(59,130,246,0.2); } }
+@keyframes dotPulse       { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+@keyframes spin           { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+.orb-spinner { animation: spin 1s linear infinite; transform-origin: center; }
 
 /* =========================================================
    TRANSCRIPT STRIP
    ========================================================= */
-.transcript-strip {
-  width: 100%;
-  min-height: 52px;
-  margin-top: var(--space-8);
-  padding: var(--space-3) var(--space-4);
-  background: var(--color-surface-2);
-  border: 1px solid var(--color-border-subtle);
-  border-radius: var(--radius-lg);
-  display: flex;
-  align-items: flex-start;
-  gap: var(--space-2);
-  transition: border-color var(--transition-slow);
-  overflow: hidden;
-}
-.transcript-strip--active {
-  border-color: rgba(22, 163, 74, 0.3);
-}
-.transcript-label {
-  flex-shrink: 0;
-  font-size: var(--text-xs);
-  font-weight: 600;
-  color: var(--color-text-faint);
-  letter-spacing: 0.06em;
-  text-transform: uppercase;
-  padding-top: 2px;
-}
-.transcript-text {
-  flex: 1;
-  font-size: var(--text-sm);
-  color: var(--color-text-muted);
-  line-height: 1.5;
-  min-height: 1.5em;
-  font-family: var(--font-mono);
-  word-break: break-word;
-  transition: color var(--transition-interactive);
-}
-.transcript-text .wake-word {
-  color: var(--color-primary);
-  font-weight: 600;
-}
-.transcript-text--active {
-  color: var(--color-text);
-}
-.transcript-cursor {
-  display: inline-block;
-  width: 2px;
-  height: 1em;
-  background: var(--color-primary);
-  margin-left: 2px;
-  vertical-align: text-bottom;
-  animation: blink 1s step-end infinite;
-}
-@keyframes blink {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0; }
-}
+.transcript-strip { width: 100%; min-height: 52px; margin-top: var(--space-8); padding: var(--space-3) var(--space-4); background: var(--color-surface-2); border: 1px solid var(--color-border-subtle); border-radius: var(--radius-lg); display: flex; align-items: flex-start; gap: var(--space-2); transition: border-color var(--transition-slow); overflow: hidden; }
+.transcript-strip--active { border-color: rgba(22,163,74,0.3); }
+.transcript-label { flex-shrink: 0; font-size: var(--text-xs); font-weight: 600; color: var(--color-text-faint); letter-spacing: 0.06em; text-transform: uppercase; padding-top: 2px; }
+.transcript-text  { flex: 1; font-size: var(--text-sm); color: var(--color-text-muted); line-height: 1.5; min-height: 1.5em; font-family: var(--font-mono); word-break: break-word; transition: color var(--transition-base); }
+.transcript-text .wake-word { color: var(--color-primary); font-weight: 600; }
+.transcript-text--active    { color: var(--color-text); }
+.transcript-cursor { display: inline-block; width: 2px; height: 1em; background: var(--color-primary); margin-left: 2px; vertical-align: text-bottom; animation: blink 1s step-end infinite; }
+@keyframes blink { 0%,100% { opacity: 1; } 50% { opacity: 0; } }
+/* Pause indicator */
+.pause-indicator { display: none; font-size: var(--text-xs); color: var(--color-warning); font-weight: 600; letter-spacing: 0.05em; animation: blink 0.8s ease-in-out infinite; }
+.pause-indicator.visible { display: inline-block; }
 
 /* =========================================================
-   CONTENT AREA (scrollable middle)
+   CONTENT AREA
    ========================================================= */
-.content-area {
-  flex: 1;
-  overflow-y: auto;
-  padding: var(--space-4) var(--space-5) calc(var(--space-8) + 100px);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-4);
-  -webkit-overflow-scrolling: touch;
-}
+.content-area { flex: 1; overflow-y: auto; padding: var(--space-4) var(--space-5) calc(var(--space-8) + 100px); display: flex; flex-direction: column; gap: var(--space-4); -webkit-overflow-scrolling: touch; }
 
 /* =========================================================
    INTERPRETATION PANEL
    ========================================================= */
-.interpretation-panel {
-  background: var(--color-surface-2);
-  border: 1px solid var(--color-border-subtle);
-  border-radius: var(--radius-xl);
-  padding: var(--space-4);
-  transition: border-color var(--transition-slow), opacity var(--transition-slow);
-}
-.interpretation-panel.dimmed {
-  opacity: 0.5;
-}
-.panel-label {
-  font-size: var(--text-xs);
-  font-weight: 600;
-  color: var(--color-text-faint);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  margin-bottom: var(--space-3);
-}
-.parsed-command {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-}
-.parsed-pill {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-1);
-  padding: var(--space-1) var(--space-3);
-  border-radius: var(--radius-full);
-  font-size: var(--text-sm);
-  font-weight: 500;
-  line-height: 1.4;
-}
-.parsed-pill-key {
-  font-size: var(--text-xs);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  opacity: 0.65;
-}
-.pill--verb {
-  background: rgba(22, 163, 74, 0.15);
-  color: #4ade80;
-  border: 1px solid rgba(22, 163, 74, 0.25);
-}
-.pill--project {
-  background: rgba(59, 130, 246, 0.12);
-  color: #93c5fd;
-  border: 1px solid rgba(59, 130, 246, 0.2);
-}
-.pill--platform {
-  background: rgba(168, 85, 247, 0.12);
-  color: #c4b5fd;
-  border: 1px solid rgba(168, 85, 247, 0.2);
-}
-.pill--args {
-  background: rgba(248, 250, 252, 0.06);
-  color: var(--color-text-muted);
-  border: 1px solid var(--color-border-subtle);
-  max-width: 100%;
-}
-.empty-parse {
-  color: var(--color-text-faint);
-  font-size: var(--text-sm);
-  font-style: italic;
-}
+.interpretation-panel { background: var(--color-surface-2); border: 1px solid var(--color-border-subtle); border-radius: var(--radius-xl); padding: var(--space-4); transition: border-color var(--transition-slow), opacity var(--transition-slow); }
+.interpretation-panel.dimmed { opacity: 0.5; }
+.panel-label { font-size: var(--text-xs); font-weight: 600; color: var(--color-text-faint); text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: var(--space-3); }
+.parsed-command { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.parsed-pill { display: inline-flex; align-items: center; gap: var(--space-1); padding: var(--space-1) var(--space-3); border-radius: var(--radius-full); font-size: var(--text-sm); font-weight: 500; line-height: 1.4; }
+.parsed-pill-key { font-size: var(--text-xs); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.65; }
+.pill--verb     { background: rgba(22,163,74,0.15);  color: #4ade80; border: 1px solid rgba(22,163,74,0.25); }
+.pill--project  { background: rgba(59,130,246,0.12); color: #93c5fd; border: 1px solid rgba(59,130,246,0.2); }
+.pill--platform { background: rgba(168,85,247,0.12); color: #c4b5fd; border: 1px solid rgba(168,85,247,0.2); }
+.pill--args     { background: rgba(248,250,252,0.06); color: var(--color-text-muted); border: 1px solid var(--color-border-subtle); max-width: 100%; }
+.empty-parse    { color: var(--color-text-faint); font-size: var(--text-sm); font-style: italic; }
 
 /* =========================================================
    CONFIRMATION BAR
    ========================================================= */
-.confirmation-bar {
-  background: var(--color-surface-2);
-  border: 1px solid rgba(22, 163, 74, 0.4);
-  border-radius: var(--radius-xl);
-  padding: var(--space-4);
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  animation: confirmIn 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-}
-@keyframes confirmIn {
-  from { transform: translateY(12px); opacity: 0; }
-  to   { transform: translateY(0);    opacity: 1; }
-}
-.confirmation-message {
-  font-size: var(--text-sm);
-  color: var(--color-text);
-  line-height: 1.5;
-}
-.confirmation-message strong {
-  color: var(--color-primary);
-}
-.confirmation-hint {
-  font-size: var(--text-xs);
-  color: var(--color-text-faint);
-  margin-top: var(--space-1);
-}
-.confirmation-actions {
-  display: flex;
-  gap: var(--space-3);
-}
-.btn {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--space-2);
-  padding: var(--space-3) var(--space-5);
-  border-radius: var(--radius-lg);
-  font-size: var(--text-sm);
-  font-weight: 600;
-  line-height: 1;
-  transition:
-    background var(--transition-interactive),
-    color var(--transition-interactive),
-    box-shadow var(--transition-interactive),
-    transform 80ms ease;
-  -webkit-tap-highlight-color: transparent;
-  user-select: none;
-  flex: 1;
-  min-height: 48px;
-}
-.btn:active {
-  transform: scale(0.97);
-}
-.btn--yes {
-  background: var(--color-primary);
-  color: var(--color-text-inverse);
-}
-.btn--yes:hover, .btn--yes:focus-visible {
-  background: var(--color-primary-hover);
-  box-shadow: 0 4px 16px var(--color-primary-glow);
-}
-.btn--no {
-  background: var(--color-surface-dynamic);
-  color: var(--color-text-muted);
-  border: 1px solid var(--color-border);
-}
-.btn--no:hover, .btn--no:focus-visible {
-  background: var(--color-surface-offset);
-  color: var(--color-text);
-}
-.btn--secondary {
-  background: var(--color-surface-dynamic);
-  color: var(--color-text-muted);
-  border: 1px solid var(--color-border);
-}
-.btn--secondary:hover, .btn--secondary:focus-visible {
-  background: var(--color-surface-offset);
-  color: var(--color-text);
-}
-.btn--primary {
-  background: var(--color-primary);
-  color: var(--color-text-inverse);
-}
-.btn--primary:hover, .btn--primary:focus-visible {
-  background: var(--color-primary-hover);
-}
+.confirmation-bar { background: var(--color-surface-2); border: 1px solid rgba(22,163,74,0.4); border-radius: var(--radius-xl); padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); animation: confirmIn 0.3s cubic-bezier(0.16,1,0.3,1); }
+@keyframes confirmIn { from { transform: translateY(12px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+.confirmation-message { font-size: var(--text-sm); color: var(--color-text); line-height: 1.5; }
+.confirmation-message strong { color: var(--color-primary); }
+.confirmation-hint { font-size: var(--text-xs); color: var(--color-text-faint); margin-top: var(--space-1); }
+.confirmation-actions { display: flex; gap: var(--space-3); }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); padding: var(--space-3) var(--space-5); border-radius: var(--radius-lg); font-size: var(--text-sm); font-weight: 600; line-height: 1; transition: background var(--transition-base), color var(--transition-base), box-shadow var(--transition-base), transform 80ms ease; -webkit-tap-highlight-color: transparent; user-select: none; flex: 1; min-height: 48px; }
+.btn:active { transform: scale(0.97); }
+.btn--yes { background: var(--color-primary); color: var(--color-text-inverse); }
+.btn--yes:hover { background: var(--color-primary-hover); box-shadow: 0 4px 16px var(--color-primary-glow); }
+.btn--no  { background: var(--color-surface-dynamic); color: var(--color-text-muted); border: 1px solid var(--color-border); }
+.btn--no:hover { background: var(--color-surface-offset); color: var(--color-text); }
+.btn--secondary { background: var(--color-surface-dynamic); color: var(--color-text-muted); border: 1px solid var(--color-border); }
+.btn--secondary:hover { background: var(--color-surface-offset); color: var(--color-text); }
+.btn--primary { background: var(--color-primary); color: var(--color-text-inverse); }
+.btn--primary:hover { background: var(--color-primary-hover); }
 
 /* =========================================================
-   THREAD STRIP (last 5 operations)
+   THREAD STRIP
    ========================================================= */
-.thread-strip {
-  background: var(--color-surface-2);
-  border: 1px solid var(--color-border-subtle);
-  border-radius: var(--radius-xl);
-  overflow: hidden;
-}
-.thread-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: var(--space-3) var(--space-4);
-  border-bottom: 1px solid var(--color-border-subtle);
-}
-.thread-header .panel-label {
-  margin-bottom: 0;
-}
-.thread-clear {
-  font-size: var(--text-xs);
-  color: var(--color-text-faint);
-  padding: var(--space-1) var(--space-2);
-  border-radius: var(--radius-sm);
-  transition: color var(--transition-interactive), background var(--transition-interactive);
-}
-.thread-clear:hover {
-  color: var(--color-text-muted);
-  background: var(--color-surface-dynamic);
-}
-.thread-list {
-  list-style: none;
-}
-.thread-item {
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-  padding: var(--space-3) var(--space-4);
-  border-bottom: 1px solid var(--color-border-subtle);
-  transition: background var(--transition-interactive);
-  animation: itemIn 0.25s ease;
-}
-.thread-item:last-child {
-  border-bottom: none;
-}
-@keyframes itemIn {
-  from { opacity: 0; transform: translateX(-8px); }
-  to   { opacity: 1; transform: translateX(0); }
-}
-.thread-status-dot {
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  flex-shrink: 0;
-}
+.thread-strip { background: var(--color-surface-2); border: 1px solid var(--color-border-subtle); border-radius: var(--radius-xl); overflow: hidden; }
+.thread-header { display: flex; align-items: center; justify-content: space-between; padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--color-border-subtle); }
+.thread-header .panel-label { margin-bottom: 0; }
+.thread-clear { font-size: var(--text-xs); color: var(--color-text-faint); padding: var(--space-1) var(--space-2); border-radius: var(--radius-sm); transition: color var(--transition-base), background var(--transition-base); }
+.thread-clear:hover { color: var(--color-text-muted); background: var(--color-surface-dynamic); }
+.thread-list { list-style: none; }
+.thread-item { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--color-border-subtle); transition: background var(--transition-base); animation: itemIn 0.25s ease; }
+.thread-item:last-child { border-bottom: none; }
+@keyframes itemIn { from { opacity: 0; transform: translateX(-8px); } to { opacity: 1; transform: translateX(0); } }
+.thread-status-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 .thread-status-dot--done    { background: var(--color-primary); }
 .thread-status-dot--failed  { background: var(--color-error); }
-.thread-status-dot--pending {
-  background: var(--color-warning);
-  animation: dotPulse 1.5s ease-in-out infinite;
+.thread-status-dot--pending { background: var(--color-warning); animation: dotPulse 1.5s ease-in-out infinite; }
+.thread-content { flex: 1; min-width: 0; }
+.thread-verb    { font-size: var(--text-xs); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-text-faint); }
+.thread-project { font-size: var(--text-sm); color: var(--color-text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.thread-time    { font-size: var(--text-xs); color: var(--color-text-faint); white-space: nowrap; flex-shrink: 0; }
+.thread-empty   { padding: var(--space-6) var(--space-4); text-align: center; color: var(--color-text-faint); font-size: var(--text-sm); font-style: italic; }
+
+/* =========================================================
+   PROJECT URL CARDS
+   ========================================================= */
+.url-cards { display: flex; flex-direction: column; gap: var(--space-2); }
+.url-card {
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-lg);
+  padding: var(--space-3) var(--space-4);
+  display: flex; flex-direction: column; gap: var(--space-2);
 }
-@keyframes dotPulse {
-  0%, 100% { opacity: 1; }
-  50%       { opacity: 0.3; }
-}
-.thread-content {
-  flex: 1;
-  min-width: 0;
-}
-.thread-verb {
-  font-size: var(--text-xs);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--color-text-faint);
-}
-.thread-project {
-  font-size: var(--text-sm);
-  color: var(--color-text);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.thread-time {
-  font-size: var(--text-xs);
-  color: var(--color-text-faint);
-  white-space: nowrap;
-  flex-shrink: 0;
-}
-.thread-empty {
-  padding: var(--space-6) var(--space-4);
-  text-align: center;
-  color: var(--color-text-faint);
-  font-size: var(--text-sm);
-  font-style: italic;
-}
+.url-card-header { display: flex; align-items: center; justify-content: space-between; }
+.url-card-name   { font-size: var(--text-sm); font-weight: 700; color: var(--color-text); }
+.url-card-row    { display: flex; align-items: center; gap: var(--space-2); }
+.url-card-label  { font-size: var(--text-xs); color: var(--color-text-faint); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; width: 36px; flex-shrink: 0; }
+.url-card-link   { flex: 1; font-size: var(--text-xs); color: #93c5fd; font-family: var(--font-mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-decoration: none; }
+.url-card-link:hover { text-decoration: underline; color: #60a5fa; }
+.url-card-open   { font-size: var(--text-xs); color: var(--color-primary); font-weight: 600; padding: var(--space-1) var(--space-2); border-radius: var(--radius-sm); background: rgba(22,163,74,0.1); border: 1px solid rgba(22,163,74,0.2); white-space: nowrap; }
+.url-card-open:hover { background: rgba(22,163,74,0.2); }
+.url-no-urls { font-size: var(--text-xs); color: var(--color-text-faint); font-style: italic; padding: var(--space-2) 0; }
 
 /* =========================================================
    PROJECT QUICK-LIST
    ========================================================= */
-.projects-section {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-.projects-scroll-container {
-  overflow-x: auto;
-  overflow-y: hidden;
-  -webkit-overflow-scrolling: touch;
-  scrollbar-width: none;
-  padding-bottom: var(--space-1);
-}
-.projects-scroll-container::-webkit-scrollbar {
-  display: none;
-}
-.projects-chips {
-  display: flex;
-  gap: var(--space-2);
-  padding: var(--space-1) 0;
-  width: max-content;
-}
-.project-chip {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--space-2);
-  padding: var(--space-2) var(--space-3);
-  background: var(--color-surface-2);
-  border: 1px solid var(--color-border-subtle);
-  border-radius: var(--radius-full);
-  font-size: var(--text-sm);
-  color: var(--color-text-muted);
-  white-space: nowrap;
-  cursor: pointer;
-  transition:
-    background var(--transition-interactive),
-    border-color var(--transition-interactive),
-    color var(--transition-interactive);
-  -webkit-tap-highlight-color: transparent;
-  min-height: 36px;
-}
-.project-chip:hover,
-.project-chip:focus-visible {
-  background: var(--color-surface-dynamic);
-  border-color: var(--color-border);
-  color: var(--color-text);
-}
-.project-chip--active {
-  background: rgba(22, 163, 74, 0.12);
-  border-color: rgba(22, 163, 74, 0.35);
-  color: #4ade80;
-}
-.project-chip-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--color-primary);
-  flex-shrink: 0;
-}
-.projects-loading {
-  display: flex;
-  gap: var(--space-2);
-  padding: var(--space-1) 0;
-}
-.chip-skeleton {
-  height: 36px;
-  border-radius: var(--radius-full);
-  background: linear-gradient(
-    90deg,
-    var(--color-surface-offset) 25%,
-    var(--color-surface-dynamic) 50%,
-    var(--color-surface-offset) 75%
-  );
-  background-size: 200% 100%;
-  animation: shimmer 1.5s ease-in-out infinite;
-}
-@keyframes shimmer {
-  0%   { background-position: -200% 0; }
-  100% { background-position:  200% 0; }
-}
+.projects-section { display: flex; flex-direction: column; gap: var(--space-2); }
+.projects-scroll-container { overflow-x: auto; overflow-y: hidden; -webkit-overflow-scrolling: touch; scrollbar-width: none; padding-bottom: var(--space-1); }
+.projects-scroll-container::-webkit-scrollbar { display: none; }
+.projects-chips { display: flex; gap: var(--space-2); padding: var(--space-1) 0; width: max-content; }
+.project-chip { display: inline-flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); background: var(--color-surface-2); border: 1px solid var(--color-border-subtle); border-radius: var(--radius-full); font-size: var(--text-sm); color: var(--color-text-muted); white-space: nowrap; cursor: pointer; transition: background var(--transition-base), border-color var(--transition-base), color var(--transition-base); -webkit-tap-highlight-color: transparent; min-height: 36px; }
+.project-chip:hover { background: var(--color-surface-dynamic); border-color: var(--color-border); color: var(--color-text); }
+.project-chip--active { background: rgba(22,163,74,0.12); border-color: rgba(22,163,74,0.35); color: #4ade80; }
+.project-chip-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--color-primary); flex-shrink: 0; }
+.projects-loading { display: flex; gap: var(--space-2); padding: var(--space-1) 0; }
+.chip-skeleton { height: 36px; border-radius: var(--radius-full); background: linear-gradient(90deg, var(--color-surface-offset) 25%, var(--color-surface-dynamic) 50%, var(--color-surface-offset) 75%); background-size: 200% 100%; animation: shimmer 1.5s ease-in-out infinite; }
+@keyframes shimmer { 0% { background-position: -200% 0; } 100% { background-position: 200% 0; } }
 
 /* =========================================================
-   EXPLAIN RESULT PANEL
+   EXPLAIN PANEL
    ========================================================= */
-.explain-panel {
-  background: var(--color-surface-2);
-  border: 1px solid var(--color-border-subtle);
-  border-radius: var(--radius-xl);
-  padding: var(--space-4);
-  animation: confirmIn 0.3s ease;
-}
-.explain-panel h3 {
-  font-size: var(--text-base);
-  font-weight: 700;
-  color: var(--color-text);
-  margin-bottom: var(--space-3);
-}
-.explain-meta {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--space-2);
-  margin-bottom: var(--space-3);
-}
-.explain-pill {
-  font-size: var(--text-xs);
-  padding: var(--space-1) var(--space-2);
-  border-radius: var(--radius-sm);
-  background: var(--color-surface-dynamic);
-  color: var(--color-text-muted);
-  font-family: var(--font-mono);
-}
-.explain-description {
-  font-size: var(--text-sm);
-  color: var(--color-text-muted);
-  line-height: 1.6;
-}
-.explain-history {
-  margin-top: var(--space-3);
-  border-top: 1px solid var(--color-border-subtle);
-  padding-top: var(--space-3);
-}
-.explain-history-title {
-  font-size: var(--text-xs);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--color-text-faint);
-  margin-bottom: var(--space-2);
-}
-.explain-history-list {
-  list-style: none;
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-2);
-}
-.explain-history-item {
-  display: flex;
-  gap: var(--space-2);
-  font-size: var(--text-sm);
-}
-.explain-history-date {
-  font-family: var(--font-mono);
-  color: var(--color-text-faint);
-  flex-shrink: 0;
-  font-size: var(--text-xs);
-  padding-top: 2px;
-}
-.explain-history-msg {
-  color: var(--color-text-muted);
-}
+.explain-panel { background: var(--color-surface-2); border: 1px solid var(--color-border-subtle); border-radius: var(--radius-xl); padding: var(--space-4); animation: confirmIn 0.3s ease; }
+.explain-panel h3 { font-size: var(--text-base); font-weight: 700; color: var(--color-text); margin-bottom: var(--space-3); }
+.explain-meta { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-bottom: var(--space-3); }
+.explain-pill { font-size: var(--text-xs); padding: var(--space-1) var(--space-2); border-radius: var(--radius-sm); background: var(--color-surface-dynamic); color: var(--color-text-muted); font-family: var(--font-mono); }
+.explain-description { font-size: var(--text-sm); color: var(--color-text-muted); line-height: 1.6; }
+.explain-urls { margin-top: var(--space-3); }
+.explain-url-row { display: flex; align-items: center; gap: var(--space-2); margin-top: var(--space-2); }
+.explain-url-label { font-size: var(--text-xs); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-text-faint); width: 36px; flex-shrink: 0; }
+.explain-url-link { flex: 1; font-size: var(--text-xs); color: #93c5fd; font-family: var(--font-mono); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-decoration: none; }
+.explain-url-link:hover { text-decoration: underline; }
+.explain-history { margin-top: var(--space-3); border-top: 1px solid var(--color-border-subtle); padding-top: var(--space-3); }
+.explain-history-title { font-size: var(--text-xs); font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-text-faint); margin-bottom: var(--space-2); }
+.explain-history-list { list-style: none; display: flex; flex-direction: column; gap: var(--space-2); }
+.explain-history-item { display: flex; gap: var(--space-2); font-size: var(--text-sm); }
+.explain-history-date { font-family: var(--font-mono); color: var(--color-text-faint); flex-shrink: 0; font-size: var(--text-xs); padding-top: 2px; }
+.explain-history-msg  { color: var(--color-text-muted); }
 
 /* =========================================================
    TYPED FALLBACK
    ========================================================= */
-.typed-fallback {
-  position: fixed;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 100%;
-  max-width: 640px;
-  z-index: 20;
-  background: linear-gradient(to top, var(--color-bg) 65%, transparent);
-  padding: var(--space-4) var(--space-5) calc(var(--space-4) + env(safe-area-inset-bottom));
-  pointer-events: none;
-}
-.typed-form {
-  pointer-events: all;
-  display: flex;
-  gap: var(--space-2);
-  align-items: flex-end;
-  background: var(--color-surface-2);
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-xl);
-  padding: var(--space-2) var(--space-3);
-  transition: border-color var(--transition-interactive);
-}
-.typed-form:focus-within {
-  border-color: var(--color-primary);
-}
-.typed-input {
-  flex: 1;
-  background: none;
-  border: none;
-  outline: none;
-  font-size: var(--text-base);
-  color: var(--color-text);
-  line-height: 1.5;
-  padding: var(--space-2) 0;
-  resize: none;
-  min-height: 40px;
-  max-height: 120px;
-  overflow-y: auto;
-}
-.typed-input::placeholder {
-  color: var(--color-text-faint);
-}
-.typed-submit {
-  flex-shrink: 0;
-  width: 40px;
-  height: 40px;
-  border-radius: var(--radius-lg);
-  background: var(--color-primary);
-  color: var(--color-text-inverse);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: background var(--transition-interactive), box-shadow var(--transition-interactive);
-  align-self: flex-end;
-}
-.typed-submit:hover {
-  background: var(--color-primary-hover);
-  box-shadow: 0 4px 12px var(--color-primary-glow);
-}
-.typed-submit:disabled {
-  background: var(--color-surface-dynamic);
-  color: var(--color-text-faint);
-  box-shadow: none;
-}
+.typed-fallback { position: fixed; bottom: 0; left: 50%; transform: translateX(-50%); width: 100%; max-width: 640px; z-index: 20; background: linear-gradient(to top, var(--color-bg) 65%, transparent); padding: var(--space-4) var(--space-5) calc(var(--space-4) + env(safe-area-inset-bottom)); pointer-events: none; }
+.typed-form { pointer-events: all; display: flex; gap: var(--space-2); align-items: flex-end; background: var(--color-surface-2); border: 1px solid var(--color-border); border-radius: var(--radius-xl); padding: var(--space-2) var(--space-3); transition: border-color var(--transition-base); }
+.typed-form:focus-within { border-color: var(--color-primary); }
+.typed-input { flex: 1; background: none; border: none; outline: none; font-size: var(--text-base); color: var(--color-text); line-height: 1.5; padding: var(--space-2) 0; resize: none; min-height: 40px; max-height: 120px; overflow-y: auto; }
+.typed-input::placeholder { color: var(--color-text-faint); }
+.typed-submit { flex-shrink: 0; width: 40px; height: 40px; border-radius: var(--radius-lg); background: var(--color-primary); color: var(--color-text-inverse); display: flex; align-items: center; justify-content: center; transition: background var(--transition-base), box-shadow var(--transition-base); align-self: flex-end; }
+.typed-submit:hover { background: var(--color-primary-hover); box-shadow: 0 4px 12px var(--color-primary-glow); }
+.typed-submit:disabled { background: var(--color-surface-dynamic); color: var(--color-text-faint); box-shadow: none; }
 
 /* =========================================================
-   CLIPBOARD PASTE UI (bridge unavailable)
+   CLIPBOARD PASTE UI
    ========================================================= */
-.clipboard-ui {
-  background: rgba(59, 130, 246, 0.08);
-  border: 1px solid rgba(59, 130, 246, 0.2);
-  border-radius: var(--radius-lg);
-  padding: var(--space-3) var(--space-4);
-  display: flex;
-  align-items: center;
-  gap: var(--space-3);
-}
-.clipboard-ui p {
-  flex: 1;
-  font-size: var(--text-sm);
-  color: #93c5fd;
-  max-width: none;
-}
-.clipboard-btn {
-  flex-shrink: 0;
-  padding: var(--space-2) var(--space-3);
-  background: rgba(59, 130, 246, 0.15);
-  border: 1px solid rgba(59, 130, 246, 0.3);
-  border-radius: var(--radius-md);
-  font-size: var(--text-sm);
-  color: #93c5fd;
-  font-weight: 600;
-}
+.clipboard-ui { background: rgba(59,130,246,0.08); border: 1px solid rgba(59,130,246,0.2); border-radius: var(--radius-lg); padding: var(--space-3) var(--space-4); display: flex; align-items: center; gap: var(--space-3); }
+.clipboard-ui p { flex: 1; font-size: var(--text-sm); color: #93c5fd; max-width: none; }
+.clipboard-btn { flex-shrink: 0; padding: var(--space-2) var(--space-3); background: rgba(59,130,246,0.15); border: 1px solid rgba(59,130,246,0.3); border-radius: var(--radius-md); font-size: var(--text-sm); color: #93c5fd; font-weight: 600; }
 
 /* =========================================================
    SETTINGS PANEL (slide-over)
    ========================================================= */
-.settings-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 200;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  animation: overlayIn 0.3s ease;
-}
-.settings-overlay.closing {
-  animation: overlayOut 0.25s ease forwards;
-}
+.settings-overlay { position: fixed; inset: 0; z-index: 200; display: flex; flex-direction: column; justify-content: flex-end; animation: overlayIn 0.3s ease; }
+.settings-overlay.closing { animation: overlayOut 0.25s ease forwards; }
 @keyframes overlayIn  { from { opacity: 0; } to { opacity: 1; } }
 @keyframes overlayOut { from { opacity: 1; } to { opacity: 0; } }
-
-.settings-backdrop {
-  position: absolute;
-  inset: 0;
-  background: rgba(2, 6, 23, 0.8);
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-}
-.settings-sheet {
-  position: relative;
-  z-index: 1;
-  background: var(--color-surface);
-  border-top-left-radius: 24px;
-  border-top-right-radius: 24px;
-  border-top: 1px solid var(--color-border);
-  padding: var(--space-4) var(--space-5) calc(var(--space-8) + env(safe-area-inset-bottom));
-  max-height: 85dvh;
-  overflow-y: auto;
-  animation: sheetIn 0.35s cubic-bezier(0.16, 1, 0.3, 1);
-}
-.settings-sheet.closing {
-  animation: sheetOut 0.25s cubic-bezier(0.4, 0, 0.6, 1) forwards;
-}
+.settings-backdrop { position: absolute; inset: 0; background: rgba(2,6,23,0.8); backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px); }
+.settings-sheet { position: relative; z-index: 1; background: var(--color-surface); border-top-left-radius: 24px; border-top-right-radius: 24px; border-top: 1px solid var(--color-border); padding: var(--space-4) var(--space-5) calc(var(--space-8) + env(safe-area-inset-bottom)); max-height: 85dvh; overflow-y: auto; animation: sheetIn 0.35s cubic-bezier(0.16,1,0.3,1); }
+.settings-sheet.closing { animation: sheetOut 0.25s cubic-bezier(0.4,0,0.6,1) forwards; }
 @keyframes sheetIn  { from { transform: translateY(100%); } to { transform: translateY(0); } }
 @keyframes sheetOut { from { transform: translateY(0);    } to { transform: translateY(100%); } }
-
-.sheet-handle {
-  width: 40px;
-  height: 4px;
-  background: var(--color-border);
-  border-radius: var(--radius-full);
-  margin: 0 auto var(--space-5);
-}
-.settings-title {
-  font-size: var(--text-lg);
-  font-weight: 700;
-  color: var(--color-text);
-  margin-bottom: var(--space-5);
-}
-.settings-section {
-  margin-bottom: var(--space-5);
-}
-.settings-section-title {
-  font-size: var(--text-xs);
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
-  color: var(--color-text-faint);
-  margin-bottom: var(--space-3);
-}
-.settings-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  gap: var(--space-4);
-  padding: var(--space-3) 0;
-  border-bottom: 1px solid var(--color-border-subtle);
-}
-.settings-row:last-child {
-  border-bottom: none;
-}
-.settings-key {
-  font-size: var(--text-sm);
-  color: var(--color-text-muted);
-  font-weight: 500;
-  flex-shrink: 0;
-}
-.settings-val {
-  font-size: var(--text-sm);
-  color: var(--color-text);
-  font-family: var(--font-mono);
-  text-align: right;
-  word-break: break-all;
-  max-width: 200px;
-}
-.settings-val--empty {
-  color: var(--color-text-faint);
-  font-style: italic;
-  font-family: var(--font-body);
-}
-.settings-actions {
-  display: flex;
-  flex-direction: column;
-  gap: var(--space-3);
-  margin-top: var(--space-5);
-}
-.version-line {
-  text-align: center;
-  font-size: var(--text-xs);
-  color: var(--color-text-faint);
-  margin-top: var(--space-4);
-  font-family: var(--font-mono);
-}
+.sheet-handle { width: 40px; height: 4px; background: var(--color-border); border-radius: var(--radius-full); margin: 0 auto var(--space-5); }
+.settings-title  { font-size: var(--text-lg); font-weight: 700; color: var(--color-text); margin-bottom: var(--space-5); }
+.settings-section { margin-bottom: var(--space-5); }
+.settings-section-title { font-size: var(--text-xs); font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-text-faint); margin-bottom: var(--space-3); }
+.settings-row { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-4); padding: var(--space-3) 0; border-bottom: 1px solid var(--color-border-subtle); }
+.settings-row:last-child { border-bottom: none; }
+.settings-key { font-size: var(--text-sm); color: var(--color-text-muted); font-weight: 500; flex-shrink: 0; }
+.settings-val { font-size: var(--text-sm); color: var(--color-text); font-family: var(--font-mono); text-align: right; word-break: break-all; max-width: 200px; }
+.settings-val--empty { color: var(--color-text-faint); font-style: italic; font-family: var(--font-body); }
+.settings-actions { display: flex; flex-direction: column; gap: var(--space-3); margin-top: var(--space-5); }
+.version-line { text-align: center; font-size: var(--text-xs); color: var(--color-text-faint); margin-top: var(--space-4); font-family: var(--font-mono); }
 
 /* =========================================================
    UNCONFIGURED STATE
    ========================================================= */
-.unconfigured-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  padding: var(--space-10) var(--space-6);
-  gap: var(--space-4);
-}
-.unconfigured-icon {
-  color: var(--color-primary);
-  opacity: 0.8;
-}
-.unconfigured-card h2 {
-  font-size: var(--text-xl);
-  font-weight: 700;
-  color: var(--color-text);
-}
-.unconfigured-card p {
-  font-size: var(--text-sm);
-  color: var(--color-text-muted);
-  max-width: 34ch;
-}
-.unconfigured-config {
-  background: var(--color-surface-2);
-  border: 1px solid var(--color-border-subtle);
-  border-radius: var(--radius-lg);
-  padding: var(--space-3) var(--space-4);
-  font-size: var(--text-sm);
-  color: var(--color-text-muted);
-  font-family: var(--font-mono);
-  text-align: left;
-  width: 100%;
-  line-height: 1.7;
-}
+.unconfigured-card { display: flex; flex-direction: column; align-items: center; text-align: center; padding: var(--space-10) var(--space-6); gap: var(--space-4); }
+.unconfigured-icon { color: var(--color-primary); opacity: 0.8; }
+.unconfigured-card h2 { font-size: var(--text-xl); font-weight: 700; color: var(--color-text); }
+.unconfigured-card p  { font-size: var(--text-sm); color: var(--color-text-muted); max-width: 34ch; }
+.unconfigured-config { background: var(--color-surface-2); border: 1px solid var(--color-border-subtle); border-radius: var(--radius-lg); padding: var(--space-3) var(--space-4); font-size: var(--text-sm); color: var(--color-text-muted); font-family: var(--font-mono); text-align: left; width: 100%; line-height: 1.7; }
 
 /* =========================================================
-   MISC / UTILITY
+   PAT MODAL — appears only when token missing, home is primary
    ========================================================= */
-.section-label {
-  font-size: var(--text-xs);
-  font-weight: 700;
-  color: var(--color-text-faint);
-  text-transform: uppercase;
-  letter-spacing: 0.08em;
+.pat-modal-overlay {
+  position: fixed; inset: 0; z-index: 300;
+  display: flex; align-items: flex-end;
+  background: rgba(2,6,23,0.85);
+  backdrop-filter: blur(4px); -webkit-backdrop-filter: blur(4px);
+  animation: overlayIn 0.25s ease;
 }
+.pat-modal-overlay.hidden { display: none; }
+.pat-modal {
+  width: 100%; max-width: 640px; margin: 0 auto;
+  background: var(--color-surface);
+  border-top-left-radius: 20px; border-top-right-radius: 20px;
+  border-top: 1px solid var(--color-border);
+  padding: var(--space-5) var(--space-5) calc(var(--space-8) + env(safe-area-inset-bottom));
+  animation: sheetIn 0.35s cubic-bezier(0.16,1,0.3,1);
+  max-height: 92dvh; overflow-y: auto;
+}
+.pat-modal-handle { width: 40px; height: 4px; background: var(--color-border); border-radius: var(--radius-full); margin: 0 auto var(--space-5); }
+.pat-modal-title { font-size: var(--text-lg); font-weight: 700; color: var(--color-text); margin-bottom: var(--space-2); }
+.pat-modal-desc { font-size: var(--text-sm); color: var(--color-text-muted); line-height: 1.6; margin-bottom: var(--space-5); }
+.pat-modal-desc strong { color: var(--color-text); }
+
+.pat-field { display: flex; flex-direction: column; gap: var(--space-2); margin-bottom: var(--space-4); }
+.pat-field label { font-size: var(--text-xs); font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--color-text-faint); }
+.pat-input-wrap { position: relative; }
+.pat-input {
+  width: 100%; background: var(--color-bg); border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg); padding: var(--space-3) 56px var(--space-3) var(--space-4);
+  color: var(--color-text); font-size: var(--text-sm); font-family: var(--font-mono);
+  transition: border-color var(--transition-base);
+}
+.pat-input:focus { outline: none; border-color: var(--color-primary); }
+.pat-toggle { position: absolute; right: var(--space-3); top: 50%; transform: translateY(-50%); color: var(--color-text-faint); font-size: var(--text-xs); font-weight: 600; padding: var(--space-1) var(--space-2); border-radius: var(--radius-sm); transition: color var(--transition-fast); }
+.pat-toggle:hover { color: var(--color-text-muted); }
+.pat-hint { font-size: var(--text-xs); color: var(--color-text-faint); line-height: 1.5; }
+.pat-hint a { color: var(--color-primary); text-decoration: none; }
+.pat-status { font-size: var(--text-xs); font-weight: 600; padding: var(--space-2) var(--space-3); border-radius: var(--radius-md); display: none; margin-top: var(--space-2); }
+.pat-status.ok      { display: block; background: #021a0e; border: 1px solid #166534; color: #86efac; }
+.pat-status.err     { display: block; background: #1a0505; border: 1px solid #7f1d1d; color: #fca5a5; }
+.pat-status.testing { display: block; background: #0c1a35; border: 1px solid #1d4ed8; color: #93c5fd; }
+.pat-save-btn { width: 100%; background: var(--color-primary); color: var(--color-text-inverse); border: none; border-radius: var(--radius-lg); padding: var(--space-4); font-size: var(--text-base); font-weight: 700; cursor: pointer; transition: background var(--transition-base); margin-top: var(--space-4); min-height: 52px; }
+.pat-save-btn:hover { background: var(--color-primary-hover); }
+.pat-save-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+/* Preflight checklist inside PAT modal */
+.preflight-section { margin-top: var(--space-5); padding-top: var(--space-5); border-top: 1px solid var(--color-border-subtle); }
+.preflight-title { font-size: var(--text-xs); font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-text-faint); margin-bottom: var(--space-3); display: flex; align-items: center; justify-content: space-between; }
+.preflight-run-btn { font-size: var(--text-xs); color: var(--color-primary); font-weight: 700; padding: var(--space-1) var(--space-2); border-radius: var(--radius-sm); background: rgba(22,163,74,0.1); border: 1px solid rgba(22,163,74,0.2); cursor: pointer; }
+.preflight-run-btn:hover { background: rgba(22,163,74,0.2); }
+.preflight-list { display: flex; flex-direction: column; gap: var(--space-2); }
+.pf-item { display: flex; align-items: flex-start; gap: var(--space-3); padding: var(--space-2) var(--space-3); background: var(--color-bg); border: 1px solid var(--color-border-subtle); border-radius: var(--radius-md); transition: border-color var(--transition-base); }
+.pf-item.ok   { border-color: #166534; }
+.pf-item.fail { border-color: #7f1d1d; }
+.pf-item.testing { border-color: #1d4ed8; }
+.pf-icon { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--color-border); display: flex; align-items: center; justify-content: center; font-size: 10px; flex-shrink: 0; margin-top: 1px; transition: all var(--transition-base); }
+.pf-item.ok   .pf-icon { background: #166534; border-color: #16a34a; color: #fff; }
+.pf-item.fail .pf-icon { background: #7f1d1d; border-color: #ef4444; color: #fff; }
+.pf-item.testing .pf-icon { background: #1d4ed8; border-color: #3b82f6; color: #fff; }
+.pf-body  { flex: 1; }
+.pf-label { font-size: var(--text-xs); font-weight: 600; color: var(--color-text); line-height: 1.3; }
+.pf-detail { font-size: 10px; color: var(--color-text-faint); margin-top: 2px; line-height: 1.4; }
+.pf-item.ok   .pf-detail { color: #86efac; }
+.pf-item.fail .pf-detail { color: #fca5a5; }
+.pf-item.testing .pf-detail { color: #93c5fd; }
+.pf-mic-btn { font-size: 10px; color: var(--color-primary); font-weight: 600; margin-top: 3px; display: none; }
+.pf-mic-btn.visible { display: inline-block; }
+
+/* Log toggle */
+.log-toggle-row { display: flex; align-items: center; justify-content: space-between; margin-top: var(--space-3); }
+.log-toggle-label { font-size: var(--text-xs); color: var(--color-text-muted); }
+.toggle-switch { position: relative; width: 36px; height: 20px; }
+.toggle-switch input { opacity: 0; width: 0; height: 0; }
+.toggle-slider { position: absolute; inset: 0; background: var(--color-surface-dynamic); border-radius: var(--radius-full); cursor: pointer; transition: background var(--transition-base); }
+.toggle-slider:before { content: ''; position: absolute; width: 14px; height: 14px; background: var(--color-text-faint); border-radius: 50%; top: 3px; left: 3px; transition: transform var(--transition-base), background var(--transition-base); }
+.toggle-switch input:checked + .toggle-slider { background: #166534; }
+.toggle-switch input:checked + .toggle-slider:before { transform: translateX(16px); background: var(--color-primary); }
+.log-output { background: var(--color-bg); border: 1px solid var(--color-border-subtle); border-radius: var(--radius-md); padding: var(--space-3); font-family: var(--font-mono); font-size: 10px; color: var(--color-text-faint); line-height: 1.6; max-height: 120px; overflow-y: auto; margin-top: var(--space-2); display: none; }
+.log-output.visible { display: block; }
+.log-info { color: #93c5fd; } .log-ok { color: #86efac; } .log-warn { color: #fcd34d; } .log-err { color: #fca5a5; }
 
 /* =========================================================
-   START HERE / PREFLIGHT — overlay tab
+   MISC
    ========================================================= */
-.starthere-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 200;
-  background: #020617;
-  display: flex;
-  flex-direction: column;
-  overflow-y: auto;
-}
-.starthere-overlay.hidden { display: none; }
-
-.sh-header {
-  background: #0f172a;
-  border-bottom: 1px solid #1e293b;
-  padding: 16px 20px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-shrink: 0;
-}
-.sh-logo { font-size: 18px; font-weight: 700; }
-.sh-logo span { color: #16a34a; }
-.sh-badge {
-  margin-left: auto;
-  font-size: 10px;
-  font-family: monospace;
-  background: #1e293b;
-  border: 1px solid #334155;
-  border-radius: 999px;
-  padding: 2px 10px;
-  color: #94a3b8;
-}
-
-.sh-body {
-  flex: 1;
-  padding: 24px 20px;
-  max-width: 640px;
-  margin: 0 auto;
-  width: 100%;
-}
-
-.sh-intro {
-  background: #0f172a;
-  border: 1px solid #1e293b;
-  border-radius: 14px;
-  padding: 20px;
-  margin-bottom: 20px;
-}
-.sh-intro h1 {
-  font-size: 20px;
-  font-weight: 700;
-  margin-bottom: 8px;
-}
-.sh-intro p {
-  font-size: 13px;
-  color: #94a3b8;
-  line-height: 1.7;
-}
-.sh-intro strong { color: #f8fafc; }
-
-.sh-section {
-  background: #0f172a;
-  border: 1px solid #1e293b;
-  border-radius: 14px;
-  padding: 18px 20px;
-  margin-bottom: 16px;
-}
-.sh-section-title {
-  font-size: 13px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: .6px;
-  color: #94a3b8;
-  margin-bottom: 14px;
-}
-
-/* PAT entry */
-.sh-pat-row {
-  display: flex;
-  gap: 10px;
-  align-items: stretch;
-}
-.sh-pat-input-wrap {
-  flex: 1;
-  position: relative;
-}
-.sh-pat-input {
-  width: 100%;
-  background: #020617;
-  border: 1px solid #334155;
-  border-radius: 8px;
-  padding: 10px 44px 10px 12px;
-  color: #f8fafc;
-  font-size: 13px;
-  font-family: monospace;
-  transition: border-color .15s;
-}
-.sh-pat-input:focus { outline: none; border-color: #16a34a; }
-.sh-pat-toggle {
-  position: absolute;
-  right: 10px;
-  top: 50%;
-  transform: translateY(-50%);
-  background: none;
-  border: none;
-  color: #94a3b8;
-  font-size: 11px;
-  cursor: pointer;
-  padding: 4px;
-}
-.sh-save-btn {
-  background: #16a34a;
-  color: #fff;
-  border: none;
-  border-radius: 8px;
-  padding: 10px 18px;
-  font-size: 13px;
-  font-weight: 700;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: background .15s;
-}
-.sh-save-btn:hover { background: #15803d; }
-.sh-save-btn:disabled { opacity: .4; cursor: not-allowed; }
-
-.sh-pat-hint {
-  font-size: 11px;
-  color: #94a3b8;
-  margin-top: 6px;
-  line-height: 1.5;
-}
-.sh-pat-status {
-  font-size: 12px;
-  font-weight: 600;
-  margin-top: 8px;
-  padding: 6px 10px;
-  border-radius: 6px;
-  display: none;
-}
-.sh-pat-status.ok  { display:block; background:#021a0e; border:1px solid #166534; color:#86efac; }
-.sh-pat-status.err { display:block; background:#1a0505; border:1px solid #7f1d1d; color:#fca5a5; }
-.sh-pat-status.testing { display:block; background:#0c1a35; border:1px solid #1d4ed8; color:#93c5fd; }
-
-/* Checklist */
-.sh-check-list {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-}
-.sh-check-item {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-  padding: 10px 12px;
-  background: #020617;
-  border: 1px solid #1e293b;
-  border-radius: 8px;
-  transition: border-color .2s;
-}
-.sh-check-item.ok   { border-color: #166534; }
-.sh-check-item.fail { border-color: #7f1d1d; }
-.sh-check-item.testing { border-color: #1d4ed8; }
-
-.sh-check-icon {
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
-  border: 2px solid #334155;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 11px;
-  flex-shrink: 0;
-  margin-top: 1px;
-  transition: all .2s;
-}
-.sh-check-item.ok .sh-check-icon   { background:#166534; border-color:#16a34a; color:#fff; }
-.sh-check-item.fail .sh-check-icon { background:#7f1d1d; border-color:#ef4444; color:#fff; }
-.sh-check-item.testing .sh-check-icon { background:#1d4ed8; border-color:#3b82f6; color:#fff; }
-
-.sh-check-body { flex: 1; }
-.sh-check-label { font-size: 13px; font-weight: 600; margin-bottom: 2px; }
-.sh-check-detail { font-size: 11px; color: #94a3b8; line-height: 1.5; }
-.sh-check-item.ok .sh-check-detail   { color: #86efac; }
-.sh-check-item.fail .sh-check-detail { color: #fca5a5; }
-.sh-check-item.testing .sh-check-detail { color: #93c5fd; }
-.sh-check-action {
-  font-size: 11px;
-  color: #16a34a;
-  background: none;
-  border: none;
-  cursor: pointer;
-  padding: 2px 6px;
-  border-radius: 4px;
-  font-weight: 600;
-  margin-top: 4px;
-  display: inline-block;
-}
-.sh-check-action:hover { background: #021a0e; }
-
-/* Run all button */
-.sh-run-btn {
-  width: 100%;
-  background: #0f172a;
-  border: 1px solid #334155;
-  border-radius: 8px;
-  padding: 10px;
-  color: #f8fafc;
-  font-size: 13px;
-  font-weight: 600;
-  cursor: pointer;
-  margin-bottom: 12px;
-  transition: border-color .15s;
-}
-.sh-run-btn:hover { border-color: #16a34a; color: #16a34a; }
-
-/* Logging */
-.sh-log-toggle {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 4px 0;
-}
-.sh-log-label { font-size: 13px; }
-.sh-toggle-switch {
-  position: relative;
-  width: 40px;
-  height: 22px;
-}
-.sh-toggle-switch input { opacity: 0; width: 0; height: 0; }
-.sh-toggle-slider {
-  position: absolute;
-  inset: 0;
-  background: #1e293b;
-  border-radius: 999px;
-  cursor: pointer;
-  transition: background .2s;
-}
-.sh-toggle-slider:before {
-  content: '';
-  position: absolute;
-  width: 16px;
-  height: 16px;
-  background: #94a3b8;
-  border-radius: 50%;
-  top: 3px;
-  left: 3px;
-  transition: transform .2s, background .2s;
-}
-.sh-toggle-switch input:checked + .sh-toggle-slider { background: #166534; }
-.sh-toggle-switch input:checked + .sh-toggle-slider:before { transform: translateX(18px); background: #16a34a; }
-.sh-log-output {
-  background: #020617;
-  border: 1px solid #1e293b;
-  border-radius: 8px;
-  padding: 10px;
-  font-family: monospace;
-  font-size: 10px;
-  color: #94a3b8;
-  line-height: 1.6;
-  max-height: 160px;
-  overflow-y: auto;
-  margin-top: 10px;
-  display: none;
-}
-.sh-log-output.visible { display: block; }
-.log-line-info  { color: #93c5fd; }
-.log-line-ok    { color: #86efac; }
-.log-line-warn  { color: #fcd34d; }
-.log-line-err   { color: #fca5a5; }
-
-/* Continue button */
-.sh-continue-btn {
-  width: 100%;
-  background: #16a34a;
-  color: #fff;
-  border: none;
-  border-radius: 10px;
-  padding: 14px;
-  font-size: 15px;
-  font-weight: 700;
-  cursor: pointer;
-  margin-top: 8px;
-  transition: background .15s, opacity .15s;
-}
-.sh-continue-btn:hover { background: #15803d; }
-.sh-continue-btn:disabled { opacity: .4; cursor: not-allowed; }
-
+.section-label { font-size: var(--text-xs); font-weight: 700; color: var(--color-text-faint); text-transform: uppercase; letter-spacing: 0.08em; }
 </style>
 </head>
 
-<body><script>(function(){var c={"SAYIT_GH_USER":"acmeproducts","SAYIT_GH_REPO":"dev","SAYIT_SUBDIR":"sayit-v4","SAYIT_DISPLAY_NAME":"sayit","SAYIT_WAKE_WORD":"sayit"};Object.keys(c).forEach(function(k){try{localStorage.setItem(k,c[k]);}catch(e){}});// PAT: bootstrap into localStorage only — never sent to Android prefstry{localStorage.setItem("SAYIT_GH_PAT",undefined);}catch(e){}})();</script>
+<body><script>(function(){var c={"SAYIT_GH_USER":"acmeproducts","SAYIT_GH_REPO":"dev","SAYIT_SUBDIR":"sayit-v4","SAYIT_DISPLAY_NAME":"sayIt","SAYIT_WAKE_WORD":"sayit"};Object.keys(c).forEach(function(k){try{localStorage.setItem(k,c[k]);}catch(e){}});})();</script>
 
 <!-- ═══════════════════════════════════════════════════════
-     START HERE — Preflight overlay (shown when PAT missing)
+     PAT MODAL — only shown when token is missing
+     Home.html is the primary surface; this dismisses when PAT is saved
      ═══════════════════════════════════════════════════════ -->
-<div class="starthere-overlay hidden" id="startHereOverlay">
-  <div class="sh-header">
-    <div class="sh-logo">Say<span>It</span> Studio</div>
-    <span class="sh-badge">Start Here</span>
-  </div>
-  <div class="sh-body">
+<div class="pat-modal-overlay hidden" id="patModalOverlay">
+  <div class="pat-modal" id="patModal">
+    <div class="pat-modal-handle"></div>
+    <div class="pat-modal-title">GitHub Token Required</div>
+    <div class="pat-modal-desc">SayIt Studio needs your GitHub token to push code and read your project registry. It is saved <strong>in this browser only</strong> — never in any file, never uploaded to GitHub, never shared with the app.</div>
 
-    <div class="sh-intro">
-      <h1>Welcome to SayIt Studio</h1>
-      <p>Before you can create, fix, or deploy projects you need to complete this one-time setup. Once done, this screen will not appear again unless your GitHub token expires.</p>
-      <p>Your <strong>GitHub token (PAT)</strong> is entered here and saved to this browser only. It is never stored in any file, never uploaded to GitHub, and never seen by the APK.</p>
+    <div class="pat-field">
+      <label for="patInput">GitHub Personal Access Token</label>
+      <div class="pat-input-wrap">
+        <input class="pat-input" type="password" id="patInput" placeholder="github_pat_..." autocomplete="off" spellcheck="false" />
+        <button class="pat-toggle" id="patToggle" onclick="patToggleShow()">show</button>
+      </div>
+      <div class="pat-hint">Fine-grained PAT · repo Contents read+write · <a href="https://github.com/settings/personal-access-tokens/new" target="_blank">Create on GitHub</a></div>
+      <div class="pat-status" id="patStatus"></div>
     </div>
 
-    <!-- PAT ENTRY -->
-    <div class="sh-section">
-      <div class="sh-section-title">Step 1 — GitHub Token</div>
-      <div class="sh-pat-row">
-        <div class="sh-pat-input-wrap">
-          <input class="sh-pat-input" type="password" id="shPatInput" placeholder="github_pat_..." autocomplete="off" spellcheck="false"/>
-          <button class="sh-pat-toggle" id="shPatToggle" onclick="shTogglePat()">show</button>
-        </div>
-        <button class="sh-save-btn" id="shSavePatBtn" onclick="shSavePat()">Save</button>
+    <button class="pat-save-btn" id="patSaveBtn" onclick="patSaveAndValidate()">Save Token &amp; Continue</button>
+
+    <!-- Preflight checks (collapsed by default, expandable) -->
+    <div class="preflight-section">
+      <div class="preflight-title">
+        Preflight Checks
+        <button class="preflight-run-btn" id="pfRunBtn" onclick="pfRunAll()">Run All</button>
       </div>
-      <div class="sh-pat-hint">
-        Fine-grained PAT · repo Contents read+write · <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" style="color:#16a34a;">Create one on GitHub</a>
-      </div>
-      <div class="sh-pat-status" id="shPatStatus"></div>
-    </div>
+      <div class="preflight-list" id="pfList">
 
-    <!-- PREFLIGHT CHECKLIST -->
-    <div class="sh-section">
-      <div class="sh-section-title">Step 2 — Preflight Checks</div>
-      <button class="sh-run-btn" onclick="shRunAllChecks()">Run All Checks</button>
-      <div class="sh-check-list" id="shCheckList">
+        <div class="pf-item" id="pf-pat">
+          <div class="pf-icon" id="pf-pat-icon">—</div>
+          <div class="pf-body"><div class="pf-label">GitHub Token</div><div class="pf-detail" id="pf-pat-detail">Not checked</div></div>
+        </div>
 
-        <div class="sh-check-item" id="shck-pat">
-          <div class="sh-check-icon" id="shck-pat-icon">—</div>
-          <div class="sh-check-body">
-            <div class="sh-check-label">GitHub Token</div>
-            <div class="sh-check-detail" id="shck-pat-detail">Not checked yet</div>
+        <div class="pf-item" id="pf-pages">
+          <div class="pf-icon" id="pf-pages-icon">—</div>
+          <div class="pf-body"><div class="pf-label">GH Pages — home.html reachable</div><div class="pf-detail" id="pf-pages-detail">Not checked</div></div>
+        </div>
+
+        <div class="pf-item" id="pf-learn">
+          <div class="pf-icon" id="pf-learn-icon">—</div>
+          <div class="pf-body"><div class="pf-label">learn.html reachable</div><div class="pf-detail" id="pf-learn-detail">Not checked</div></div>
+        </div>
+
+        <div class="pf-item" id="pf-do">
+          <div class="pf-icon" id="pf-do-icon">—</div>
+          <div class="pf-body"><div class="pf-label">do.html reachable</div><div class="pf-detail" id="pf-do-detail">Not checked</div></div>
+        </div>
+
+        <div class="pf-item" id="pf-fix">
+          <div class="pf-icon" id="pf-fix-icon">—</div>
+          <div class="pf-body"><div class="pf-label">fix.html reachable</div><div class="pf-detail" id="pf-fix-detail">Not checked</div></div>
+        </div>
+
+        <div class="pf-item" id="pf-rollback">
+          <div class="pf-icon" id="pf-rollback-icon">—</div>
+          <div class="pf-body"><div class="pf-label">rollback.html reachable</div><div class="pf-detail" id="pf-rollback-detail">Not checked</div></div>
+        </div>
+
+        <div class="pf-item" id="pf-bridge">
+          <div class="pf-icon" id="pf-bridge-icon">—</div>
+          <div class="pf-body"><div class="pf-label">APK Bridge</div><div class="pf-detail" id="pf-bridge-detail">Not checked — optional</div></div>
+        </div>
+
+        <div class="pf-item" id="pf-mic">
+          <div class="pf-icon" id="pf-mic-icon">—</div>
+          <div class="pf-body">
+            <div class="pf-label">Microphone</div>
+            <div class="pf-detail" id="pf-mic-detail">Not checked</div>
+            <button class="pf-mic-btn" id="pf-mic-btn" onclick="pfCheckMic()">Request permission</button>
           </div>
         </div>
 
-        <div class="sh-check-item" id="shck-pages">
-          <div class="sh-check-icon" id="shck-pages-icon">—</div>
-          <div class="sh-check-body">
-            <div class="sh-check-label">GitHub Pages — home.html reachable</div>
-            <div class="sh-check-detail" id="shck-pages-detail">Not checked yet</div>
-          </div>
+        <div class="pf-item" id="pf-voice">
+          <div class="pf-icon" id="pf-voice-icon">—</div>
+          <div class="pf-body"><div class="pf-label">Web Speech API</div><div class="pf-detail" id="pf-voice-detail">Not checked</div></div>
         </div>
 
-        <div class="sh-check-item" id="shck-learn">
-          <div class="sh-check-icon" id="shck-learn-icon">—</div>
-          <div class="sh-check-body">
-            <div class="sh-check-label">learn.html reachable</div>
-            <div class="sh-check-detail" id="shck-learn-detail">Not checked yet</div>
-          </div>
-        </div>
-
-        <div class="sh-check-item" id="shck-do">
-          <div class="sh-check-icon" id="shck-do-icon">—</div>
-          <div class="sh-check-body">
-            <div class="sh-check-label">do.html reachable</div>
-            <div class="sh-check-detail" id="shck-do-detail">Not checked yet</div>
-          </div>
-        </div>
-
-        <div class="sh-check-item" id="shck-fix">
-          <div class="sh-check-icon" id="shck-fix-icon">—</div>
-          <div class="sh-check-body">
-            <div class="sh-check-label">fix.html reachable</div>
-            <div class="sh-check-detail" id="shck-fix-detail">Not checked yet</div>
-          </div>
-        </div>
-
-        <div class="sh-check-item" id="shck-rollback">
-          <div class="sh-check-icon" id="shck-rollback-icon">—</div>
-          <div class="sh-check-body">
-            <div class="sh-check-label">rollback.html reachable</div>
-            <div class="sh-check-detail" id="shck-rollback-detail">Not checked yet</div>
-          </div>
-        </div>
-
-        <div class="sh-check-item" id="shck-bridge">
-          <div class="sh-check-icon" id="shck-bridge-icon">—</div>
-          <div class="sh-check-body">
-            <div class="sh-check-label">APK Bridge</div>
-            <div class="sh-check-detail" id="shck-bridge-detail">Not checked yet</div>
-            <div style="font-size:11px;color:#94a3b8;margin-top:3px;">Bridge is optional — app works without it in manual mode</div>
-          </div>
-        </div>
-
-        <div class="sh-check-item" id="shck-mic">
-          <div class="sh-check-icon" id="shck-mic-icon">—</div>
-          <div class="sh-check-body">
-            <div class="sh-check-label">Microphone permission</div>
-            <div class="sh-check-detail" id="shck-mic-detail">Not checked yet</div>
-            <button class="sh-check-action hidden" id="shck-mic-btn" onclick="shCheckMic()">Request permission</button>
-          </div>
-        </div>
-
-        <div class="sh-check-item" id="shck-voice">
-          <div class="sh-check-icon" id="shck-voice-icon">—</div>
-          <div class="sh-check-body">
-            <div class="sh-check-label">Speech recognition (Web Speech API)</div>
-            <div class="sh-check-detail" id="shck-voice-detail">Not checked yet</div>
-          </div>
-        </div>
-
-        <div class="sh-check-item" id="shck-registry">
-          <div class="sh-check-icon" id="shck-registry-icon">—</div>
-          <div class="sh-check-body">
-            <div class="sh-check-label">registry.json readable from GitHub</div>
-            <div class="sh-check-detail" id="shck-registry-detail">Not checked yet — requires PAT and Pages</div>
-          </div>
+        <div class="pf-item" id="pf-registry">
+          <div class="pf-icon" id="pf-registry-icon">—</div>
+          <div class="pf-body"><div class="pf-label">registry.json readable</div><div class="pf-detail" id="pf-registry-detail">Requires PAT + Pages</div></div>
         </div>
 
       </div>
-    </div>
 
-    <!-- LOGGING -->
-    <div class="sh-section">
-      <div class="sh-section-title">Logging</div>
-      <div class="sh-log-toggle">
-        <span class="sh-log-label">Enable debug logging</span>
-        <label class="sh-toggle-switch">
-          <input type="checkbox" id="shLogToggle" onchange="shToggleLog(this.checked)"/>
-          <span class="sh-toggle-slider"></span>
+      <div class="log-toggle-row">
+        <span class="log-toggle-label">Debug logging</span>
+        <label class="toggle-switch">
+          <input type="checkbox" id="logToggle" onchange="logToggle(this.checked)" />
+          <span class="toggle-slider"></span>
         </label>
       </div>
-      <div class="sh-log-output" id="shLogOutput"></div>
+      <div class="log-output" id="logOutput"></div>
     </div>
+  </div>
+</div>
 
-    <button class="sh-continue-btn" id="shContinueBtn" onclick="shContinue()" disabled>
-      Continue to SayIt Studio →
-    </button>
-
-  </div><!-- /sh-body -->
-</div><!-- /starthere-overlay -->
-
+<!-- ═══════════════════════════════════════════════════════
+     MAIN STUDIO
+     ═══════════════════════════════════════════════════════ -->
 <div class="app" id="app" data-orb-state="idle">
 
   <!-- Banners -->
@@ -1631,19 +622,19 @@ img, svg {
       <svg class="banner-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M1 1l22 22M16.72 11.06A10.94 10.94 0 0 1 19 12.55M5 12.55a10.94 10.94 0 0 1 5.17-2.39M10.71 5.05A16 16 0 0 1 22.56 9M1.42 9a15.91 15.91 0 0 1 4.7-2.88M8.53 16.11a6 6 0 0 1 6.95 0M12 20h.01"/>
       </svg>
-      Offline mode — GitHub unavailable. Typed commands still work.
+      Offline — GitHub unavailable. Typed commands still work.
     </div>
     <div class="banner banner--browser hidden" id="bannerBrowser">
       <svg class="banner-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>
       </svg>
-      Browser mode — clipboard bridge unavailable. Some features limited.
+      Browser mode — clipboard bridge unavailable.
     </div>
     <div class="banner banner--nomic hidden" id="bannerNoMic">
       <svg class="banner-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <line x1="1" y1="1" x2="23" y2="23"/><path d="M9 9v3a3 3 0 0 0 5.12 2.12M15 9.34V4a3 3 0 0 0-5.94-.6"/><path d="M17 16.95A7 7 0 0 1 5 12v-2m14 0v2a7 7 0 0 1-.11 1.23M12 19v4M8 23h8"/>
       </svg>
-      Mic unavailable — use the text input below to enter commands.
+      Mic unavailable — use text input below.
     </div>
   </div>
 
@@ -1651,19 +642,13 @@ img, svg {
   <header class="header" role="banner">
     <div class="header-left">
       <div class="logo">
-        <!-- SayIt Logo Mark: soundwave-mic hybrid -->
         <svg class="logo-mark" viewBox="0 0 32 32" fill="none" aria-label="SayIt Studio" role="img">
           <rect width="32" height="32" rx="8" fill="#16a34a" opacity="0.15"/>
-          <!-- Mic body -->
           <rect x="13" y="5" width="6" height="11" rx="3" stroke="#16a34a" stroke-width="1.8" fill="none"/>
-          <!-- Mic arc -->
           <path d="M9 15c0 3.866 3.134 7 7 7s7-3.134 7-7" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round" fill="none"/>
-          <!-- Mic stand -->
           <line x1="16" y1="22" x2="16" y2="26" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round"/>
           <line x1="12" y1="26" x2="20" y2="26" stroke="#16a34a" stroke-width="1.8" stroke-linecap="round"/>
-          <!-- Sound waves left -->
           <path d="M8 11c-1.5 1.2-2 3-1.5 4.5" stroke="#16a34a" stroke-width="1.4" stroke-linecap="round" opacity="0.6"/>
-          <!-- Sound waves right -->
           <path d="M24 11c1.5 1.2 2 3 1.5 4.5" stroke="#16a34a" stroke-width="1.4" stroke-linecap="round" opacity="0.6"/>
         </svg>
         <span class="logo-text"><span>Say</span>It</span>
@@ -1671,6 +656,13 @@ img, svg {
       <span class="project-badge" id="projectCountBadge" data-count="0">0</span>
     </div>
     <div class="header-right">
+      <!-- Job count badge -->
+      <button class="icon-btn" id="jobTrayBtn" aria-label="Active jobs" title="Active jobs" style="position:relative;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+        </svg>
+        <span id="activeJobBadge" class="hidden" style="position:absolute;top:4px;right:4px;width:8px;height:8px;border-radius:50%;background:#3b82f6;"></span>
+      </button>
       <button class="icon-btn" id="settingsBtn" aria-label="Settings" title="Settings">
         <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
           <circle cx="12" cy="12" r="3"/>
@@ -1681,6 +673,13 @@ img, svg {
     </div>
   </header>
 
+  <!-- Job Tray (multi-job strip) -->
+  <div class="job-tray hidden" id="jobTray">
+    <span class="job-tray-label">Jobs</span>
+    <div id="jobChips" style="display:flex;gap:var(--space-2);"></div>
+    <span class="job-tray-empty hidden" id="jobTrayEmpty">No active jobs</span>
+  </div>
+
   <!-- Listening Surface -->
   <section class="listening-surface" aria-label="Listening surface">
     <div class="orb-container" id="orbContainer" tabindex="0" role="button" aria-label="Tap to toggle listening" aria-pressed="false">
@@ -1690,19 +689,15 @@ img, svg {
         <div class="orb-ring orb-ring-3"></div>
       </div>
       <div class="orb" id="orb">
-        <!-- Mic icon (idle/listening) -->
         <svg class="orb-icon" id="orbIconMic" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
           <rect x="9" y="2" width="6" height="11" rx="3"/>
           <path d="M5 10c0 3.866 3.134 7 7 7s7-3.134 7-7"/>
-          <line x1="12" y1="19" x2="12" y2="23"/>
-          <line x1="8" y1="23" x2="16" y2="23"/>
+          <line x1="12" y1="19" x2="12" y2="23"/><line x1="8" y1="23" x2="16" y2="23"/>
         </svg>
-        <!-- Spinner (processing) -->
         <svg class="orb-icon orb-spinner hidden" id="orbIconSpinner" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
           <circle cx="12" cy="12" r="10" stroke-opacity="0.15"/>
           <path d="M12 2a10 10 0 0 1 10 10"/>
         </svg>
-        <!-- Speaker (speaking) -->
         <svg class="orb-icon hidden" id="orbIconSpeaker" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
           <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
           <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/>
@@ -1716,6 +711,7 @@ img, svg {
       <span class="transcript-label">Heard</span>
       <div class="transcript-text" id="transcriptText">
         <span class="empty-parse">Waiting for voice…</span>
+        <span class="pause-indicator" id="pauseIndicator">pausing…</span>
       </div>
     </div>
   </section>
@@ -1723,18 +719,15 @@ img, svg {
   <!-- Content Area -->
   <main class="content-area" id="contentArea" role="main">
 
-    <!-- Unconfigured state (shown when no config) -->
+    <!-- Unconfigured state -->
     <div class="unconfigured-card hidden" id="unconfiguredCard">
       <svg class="unconfigured-icon" width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-        <circle cx="12" cy="12" r="10"/>
-        <path d="M12 8v4M12 16h.01"/>
+        <circle cx="12" cy="12" r="10"/><path d="M12 8v4M12 16h.01"/>
       </svg>
       <h2>Not configured</h2>
-      <p>Open the SayIt workbook to set up your GitHub credentials and workspace.</p>
-      <div class="unconfigured-config" id="unconfiguredConfig">
-        <!-- filled by JS -->
-      </div>
-      <button class="btn btn--primary" id="unconfiguredSetupBtn" style="max-width:280px;width:100%;">Open Workbook</button>
+      <p>Open the SayIt config tool to set up your GitHub credentials and workspace.</p>
+      <div class="unconfigured-config" id="unconfiguredConfig"></div>
+      <button class="btn btn--primary" id="unconfiguredSetupBtn" style="max-width:280px;width:100%;">Open Config Tool</button>
     </div>
 
     <!-- Interpretation Panel -->
@@ -1745,7 +738,7 @@ img, svg {
       </div>
     </div>
 
-    <!-- Confirmation Bar (hidden by default) -->
+    <!-- Confirmation Bar -->
     <div class="confirmation-bar hidden" id="confirmationBar" role="region" aria-label="Confirm command" aria-live="assertive">
       <div class="confirmation-message" id="confirmationMessage"></div>
       <p class="confirmation-hint">Say "yes" or "confirm" — or "no" / "cancel" to abort</p>
@@ -1761,15 +754,31 @@ img, svg {
       </div>
     </div>
 
-    <!-- Explain Panel (hidden by default) -->
+    <!-- Explain Panel -->
     <div class="explain-panel hidden" id="explainPanel" role="region" aria-label="Project info" aria-live="polite">
       <h3 id="explainTitle"></h3>
       <div class="explain-meta" id="explainMeta"></div>
       <p class="explain-description" id="explainDescription"></p>
+      <div class="explain-urls hidden" id="explainUrls">
+        <div class="explain-url-row">
+          <span class="explain-url-label">Dev</span>
+          <a class="explain-url-link" id="explainDevUrl" href="#" target="_blank"></a>
+        </div>
+        <div class="explain-url-row">
+          <span class="explain-url-label">Live</span>
+          <a class="explain-url-link" id="explainLiveUrl" href="#" target="_blank"></a>
+        </div>
+      </div>
       <div class="explain-history hidden" id="explainHistory">
         <div class="explain-history-title">History</div>
         <ul class="explain-history-list" id="explainHistoryList"></ul>
       </div>
+    </div>
+
+    <!-- Project URL Cards (devUrl + liveUrl per project) -->
+    <div class="projects-section" id="urlCardsSection" style="display:none;">
+      <span class="section-label">Project URLs</span>
+      <div class="url-cards" id="urlCardsList"></div>
     </div>
 
     <!-- Projects Quick-list -->
@@ -1801,16 +810,7 @@ img, svg {
   <!-- Typed Fallback -->
   <div class="typed-fallback" role="complementary" aria-label="Type a command">
     <form class="typed-form" id="typedForm" autocomplete="off">
-      <textarea
-        class="typed-input"
-        id="typedInput"
-        rows="1"
-        placeholder="Type a command…"
-        aria-label="Type a SayIt command"
-        spellcheck="false"
-        autocorrect="off"
-        autocapitalize="off"
-      ></textarea>
+      <textarea class="typed-input" id="typedInput" rows="1" placeholder="Type a command…" aria-label="Type a SayIt command" spellcheck="false" autocorrect="off" autocapitalize="off"></textarea>
       <button class="typed-submit" id="typedSubmit" type="submit" aria-label="Submit command" disabled>
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
@@ -1821,7 +821,7 @@ img, svg {
 
 </div><!-- /app -->
 
-<!-- Settings Overlay (portal, outside .app) -->
+<!-- Settings Overlay -->
 <div class="settings-overlay hidden" id="settingsOverlay" role="dialog" aria-modal="true" aria-label="Settings">
   <div class="settings-backdrop" id="settingsBackdrop"></div>
   <div class="settings-sheet" id="settingsSheet">
@@ -1830,76 +830,59 @@ img, svg {
 
     <div class="settings-section">
       <div class="settings-section-title">GitHub Config</div>
-      <div class="settings-row">
-        <span class="settings-key">User</span>
-        <span class="settings-val" id="cfgUser">—</span>
-      </div>
-      <div class="settings-row">
-        <span class="settings-key">Repo</span>
-        <span class="settings-val" id="cfgRepo">—</span>
-      </div>
-      <div class="settings-row">
-        <span class="settings-key">Subdir</span>
-        <span class="settings-val" id="cfgSubdir">—</span>
-      </div>
-      <div class="settings-row">
-        <span class="settings-key">PAT</span>
-        <span class="settings-val" id="cfgPat" title="Runtime only — not in any file">—</span>
-      </div>
+      <div class="settings-row"><span class="settings-key">User</span><span class="settings-val" id="cfgUser">—</span></div>
+      <div class="settings-row"><span class="settings-key">Repo</span><span class="settings-val" id="cfgRepo">—</span></div>
+      <div class="settings-row"><span class="settings-key">Subdir</span><span class="settings-val" id="cfgSubdir">—</span></div>
+      <div class="settings-row"><span class="settings-key">PAT</span><span class="settings-val" id="cfgPat" title="Runtime only — not in any file">—</span></div>
     </div>
 
     <div class="settings-section">
       <div class="settings-section-title">Voice Config</div>
-      <div class="settings-row">
-        <span class="settings-key">Wake Word</span>
-        <span class="settings-val" id="cfgWakeWord">—</span>
-      </div>
-      <div class="settings-row">
-        <span class="settings-key">Display Name</span>
-        <span class="settings-val" id="cfgDisplayName">—</span>
-      </div>
+      <div class="settings-row"><span class="settings-key">Wake Word</span><span class="settings-val" id="cfgWakeWord">—</span></div>
+      <div class="settings-row"><span class="settings-key">Display Name</span><span class="settings-val" id="cfgDisplayName">—</span></div>
     </div>
 
     <div class="settings-actions">
-      <button class="btn btn--primary" id="settingsReconfigure">Reconfigure Workbook</button>
+      <button class="btn btn--primary" id="settingsReconfigure">Open Config Tool</button>
       <button class="btn btn--secondary" id="settingsTrainPlatform">Train New Platform</button>
-      <button class="btn btn--secondary" onclick="closeSettings(); showStartHere();" style="margin-top:6px;">Start Here / Preflight</button>
+      <button class="btn btn--secondary" id="settingsUpdateToken">Update GitHub Token</button>
     </div>
 
     <p class="version-line" id="versionLine">SayIt Studio v1.0.0</p>
   </div>
 </div>
 
-<style>
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to   { transform: rotate(360deg); }
-}
-.orb-spinner {
-  animation: spin 1s linear infinite;
-  transform-origin: center;
-}
-</style>
-
 <script>
 'use strict';
 
 /* =========================================================
-   CONSTANTS & CONFIG
+   CONSTANTS
    ========================================================= */
-const APP_VERSION = '1.0.0';
+const APP_VERSION      = '1.0.0';
 const REGISTRY_FILENAME = 'registry.json';
-const GRACE_WINDOW_MS  = 2000;
-const SILENCE_MS       = 3000;
+const GRACE_WINDOW_MS  = 2000;   // wait after detecting command before confirming
+const SILENCE_MS       = 3000;   // auto-stop if no speech
+const PAUSE_MS         = 1200;   // pause detection threshold (user mid-sentence pause)
+const BARGE_IN_WORDS   = /\b(stop|cancel|abort|quiet|silence|never mind)\b/i;
 const MAX_THREAD_ITEMS = 5;
+const MAX_JOBS         = 8;
 
 const PLATFORM_LABELS = {
-  claude:      'Claude',
-  chatgpt:     'ChatGPT',
-  gemini:      'Gemini',
-  perplexity:  'Perplexity',
-  codex:       'Codex',
-  gpt4:        'GPT-4',
+  claude: 'Claude', chatgpt: 'ChatGPT', gemini: 'Gemini',
+  perplexity: 'Perplexity', codex: 'Codex', gpt4: 'GPT-4',
+};
+
+const PLATFORM_URLS = {
+  claude: 'https://claude.ai/new',
+  chatgpt: 'https://chatgpt.com',
+  gemini: 'https://gemini.google.com',
+  perplexity: 'https://www.perplexity.ai',
+  codex: 'https://codex.openai.com',
+};
+
+const VERB_DISPLAY_LABELS = {
+  create: 'Create', fix: 'Fix', fork: 'Fork', rollback: 'Rollback',
+  explain: 'Explain', 'tell me about': 'Explain', history: 'History',
 };
 
 /* =========================================================
@@ -1921,66 +904,104 @@ function isConfigured(cfg) {
 }
 
 /* =========================================================
+   PROJECT REGISTRY — devUrl + liveUrl per project
+   Each entry: { name, platform, description, devUrl, liveUrl, history:[] }
+   devUrl = AI platform URL where prompts are sent / code returned
+   liveUrl = GH Pages URL where published app lives
+   ========================================================= */
+function getProjectUrls(projectName) {
+  try {
+    const raw = localStorage.getItem('SAYIT_PROJECT_URLS');
+    const map = raw ? JSON.parse(raw) : {};
+    return map[projectName] || { devUrl: '', liveUrl: '' };
+  } catch (_) { return { devUrl: '', liveUrl: '' }; }
+}
+
+function setProjectUrls(projectName, devUrl, liveUrl) {
+  try {
+    const raw = localStorage.getItem('SAYIT_PROJECT_URLS');
+    const map = raw ? JSON.parse(raw) : {};
+    map[projectName] = { devUrl: devUrl || '', liveUrl: liveUrl || '' };
+    localStorage.setItem('SAYIT_PROJECT_URLS', JSON.stringify(map));
+  } catch (_) {}
+}
+
+// Called when do.html completes a job and posts a message back
+function handleJobComplete(projectName, platform, liveUrl) {
+  const cfg = getConfig();
+  // devUrl = the AI platform URL
+  const devUrl = PLATFORM_URLS[platform] || '';
+  // liveUrl = GH Pages URL for this project
+  if (!liveUrl && cfg.ghUser && cfg.ghRepo && cfg.subdir) {
+    liveUrl = 'https://' + cfg.ghUser + '.github.io/' + cfg.ghRepo + '/' + cfg.subdir + '/index.html';
+  }
+  setProjectUrls(projectName, devUrl, liveUrl);
+  renderUrlCards();
+}
+
+/* =========================================================
    DOM REFS
    ========================================================= */
 const $ = id => document.getElementById(id);
-
-const app              = $('app');
-const bannerOffline    = $('bannerOffline');
-const bannerBrowser    = $('bannerBrowser');
-const bannerNoMic      = $('bannerNoMic');
-const projectBadge     = $('projectCountBadge');
-const settingsBtn      = $('settingsBtn');
-const orbContainer     = $('orbContainer');
-const orb              = $('orb');
-const orbLabel         = $('orbLabel');
-const orbIconMic       = $('orbIconMic');
-const orbIconSpinner   = $('orbIconSpinner');
-const orbIconSpeaker   = $('orbIconSpeaker');
-const transcriptStrip  = $('transcriptStrip');
-const transcriptText   = $('transcriptText');
-const contentArea      = $('contentArea');
-const unconfiguredCard = $('unconfiguredCard');
-const interpretPanel   = $('interpretationPanel');
-const parsedCommand    = $('parsedCommand');
-const confirmBar       = $('confirmationBar');
-const confirmMsg       = $('confirmationMessage');
-const confirmYes       = $('confirmYes');
-const confirmNo        = $('confirmNo');
-const explainPanel     = $('explainPanel');
-const explainTitle     = $('explainTitle');
-const explainMeta      = $('explainMeta');
-const explainDesc      = $('explainDescription');
-const explainHistDiv   = $('explainHistory');
-const explainHistList  = $('explainHistoryList');
-const projectsLoading  = $('projectsLoading');
-const projectsScroll   = $('projectsScrollContainer');
-const projectsChips    = $('projectsChips');
-const threadList       = $('threadList');
-const threadEmpty      = $('threadEmpty');
-const threadClear      = $('threadClear');
-const typedForm        = $('typedForm');
-const typedInput       = $('typedInput');
-const typedSubmit      = $('typedSubmit');
-const settingsOverlay  = $('settingsOverlay');
-const settingsBackdrop = $('settingsBackdrop');
-const settingsSheet    = $('settingsSheet');
-const settingsReconfigure = $('settingsReconfigure');
-const settingsTrainPlatform = $('settingsTrainPlatform');
+const app               = $('app');
+const bannerOffline     = $('bannerOffline');
+const bannerBrowser     = $('bannerBrowser');
+const bannerNoMic       = $('bannerNoMic');
+const projectBadge      = $('projectCountBadge');
+const settingsBtn       = $('settingsBtn');
+const orbContainer      = $('orbContainer');
+const orbLabel          = $('orbLabel');
+const orbIconMic        = $('orbIconMic');
+const orbIconSpinner    = $('orbIconSpinner');
+const orbIconSpeaker    = $('orbIconSpeaker');
+const transcriptStrip   = $('transcriptStrip');
+const transcriptText    = $('transcriptText');
+const pauseIndicator    = $('pauseIndicator');
+const contentArea       = $('contentArea');
+const unconfiguredCard  = $('unconfiguredCard');
+const interpretPanel    = $('interpretationPanel');
+const parsedCommand     = $('parsedCommand');
+const confirmBar        = $('confirmationBar');
+const confirmMsg        = $('confirmationMessage');
+const confirmYes        = $('confirmYes');
+const confirmNo         = $('confirmNo');
+const explainPanel      = $('explainPanel');
+const explainTitle      = $('explainTitle');
+const explainMeta       = $('explainMeta');
+const explainDesc       = $('explainDescription');
+const explainHistDiv    = $('explainHistory');
+const explainHistList   = $('explainHistoryList');
+const explainUrlsDiv    = $('explainUrls');
+const projectsLoading   = $('projectsLoading');
+const projectsScroll    = $('projectsScrollContainer');
+const projectsChips     = $('projectsChips');
+const threadList        = $('threadList');
+const threadEmpty       = $('threadEmpty');
+const threadClear       = $('threadClear');
+const typedForm         = $('typedForm');
+const typedInput        = $('typedInput');
+const typedSubmit       = $('typedSubmit');
+const settingsOverlay   = $('settingsOverlay');
+const settingsBackdrop  = $('settingsBackdrop');
+const settingsSheet     = $('settingsSheet');
+const patModalOverlay   = $('patModalOverlay');
 
 /* =========================================================
    STATE
    ========================================================= */
 let state = {
-  orbState:      'idle',      // idle | listening | processing | speaking | error
-  awake:         false,       // wake word detected
-  pendingCmd:    null,        // parsed command waiting for confirmation
-  confirming:    false,       // waiting for yes/no
+  orbState:      'idle',
+  awake:         false,
+  pendingCmd:    null,
+  confirming:    false,
   speechRunning: false,
   silenceTimer:  null,
   graceTimer:    null,
-  projects:      [],          // [{name, platform, description, history:[]}]
-  threads:       [],          // [{verb, project, status, time}]
+  pauseTimer:    null,
+  bargedIn:      false,
+  projects:      [],
+  threads:       [],
+  jobs:          [],     // active multi-job list: [{id, verb, project, platform, status, startedAt}]
   hasBridge:     false,
   hasMic:        false,
   isOffline:     false,
@@ -1992,28 +1013,20 @@ let state = {
 function detectBridge() {
   state.hasBridge = !!(window.SayItBridge &&
     typeof window.SayItBridge.readClipboard === 'function');
-
-  if (!state.hasBridge) {
-    bannerBrowser.classList.remove('hidden');
-  }
+  if (!state.hasBridge) bannerBrowser.classList.remove('hidden');
 }
 
 /* =========================================================
    ORB STATE MACHINE
    ========================================================= */
 const ORB_LABELS = {
-  idle:       'Tap to listen',
-  listening:  'Listening…',
-  processing: 'Processing…',
-  speaking:   'Speaking…',
-  error:      'Error',
+  idle: 'Tap to listen', listening: 'Listening…',
+  processing: 'Processing…', speaking: 'Speaking…', error: 'Error',
 };
 const ORB_ARIA = {
-  idle:       'Tap to start listening',
-  listening:  'Listening for your command',
-  processing: 'Processing command',
-  speaking:   'Speaking response',
-  error:      'Microphone error — tap to retry',
+  idle: 'Tap to start listening', listening: 'Listening for your command',
+  processing: 'Processing command', speaking: 'Speaking response',
+  error: 'Microphone error — tap to retry',
 };
 
 function setOrbState(s) {
@@ -2022,12 +1035,9 @@ function setOrbState(s) {
   orbLabel.textContent = ORB_LABELS[s] || s;
   orbContainer.setAttribute('aria-label', ORB_ARIA[s] || s);
   orbContainer.setAttribute('aria-pressed', s === 'listening' ? 'true' : 'false');
-
-  // Icon management
-  const showMic      = s === 'idle' || s === 'listening' || s === 'error';
-  const showSpinner  = s === 'processing';
-  const showSpeaker  = s === 'speaking';
-
+  const showMic     = s === 'idle' || s === 'listening' || s === 'error';
+  const showSpinner = s === 'processing';
+  const showSpeaker = s === 'speaking';
   orbIconMic.classList.toggle('hidden', !showMic);
   orbIconSpinner.classList.toggle('hidden', !showSpinner);
   orbIconSpeaker.classList.toggle('hidden', !showSpeaker);
@@ -2036,26 +1046,26 @@ function setOrbState(s) {
 /* =========================================================
    TRANSCRIPT DISPLAY
    ========================================================= */
-function setTranscript(text, active = false, highlightWake = '') {
-  transcriptStrip.classList.toggle('transcript-strip--active', active);
-
+function setTranscript(text, active, highlightWake) {
+  transcriptStrip.classList.toggle('transcript-strip--active', !!active);
   if (!text) {
     transcriptText.className = 'transcript-text';
-    transcriptText.innerHTML = '<span class="empty-parse">Waiting for voice…</span>';
+    transcriptText.innerHTML = '<span class="empty-parse">Waiting for voice…</span><span class="pause-indicator" id="pauseIndicator"></span>';
     return;
   }
-
   let html = escHtml(text);
   if (highlightWake) {
-    const re = new RegExp(`(${escRegex(highlightWake)})`, 'gi');
+    const re = new RegExp('(' + escRegex(highlightWake) + ')', 'gi');
     html = html.replace(re, '<span class="wake-word">$1</span>');
   }
-  if (active) {
-    html += '<span class="transcript-cursor" aria-hidden="true"></span>';
-  }
-
+  if (active) html += '<span class="transcript-cursor" aria-hidden="true"></span>';
   transcriptText.className = 'transcript-text' + (active ? ' transcript-text--active' : '');
-  transcriptText.innerHTML = html;
+  transcriptText.innerHTML = html + '<span class="pause-indicator" id="pauseIndicator"></span>';
+}
+
+function showPauseIndicator(on) {
+  const el = document.getElementById('pauseIndicator');
+  if (el) el.classList.toggle('visible', on);
 }
 
 /* =========================================================
@@ -2067,32 +1077,15 @@ function renderParsed(cmd) {
     parsedCommand.innerHTML = '<span class="empty-parse">Say the wake word to start…</span>';
     return;
   }
-
   interpretPanel.classList.remove('dimmed');
   const parts = [];
-
-  if (cmd.verb) {
-    parts.push(`<span class="parsed-pill pill--verb">
-      <span class="parsed-pill-key">verb</span> ${escHtml(cmd.verb)}
-    </span>`);
-  }
-  if (cmd.projectRef) {
-    parts.push(`<span class="parsed-pill pill--project">
-      <span class="parsed-pill-key">project</span> ${escHtml(cmd.projectRef)}
-    </span>`);
-  }
+  if (cmd.verb) parts.push('<span class="parsed-pill pill--verb"><span class="parsed-pill-key">verb</span> ' + escHtml(cmd.verb) + '</span>');
+  if (cmd.projectRef) parts.push('<span class="parsed-pill pill--project"><span class="parsed-pill-key">project</span> ' + escHtml(cmd.projectRef) + '</span>');
   if (cmd.platformRef) {
     const label = PLATFORM_LABELS[cmd.platformRef.toLowerCase()] || cmd.platformRef;
-    parts.push(`<span class="parsed-pill pill--platform">
-      <span class="parsed-pill-key">platform</span> ${escHtml(label)}
-    </span>`);
+    parts.push('<span class="parsed-pill pill--platform"><span class="parsed-pill-key">platform</span> ' + escHtml(label) + '</span>');
   }
-  if (cmd.args) {
-    parts.push(`<span class="parsed-pill pill--args">
-      <span class="parsed-pill-key">prompt</span> ${escHtml(cmd.args)}
-    </span>`);
-  }
-
+  if (cmd.args) parts.push('<span class="parsed-pill pill--args"><span class="parsed-pill-key">prompt</span> ' + escHtml(cmd.args) + '</span>');
   parsedCommand.innerHTML = parts.join('') || '<span class="empty-parse">Could not parse command</span>';
 }
 
@@ -2102,47 +1095,190 @@ function renderParsed(cmd) {
 function parseCommand(rawText) {
   const cfg = getConfig();
   const wake = escRegex(cfg.wakeWord);
-
-  // Strip wake word from start (case-insensitive)
-  const stripped = rawText.replace(new RegExp(`^\\s*${wake}\\s*`, 'i'), '').trim();
-
+  const stripped = rawText.replace(new RegExp('^\\s*' + wake + '\\s*', 'i'), '').trim();
   if (!stripped) return null;
-
   const lower = stripped.toLowerCase();
 
-  // "create [project] using [platform] [prompt]"
   let m = stripped.match(/^create\s+(.+?)\s+using\s+(\S+)(?:\s+(.+))?$/i);
-  if (m) return { verb: 'create', projectRef: m[1].trim(), platformRef: m[2].trim(), args: (m[3] || '').trim() };
+  if (m) return { verb:'create', projectRef:m[1].trim(), platformRef:m[2].trim(), args:(m[3]||'').trim() };
 
-  // "fix [project] [issue]"
   m = stripped.match(/^fix\s+(\S+)(?:\s+(.+))?$/i);
-  if (m) return { verb: 'fix', projectRef: m[1].trim(), platformRef: null, args: (m[2] || '').trim() };
+  if (m) return { verb:'fix', projectRef:m[1].trim(), platformRef:null, args:(m[2]||'').trim() };
 
-  // "fork [project] as [new name]" / "fork [project]"
   m = stripped.match(/^fork\s+(\S+)(?:\s+as\s+(\S+))?$/i);
-  if (m) return { verb: 'fork', projectRef: m[1].trim(), platformRef: null, args: m[2] ? m[2].trim() : '' };
+  if (m) return { verb:'fork', projectRef:m[1].trim(), platformRef:null, args:m[2]?m[2].trim():'' };
 
-  // "rollback [project]"
   m = stripped.match(/^rollback\s+(\S+)$/i);
-  if (m) return { verb: 'rollback', projectRef: m[1].trim(), platformRef: null, args: '' };
+  if (m) return { verb:'rollback', projectRef:m[1].trim(), platformRef:null, args:'' };
 
-  // "explain [project]" / "tell me about [project]" / "what is the history of [project]"
   m = stripped.match(/^(?:explain|tell me about|what is the history of)\s+(.+)$/i);
   if (m) {
-    const verb = lower.startsWith('explain') ? 'explain'
-               : lower.startsWith('tell')    ? 'tell me about'
-               : 'history';
-    return { verb, projectRef: m[1].trim(), platformRef: null, args: '' };
+    const verb = lower.startsWith('explain') ? 'explain' : lower.startsWith('tell') ? 'tell me about' : 'history';
+    return { verb, projectRef:m[1].trim(), platformRef:null, args:'' };
   }
 
-  // Fuzzy fallback: first word is verb
   const words = stripped.split(/\s+/);
-  return {
-    verb:       words[0]?.toLowerCase() || 'unknown',
-    projectRef: words[1] || '',
-    platformRef: null,
-    args:       words.slice(2).join(' '),
+  return { verb: words[0]?.toLowerCase()||'unknown', projectRef:words[1]||'', platformRef:null, args:words.slice(2).join(' ') };
+}
+
+/* =========================================================
+   BARGE-IN DETECTION
+   Interrupt mid-speech: if user speaks during system speech,
+   cancel synthesis immediately and process new command
+   ========================================================= */
+function handleBargeIn(text) {
+  if (!synthBusy) return false;
+  // Any substantive speech while speaking = barge-in
+  if (text && text.trim().length > 3) {
+    window.speechSynthesis.cancel();
+    synthQueue = [];
+    synthBusy = false;
+    state.bargedIn = true;
+    setOrbState('listening');
+    sLog('Barge-in detected', 'warn');
+    return true;
+  }
+  return false;
+}
+
+// Explicit stop commands trigger barge-in
+function checkExplicitStop(text) {
+  if (BARGE_IN_WORDS.test(text)) {
+    if (synthBusy) {
+      window.speechSynthesis.cancel();
+      synthQueue = [];
+      synthBusy = false;
+    }
+    if (state.confirming) exitConfirmation(false);
+    stopListening();
+    setOrbState('idle');
+    sLog('Stop command detected', 'warn');
+    return true;
+  }
+  return false;
+}
+
+/* =========================================================
+   PAUSE DETECTION
+   User pausing mid-sentence vs. done speaking
+   Short pause (< PAUSE_MS) = still speaking
+   Long pause (>= PAUSE_MS after awake) = done — commit command
+   ========================================================= */
+function resetPauseTimer(onPause) {
+  clearTimeout(state.pauseTimer);
+  showPauseIndicator(false);
+  state.pauseTimer = setTimeout(() => {
+    if (state.awake && !state.confirming && state.speechRunning) {
+      showPauseIndicator(true);
+      // After pause_ms the user has stopped — fire onPause callback
+      onPause && onPause();
+    }
+  }, PAUSE_MS);
+}
+
+/* =========================================================
+   MULTI-JOB MANAGEMENT
+   ========================================================= */
+let jobIdCounter = 0;
+
+function addJob(verb, project, platform) {
+  const job = {
+    id: ++jobIdCounter,
+    verb, project, platform,
+    status: 'running',
+    startedAt: new Date(),
   };
+  state.jobs.unshift(job);
+  if (state.jobs.length > MAX_JOBS) state.jobs.pop();
+  persistJobs();
+  renderJobTray();
+  return job.id;
+}
+
+function updateJob(id, status) {
+  const job = state.jobs.find(j => j.id === id);
+  if (job) { job.status = status; persistJobs(); renderJobTray(); }
+}
+
+function renderJobTray() {
+  const tray = $('jobTray');
+  const chips = $('jobChips');
+  const empty = $('jobTrayEmpty');
+  const badge = $('activeJobBadge');
+  const btn   = $('jobTrayBtn');
+
+  const running = state.jobs.filter(j => j.status === 'running');
+  badge.classList.toggle('hidden', running.length === 0);
+
+  if (!state.jobs.length) {
+    if (tray) tray.classList.add('hidden');
+    return;
+  }
+  if (tray) tray.classList.remove('hidden');
+  empty.classList.add('hidden');
+
+  chips.innerHTML = state.jobs.map(j => {
+    let cls = 'job-chip';
+    if (j.status === 'running') cls += ' job-chip--running';
+    else if (j.status === 'done') cls += ' job-chip--active';
+    else if (j.status === 'error') cls += ' job-chip--error';
+    const dot = j.status === 'running' ? ' job-dot--pulse' : '';
+    const label = PLATFORM_LABELS[j.platform] || j.platform || '';
+    return '<div class="' + cls + '" title="' + escHtml(j.verb + ' ' + j.project) + '">' +
+      '<span class="job-dot' + dot + '"></span>' +
+      escHtml(j.project) +
+      (label ? ' <span style="opacity:0.6;font-size:10px">' + escHtml(label) + '</span>' : '') +
+      '</div>';
+  }).join('');
+}
+
+function persistJobs() {
+  try { localStorage.setItem('SAYIT_JOBS', JSON.stringify(state.jobs.map(j => ({...j, startedAt: j.startedAt.toISOString()})))); } catch(_) {}
+}
+
+function loadJobs() {
+  try {
+    const raw = localStorage.getItem('SAYIT_JOBS');
+    if (raw) {
+      state.jobs = JSON.parse(raw).map(j => ({...j, startedAt: new Date(j.startedAt)}));
+      renderJobTray();
+    }
+  } catch(_) {}
+}
+
+/* =========================================================
+   PROJECT URL CARDS
+   ========================================================= */
+function renderUrlCards() {
+  const cfg = getConfig();
+  try {
+    const raw = localStorage.getItem('SAYIT_PROJECT_URLS');
+    const map = raw ? JSON.parse(raw) : {};
+    const entries = Object.entries(map).filter(([, v]) => v.devUrl || v.liveUrl);
+    const section = $('urlCardsSection');
+    const list    = $('urlCardsList');
+    if (!entries.length) { if (section) section.style.display = 'none'; return; }
+    if (section) section.style.display = '';
+    list.innerHTML = entries.map(([name, urls]) => {
+      const devUrl  = urls.devUrl || '';
+      const liveUrl = urls.liveUrl || '';
+      return '<div class="url-card">' +
+        '<div class="url-card-header"><span class="url-card-name">' + escHtml(name) + '</span></div>' +
+        (devUrl  ? '<div class="url-card-row"><span class="url-card-label">Dev</span><a class="url-card-link" href="' + escHtml(devUrl)  + '" target="_blank">' + escHtml(devUrl)  + '</a><button class="url-card-open" onclick="openDevUrl(\'' + escHtml(name) + '\')">Open</button></div>' : '') +
+        (liveUrl ? '<div class="url-card-row"><span class="url-card-label">Live</span><a class="url-card-link" href="' + escHtml(liveUrl) + '" target="_blank">' + escHtml(liveUrl) + '</a><button class="url-card-open" onclick="openLiveUrl(\'' + escHtml(name) + '\')">Open</button></div>' : '') +
+        '</div>';
+    }).join('');
+  } catch(_) {}
+}
+
+function openDevUrl(projectName) {
+  const urls = getProjectUrls(projectName);
+  if (urls.devUrl) navigate(urls.devUrl);
+}
+
+function openLiveUrl(projectName) {
+  const urls = getProjectUrls(projectName);
+  if (urls.liveUrl) navigate(urls.liveUrl);
 }
 
 /* =========================================================
@@ -2151,28 +1287,19 @@ function parseCommand(rawText) {
 function enterConfirmation(cmd) {
   state.confirming = true;
   state.pendingCmd = cmd;
-
-  const platformPart = cmd.platformRef
-    ? ` using ${PLATFORM_LABELS[cmd.platformRef?.toLowerCase()] || cmd.platformRef}`
-    : '';
-
-  const promptPart = cmd.args
-    ? ` — <em style="color:var(--color-text-muted);font-style:normal;font-size:var(--text-xs)">${escHtml(cmd.args.slice(0, 60))}${cmd.args.length > 60 ? '…' : ''}</em>`
-    : '';
-
-  confirmMsg.innerHTML = `<strong>${escHtml(cmd.verb)} ${escHtml(cmd.projectRef)}${escHtml(platformPart)}</strong>${promptPart}<br><span style="color:var(--color-text-muted);font-size:var(--text-sm)">Confirm?</span>`;
-
+  const platformPart = cmd.platformRef ? ' using ' + (PLATFORM_LABELS[cmd.platformRef?.toLowerCase()] || cmd.platformRef) : '';
+  const promptPart   = cmd.args ? ' — <em style="color:var(--color-text-muted);font-style:normal;font-size:var(--text-xs)">' + escHtml(cmd.args.slice(0,60)) + (cmd.args.length>60?'…':'') + '</em>' : '';
+  confirmMsg.innerHTML = '<strong>' + escHtml(cmd.verb) + ' ' + escHtml(cmd.projectRef) + escHtml(platformPart) + '</strong>' + promptPart + '<br><span style="color:var(--color-text-muted);font-size:var(--text-sm)">Confirm?</span>';
   confirmBar.classList.remove('hidden');
   confirmYes.focus();
-
-  // Speak the confirmation
-  speak(`Got it — ${cmd.verb} ${cmd.projectRef}${platformPart}. Confirm?`);
+  speak('Got it — ' + cmd.verb + ' ' + cmd.projectRef + platformPart + '. Confirm?');
 }
 
-function exitConfirmation(execute = false) {
+function exitConfirmation(execute) {
   state.confirming = false;
   confirmBar.classList.add('hidden');
-
+  clearTimeout(state.pauseTimer);
+  showPauseIndicator(false);
   if (execute && state.pendingCmd) {
     routeCommand(state.pendingCmd);
   } else if (!execute) {
@@ -2188,19 +1315,17 @@ function exitConfirmation(execute = false) {
 function routeCommand(cmd) {
   const { verb, projectRef, platformRef, args } = cmd;
   const norm = v => encodeURIComponent(v || '');
-
   let url = null;
-
   const isExplain = verb === 'explain' || verb === 'tell me about' || verb === 'history';
 
   if (verb === 'create') {
-    url = `do.html?verb=create&project=${norm(projectRef)}&platform=${norm(platformRef)}&prompt=${norm(args)}`;
+    url = 'do.html?verb=create&project=' + norm(projectRef) + '&platform=' + norm(platformRef) + '&prompt=' + norm(args);
   } else if (verb === 'fix') {
-    url = `fix.html?project=${norm(projectRef)}&issue=${norm(args)}`;
+    url = 'fix.html?project=' + norm(projectRef) + '&issue=' + norm(args);
   } else if (verb === 'fork') {
-    url = `do.html?verb=fork&project=${norm(projectRef)}&newname=${norm(args)}`;
+    url = 'do.html?verb=fork&project=' + norm(projectRef) + '&newname=' + norm(args);
   } else if (verb === 'rollback') {
-    url = `rollback.html?project=${norm(projectRef)}`;
+    url = 'rollback.html?project=' + norm(projectRef);
   } else if (isExplain) {
     handleExplain(projectRef);
     addThread(verb, projectRef, 'done');
@@ -2208,12 +1333,15 @@ function routeCommand(cmd) {
   }
 
   if (url) {
+    const jobId = addJob(verb, projectRef, platformRef);
     addThread(verb, projectRef, 'pending');
     setOrbState('processing');
+    // Store job id so child page can call back
+    try { localStorage.setItem('SAYIT_CURRENT_JOB_ID', jobId); } catch(_) {}
     navigate(url);
   } else {
     setOrbState('idle');
-    speak(`I don't know how to ${verb}.`);
+    speak("I don't know how to " + verb + '.');
   }
 }
 
@@ -2225,55 +1353,70 @@ function navigate(url) {
   }
 }
 
+// Receive postMessage from child pages (do.html, fix.html, etc.)
+window.addEventListener('message', function(evt) {
+  try {
+    const data = evt.data;
+    if (!data || typeof data !== 'object') return;
+    if (data.type === 'SAYIT_JOB_COMPLETE') {
+      const { jobId, project, platform, liveUrl, status } = data;
+      if (jobId) updateJob(parseInt(jobId), status || 'done');
+      if (project) {
+        const thread = state.threads.find(t => t.project === project);
+        if (thread) { thread.status = status || 'done'; renderThread(); persistThreads(); }
+        handleJobComplete(project, platform, liveUrl);
+      }
+    }
+  } catch(_) {}
+});
+
 /* =========================================================
    EXPLAIN / HISTORY
    ========================================================= */
 function handleExplain(projectName) {
-  const project = state.projects.find(
-    p => p.name.toLowerCase() === projectName.toLowerCase()
-  );
-
+  const project = state.projects.find(p => p.name.toLowerCase() === projectName.toLowerCase());
   if (!project) {
-    speak(`I don't have information about ${projectName}. Make sure the project name is correct.`);
-    setTranscript(`Project "${projectName}" not found in registry`, false);
+    speak("I don't have information about " + projectName + '. Make sure the project name is correct.');
+    setTranscript('Project "' + projectName + '" not found', false);
     setOrbState('idle');
     return;
   }
-
   renderExplain(project);
   setOrbState('idle');
-
-  const summary = project.description
-    ? `${project.name}: ${project.description}`
-    : `${project.name} — a ${project.platform || 'project'} app.`;
+  const summary = project.description ? project.name + ': ' + project.description : project.name + ' — a ' + (project.platform||'project') + ' app.';
   speak(summary);
 }
 
 function renderExplain(project) {
   explainTitle.textContent = project.name;
-
   const metaParts = [];
   if (project.platform) {
     const label = PLATFORM_LABELS[project.platform?.toLowerCase()] || project.platform;
-    metaParts.push(`<span class="explain-pill">${escHtml(label)}</span>`);
+    metaParts.push('<span class="explain-pill">' + escHtml(label) + '</span>');
   }
-  if (project.created) {
-    metaParts.push(`<span class="explain-pill">Created ${escHtml(project.created)}</span>`);
-  }
-  if (project.version) {
-    metaParts.push(`<span class="explain-pill">v${escHtml(project.version)}</span>`);
-  }
+  if (project.created) metaParts.push('<span class="explain-pill">Created ' + escHtml(project.created) + '</span>');
+  if (project.version)  metaParts.push('<span class="explain-pill">v' + escHtml(project.version) + '</span>');
   explainMeta.innerHTML = metaParts.join('');
-
   explainDesc.textContent = project.description || 'No description available.';
+
+  // DevUrl / liveUrl
+  const urls = getProjectUrls(project.name);
+  const devUrl  = project.devUrl  || urls.devUrl  || '';
+  const liveUrl = project.liveUrl || urls.liveUrl || '';
+  if (devUrl || liveUrl) {
+    $('explainDevUrl').href = devUrl || '#';
+    $('explainDevUrl').textContent = devUrl || '—';
+    $('explainLiveUrl').href = liveUrl || '#';
+    $('explainLiveUrl').textContent = liveUrl || '—';
+    explainUrlsDiv.classList.remove('hidden');
+  } else {
+    explainUrlsDiv.classList.add('hidden');
+  }
 
   const history = Array.isArray(project.history) ? project.history : [];
   if (history.length) {
-    explainHistList.innerHTML = history.slice(0, 8).map(h =>
-      `<li class="explain-history-item">
-        <span class="explain-history-date">${escHtml(h.date || '')}</span>
-        <span class="explain-history-msg">${escHtml(h.message || h.msg || JSON.stringify(h))}</span>
-      </li>`
+    explainHistList.innerHTML = history.slice(0,8).map(h =>
+      '<li class="explain-history-item"><span class="explain-history-date">' + escHtml(h.date||'') + '</span><span class="explain-history-msg">' + escHtml(h.message||h.msg||JSON.stringify(h)) + '</span></li>'
     ).join('');
     explainHistDiv.classList.remove('hidden');
   } else {
@@ -2281,7 +1424,7 @@ function renderExplain(project) {
   }
 
   explainPanel.classList.remove('hidden');
-  explainPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  explainPanel.scrollIntoView({ behavior:'smooth', block:'nearest' });
 }
 
 /* =========================================================
@@ -2291,63 +1434,33 @@ function addThread(verb, project, status) {
   const item = { verb, project, status, time: new Date() };
   state.threads.unshift(item);
   if (state.threads.length > MAX_THREAD_ITEMS) state.threads.pop();
-  renderThread();
-  persistThreads();
+  renderThread(); persistThreads();
 }
 
 function renderThread() {
-  if (!state.threads.length) {
-    threadEmpty.classList.remove('hidden');
-    return;
-  }
+  if (!state.threads.length) { threadEmpty.classList.remove('hidden'); return; }
   threadEmpty.classList.add('hidden');
-
   threadList.innerHTML = state.threads.map(item => {
-    const dotClass = `thread-status-dot thread-status-dot--${item.status}`;
-    const timeStr  = formatRelativeTime(item.time);
+    const dotClass = 'thread-status-dot thread-status-dot--' + item.status;
     const verbLabel = VERB_DISPLAY_LABELS[item.verb] || item.verb;
-    return `<li class="thread-item">
-      <div class="${dotClass}" aria-hidden="true"></div>
-      <div class="thread-content">
-        <div class="thread-verb">${escHtml(verbLabel)}</div>
-        <div class="thread-project">${escHtml(item.project)}</div>
-      </div>
-      <span class="thread-time">${escHtml(timeStr)}</span>
-    </li>`;
+    return '<li class="thread-item"><div class="' + dotClass + '" aria-hidden="true"></div><div class="thread-content"><div class="thread-verb">' + escHtml(verbLabel) + '</div><div class="thread-project">' + escHtml(item.project) + '</div></div><span class="thread-time">' + escHtml(formatRelativeTime(item.time)) + '</span></li>';
   }).join('');
 }
 
-const VERB_DISPLAY_LABELS = {
-  create:         'Create',
-  fix:            'Fix',
-  fork:           'Fork',
-  rollback:       'Rollback',
-  explain:        'Explain',
-  'tell me about':'Explain',
-  history:        'History',
-};
-
 function persistThreads() {
-  try {
-    localStorage.setItem('SAYIT_THREADS', JSON.stringify(
-      state.threads.map(t => ({ ...t, time: t.time.toISOString() }))
-    ));
-  } catch (_) {}
+  try { localStorage.setItem('SAYIT_THREADS', JSON.stringify(state.threads.map(t => ({...t, time:t.time.toISOString()})))); } catch(_) {}
 }
 
 function loadThreads() {
   try {
     const raw = localStorage.getItem('SAYIT_THREADS');
-    if (raw) {
-      state.threads = JSON.parse(raw).map(t => ({ ...t, time: new Date(t.time) }));
-      renderThread();
-    }
-  } catch (_) {}
+    if (raw) { state.threads = JSON.parse(raw).map(t => ({...t, time:new Date(t.time)})); renderThread(); }
+  } catch(_) {}
 }
 
 function clearThreads() {
   state.threads = [];
-  try { localStorage.removeItem('SAYIT_THREADS'); } catch (_) {}
+  try { localStorage.removeItem('SAYIT_THREADS'); } catch(_) {}
   threadEmpty.classList.remove('hidden');
   threadList.innerHTML = '';
 }
@@ -2358,34 +1471,23 @@ function clearThreads() {
 async function loadRegistry() {
   const cfg = getConfig();
   if (!isConfigured(cfg)) return;
-
   const parts = [cfg.ghUser, cfg.ghRepo, 'main'];
   if (cfg.subdir) parts.push(cfg.subdir);
   parts.push(REGISTRY_FILENAME);
-  const url = `https://raw.githubusercontent.com/${parts.join('/')}`;
-
+  const url = 'https://raw.githubusercontent.com/' + parts.join('/');
   const headers = { Accept: 'application/json' };
-  if (cfg.ghPat) headers['Authorization'] = `token ${cfg.ghPat}`;
-
+  if (cfg.ghPat) headers['Authorization'] = 'token ' + cfg.ghPat;
   try {
     const res = await fetch(url, { headers });
-    if (res.status === 404) {
-      // First run — no registry yet
-      showProjectsEmpty();
-      return;
-    }
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
+    if (res.status === 404) { showProjectsEmpty(); return; }
+    if (!res.ok) throw new Error('HTTP ' + res.status);
     const data = await res.json();
-    const projects = Array.isArray(data) ? data
-                   : Array.isArray(data.projects) ? data.projects
-                   : [];
-
+    const projects = Array.isArray(data) ? data : Array.isArray(data.projects) ? data.projects : [];
     state.projects = projects;
     renderProjectChips(projects);
     updateProjectBadge(projects.length);
-
-  } catch (err) {
+    renderUrlCards();
+  } catch(err) {
     console.warn('Registry load failed:', err);
     state.isOffline = true;
     bannerOffline.classList.remove('hidden');
@@ -2396,39 +1498,29 @@ async function loadRegistry() {
 function renderProjectChips(projects) {
   projectsLoading.classList.add('hidden');
   projectsScroll.classList.remove('hidden');
-
   if (!projects.length) {
-    projectsChips.innerHTML = `<span style="font-size:var(--text-sm);color:var(--color-text-faint);padding:var(--space-2) 0">No projects yet</span>`;
+    projectsChips.innerHTML = '<span style="font-size:var(--text-sm);color:var(--color-text-faint);padding:var(--space-2) 0">No projects yet</span>';
     return;
   }
-
   projectsChips.innerHTML = projects.map(p => {
     const label = PLATFORM_LABELS[p.platform?.toLowerCase()] || p.platform || '';
-    return `<div class="project-chip" role="listitem" tabindex="0" data-name="${escAttr(p.name)}" aria-label="${escAttr(p.name)}${label ? ', ' + label : ''}">
-      <span class="project-chip-dot" aria-hidden="true"></span>
-      ${escHtml(p.name)}
-      ${label ? `<span style="font-size:var(--text-xs);opacity:0.6">${escHtml(label)}</span>` : ''}
-    </div>`;
+    return '<div class="project-chip" role="listitem" tabindex="0" data-name="' + escAttr(p.name) + '" aria-label="' + escAttr(p.name) + (label?', '+label:'') + '"><span class="project-chip-dot" aria-hidden="true"></span>' + escHtml(p.name) + (label?'<span style="font-size:var(--text-xs);opacity:0.6">'+escHtml(label)+'</span>':'') + '</div>';
   }).join('');
-
-  // Chip tap: pre-fill typed input
   projectsChips.querySelectorAll('.project-chip').forEach(chip => {
     chip.addEventListener('click', () => {
       const name = chip.dataset.name;
-      typedInput.value = `${getConfig().wakeWord} tell me about ${name}`;
+      typedInput.value = getConfig().wakeWord + ' tell me about ' + name;
       typedInput.focus();
       typedSubmit.disabled = false;
     });
-    chip.addEventListener('keydown', e => {
-      if (e.key === 'Enter' || e.key === ' ') chip.click();
-    });
+    chip.addEventListener('keydown', e => { if (e.key==='Enter'||e.key===' ') chip.click(); });
   });
 }
 
 function showProjectsEmpty() {
   projectsLoading.classList.add('hidden');
   projectsScroll.classList.remove('hidden');
-  projectsChips.innerHTML = `<span style="font-size:var(--text-sm);color:var(--color-text-faint);padding:var(--space-2) 0">No projects yet — create your first</span>`;
+  projectsChips.innerHTML = '<span style="font-size:var(--text-sm);color:var(--color-text-faint);padding:var(--space-2) 0">No projects yet — create your first</span>';
 }
 
 function updateProjectBadge(count) {
@@ -2443,7 +1535,7 @@ let synthQueue = [];
 let synthBusy  = false;
 
 function speak(text, onEnd) {
-  if (!window.speechSynthesis) return onEnd && onEnd();
+  if (!window.speechSynthesis) { onEnd && onEnd(); return; }
   synthQueue.push({ text, onEnd });
   if (!synthBusy) drainSynth();
 }
@@ -2452,33 +1544,17 @@ function drainSynth() {
   if (!synthQueue.length) { synthBusy = false; return; }
   synthBusy = true;
   const { text, onEnd } = synthQueue.shift();
-
-  // Cancel any ongoing speech
   window.speechSynthesis.cancel();
-
   const utt = new SpeechSynthesisUtterance(text);
-  utt.lang = 'en-US';
-  utt.rate = 1.05;
-  utt.pitch = 1.0;
-
+  utt.lang = 'en-US'; utt.rate = 1.05; utt.pitch = 1.0;
   setOrbState('speaking');
-
-  utt.onend = () => {
-    onEnd && onEnd();
-    drainSynth();
-    if (!synthQueue.length) setOrbState(state.speechRunning ? 'listening' : 'idle');
-  };
-  utt.onerror = () => {
-    onEnd && onEnd();
-    drainSynth();
-    if (!synthQueue.length) setOrbState(state.speechRunning ? 'listening' : 'idle');
-  };
-
+  utt.onend = () => { onEnd && onEnd(); drainSynth(); if (!synthQueue.length) setOrbState(state.speechRunning ? 'listening' : 'idle'); };
+  utt.onerror = () => { onEnd && onEnd(); drainSynth(); if (!synthQueue.length) setOrbState(state.speechRunning ? 'listening' : 'idle'); };
   window.speechSynthesis.speak(utt);
 }
 
 /* =========================================================
-   VOICE ENGINE — SpeechRecognition
+   VOICE ENGINE — SpeechRecognition with barge-in + pause detection
    ========================================================= */
 let recognition     = null;
 let finalTranscript = '';
@@ -2486,23 +1562,22 @@ let interimText     = '';
 
 function initVoiceEngine() {
   const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-
   if (!SpeechRecognition) {
     state.hasMic = false;
     bannerNoMic.classList.remove('hidden');
     typedInput.placeholder = 'Voice unavailable — type your command here';
     return;
   }
-
   state.hasMic = true;
   recognition = new SpeechRecognition();
-  recognition.continuous    = true;
+  recognition.continuous     = true;
   recognition.interimResults = true;
   recognition.lang           = 'en-US';
   recognition.maxAlternatives = 1;
 
   recognition.onstart = () => {
     state.speechRunning = true;
+    state.bargedIn = false;
     setOrbState('listening');
     resetSilenceTimer();
   };
@@ -2513,21 +1588,24 @@ function initVoiceEngine() {
 
     let interim = '';
     let final   = '';
-
     for (let i = event.resultIndex; i < event.results.length; i++) {
       const res = event.results[i];
-      if (res.isFinal) {
-        final += res[0].transcript + ' ';
-      } else {
-        interim += res[0].transcript;
-      }
+      if (res.isFinal) final   += res[0].transcript + ' ';
+      else             interim += res[0].transcript;
     }
-
     finalTranscript += final;
     interimText = interim;
 
     const fullText = (finalTranscript + interimText).trim();
     setTranscript(fullText, true, getConfig().wakeWord);
+
+    // Barge-in: if system is speaking, any speech cancels it
+    if (synthBusy) {
+      handleBargeIn(fullText);
+    }
+
+    // Explicit stop words always fire
+    if (checkExplicitStop(fullText)) return;
 
     // Wake word detection
     const cfg = getConfig();
@@ -2540,7 +1618,16 @@ function initVoiceEngine() {
       const cmd = parseCommand(fullText);
       if (cmd && cmd.verb && cmd.verb !== 'unknown') {
         renderParsed(cmd);
-        // Grace window: wait for more speech before confirming
+        // Pause detection: commit command after PAUSE_MS of no new speech
+        resetPauseTimer(() => {
+          if (state.awake && !state.confirming) {
+            clearTimeout(state.graceTimer);
+            setOrbState('processing');
+            stopListening();
+            enterConfirmation(cmd);
+          }
+        });
+        // Grace window (longer safety net)
         state.graceTimer = setTimeout(() => {
           if (state.awake && !state.confirming) {
             setOrbState('processing');
@@ -2551,27 +1638,23 @@ function initVoiceEngine() {
       }
     }
 
-    // Barge-in: handle "yes/confirm/no/cancel" during confirmation
+    // Barge-in during confirmation
     if (state.confirming) {
       const lower = fullText.toLowerCase();
       if (/\b(yes|confirm|yep|yeah|do it)\b/.test(lower)) {
-        exitConfirmation(true);
-        stopListening();
-        return;
+        exitConfirmation(true); stopListening(); return;
       }
       if (/\b(no|cancel|nope|stop|abort)\b/.test(lower)) {
-        exitConfirmation(false);
-        stopListening();
-        return;
+        exitConfirmation(false); stopListening(); return;
       }
     }
   };
 
   recognition.onend = () => {
     state.speechRunning = false;
-    if (state.orbState === 'listening') {
-      setOrbState('idle');
-    }
+    clearTimeout(state.pauseTimer);
+    showPauseIndicator(false);
+    if (state.orbState === 'listening') setOrbState('idle');
     finalTranscript = '';
     interimText = '';
   };
@@ -2579,14 +1662,11 @@ function initVoiceEngine() {
   recognition.onerror = (event) => {
     console.warn('SpeechRecognition error:', event.error);
     state.speechRunning = false;
-
     if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
       bannerNoMic.classList.remove('hidden');
-      setOrbState('error');
-      orbLabel.textContent = 'Mic blocked';
+      setOrbState('error'); orbLabel.textContent = 'Mic blocked';
     } else if (event.error === 'network') {
-      setOrbState('error');
-      orbLabel.textContent = 'Network error';
+      setOrbState('error'); orbLabel.textContent = 'Network error';
     } else if (event.error !== 'aborted' && event.error !== 'no-speech') {
       setOrbState('idle');
     }
@@ -2598,20 +1678,17 @@ function startListening() {
   finalTranscript = '';
   interimText = '';
   state.awake = false;
-
-  try {
-    recognition.start();
-  } catch (e) {
-    console.warn('Recognition start error:', e);
-  }
+  try { recognition.start(); } catch(e) { console.warn('Recognition start error:', e); }
 }
 
 function stopListening() {
   clearTimeout(state.silenceTimer);
   clearTimeout(state.graceTimer);
+  clearTimeout(state.pauseTimer);
+  showPauseIndicator(false);
   state.awake = false;
   if (recognition && state.speechRunning) {
-    try { recognition.stop(); } catch (_) {}
+    try { recognition.stop(); } catch(_) {}
   }
 }
 
@@ -2630,27 +1707,24 @@ function resetSilenceTimer() {
    ========================================================= */
 function handleOrbClick() {
   if (state.confirming) return;
-
   if (state.orbState === 'listening' || state.speechRunning) {
-    stopListening();
-    setOrbState('idle');
-    state.awake = false;
+    stopListening(); setOrbState('idle'); state.awake = false;
   } else if (state.orbState === 'idle' || state.orbState === 'error') {
-    if (!state.hasMic) {
-      typedInput.focus();
-      return;
-    }
+    if (!state.hasMic) { typedInput.focus(); return; }
     explainPanel.classList.add('hidden');
     startListening();
   }
 }
 
 orbContainer.addEventListener('click', handleOrbClick);
-orbContainer.addEventListener('keydown', e => {
-  if (e.key === 'Enter' || e.key === ' ') {
-    e.preventDefault();
-    handleOrbClick();
-  }
+orbContainer.addEventListener('keydown', e => { if (e.key==='Enter'||e.key===' ') { e.preventDefault(); handleOrbClick(); } });
+
+/* =========================================================
+   JOB TRAY TOGGLE
+   ========================================================= */
+$('jobTrayBtn').addEventListener('click', () => {
+  const tray = $('jobTray');
+  if (tray) tray.classList.toggle('hidden');
 });
 
 /* =========================================================
@@ -2658,7 +1732,6 @@ orbContainer.addEventListener('keydown', e => {
    ========================================================= */
 typedInput.addEventListener('input', () => {
   typedSubmit.disabled = !typedInput.value.trim();
-  // Auto-resize
   typedInput.style.height = 'auto';
   typedInput.style.height = Math.min(typedInput.scrollHeight, 120) + 'px';
 });
@@ -2674,25 +1747,17 @@ typedForm.addEventListener('submit', e => {
   e.preventDefault();
   const raw = typedInput.value.trim();
   if (!raw) return;
-
   const cfg = getConfig();
   const wakeRe = new RegExp(escRegex(cfg.wakeWord), 'i');
-  const textToProcess = wakeRe.test(raw) ? raw : `${cfg.wakeWord} ${raw}`;
-
+  const textToProcess = wakeRe.test(raw) ? raw : cfg.wakeWord + ' ' + raw;
   setTranscript(textToProcess, false, cfg.wakeWord);
-
   const cmd = parseCommand(textToProcess);
   if (cmd && cmd.verb && cmd.verb !== 'unknown') {
-    renderParsed(cmd);
-    enterConfirmation(cmd);
+    renderParsed(cmd); enterConfirmation(cmd);
   } else {
-    speak("Sorry, I couldn't understand that command.");
-    renderParsed(null);
+    speak("Sorry, I couldn't understand that command."); renderParsed(null);
   }
-
-  typedInput.value = '';
-  typedInput.style.height = 'auto';
-  typedSubmit.disabled = true;
+  typedInput.value = ''; typedInput.style.height = 'auto'; typedSubmit.disabled = true;
 });
 
 /* =========================================================
@@ -2706,29 +1771,19 @@ confirmNo.addEventListener('click',  () => exitConfirmation(false));
    ========================================================= */
 function openSettings() {
   const cfg = getConfig();
-
   const fill = (id, val) => {
-    const el = $(id);
-    if (!el) return;
-    if (val) {
-      el.textContent = id === 'cfgPat' ? maskPat(val) : val;
-      el.className = 'settings-val';
-    } else {
-      el.textContent = 'Not set';
-      el.className = 'settings-val settings-val--empty';
-    }
+    const el = $(id); if (!el) return;
+    if (val) { el.textContent = id==='cfgPat' ? maskPat(val) : val; el.className='settings-val'; }
+    else      { el.textContent = 'Not set'; el.className='settings-val settings-val--empty'; }
   };
-
-  fill('cfgUser',        cfg.ghUser);
-  fill('cfgRepo',        cfg.ghRepo);
-  fill('cfgSubdir',      cfg.subdir || '(root)');
-  fill('cfgPat',         cfg.ghPat ? cfg.ghPat.slice(0,8) + '…' : '');
+  fill('cfgUser',  cfg.ghUser);
+  fill('cfgRepo',  cfg.ghRepo);
+  fill('cfgSubdir', cfg.subdir || '(root)');
+  fill('cfgPat',   cfg.ghPat ? cfg.ghPat.slice(0,8)+'…' : '');
   fill('cfgWakeWord',    cfg.wakeWord);
   fill('cfgDisplayName', cfg.displayName);
-  $('versionLine').textContent = `SayIt Studio v${APP_VERSION}`;
-
-  settingsOverlay.classList.remove('hidden');
-  settingsOverlay.classList.remove('closing');
+  $('versionLine').textContent = 'SayIt Studio v' + APP_VERSION;
+  settingsOverlay.classList.remove('hidden','closing');
   settingsSheet.classList.remove('closing');
   settingsSheet.querySelector('.btn')?.focus();
   document.body.style.overflow = 'hidden';
@@ -2737,33 +1792,21 @@ function openSettings() {
 function closeSettings() {
   settingsOverlay.classList.add('closing');
   settingsSheet.classList.add('closing');
-  setTimeout(() => {
-    settingsOverlay.classList.add('hidden');
-    settingsOverlay.classList.remove('closing');
-    settingsSheet.classList.remove('closing');
-    document.body.style.overflow = '';
-  }, 280);
+  setTimeout(() => { settingsOverlay.classList.add('hidden'); settingsOverlay.classList.remove('closing'); settingsSheet.classList.remove('closing'); document.body.style.overflow = ''; }, 280);
 }
 
 function maskPat(pat) {
   if (pat.length <= 8) return '••••••••';
-  return pat.slice(0, 4) + '••••••••' + pat.slice(-4);
+  return pat.slice(0,4) + '••••••••' + pat.slice(-4);
 }
 
 settingsBtn.addEventListener('click', openSettings);
 settingsBackdrop.addEventListener('click', closeSettings);
-settingsOverlay.addEventListener('keydown', e => {
-  if (e.key === 'Escape') closeSettings();
-});
+settingsOverlay.addEventListener('keydown', e => { if (e.key==='Escape') closeSettings(); });
 
-settingsReconfigure.addEventListener('click', () => {
-  closeSettings();
-  navigate('workbook.html');
-});
-settingsTrainPlatform.addEventListener('click', () => {
-  closeSettings();
-  navigate('learn.html');
-});
+$('settingsReconfigure').addEventListener('click', () => { closeSettings(); navigate('workbook.html'); });
+$('settingsTrainPlatform').addEventListener('click', () => { closeSettings(); navigate('learn.html'); });
+$('settingsUpdateToken').addEventListener('click', () => { closeSettings(); openPatModal(); });
 
 /* =========================================================
    THREAD CLEAR
@@ -2776,69 +1819,231 @@ threadClear.addEventListener('click', clearThreads);
 function showUnconfigured() {
   const cfg = getConfig();
   unconfiguredCard.classList.remove('hidden');
-
   $('unconfiguredConfig').textContent = [
-    cfg.ghUser    ? `✓ SAYIT_GH_USER = ${cfg.ghUser}` : '✗ SAYIT_GH_USER — not set',
-    cfg.ghRepo    ? `✓ SAYIT_GH_REPO = ${cfg.ghRepo}` : '✗ SAYIT_GH_REPO — not set',
-    cfg.ghPat     ? '✓ SAYIT_GH_PAT — set' : '✗ SAYIT_GH_PAT — not set',
-    cfg.subdir    ? `✓ SAYIT_SUBDIR = ${cfg.subdir}` : '  SAYIT_SUBDIR — optional',
+    cfg.ghUser ? '✓ SAYIT_GH_USER = ' + cfg.ghUser : '✗ SAYIT_GH_USER — not set',
+    cfg.ghRepo ? '✓ SAYIT_GH_REPO = ' + cfg.ghRepo : '✗ SAYIT_GH_REPO — not set',
+    cfg.ghPat  ? '✓ SAYIT_GH_PAT — set' : '✗ SAYIT_GH_PAT — not set',
+    cfg.subdir ? '✓ SAYIT_SUBDIR = ' + cfg.subdir : '  SAYIT_SUBDIR — optional',
   ].join('\n');
+  const btn = $('unconfiguredSetupBtn');
+  if (btn) btn.addEventListener('click', () => navigate('workbook.html'));
+}
 
-  const setupBtn = $('unconfiguredSetupBtn');
-  if (setupBtn) setupBtn.addEventListener('click', () => navigate('workbook.html'));
+/* =========================================================
+   CLIPBOARD UI
+   ========================================================= */
+function initClipboardUI() {
+  if (state.hasBridge) return;
+  const clipUI = document.createElement('div');
+  clipUI.className = 'clipboard-ui';
+  clipUI.innerHTML = '<p>Bridge unavailable — paste clipboard text as command</p><button class="clipboard-btn" id="clipPasteBtn">Paste</button>';
+  contentArea.insertBefore(clipUI, contentArea.firstChild);
+  document.getElementById('clipPasteBtn').addEventListener('click', async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (text) { typedInput.value = text; typedInput.dispatchEvent(new Event('input')); typedInput.focus(); }
+    } catch(_) { typedInput.placeholder = 'Paste command here…'; typedInput.focus(); }
+  });
 }
 
 /* =========================================================
    UTILITIES
    ========================================================= */
 function escHtml(str) {
-  return String(str ?? '')
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;')
-    .replace(/'/g, '&#39;');
+  return String(str??'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 }
 function escAttr(str) { return escHtml(str); }
-function escRegex(str) {
-  return String(str).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
+function escRegex(str) { return String(str).replace(/[.*+?^${}()|[\]\\]/g,'\\$&'); }
 function formatRelativeTime(date) {
   const diff = Date.now() - new Date(date).getTime();
-  if (diff < 60_000)    return 'just now';
-  if (diff < 3_600_000) return `${Math.floor(diff / 60_000)}m ago`;
-  if (diff < 86_400_000) return `${Math.floor(diff / 3_600_000)}h ago`;
-  return new Date(date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  if (diff < 60000)    return 'just now';
+  if (diff < 3600000)  return Math.floor(diff/60000) + 'm ago';
+  if (diff < 86400000) return Math.floor(diff/3600000) + 'h ago';
+  return new Date(date).toLocaleDateString('en-US',{month:'short',day:'numeric'});
 }
 
 /* =========================================================
-   CLIPBOARD PASTE UI (browser mode)
+   PAT MODAL
    ========================================================= */
-function initClipboardUI() {
-  if (state.hasBridge) return;
+let pfLoggingEnabled = false;
+const pfLogLines = [];
 
-  const clipUI = document.createElement('div');
-  clipUI.className = 'clipboard-ui';
-  clipUI.innerHTML = `
-    <p>Bridge unavailable — paste clipboard text to use as command</p>
-    <button class="clipboard-btn" id="clipPasteBtn">Paste</button>
-  `;
-  contentArea.insertBefore(clipUI, contentArea.firstChild);
+function sLog(msg, level) {
+  level = level || 'info';
+  const ts = new Date().toTimeString().slice(0,8);
+  pfLogLines.push({ line: '[' + ts + '] ' + msg, level });
+  if (pfLoggingEnabled) pfRenderLog();
+  if (level==='err') console.error('[SayIt]', msg);
+  else if (level==='warn') console.warn('[SayIt]', msg);
+  else console.log('[SayIt]', msg);
+}
 
-  document.getElementById('clipPasteBtn').addEventListener('click', async () => {
-    try {
-      const text = await navigator.clipboard.readText();
-      if (text) {
-        typedInput.value = text;
-        typedInput.dispatchEvent(new Event('input'));
-        typedInput.focus();
-      }
-    } catch (_) {
-      typedInput.placeholder = 'Paste command here…';
-      typedInput.focus();
+function pfRenderLog() {
+  const el = $('logOutput');
+  if (!el) return;
+  el.innerHTML = pfLogLines.slice(-60).map(e => {
+    const cls = e.level==='ok'?'log-ok':e.level==='warn'?'log-warn':e.level==='err'?'log-err':'log-info';
+    return '<div class="' + cls + '">' + e.line.replace(/</g,'&lt;') + '</div>';
+  }).join('');
+  el.scrollTop = el.scrollHeight;
+}
+
+function logToggle(on) {
+  pfLoggingEnabled = on;
+  const out = $('logOutput');
+  if (on) { out.classList.add('visible'); pfRenderLog(); }
+  else     { out.classList.remove('visible'); }
+  try { localStorage.setItem('SAYIT_LOGGING', on?'1':'0'); } catch(_) {}
+}
+
+function openPatModal() {
+  patModalOverlay.classList.remove('hidden');
+  const existing = (function(){ try { return localStorage.getItem('SAYIT_GH_PAT')||''; } catch(_){ return ''; } })();
+  if (existing) { $('patInput').value = existing; patSetStatus('ok','Token loaded from previous session'); }
+  // Restore log pref
+  try {
+    if (localStorage.getItem('SAYIT_LOGGING')==='1') {
+      $('logToggle').checked = true; logToggle(true);
     }
+  } catch(_) {}
+}
+
+function closePatModal() {
+  patModalOverlay.classList.add('hidden');
+}
+
+function patToggleShow() {
+  const inp = $('patInput'); const btn = $('patToggle');
+  if (inp.type==='password') { inp.type='text'; btn.textContent='hide'; }
+  else { inp.type='password'; btn.textContent='show'; }
+}
+
+function patSetStatus(type, msg) {
+  const el = $('patStatus');
+  el.className = 'pat-status ' + type;
+  el.textContent = msg;
+}
+
+function patSaveAndValidate() {
+  const val = ($('patInput').value||'').trim();
+  if (!val || val.length < 10) { patSetStatus('err','Enter a valid GitHub token first'); return; }
+  patSetStatus('testing','Validating token…');
+  sLog('Validating PAT with GitHub API…');
+  fetch('https://api.github.com/user', {
+    headers: { 'Authorization': 'token ' + val, 'Accept': 'application/vnd.github.v3+json' }
+  }).then(r => {
+    if (r.ok) {
+      return r.json().then(data => {
+        try { localStorage.setItem('SAYIT_GH_PAT', val); } catch(_) {}
+        patSetStatus('ok','Valid — GitHub user: ' + (data.login||'confirmed'));
+        sLog('PAT validated: ' + (data.login||'?'), 'ok');
+        pfCheckItem('pf-pat','ok','Token valid — user: ' + (data.login||'confirmed'));
+        // Close after short delay and init main app
+        setTimeout(() => { closePatModal(); init(); }, 1200);
+      });
+    } else {
+      patSetStatus('err','Token rejected (HTTP ' + r.status + ') — check permissions');
+      sLog('PAT failed: ' + r.status, 'err');
+      pfCheckItem('pf-pat','fail','Token rejected');
+    }
+  }).catch(e => {
+    patSetStatus('err','Network error — ' + e.message);
+    sLog('PAT network error: ' + e.message, 'err');
   });
+}
+
+function pfCheckItem(id, st, detail) {
+  const item = $(id); const icon = $(id+'-icon'); const det  = $(id+'-detail');
+  if (!item) return;
+  item.className = 'pf-item ' + (st==='ok'?'ok':st==='fail'?'fail':st==='testing'?'testing':'');
+  if (icon) icon.textContent = st==='ok'?'✓':st==='fail'?'✗':st==='testing'?'…':'—';
+  if (det && detail) det.textContent = detail;
+}
+
+function pfCheckUrl(id, url) {
+  pfCheckItem(id,'testing','Checking ' + url + '…');
+  sLog('Checking: ' + url);
+  return fetch(url, { method:'HEAD', cache:'no-cache' })
+    .then(r => {
+      if (r.ok || r.status===304) { pfCheckItem(id,'ok','Reachable — HTTP ' + r.status); sLog(url+' → '+r.status,'ok'); return true; }
+      else { pfCheckItem(id,'fail','HTTP ' + r.status); sLog(url+' → '+r.status,'warn'); return false; }
+    })
+    .catch(e => { pfCheckItem(id,'fail','Unreachable — ' + e.message); sLog(url+' → '+e.message,'err'); return false; });
+}
+
+function pfCheckMic() {
+  pfCheckItem('pf-mic','testing','Requesting permission…');
+  navigator.mediaDevices.getUserMedia({ audio:true })
+    .then(stream => {
+      stream.getTracks().forEach(t => t.stop());
+      pfCheckItem('pf-mic','ok','Microphone granted');
+      sLog('Mic granted','ok');
+    })
+    .catch(e => {
+      pfCheckItem('pf-mic','fail','Denied — ' + e.message);
+      $('pf-mic-btn').classList.add('visible');
+    });
+}
+
+async function pfRunAll() {
+  sLog('--- Preflight checks ---');
+  const cfg = getConfig();
+  const base = cfg.ghUser && cfg.ghRepo ? 'https://' + cfg.ghUser + '.github.io/' + cfg.ghRepo + (cfg.subdir?'/'+cfg.subdir:'') : null;
+
+  // PAT
+  const pat = (function(){ try { return localStorage.getItem('SAYIT_GH_PAT')||''; } catch(_){ return ''; } })();
+  if (pat) {
+    pfCheckItem('pf-pat','testing','Validating…');
+    try {
+      const r = await fetch('https://api.github.com/user', { headers: {'Authorization':'token '+pat} });
+      if (r.ok) { const d=await r.json(); pfCheckItem('pf-pat','ok','Valid — user: '+(d.login||'?')); sLog('PAT: '+d.login,'ok'); }
+      else       { pfCheckItem('pf-pat','fail','HTTP '+r.status); }
+    } catch(e) { pfCheckItem('pf-pat','fail','Network error'); }
+  } else { pfCheckItem('pf-pat','fail','No token saved'); }
+
+  // Pages
+  if (base) {
+    await pfCheckUrl('pf-pages',    base+'/home.html');
+    await pfCheckUrl('pf-learn',    base+'/learn.html');
+    await pfCheckUrl('pf-do',       base+'/do.html');
+    await pfCheckUrl('pf-fix',      base+'/fix.html');
+    await pfCheckUrl('pf-rollback', base+'/rollback.html');
+  } else {
+    ['pf-pages','pf-learn','pf-do','pf-fix','pf-rollback'].forEach(id => pfCheckItem(id,'fail','GH user/repo not configured'));
+  }
+
+  // Bridge
+  if (typeof window.SayItBridge !== 'undefined' && window.SayItBridge) {
+    try { const st=window.SayItBridge.appState?window.SayItBridge.appState():null; pfCheckItem('pf-bridge','ok','Bridge active'+(st?' — '+st:'')); }
+    catch(e) { pfCheckItem('pf-bridge','fail','Bridge error: '+e.message); }
+  } else { pfCheckItem('pf-bridge','fail','Bridge not detected — manual mode (OK)'); }
+
+  // Mic
+  if (navigator.permissions) {
+    try {
+      const perm = await navigator.permissions.query({ name:'microphone' });
+      if (perm.state==='granted') { pfCheckItem('pf-mic','ok','Granted'); }
+      else if (perm.state==='denied') { pfCheckItem('pf-mic','fail','Denied'); $('pf-mic-btn').classList.add('visible'); }
+      else { pfCheckItem('pf-mic','testing','Not yet granted'); $('pf-mic-btn').classList.add('visible'); }
+    } catch(_) { pfCheckItem('pf-mic','testing','Tap to check'); $('pf-mic-btn').classList.add('visible'); }
+  } else { pfCheckItem('pf-mic','testing','Tap to check'); $('pf-mic-btn').classList.add('visible'); }
+
+  // Speech API
+  const hasSpeech = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
+  pfCheckItem('pf-voice', hasSpeech?'ok':'fail', hasSpeech?'Web Speech API available':'Not available — voice disabled');
+
+  // Registry
+  if (pat && cfg.ghUser && cfg.ghRepo) {
+    pfCheckItem('pf-registry','testing','Reading registry.json…');
+    const regUrl = 'https://raw.githubusercontent.com/'+cfg.ghUser+'/'+cfg.ghRepo+'/main/'+(cfg.subdir?cfg.subdir+'/':'')+'registry.json';
+    try {
+      const rr = await fetch(regUrl, { headers:{'Authorization':'token '+pat} });
+      if (rr.ok) pfCheckItem('pf-registry','ok','readable');
+      else pfCheckItem('pf-registry','fail','HTTP '+rr.status+' — not uploaded yet?');
+    } catch(e) { pfCheckItem('pf-registry','fail','Error: '+e.message); }
+  } else { pfCheckItem('pf-registry','fail','PAT or config missing'); }
+
+  sLog('--- Preflight done ---');
 }
 
 /* =========================================================
@@ -2846,353 +2051,42 @@ function initClipboardUI() {
    ========================================================= */
 function init() {
   const cfg = getConfig();
-
   detectBridge();
   loadThreads();
+  loadJobs();
   initVoiceEngine();
-
   if (!isConfigured(cfg)) {
     showUnconfigured();
     projectsLoading.classList.add('hidden');
     projectsScroll.classList.remove('hidden');
-    projectsChips.innerHTML = `<span style="font-size:var(--text-sm);color:var(--color-text-faint);padding:var(--space-2) 0">Configure credentials to load projects</span>`;
-    // Still allow typed commands
+    projectsChips.innerHTML = '<span style="font-size:var(--text-sm);color:var(--color-text-faint);padding:var(--space-2) 0">Configure credentials to load projects</span>';
   } else {
     loadRegistry();
   }
-
   initClipboardUI();
-
-  // Display name in title
-  if (cfg.displayName) {
-    document.title = cfg.displayName;
-  }
-
-  // App state polling if bridge available
+  if (cfg.displayName) document.title = cfg.displayName;
   if (state.hasBridge && window.SayItBridge.appState) {
-    try {
-      const bridgeState = window.SayItBridge.appState();
-      if (bridgeState) console.info('Bridge state:', bridgeState);
-    } catch (_) {}
+    try { const bs=window.SayItBridge.appState(); if (bs) console.info('Bridge state:', bs); } catch(_) {}
   }
-
-  // Handle visibility change — restart recognition if tab becomes visible
-  document.addEventListener('visibilitychange', () => {
-    if (document.hidden) {
-      stopListening();
-    }
-  });
-
-  console.info(`SayIt Studio v${APP_VERSION} initialised. Wake word: "${cfg.wakeWord}"`);
+  document.addEventListener('visibilitychange', () => { if (document.hidden) stopListening(); });
+  renderUrlCards();
+  sLog('SayIt Studio v' + APP_VERSION + ' — wake word: "' + cfg.wakeWord + '"');
 }
 
-// Boot
+// Boot — show PAT modal if token missing, otherwise go straight to studio
 document.addEventListener('DOMContentLoaded', function() {
-  // Show Start Here preflight if PAT not yet saved
-  if (!maybeShowStartHere()) {
+  const pat = (function(){ try { return localStorage.getItem('SAYIT_GH_PAT')||''; } catch(_){ return ''; } })();
+  if (!pat || pat.length < 10) {
+    openPatModal();
+    // Still init partial UI so studio is visible behind modal
+    init();
+  } else {
     init();
   }
 });
 
-// ═══════════════════════════════════════════════════════════
-// START HERE — Preflight module
-// ═══════════════════════════════════════════════════════════
-
-const startHereOverlay = document.getElementById('startHereOverlay');
-
-// Logging
-let shLoggingEnabled = false;
-const shLogLines = [];
-
-function shLog(msg, level) {
-  level = level || 'info';
-  const ts = new Date().toTimeString().slice(0,8);
-  const line = `[${ts}] ${msg}`;
-  shLogLines.push({ line, level });
-  if (shLoggingEnabled) shRenderLog();
-  if (level === 'err') console.error('[SayIt preflight]', msg);
-  else if (level === 'warn') console.warn('[SayIt preflight]', msg);
-  else console.log('[SayIt preflight]', msg);
-}
-
-function shRenderLog() {
-  const el = document.getElementById('shLogOutput');
-  if (!el) return;
-  el.innerHTML = shLogLines.slice(-60).map(function(e) {
-    var cls = 'log-line-' + (e.level === 'ok' ? 'ok' : e.level === 'warn' ? 'warn' : e.level === 'err' ? 'err' : 'info');
-    return '<div class="' + cls + '">' + e.line.replace(/</g,'&lt;') + '</div>';
-  }).join('');
-  el.scrollTop = el.scrollHeight;
-}
-
-function shToggleLog(on) {
-  shLoggingEnabled = on;
-  const out = document.getElementById('shLogOutput');
-  if (on) { out.classList.add('visible'); shRenderLog(); }
-  else { out.classList.remove('visible'); }
-  try { localStorage.setItem('SAYIT_LOGGING', on ? '1' : '0'); } catch(e) {}
-}
-
-// Show/hide Start Here overlay
-function showStartHere() {
-  startHereOverlay.classList.remove('hidden');
-  shLog('Start Here overlay opened');
-  // Pre-fill PAT if already saved (token rotation scenario)
-  const existing = (function(){ try { return localStorage.getItem('SAYIT_GH_PAT') || ''; } catch(e){ return ''; } })();
-  if (existing) {
-    document.getElementById('shPatInput').value = existing;
-    shSetPatStatus('ok', 'Token loaded from previous session');
-    shUpdateContinueBtn();
-  }
-  // Restore logging pref
-  try {
-    const logPref = localStorage.getItem('SAYIT_LOGGING');
-    if (logPref === '1') {
-      document.getElementById('shLogToggle').checked = true;
-      shToggleLog(true);
-    }
-  } catch(e) {}
-}
-
-function hideStartHere() {
-  startHereOverlay.classList.add('hidden');
-}
-
-// PAT handling
-function shTogglePat() {
-  const inp = document.getElementById('shPatInput');
-  const btn = document.getElementById('shPatToggle');
-  if (inp.type === 'password') { inp.type = 'text'; btn.textContent = 'hide'; }
-  else { inp.type = 'password'; btn.textContent = 'show'; }
-}
-
-function shSavePat() {
-  const val = (document.getElementById('shPatInput').value || '').trim();
-  if (!val || val.length < 10) {
-    shSetPatStatus('err', 'Enter a valid GitHub token first');
-    return;
-  }
-  shSetPatStatus('testing', 'Validating token…');
-  shLog('Validating PAT with GitHub API…');
-  // Validate by calling the GitHub user endpoint
-  fetch('https://api.github.com/user', {
-    headers: { 'Authorization': 'token ' + val, 'Accept': 'application/vnd.github.v3+json' }
-  }).then(function(r) {
-    if (r.ok) {
-      return r.json().then(function(data) {
-        try { localStorage.setItem('SAYIT_GH_PAT', val); } catch(e) {}
-        shSetPatStatus('ok', 'Valid token — GitHub user: ' + (data.login || 'confirmed'));
-        shLog('PAT validated for user: ' + (data.login || '?'), 'ok');
-        shCheckItem('shck-pat', 'ok', 'Token valid — GitHub user: ' + (data.login || 'confirmed'));
-        shUpdateContinueBtn();
-      });
-    } else {
-      shSetPatStatus('err', 'Token rejected by GitHub (status ' + r.status + ') — check permissions');
-      shLog('PAT validation failed: HTTP ' + r.status, 'err');
-      shCheckItem('shck-pat', 'fail', 'Token rejected — check it has Contents read+write');
-    }
-  }).catch(function(e) {
-    shSetPatStatus('err', 'Network error — check internet connection');
-    shLog('PAT validation network error: ' + e.message, 'err');
-    shCheckItem('shck-pat', 'fail', 'Network error during validation');
-  });
-}
-
-function shSetPatStatus(type, msg) {
-  const el = document.getElementById('shPatStatus');
-  el.className = 'sh-pat-status ' + type;
-  el.textContent = msg;
-}
-
-// Individual check helpers
-function shCheckItem(id, state, detail) {
-  const item = document.getElementById(id);
-  const icon = document.getElementById(id + '-icon');
-  const det  = document.getElementById(id + '-detail');
-  if (!item) return;
-  item.className = 'sh-check-item ' + (state === 'ok' ? 'ok' : state === 'fail' ? 'fail' : state === 'testing' ? 'testing' : '');
-  if (icon) icon.textContent = state === 'ok' ? '✓' : state === 'fail' ? '✗' : state === 'testing' ? '…' : '—';
-  if (det && detail) det.textContent = detail;
-}
-
-function shCheckUrl(checkId, url) {
-  shCheckItem(checkId, 'testing', 'Checking ' + url + '…');
-  shLog('Checking URL: ' + url);
-  return fetch(url, { method: 'HEAD', cache: 'no-cache' })
-    .then(function(r) {
-      if (r.ok || r.status === 304) {
-        shCheckItem(checkId, 'ok', 'Reachable — HTTP ' + r.status);
-        shLog(url + ' → ' + r.status, 'ok');
-        return true;
-      } else {
-        shCheckItem(checkId, 'fail', 'HTTP ' + r.status + ' — not published yet?');
-        shLog(url + ' → HTTP ' + r.status, 'warn');
-        return false;
-      }
-    })
-    .catch(function(e) {
-      shCheckItem(checkId, 'fail', 'Unreachable — ' + e.message);
-      shLog(url + ' → error: ' + e.message, 'err');
-      return false;
-    });
-}
-
-function shCheckMic() {
-  shCheckItem('shck-mic', 'testing', 'Requesting microphone permission…');
-  navigator.mediaDevices.getUserMedia({ audio: true })
-    .then(function(stream) {
-      stream.getTracks().forEach(function(t){ t.stop(); });
-      shCheckItem('shck-mic', 'ok', 'Microphone permission granted');
-      shLog('Microphone permission granted', 'ok');
-      shUpdateContinueBtn();
-    })
-    .catch(function(e) {
-      shCheckItem('shck-mic', 'fail', 'Denied — ' + e.message);
-      shLog('Microphone permission denied: ' + e.message, 'err');
-      document.getElementById('shck-mic-btn').classList.remove('hidden');
-    });
-}
-
-async function shRunAllChecks() {
-  shLog('--- Running all preflight checks ---');
-  const cfg = getConfig();
-  const baseUrl = 'https://' + cfg.ghUser + '.github.io/' + cfg.ghRepo + (cfg.subdir ? '/' + cfg.subdir : '');
-
-  // 1. PAT
-  const pat = (function(){ try { return localStorage.getItem('SAYIT_GH_PAT') || ''; } catch(e){ return ''; } })();
-  if (pat) {
-    shCheckItem('shck-pat', 'testing', 'Validating…');
-    try {
-      const r = await fetch('https://api.github.com/user', { headers: {'Authorization': 'token ' + pat} });
-      if (r.ok) {
-        const d = await r.json();
-        shCheckItem('shck-pat', 'ok', 'Valid — GitHub user: ' + (d.login || 'confirmed'));
-        shLog('PAT valid for ' + d.login, 'ok');
-      } else {
-        shCheckItem('shck-pat', 'fail', 'Invalid — HTTP ' + r.status);
-        shLog('PAT invalid: ' + r.status, 'err');
-      }
-    } catch(e) {
-      shCheckItem('shck-pat', 'fail', 'Network error: ' + e.message);
-    }
-  } else {
-    shCheckItem('shck-pat', 'fail', 'No token saved — enter it in Step 1 above');
-  }
-
-  // 2-6. Page reachability
-  if (cfg.ghUser && cfg.ghRepo) {
-    await shCheckUrl('shck-pages',    baseUrl + '/home.html');
-    await shCheckUrl('shck-learn',    baseUrl + '/learn.html');
-    await shCheckUrl('shck-do',       baseUrl + '/do.html');
-    await shCheckUrl('shck-fix',      baseUrl + '/fix.html');
-    await shCheckUrl('shck-rollback', baseUrl + '/rollback.html');
-  } else {
-    ['shck-pages','shck-learn','shck-do','shck-fix','shck-rollback'].forEach(function(id) {
-      shCheckItem(id, 'fail', 'GH user/repo not configured — check workbook config');
-    });
-  }
-
-  // 7. APK bridge
-  if (typeof window.SayItBridge !== 'undefined' && window.SayItBridge !== null) {
-    try {
-      const st = window.SayItBridge.appState ? window.SayItBridge.appState() : null;
-      shCheckItem('shck-bridge', 'ok', 'Bridge active' + (st ? ' — ' + st : ''));
-      shLog('APK bridge present and responding', 'ok');
-    } catch(e) {
-      shCheckItem('shck-bridge', 'fail', 'Bridge present but errored: ' + e.message);
-    }
-  } else {
-    shCheckItem('shck-bridge', 'fail', 'Bridge not detected — running in browser/manual mode (this is OK)');
-    shLog('APK bridge not present — manual mode', 'warn');
-  }
-
-  // 8. Microphone
-  if (navigator.permissions) {
-    try {
-      const perm = await navigator.permissions.query({ name: 'microphone' });
-      if (perm.state === 'granted') {
-        shCheckItem('shck-mic', 'ok', 'Microphone permission granted');
-        shLog('Mic: granted', 'ok');
-      } else if (perm.state === 'denied') {
-        shCheckItem('shck-mic', 'fail', 'Microphone denied — grant in browser/app settings');
-        shLog('Mic: denied', 'err');
-        document.getElementById('shck-mic-btn').classList.remove('hidden');
-      } else {
-        shCheckItem('shck-mic', 'testing', 'Permission not yet granted — tap "Request permission"');
-        document.getElementById('shck-mic-btn').classList.remove('hidden');
-      }
-    } catch(e) {
-      shCheckItem('shck-mic', 'testing', 'Cannot query — tap "Request permission" to check');
-      document.getElementById('shck-mic-btn').classList.remove('hidden');
-    }
-  } else {
-    shCheckItem('shck-mic', 'testing', 'Tap "Request permission" to check');
-    document.getElementById('shck-mic-btn').classList.remove('hidden');
-  }
-
-  // 9. Speech API
-  const hasSpeech = !!(window.SpeechRecognition || window.webkitSpeechRecognition);
-  shCheckItem('shck-voice', hasSpeech ? 'ok' : 'fail',
-    hasSpeech ? 'Web Speech API available' : 'Web Speech API not available — voice commands disabled');
-  shLog('Speech API: ' + (hasSpeech ? 'available' : 'not available'), hasSpeech ? 'ok' : 'warn');
-
-  // 10. Registry read
-  if (pat && cfg.ghUser && cfg.ghRepo) {
-    shCheckItem('shck-registry', 'testing', 'Reading registry.json…');
-    const regUrl = 'https://raw.githubusercontent.com/' + cfg.ghUser + '/' + cfg.ghRepo + '/main/' + (cfg.subdir ? cfg.subdir + '/' : '') + 'registry.json';
-    try {
-      const rr = await fetch(regUrl, { headers: {'Authorization': 'token ' + pat} });
-      if (rr.ok) {
-        shCheckItem('shck-registry', 'ok', 'registry.json found and readable');
-        shLog('registry.json readable', 'ok');
-      } else {
-        shCheckItem('shck-registry', 'fail', 'HTTP ' + rr.status + ' — file may not be uploaded yet');
-        shLog('registry.json: HTTP ' + rr.status, 'warn');
-      }
-    } catch(e) {
-      shCheckItem('shck-registry', 'fail', 'Error: ' + e.message);
-    }
-  } else {
-    shCheckItem('shck-registry', 'fail', 'Cannot check — PAT or GH config missing');
-  }
-
-  shUpdateContinueBtn();
-  shLog('--- Preflight complete ---');
-}
-
-function shUpdateContinueBtn() {
-  const pat = (function(){ try { return localStorage.getItem('SAYIT_GH_PAT') || ''; } catch(e){ return ''; } })();
-  const btn = document.getElementById('shContinueBtn');
-  if (pat && pat.length > 10) {
-    btn.disabled = false;
-    btn.textContent = 'Continue to SayIt Studio →';
-  } else {
-    btn.disabled = true;
-    btn.textContent = 'Save a valid token first';
-  }
-}
-
-function shContinue() {
-  hideStartHere();
-  // Re-init the main app now that PAT is available
-  init();
-  shLog('Continuing to main app', 'ok');
-}
-
-// Auto-show Start Here if PAT is missing
-function maybeShowStartHere() {
-  const pat = (function(){ try { return localStorage.getItem('SAYIT_GH_PAT') || ''; } catch(e){ return ''; } })();
-  if (!pat || pat.length < 10) {
-    showStartHere();
-    return true;
-  }
-  return false;
-}
-
-// Expose for settings panel "Start Here" button
-window.openStartHere = showStartHere;
-
-
+// Expose for settings "Update Token" button
+window.openPatModal = openPatModal;
 </script>
 </body>
 </html>
