@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Repo Blast</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 0; padding: 20px; }
+    .wrap { max-width: 1100px; margin: 0 auto; }
+    .row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 10px; }
+    input, button { padding: 8px 10px; }
+    input { min-width: 240px; }
+    table { width: 100%; border-collapse: collapse; }
+    th, td { padding: 8px; border-bottom: 1px solid #ddd; text-align: left; }
+    .muted { color: #666; }
+    .ok { color: #15803d; }
+    .err { color: #b91c1c; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Repo Blast</h1>
+    <p class="muted">Distribute <code>index.html</code> and <code>repolist.html</code> to many repos from one GitHub Pages-enabled repo.</p>
+
+    <div class="row">
+      <input id="owner" value="acmeproducts" placeholder="GitHub user/org" />
+      <input id="token" type="password" placeholder="GitHub token (repo scope)" />
+      <button id="loadBtn">Load Repos</button>
+      <button id="deployBtn">Deploy to Checked</button>
+    </div>
+    <p id="status" class="muted">Ready.</p>
+
+    <table>
+      <thead>
+        <tr><th><input type="checkbox" id="all" /></th><th>Repo</th><th>Pages URL</th><th>Result</th></tr>
+      </thead>
+      <tbody id="tbody"><tr><td colspan="4" class="muted">No repos loaded.</td></tr></tbody>
+    </table>
+  </div>
+
+  <script>
+    const ownerInput = document.getElementById('owner');
+    const tokenInput = document.getElementById('token');
+    const loadBtn = document.getElementById('loadBtn');
+    const deployBtn = document.getElementById('deployBtn');
+    const statusEl = document.getElementById('status');
+    const tbody = document.getElementById('tbody');
+    const allBox = document.getElementById('all');
+
+    let repos = [];
+
+    function setStatus(msg, error = false) {
+      statusEl.textContent = msg;
+      statusEl.className = error ? 'err' : 'muted';
+    }
+
+    function headers() {
+      const token = tokenInput.value.trim();
+      return {
+        Accept: 'application/vnd.github+json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      };
+    }
+
+    function detectDefaultOwner() {
+      const pageHost = location.hostname.match(/^([^.]+)\.github\.io$/i);
+      return pageHost ? pageHost[1] : 'acmeproducts';
+    }
+
+    async function loadRepos(owner) {
+      let res = await fetch(`https://api.github.com/users/${owner}/repos?per_page=100&sort=updated`, { headers: headers() });
+      if (!res.ok) res = await fetch(`https://api.github.com/orgs/${owner}/repos?per_page=100&sort=updated`, { headers: headers() });
+      if (!res.ok) throw new Error(`Repo fetch failed (${res.status})`);
+      return res.json();
+    }
+
+    function renderRepos() {
+      tbody.innerHTML = '';
+      if (!repos.length) {
+        tbody.innerHTML = '<tr><td colspan="4" class="muted">No repos found.</td></tr>';
+        return;
+      }
+      const owner = ownerInput.value.trim();
+      repos.forEach((repo, i) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><input type="checkbox" class="pick" data-i="${i}"></td>
+          <td>${repo.name}</td>
+          <td><a target="_blank" rel="noopener" href="https://${owner}.github.io/${repo.name}/repolist.html">${owner}.github.io/${repo.name}/repolist.html</a></td>
+          <td id="r-${i}" class="muted">-</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function generateIndexHtml() {
+      return `<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Repo Redirect</title></head><body>
+<script>
+(function(){
+  var host=location.hostname,path=location.pathname.split('/').filter(Boolean),owner='',repo='';
+  var q=new URLSearchParams(location.search).get('repo');
+  function parse(v){v=(v||'').trim().replace(/^https?:\/\//i,'').replace(/^www\./i,'');if(/^github\.[^/]+\/.+$/i.test(v)){var p=v.replace(/^github\./i,'').split('/');return p.length>=2?{owner:p[0],repo:p[1]}:null;}if(/^github\.com\//i.test(v)){var p=v.replace(/^github\.com\//i,'').split('/').filter(Boolean);return p.length>=2?{owner:p[0],repo:p[1]}:null;}var s=v.split('/').filter(Boolean);return s.length>=2?{owner:s[0],repo:s[1]}:null;}
+  var d=q?parse(q):null;
+  if(!d&&/^([^.]+)\.github\.io$/i.test(host)&&path.length){d={owner:host.match(/^([^.]+)\.github\.io$/i)[1],repo:path[0]};}
+  if(!d&&/^github\.[^.]+$/i.test(host)&&path.length){d={owner:host.replace(/^github\./i,''),repo:path[0]};}
+  if(!d&&host.toLowerCase()==='github.com'&&path.length>=2){d={owner:path[0],repo:path[1]};}
+  if(d){location.replace('https://'+d.owner+'.github.io/'+d.repo+'/repolist.html');}
+})();
+<\/script>
+</body></html>`;
+    }
+
+    function generateRepoListHtml() {
+      return `<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Repo List</title>
+<style>body{font-family:system-ui,sans-serif;margin:0;padding:20px}.wrap{max-width:1100px;margin:0 auto}.row{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}input,button{padding:8px 10px}table{width:100%;border-collapse:collapse}th,td{padding:8px;border-bottom:1px solid #ddd;text-align:left}th{cursor:pointer}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}.muted{color:#666}</style></head>
+<body><div class="wrap"><h1>Repository File List</h1><div class="row"><input id="repoInput" placeholder="owner/repo"><button id="loadBtn">Load</button></div><p id="status" class="muted">Ready.</p><table><thead><tr><th data-sort="name">Name</th><th data-sort="date">Date</th><th data-sort="size">Size</th><th>Actions</th></tr></thead><tbody id="tbody"><tr><td colspan="4" class="muted">No repo loaded.</td></tr></tbody></table></div>
+<script>
+var repoInput=document.getElementById('repoInput'),loadBtn=document.getElementById('loadBtn'),tbody=document.getElementById('tbody'),statusEl=document.getElementById('status');
+var rows=[],sortKey='name',sortDir='asc',ctx=null;
+function setStatus(t,e){statusEl.textContent=t;statusEl.style.color=e?'#b91c1c':'#666';}
+function parse(raw){if(!raw)return null;var v=raw.trim().replace(/^https?:\/\//i,'').replace(/^www\./i,'');if(/^github\.[^/]+\/.+$/i.test(v)){var p=v.replace(/^github\./i,'').split('/');return p.length>=2?{owner:p[0],repo:p[1]}:null;}if(/^github\.com\//i.test(v)){var a=v.replace(/^github\.com\//i,'').split('/').filter(Boolean);return a.length>=2?{owner:a[0],repo:a[1]}:null;}var s=v.split('/').filter(Boolean);return s.length>=2?{owner:s[0],repo:s[1]}:null;}
+function detect(){var q=new URLSearchParams(location.search).get('repo');if(q)return parse(q);var m=location.hostname.match(/^([^.]+)\.github\.io$/i);var p=location.pathname.split('/').filter(Boolean);if(m&&p.length)return {owner:m[1],repo:p[0]};if(/^github\.[^.]+$/i.test(location.hostname)&&p.length)return {owner:location.hostname.replace(/^github\./i,''),repo:p[0]};if(location.hostname.toLowerCase()==='github.com'&&p.length>=2)return {owner:p[0],repo:p[1]};return null;}
+function fsize(b){if(!isFinite(b))return '—';if(b<1024)return b+' B';var kb=b/1024;if(kb<1024)return kb.toFixed(1)+' KB';return (kb/1024).toFixed(1)+' MB';}
+function render(){rows.sort(function(a,b){var d=sortDir==='asc'?1:-1;if(sortKey==='size')return((a.size||0)-(b.size||0))*d;if(sortKey==='date')return((new Date(a.date||0)).valueOf()-(new Date(b.date||0)).valueOf())*d;return a.name.localeCompare(b.name)*d;});tbody.innerHTML='';if(!rows.length){tbody.innerHTML='<tr><td colspan="4" class="muted">No files found.</td></tr>';return;}var frag=document.createDocumentFragment();rows.forEach(function(r){var tr=document.createElement('tr');var gh='https://github.com/'+ctx.owner+'/'+ctx.repo+'/blob/'+ctx.branch+'/'+encodeURI(r.name);var launch='https://cdn.jsdelivr.net/gh/'+ctx.owner+'/'+ctx.repo+'@'+ctx.branch+'/'+encodeURI(r.name);tr.innerHTML='<td class="mono">'+r.name+'</td><td>'+(r.date?new Date(r.date).toLocaleString():'—')+'</td><td>'+fsize(r.size)+'</td><td><a href="'+gh+'" target="_blank" rel="noopener">GitHub</a>'+( /\.html?$/i.test(r.name)?' · <a href="'+launch+'" target="_blank" rel="noopener">Launch</a>':'')+'</td>';frag.appendChild(tr);});tbody.appendChild(frag);}
+function api(url){return fetch(url,{headers:{Accept:'application/vnd.github+json'}}).then(function(r){if(!r.ok)throw new Error('GitHub API '+r.status);return r.json();});}
+function loadRepo(owner,repo){ctx={owner:owner,repo:repo,branch:'main'};setStatus('Loading '+owner+'/'+repo+'...');tbody.innerHTML='<tr><td colspan="4" class="muted">Loading...</td></tr>';api('https://api.github.com/repos/'+owner+'/'+repo).then(function(info){ctx.branch=info.default_branch||'main';return api('https://api.github.com/repos/'+owner+'/'+repo+'/git/trees/'+ctx.branch+'?recursive=1');}).then(function(tree){rows=(tree.tree||[]).filter(function(x){return x.type==='blob';}).map(function(x){return {name:x.path,size:x.size||null,date:null};});render();return Promise.all(rows.slice(0,100).map(function(file){return api('https://api.github.com/repos/'+owner+'/'+repo+'/commits?path='+encodeURIComponent(file.name).replace(/%2F/g,'/')+'&per_page=1').then(function(c){file.date=c&&c[0]&&c[0].commit&&c[0].commit.committer?c[0].commit.committer.date:null;}).catch(function(){});}));}).then(function(){render();setStatus('Loaded '+rows.length+' files for '+owner+'/'+repo+'.');}).catch(function(err){rows=[];render();setStatus('Failed: '+err.message,true);});}
+Array.prototype.forEach.call(document.querySelectorAll('th[data-sort]'),function(th){th.addEventListener('click',function(){var k=th.getAttribute('data-sort');if(sortKey===k)sortDir=sortDir==='asc'?'desc':'asc';else{sortKey=k;sortDir=k==='name'?'asc':'desc';}render();});});
+loadBtn.addEventListener('click',function(){var p=parse(repoInput.value);if(!p){setStatus('Invalid repo input.',true);return;}var u=new URL(location.href);u.searchParams.set('repo',p.owner+'/'+p.repo);history.replaceState({},'',u);loadRepo(p.owner,p.repo);});
+var init=detect();if(init){repoInput.value=init.owner+'/'+init.repo;loadRepo(init.owner,init.repo);} 
+<\/script></body></html>`;
+    }
+
+    async function getSha(owner, repo, path) {
+      const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, { headers: headers() });
+      if (res.status === 404) return null;
+      if (!res.ok) throw new Error(`GET ${path} failed (${res.status})`);
+      const json = await res.json();
+      return json.sha || null;
+    }
+
+    async function writeFile(owner, repo, path, content) {
+      const sha = await getSha(owner, repo, path);
+      const body = {
+        message: `Repo Blast: update ${path}`,
+        content: btoa(unescape(encodeURIComponent(content))),
+        branch: 'main',
+      };
+      if (sha) body.sha = sha;
+
+      const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
+        method: 'PUT',
+        headers: { ...headers(), 'Content-Type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(`PUT ${path} failed (${res.status}) ${text.slice(0, 80)}`);
+      }
+    }
+
+    async function deployOne(owner, repoName, idx) {
+      const cell = document.getElementById(`r-${idx}`);
+      try {
+        cell.textContent = 'writing index + repolist...';
+        cell.className = 'muted';
+        await writeFile(owner, repoName, 'index.html', generateIndexHtml());
+        await writeFile(owner, repoName, 'repolist.html', generateRepoListHtml());
+        cell.textContent = 'ok';
+        cell.className = 'ok';
+      } catch (err) {
+        cell.textContent = err.message;
+        cell.className = 'err';
+      }
+    }
+
+    loadBtn.addEventListener('click', async () => {
+      const owner = ownerInput.value.trim();
+      if (!owner) return setStatus('Owner required.', true);
+      setStatus(`Loading repos for ${owner}...`);
+      try {
+        repos = await loadRepos(owner);
+        renderRepos();
+        setStatus(`Loaded ${repos.length} repos.`);
+      } catch (err) {
+        repos = [];
+        renderRepos();
+        setStatus(err.message, true);
+      }
+    });
+
+    deployBtn.addEventListener('click', async () => {
+      const owner = ownerInput.value.trim();
+      const token = tokenInput.value.trim();
+      if (!owner) return setStatus('Owner required.', true);
+      if (!token) return setStatus('Token required for write access.', true);
+      const picks = Array.from(document.querySelectorAll('.pick:checked')).map((el) => Number(el.dataset.i));
+      if (!picks.length) return setStatus('Select at least one repo.', true);
+
+      setStatus(`Deploying to ${picks.length} repos...`);
+      for (const i of picks) {
+        await deployOne(owner, repos[i].name, i);
+      }
+      setStatus('Repo blast finished.');
+    });
+
+    allBox.addEventListener('change', () => {
+      document.querySelectorAll('.pick').forEach((el) => {
+        el.checked = allBox.checked;
+      });
+    });
+
+    ownerInput.value = detectDefaultOwner();
+    loadBtn.click();
+  </script>
+</body>
+</html>

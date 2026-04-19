@@ -3,266 +3,80 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Repo Blast</title>
+  <title>Repo Redirect</title>
   <style>
-    :root {
-      color-scheme: light dark;
-      --bg: #0b1220;
-      --panel: #111a2b;
-      --text: #e5e7eb;
-      --muted: #94a3b8;
-      --accent: #60a5fa;
-      --border: #2b3b57;
-      --ok: #22c55e;
-      --err: #ef4444;
-    }
-    @media (prefers-color-scheme: light) {
-      :root {
-        --bg: #f8fafc;
-        --panel: #ffffff;
-        --text: #0f172a;
-        --muted: #475569;
-        --accent: #2563eb;
-        --border: #cbd5e1;
-        --ok: #15803d;
-        --err: #b91c1c;
-      }
-    }
-    * { box-sizing: border-box; }
-    body {
-      margin: 0;
-      font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      padding: 24px;
-    }
-    main { max-width: 1080px; margin: 0 auto; }
-    h1 { margin: 0 0 8px; }
-    .muted { color: var(--muted); }
-    .card {
-      border: 1px solid var(--border);
-      background: var(--panel);
-      border-radius: 12px;
-      padding: 14px;
-      margin-top: 12px;
-    }
-    .controls {
-      display: grid;
-      grid-template-columns: 1fr 1fr auto auto;
-      gap: 8px;
-    }
-    input, button, select {
-      border: 1px solid var(--border);
-      background: transparent;
-      color: var(--text);
-      border-radius: 8px;
-      padding: 8px 10px;
-    }
-    button { cursor: pointer; font-weight: 600; }
-    table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-    th, td { text-align: left; border-bottom: 1px solid var(--border); padding: 8px; }
-    code { color: var(--accent); }
-    .ok { color: var(--ok); }
-    .err { color: var(--err); }
-    .small { font-size: 0.86rem; }
-    .stack { display: flex; gap: 8px; flex-wrap: wrap; }
+    body { font-family: system-ui, sans-serif; margin: 0; padding: 24px; }
+    .card { max-width: 760px; margin: 0 auto; }
+    input, button { padding: 8px 10px; font-size: 14px; }
+    input { width: 320px; max-width: 100%; }
+    .muted { color: #666; }
   </style>
 </head>
 <body>
-  <main>
-    <h1>Repo Blast</h1>
-    <p class="muted">Vanilla JS utility to fetch all repos for an owner (default: <code>acmeproducts</code>) and write an <code>index.html</code> redirector to each repo.</p>
-
-    <section class="card">
-      <div class="controls">
-        <input id="owner" value="acmeproducts" placeholder="GitHub user or org" />
-        <input id="token" type="password" placeholder="GitHub token (repo scope)" />
-        <button id="load">Load Repos</button>
-        <button id="deployAll">Deploy to Checked</button>
-      </div>
-      <p class="small muted">Redirect target written to each repo: <code>https://{owner}.github.io/{repo}/repolist.html</code>.</p>
-      <div id="status" class="small muted"></div>
-    </section>
-
-    <section class="card">
-      <div class="stack small">
-        <label><input type="checkbox" id="checkAll" /> Check all</label>
-        <span id="count" class="muted">0 repos</span>
-      </div>
-      <table>
-        <thead>
-          <tr><th></th><th>Repo</th><th>Visibility</th><th>Pages URL</th><th>Result</th></tr>
-        </thead>
-        <tbody id="rows">
-          <tr><td colspan="5" class="small muted">Load repos to begin.</td></tr>
-        </tbody>
-      </table>
-    </section>
-  </main>
+  <div class="card">
+    <h1>Repo Redirect</h1>
+    <p class="muted">Redirects to <code>https://owner.github.io/repo/repolist.html</code>.</p>
+    <form id="form">
+      <input id="repoInput" placeholder="owner/repo or github.owner/repo" />
+      <button type="submit">Open</button>
+    </form>
+    <p id="status" class="muted"></p>
+  </div>
 
   <script>
-    const ownerInput = document.getElementById('owner');
-    const tokenInput = document.getElementById('token');
-    const loadBtn = document.getElementById('load');
-    const deployBtn = document.getElementById('deployAll');
-    const rows = document.getElementById('rows');
+    const input = document.getElementById('repoInput');
     const statusEl = document.getElementById('status');
-    const checkAll = document.getElementById('checkAll');
-    const countEl = document.getElementById('count');
 
-    let repos = [];
-
-    function setStatus(text, isError = false) {
-      statusEl.textContent = text;
-      statusEl.className = `small ${isError ? 'err' : 'muted'}`;
-    }
-
-    function authHeaders() {
-      const token = tokenInput.value.trim();
-      return token ? { Authorization: `Bearer ${token}` } : {};
-    }
-
-    async function fetchRepos(owner) {
-      const urlUser = `https://api.github.com/users/${owner}/repos?per_page=100&sort=updated`;
-      const urlOrg = `https://api.github.com/orgs/${owner}/repos?per_page=100&sort=updated`;
-      let response = await fetch(urlUser, { headers: { ...authHeaders(), Accept: 'application/vnd.github+json' } });
-      if (!response.ok) {
-        response = await fetch(urlOrg, { headers: { ...authHeaders(), Accept: 'application/vnd.github+json' } });
+    function parseRepo(raw) {
+      if (!raw) return null;
+      const value = raw.trim().replace(/^https?:\/\//i, '').replace(/^www\./i, '');
+      if (/^github\.[^/]+\/.+$/i.test(value)) {
+        const [owner, repo] = value.replace(/^github\./i, '').split('/');
+        return owner && repo ? { owner, repo } : null;
       }
-      if (!response.ok) {
-        throw new Error(`Failed to load repos (${response.status})`);
+      if (/^github\.com\//i.test(value)) {
+        const parts = value.replace(/^github\.com\//i, '').split('/').filter(Boolean);
+        return parts.length >= 2 ? { owner: parts[0], repo: parts[1] } : null;
       }
-      return response.json();
+      const simple = value.split('/').filter(Boolean);
+      return simple.length >= 2 ? { owner: simple[0], repo: simple[1] } : null;
     }
 
-    function renderRows() {
-      rows.innerHTML = '';
-      if (!repos.length) {
-        rows.innerHTML = '<tr><td colspan="5" class="small muted">No repos found.</td></tr>';
+    function detectFromLocation() {
+      const host = location.hostname;
+      const path = location.pathname.split('/').filter(Boolean);
+      const qp = new URLSearchParams(location.search).get('repo');
+      if (qp) return parseRepo(qp);
+      if (/^github\.[^.]+$/i.test(host) && path.length >= 1) {
+        return { owner: host.replace(/^github\./i, ''), repo: path[0] };
+      }
+      if (host.toLowerCase() === 'github.com' && path.length >= 2) {
+        return { owner: path[0], repo: path[1] };
+      }
+      return null;
+    }
+
+    function go(owner, repo) {
+      const target = `https://${owner}.github.io/${repo}/repolist.html`;
+      statusEl.innerHTML = `Redirecting to <a href="${target}">${target}</a> ...`;
+      location.replace(target);
+    }
+
+    document.getElementById('form').addEventListener('submit', (event) => {
+      event.preventDefault();
+      const parsed = parseRepo(input.value);
+      if (!parsed) {
+        statusEl.textContent = 'Invalid repo format.';
         return;
       }
-
-      const owner = ownerInput.value.trim();
-      repos.forEach((repo, index) => {
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td><input data-i="${index}" type="checkbox" class="pick" /></td>
-          <td><a target="_blank" rel="noopener" href="${repo.html_url}">${repo.name}</a></td>
-          <td class="small">${repo.private ? 'private' : 'public'}</td>
-          <td class="small"><a target="_blank" rel="noopener" href="https://${owner}.github.io/${repo.name}/repolist.html">${owner}.github.io/${repo.name}/repolist.html</a></td>
-          <td class="small" id="result-${index}">-</td>
-        `;
-        rows.appendChild(tr);
-      });
-
-      countEl.textContent = `${repos.length} repos`;
-    }
-
-    function indexTemplate(owner, repo) {
-      return `<!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>${owner}/${repo} redirect</title></head><body>
-<script>location.replace("https://${owner}.github.io/${repo}/repolist.html");<\/script>
-<a href="https://${owner}.github.io/${repo}/repolist.html">Open repolist</a>
-</body></html>`;
-    }
-
-    async function getExistingSha(owner, repo) {
-      const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/index.html`, { headers: { ...authHeaders(), Accept: 'application/vnd.github+json' } });
-      if (res.status === 404) return null;
-      if (!res.ok) throw new Error(`GET index failed (${res.status})`);
-      const data = await res.json();
-      return data.sha || null;
-    }
-
-    async function deployIndex(owner, repoName, rowIndex) {
-      const resultEl = document.getElementById(`result-${rowIndex}`);
-      try {
-        resultEl.textContent = 'writing...';
-        resultEl.className = 'small muted';
-
-        const sha = await getExistingSha(owner, repoName);
-        const body = {
-          message: 'Add index.html redirect to repolist.html (repo blast)',
-          content: btoa(unescape(encodeURIComponent(indexTemplate(owner, repoName)))),
-          branch: 'main'
-        };
-        if (sha) body.sha = sha;
-
-        const put = await fetch(`https://api.github.com/repos/${owner}/${repoName}/contents/index.html`, {
-          method: 'PUT',
-          headers: {
-            ...authHeaders(),
-            Accept: 'application/vnd.github+json',
-            'Content-Type': 'application/json'
-          },
-          body: JSON.stringify(body)
-        });
-
-        if (!put.ok) {
-          const txt = await put.text();
-          throw new Error(`PUT failed (${put.status}) ${txt.slice(0, 80)}`);
-        }
-
-        resultEl.textContent = 'ok';
-        resultEl.className = 'small ok';
-      } catch (err) {
-        resultEl.textContent = err.message;
-        resultEl.className = 'small err';
-      }
-    }
-
-    loadBtn.addEventListener('click', async () => {
-      const owner = ownerInput.value.trim();
-      if (!owner) {
-        setStatus('Owner is required.', true);
-        return;
-      }
-      setStatus('Loading repositories...');
-      try {
-        repos = await fetchRepos(owner);
-        renderRows();
-        setStatus(`Loaded ${repos.length} repositories for ${owner}.`);
-      } catch (err) {
-        repos = [];
-        renderRows();
-        setStatus(err.message, true);
-      }
+      go(parsed.owner, parsed.repo);
     });
 
-    checkAll.addEventListener('change', () => {
-      document.querySelectorAll('.pick').forEach((cb) => {
-        cb.checked = checkAll.checked;
-      });
-    });
-
-    deployBtn.addEventListener('click', async () => {
-      const owner = ownerInput.value.trim();
-      const token = tokenInput.value.trim();
-      if (!owner) {
-        setStatus('Owner is required.', true);
-        return;
-      }
-      if (!token) {
-        setStatus('Token is required to write index.html into repos.', true);
-        return;
-      }
-
-      const selected = Array.from(document.querySelectorAll('.pick:checked')).map((cb) => Number(cb.dataset.i));
-      if (!selected.length) {
-        setStatus('Select at least one repo.', true);
-        return;
-      }
-
-      setStatus(`Deploying index.html to ${selected.length} repositories...`);
-      for (const i of selected) {
-        const repo = repos[i];
-        await deployIndex(owner, repo.name, i);
-      }
-      setStatus(`Repo blast complete for ${selected.length} repositories.`);
-    });
-
-    loadBtn.click();
+    const auto = detectFromLocation();
+    if (auto) {
+      input.value = `${auto.owner}/${auto.repo}`;
+      go(auto.owner, auto.repo);
+    }
   </script>
 </body>
 </html>
