@@ -270,17 +270,7 @@
     }
 
     function persist() {
-      const serializableCollections = {};
-      Object.entries(state.collections).forEach(([id, collection]) => {
-        serializableCollections[id] = {
-          ...collection,
-          items: collection.items.map(item => ({
-            ...item,
-            objectUrl: null
-          }))
-        };
-      });
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(serializableCollections));
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state.collections));
       if (state.activeCollectionId) {
         localStorage.setItem(ACTIVE_KEY, state.activeCollectionId);
       }
@@ -292,12 +282,6 @@
       } catch {
         state.collections = {};
       }
-      Object.values(state.collections).forEach(collection => {
-        collection.items = (collection.items || []).map(item => ({
-          ...item,
-          objectUrl: null
-        }));
-      });
       state.activeCollectionId = localStorage.getItem(ACTIVE_KEY);
       if (!state.activeCollectionId || !state.collections[state.activeCollectionId]) {
         const firstId = Object.keys(state.collections)[0] || null;
@@ -393,17 +377,12 @@
 
       const sorter = collection.sortBy || 'name';
       items.sort((a, b) => {
-        if (sorter === 'created') {
-          const byCreated = (a.createdMs || 0) - (b.createdMs || 0);
-          return byCreated !== 0 ? byCreated : a.order - b.order;
-        }
-        if (sorter === 'modified') {
-          const byModified = (a.modifiedMs || 0) - (b.modifiedMs || 0);
-          return byModified !== 0 ? byModified : a.order - b.order;
-        }
-        const byName = a.name.localeCompare(b.name);
-        return byName !== 0 ? byName : a.order - b.order;
+        if (sorter === 'created') return (a.createdMs || 0) - (b.createdMs || 0);
+        if (sorter === 'modified') return (a.modifiedMs || 0) - (b.modifiedMs || 0);
+        return a.name.localeCompare(b.name);
       });
+
+      items.sort((a, b) => a.order - b.order);
       return items;
     }
 
@@ -469,10 +448,7 @@
       const actions = document.createElement('div');
       actions.className = 'actions';
 
-      const btnFull = iconBtn('⤢', 'Open in new tab', () => {
-        if (item.objectUrl) window.open(item.objectUrl, '_blank', 'noopener');
-      });
-      btnFull.disabled = !item.objectUrl;
+      const btnFull = iconBtn('⤢', 'Open in new tab', () => window.open(item.objectUrl, '_blank', 'noopener'));
       const btnMute = iconBtn(item.muted ? '🔇' : '🔊', 'Mute/unmute', () => toggleMute(item.id));
       const btnFreeze = iconBtn(item.frozen ? '▶' : '⏸', 'Freeze/continue', () => toggleFreeze(item.id));
       const btnMin = iconBtn(item.minimized ? '▢' : '▁', 'Minimize/restore', () => toggleMinimized(item.id));
@@ -487,11 +463,7 @@
       const mediaType = (item.type || '').split('/')[0];
       let node;
 
-      if (!item.objectUrl) {
-        node = document.createElement('div');
-        node.className = 'hint';
-        node.textContent = 'Preview unavailable after refresh. Re-select folder to restore media previews.';
-      } else if (mediaType === 'image') {
+      if (mediaType === 'image') {
         node = document.createElement('img');
         node.src = item.objectUrl;
       } else if (mediaType === 'video') {
@@ -522,16 +494,12 @@
 
       const meta = document.createElement('div');
       meta.className = 'meta';
-      [
-        `Path: ${item.relPath}`,
-        `Created: ${item.createdLabel}`,
-        `Modified: ${item.modifiedLabel}`,
-        `Size: ${toBytesLabel(item.size)}`
-      ].forEach(text => {
-        const row = document.createElement('div');
-        row.textContent = text;
-        meta.appendChild(row);
-      });
+      meta.innerHTML = `
+        <div>Path: ${item.relPath}</div>
+        <div>Created: ${item.createdLabel}</div>
+        <div>Modified: ${item.modifiedLabel}</div>
+        <div>Size: ${toBytesLabel(item.size)}</div>
+      `;
       card.appendChild(meta);
 
       return card;
