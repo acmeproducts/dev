@@ -51,7 +51,7 @@
       overflow-x: auto;
       -webkit-overflow-scrolling: touch;
     }
-    table { width: 100%; border-collapse: collapse; }
+    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
     thead th {
       background: #dbeafe;
       border-bottom: 1px solid #d9e1ee;
@@ -80,8 +80,8 @@
     tbody tr:hover td { background: #eef4ff; }
 
     .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.84rem; }
-    .name-cell { min-width: 220px; }
-    .details-cell { min-width: 260px; width: 42%; }
+    .name-cell { min-width: 220px; max-width: 0; }
+    .details-cell { min-width: 220px; width: 40%; }
     .file-primary {
       display: block;
       font-weight: 600;
@@ -126,11 +126,12 @@
     a:hover { text-decoration: underline; }
 
     .actions { white-space: nowrap; }
+    .actions-col { width: 124px; }
     .action-group {
       display: inline-flex;
       align-items: center;
-      gap: 6px;
-      padding: 2px;
+      gap: 4px;
+      padding: 1px;
       border: 1px solid #dbe3f0;
       border-radius: 10px;
       background: #f8fbff;
@@ -139,13 +140,13 @@
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 28px;
-      height: 28px;
+      width: 24px;
+      height: 24px;
       border: 1px solid #cbd5e1;
       border-radius: 8px;
       background: #fff;
       color: #334155;
-      font-size: 0.72rem;
+      font-size: 0.66rem;
       text-decoration: none;
       font-weight: 700;
       padding: 0;
@@ -249,7 +250,7 @@
       .controls { grid-template-columns: 1fr; }
       th, td { padding: 7px 8px; }
       .details-cell { min-width: 180px; width: auto; }
-      .action-btn { width: 26px; height: 26px; }
+      .action-btn { width: 24px; height: 24px; }
     }
   </style>
 </head>
@@ -270,6 +271,11 @@
     <section class="card">
       <div class="table-scroll">
       <table>
+        <colgroup>
+          <col>
+          <col>
+          <col class="actions-col">
+        </colgroup>
         <thead>
           <tr>
             <th><button class="mini" type="button" data-sort-key="name">File</button></th>
@@ -567,7 +573,7 @@
           const hint = pathHint(f.path);
           return `<tr>
             <td class="mono name-cell" title="${esc(f.path)}">
-              <span class="file-primary">${esc(shortFileName(f.path))}</span>
+              <span class="file-primary" title="${esc(f.path)}">${esc(shortFileName(f.path))}</span>
               ${hint ? `<span class="file-secondary">${esc(hint)}</span>` : ''}
             </td>
             <td class="details-cell" title="${esc(f.commitMessage || '')}">
