@@ -597,6 +597,15 @@
         document.querySelectorAll('[data-edit]').forEach((btn) => btn.addEventListener('click', () => openEdit(btn.getAttribute('data-edit'))));
       }
 
+      document.querySelectorAll('.file-primary').forEach((el) => {
+        const fullName = el.getAttribute('data-fullname') || '';
+        if (el.scrollWidth > el.clientWidth) {
+          el.title = fullName;
+        } else {
+          el.removeAttribute('title');
+        }
+      });
+
       document.querySelectorAll('[data-sort-key]').forEach((el) => {
         const active = el.dataset.sortKey === state.sortKey;
         el.dataset.active = active ? 'true' : 'false';
