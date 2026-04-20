@@ -1,575 +1,679 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, minimum-scale=0.1">
-    <title>Enhanced Multi-File Viewer</title>
-    <style>
-        body { margin: 0; font-family: sans-serif; display: flex; flex-wrap: wrap; justify-content: flex-start; }
-        .portlet-container { width: 20%; box-sizing: border-box; padding: 5px; min-height: 150px; display: flex; flex-direction: column; border: 1px solid #ccc; position: relative; overflow: hidden; }
-        .portlet { display: flex; justify-content: center; align-items: center; width: 100%; height: 100%; overflow: hidden; }
-        .portlet iframe, .portlet img, .portlet video, .portlet audio { display: block; max-width: 100%; max-height: 100%; margin: auto; }
-        #fileInput { position: fixed; top: 10px; left: 10px; z-index: 1000; }
-        .resizer { position: absolute; background: #007bff; opacity: 0; transition: opacity 0.2s ease-in-out; }
-        .resizer:hover { opacity: 0.8; }
-        .resizer.top, .resizer.bottom { left: 0; right: 0; height: 5px; cursor: row-resize; }
-        .resizer.left, .resizer.right { top: 0; bottom: 0; width: 5px; cursor: col-resize; }
-        .resizer.top { top: 0; }
-        .resizer.bottom { bottom: 0; }
-        .resizer.left { left: 0; }
-        .resizer.right { right: 0; }
-        .portlet-header { background: #f0f0f0; padding: 5px; text-align: center; font-size: 0.9em; border-bottom: 1px solid #ccc; cursor: grab; display: flex; justify-content: space-between; align-items: center; }
-        .portlet-header button { margin-left: 5px; font-size: 0.8em; padding: 3px 6px; }
-        .fullscreen-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 0, 0, 0.9); z-index: 1001; display: flex; justify-content: center; align-items: center; }
-        .fullscreen-content { max-width: 90%; max-height: 90%; }
-        .fullscreen-content iframe, .fullscreen-content img, .fullscreen-content video, .fullscreen-content audio { display: block; max-width: 100%; max-height: 100%; margin: auto; }
-        .fullscreen-close { position: absolute; top: 10px; right: 20px; color: white; font-size: 2em; cursor: pointer; }
-        .hidden { display: none !important; }
-        #loadingMessage { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; border: 1px solid #ccc; box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.2); z-index: 1002; }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Multi View Pro</title>
+  <style>
+    :root {
+      --bg: #0f1115;
+      --panel: #171a21;
+      --panel-2: #1f2430;
+      --txt: #ecf0f7;
+      --muted: #95a0b5;
+      --accent: #4da3ff;
+      --danger: #ff5d73;
+      --gap: 10px;
+      --cols: 4;
+      --scale: 0;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      color: var(--txt);
+      background: var(--bg);
+      font-family: Inter, Segoe UI, Roboto, sans-serif;
+    }
+
+    .shell {
+      max-width: 1800px;
+      margin: 0 auto;
+      padding: 16px;
+    }
+
+    .toolbar {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      align-items: end;
+      margin-bottom: 10px;
+    }
+
+    .field {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    label {
+      color: var(--muted);
+      font-size: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+    }
+
+    input, select, button {
+      border: 1px solid #2b3344;
+      background: var(--panel);
+      color: var(--txt);
+      border-radius: 8px;
+      padding: 9px 10px;
+      font-size: 14px;
+    }
+
+    button { cursor: pointer; }
+    button:hover { border-color: var(--accent); }
+
+    .omni-row {
+      margin: 8px 0;
+      display: grid;
+      grid-template-columns: 1fr 180px;
+      gap: 10px;
+    }
+
+    .collection-row {
+      display: grid;
+      grid-template-columns: 1fr 220px;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+
+    .slider-row {
+      margin: 8px 0 12px;
+    }
+
+    #grid {
+      display: grid;
+      gap: var(--gap);
+      grid-template-columns: repeat(var(--display-cols), minmax(190px, 1fr));
+      align-items: start;
+    }
+
+    .portlet {
+      background: var(--panel);
+      border: 1px solid #2b3344;
+      border-radius: 10px;
+      overflow: hidden;
+      min-height: 140px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .portlet.dragging { opacity: 0.45; }
+
+    .titlebar {
+      display: flex;
+      justify-content: space-between;
+      gap: 6px;
+      align-items: center;
+      background: var(--panel-2);
+      padding: 7px;
+      cursor: grab;
+      user-select: none;
+    }
+
+    .title {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-size: 12px;
+      color: #d6deed;
+      max-width: 55%;
+    }
+
+    .actions {
+      display: flex;
+      gap: 4px;
+    }
+
+    .actions button {
+      padding: 4px 7px;
+      font-size: 12px;
+      min-width: 28px;
+    }
+
+    .actions .danger:hover { border-color: var(--danger); color: var(--danger); }
+
+    .content {
+      min-height: 130px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 8px;
+    }
+
+    .content img, .content video, .content audio, .content iframe {
+      max-width: 100%;
+      max-height: 300px;
+      border-radius: 6px;
+    }
+
+    .meta {
+      border-top: 1px solid #2b3344;
+      padding: 7px;
+      font-size: 11px;
+      color: var(--muted);
+      display: grid;
+      gap: 2px;
+    }
+
+    .collapsed .content, .collapsed .meta { display: none; }
+
+    .pager {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 12px 0;
+    }
+
+    .hint { color: var(--muted); font-size: 12px; }
+
+    .empty {
+      padding: 24px;
+      border: 1px dashed #2b3344;
+      border-radius: 8px;
+      color: var(--muted);
+      text-align: center;
+    }
+  </style>
 </head>
 <body>
-    <input type="file" id="fileInput" multiple accept="image/*, video/*, audio/*, text/html, image/gif">
-    <div id="portletContainer" style="display: flex; flex-wrap: wrap; justify-content: flex-start; width: 100%;">
-        </div>
-    <div id="fullscreenView" class="fullscreen-overlay hidden">
-        <span class="fullscreen-close">&times;</span>
-        <div id="fullscreenContent" class="fullscreen-content"></div>
+  <div class="shell">
+    <div class="toolbar">
+      <div class="field">
+        <label for="folderInput">Select folder (recursive)</label>
+        <input id="folderInput" type="file" webkitdirectory directory multiple />
+      </div>
+      <div class="field">
+        <label for="rowsInput">Rows per page</label>
+        <input id="rowsInput" type="number" min="1" value="3" />
+      </div>
+      <div class="field">
+        <label for="colsInput">Columns baseline</label>
+        <input id="colsInput" type="number" min="1" value="4" />
+      </div>
+      <div class="field">
+        <label for="exportBtn">Export paths</label>
+        <button id="exportBtn">Export list (.txt)</button>
+      </div>
     </div>
-    <div id="loadingMessage" class="hidden">Loading...</div>
-    <script>
-        const fileInput = document.getElementById('fileInput');
-        const portletContainer = document.getElementById('portletContainer');
-        const fullscreenView = document.getElementById('fullscreenView');
-        const fullscreenContent = document.getElementById('fullscreenContent');
-        const fullscreenCloseButton = fullscreenView.querySelector('.fullscreen-close');
-        const loadingMessageDiv = document.getElementById('loadingMessage');
-        const portletsPerRow = 5;
-        let portlets = [];
-        let objectURLs = [];
-        let layoutData = []; // For saving/loading layouts
-        let isDraggingPortlet = null;
-        let dragOffsetX, dragOffsetY;
 
-        function saveLayout() {
-            layoutData = portlets.map(portletContainer => ({
-                filename: portletContainer.dataset.filename,
-                width: portletContainer.style.width,
-                height: portletContainer.style.height,
-                order: Array.from(portletContainer.parentNode.children).indexOf(portletContainer)
-            }));
-            localStorage.setItem('fileViewerLayout', JSON.stringify(layoutData));
-        }
+    <div class="omni-row">
+      <input id="omniSearch" placeholder="Omni search: filename/date/size. Use -term to exclude" />
+      <select id="sortBy">
+        <option value="name">Sort: filename</option>
+        <option value="created">Sort: created</option>
+        <option value="modified">Sort: modified</option>
+      </select>
+    </div>
 
-        function loadLayout() {
-            const savedLayout = localStorage.getItem('fileViewerLayout');
-            if (savedLayout) {
-                layoutData = JSON.parse(savedLayout);
-                // We'll apply this after files are loaded
-            }
-        }
+    <div class="collection-row">
+      <input id="collectionName" placeholder="Collection name" />
+      <div class="hint" id="collectionMeta">No collection loaded.</div>
+    </div>
 
-        function applyLayout() {
-            if (layoutData.length > 0 && portlets.length === layoutData.length) {
-                const orderedPortlets = new Array(portlets.length);
-                layoutData.forEach(data => {
-                    const portlet = portlets.find(p => p.dataset.filename === data.filename);
-                    if (portlet) {
-                        portlet.style.width = data.width;
-                        portlet.style.height = data.height;
-                        orderedPortlets[data.order] = portlet;
-                    }
-                });
-                portletContainer.innerHTML = '';
-                orderedPortlets.filter(p => p).forEach(p => portletContainer.appendChild(p));
-                portlets = orderedPortlets.filter(p => p);
-                attachDragAndResize(); // Re-attach listeners after reordering
-            }
-        }
+    <div class="slider-row field">
+      <label for="sizeSlider">Portlet size / density (left = more per row, right = larger)</label>
+      <input id="sizeSlider" type="range" min="0" max="100" value="0" />
+    </div>
 
-        function revokeObjectURLs() {
-            objectURLs.forEach(URL.revokeObjectURL);
-            objectURLs = [];
-        }
+    <div class="pager">
+      <button id="prevPage">Back page</button>
+      <button id="nextPage">Next page</button>
+      <span id="pageInfo" class="hint">Page 1/1</span>
+    </div>
 
-        function createPortlet(file, index, totalFiles) {
-            const fileURL = URL.createObjectURL(file);
-            objectURLs.push(fileURL);
+    <div id="grid"></div>
+  </div>
 
-            const portletContainerDiv = document.createElement('div');
-            portletContainerDiv.classList.add('portlet-container');
-            portletContainerDiv.dataset.filename = file.name;
-            portletContainerDiv.style.width = `${100 / portletsPerRow}%`;
-            portletContainerDiv.style.height = '200px'; // Default height
+  <script>
+    const STORAGE_KEY = 'multiViewProCollections';
+    const ACTIVE_KEY = 'multiViewProActiveCollection';
 
-            const header = document.createElement('div');
-            header.classList.add('portlet-header');
-            header.textContent = file.name;
+    const folderInput = document.getElementById('folderInput');
+    const rowsInput = document.getElementById('rowsInput');
+    const colsInput = document.getElementById('colsInput');
+    const omniSearch = document.getElementById('omniSearch');
+    const sortBy = document.getElementById('sortBy');
+    const collectionNameInput = document.getElementById('collectionName');
+    const collectionMeta = document.getElementById('collectionMeta');
+    const sizeSlider = document.getElementById('sizeSlider');
+    const prevPageBtn = document.getElementById('prevPage');
+    const nextPageBtn = document.getElementById('nextPage');
+    const pageInfo = document.getElementById('pageInfo');
+    const grid = document.getElementById('grid');
+    const exportBtn = document.getElementById('exportBtn');
 
-            const downloadButton = document.createElement('button');
-            downloadButton.textContent = 'Download';
-            downloadButton.addEventListener('click', () => {
-                const a = document.createElement('a');
-                a.href = fileURL;
-                a.download = file.name;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
-            });
-            header.appendChild(downloadButton);
+    let state = {
+      collections: {},
+      activeCollectionId: null,
+      page: 1,
+      dragId: null
+    };
 
-            const fullscreenButton = document.createElement('button');
-            fullscreenButton.textContent = 'Fullscreen';
-            fullscreenButton.addEventListener('click', () => {
-                showFullscreen(fileURL, file.type, file.name);
-            });
-            header.appendChild(fullscreenButton);
+    function nowStamp() {
+      const d = new Date();
+      return d.toISOString().replace('T', ' ').replace('Z', ' UTC');
+    }
 
-            portletContainerDiv.appendChild(header);
+    function makeCollectionId() {
+      return new Date().toISOString();
+    }
 
-            const portletDiv = document.createElement('div');
-            portletDiv.classList.add('portlet');
+    function toBytesLabel(size) {
+      if (size < 1024) return `${size} B`;
+      if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+      if (size < 1024 * 1024 * 1024) return `${(size / (1024 * 1024)).toFixed(1)} MB`;
+      return `${(size / (1024 * 1024 * 1024)).toFixed(1)} GB`;
+    }
 
-            const fileType = file.type.split('/')[0];
-            let content;
+    function persist() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state.collections));
+      if (state.activeCollectionId) {
+        localStorage.setItem(ACTIVE_KEY, state.activeCollectionId);
+      }
+    }
 
-            if (fileType === 'image') {
-                content = document.createElement('img');
-                content.src = fileURL;
-                enableZoom(content);
-            } else if (fileType === 'video') {
-                content = document.createElement('video');
-                content.src = fileURL;
-                content.controls = true;
-            } else if (fileType === 'audio') {
-                content = document.createElement('audio');
-                content.src = fileURL;
-                content.controls = true;
-            } else if (fileType === 'text' && file.type === 'text/html') {
-                content = document.createElement('iframe');
-                content.src = fileURL;
-            } else if (file.type === 'image/gif') {
-                content = document.createElement('img');
-                content.src = fileURL;
-                enableZoom(content);
-            } else {
-                content = document.createElement('p');
-                content.textContent = `Unsupported file type: ${file.name}`;
-                content.classList.add('error'); // Add error class for styling
-            }
+    function hydrate() {
+      try {
+        state.collections = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+      } catch {
+        state.collections = {};
+      }
+      state.activeCollectionId = localStorage.getItem(ACTIVE_KEY);
+      if (!state.activeCollectionId || !state.collections[state.activeCollectionId]) {
+        const firstId = Object.keys(state.collections)[0] || null;
+        state.activeCollectionId = firstId;
+      }
+      if (state.activeCollectionId) {
+        const c = getActiveCollection();
+        omniSearch.value = c.search || '';
+        sortBy.value = c.sortBy || 'name';
+        rowsInput.value = c.rows || 3;
+        colsInput.value = c.cols || 4;
+        sizeSlider.value = c.scale ?? 0;
+        collectionNameInput.value = c.name;
+      }
+      render();
+    }
 
-            if (content) {
-                portletDiv.appendChild(content);
-                portletContainerDiv.appendChild(portletDiv);
-            } else if (!content && fileType !== 'text') {
-                const errorDiv = document.createElement('div');
-                errorDiv.classList.add('portlet', 'error');
-                errorDiv.textContent = `Error loading ${file.name}`;
-                portletContainerDiv.appendChild(errorDiv);
-            }
+    function getActiveCollection() {
+      return state.collections[state.activeCollectionId] || null;
+    }
 
-            // Add resizers
-            const resizers = ['top', 'bottom', 'left', 'right'];
-            resizers.forEach(resizer => {
-                const resizerDiv = document.createElement('div');
-                resizerDiv.classList.add('resizer', resizer);
-                portletContainerDiv.appendChild(resizerDiv);
-            });
+    function createCollectionFromFiles(files) {
+      const id = makeCollectionId();
+      const createdAt = nowStamp();
+      const name = createdAt;
+      const items = Array.from(files).map((file, index) => {
+        const relPath = file.webkitRelativePath || file.name;
+        const createdMs = null;
+        const modifiedMs = file.lastModified || Date.now();
+        return {
+          id: `${id}:${index}`,
+          name: file.name,
+          relPath,
+          size: file.size,
+          type: file.type,
+          createdMs,
+          modifiedMs,
+          createdLabel: createdMs ? new Date(createdMs).toISOString() : 'Unavailable',
+          modifiedLabel: new Date(modifiedMs).toISOString(),
+          closed: false,
+          minimized: false,
+          muted: false,
+          frozen: false,
+          order: index,
+          objectUrl: URL.createObjectURL(file)
+        };
+      });
 
-            return portletContainerDiv;
-        }
+      state.collections[id] = {
+        id,
+        name,
+        createdAt,
+        rows: Number(rowsInput.value) || 3,
+        cols: Number(colsInput.value) || 4,
+        scale: Number(sizeSlider.value) || 0,
+        search: omniSearch.value || '',
+        sortBy: sortBy.value || 'name',
+        page: 1,
+        items
+      };
+      state.activeCollectionId = id;
+      collectionNameInput.value = name;
+      state.page = 1;
+      persist();
+      render();
+    }
 
-        function handleFiles(files) {
-            portletContainer.innerHTML = ''; // Clear previous content
-            portlets = [];
-            revokeObjectURLs();
+    function parseSearch(query) {
+      const terms = query.trim().split(/\s+/).filter(Boolean);
+      const include = [];
+      const exclude = [];
+      terms.forEach(t => {
+        if (t.startsWith('-') && t.length > 1) exclude.push(t.slice(1).toLowerCase());
+        else include.push(t.toLowerCase());
+      });
+      return { include, exclude };
+    }
 
-            if (files.length > 0) {
-                loadingMessageDiv.textContent = 'Loading... 0 of ' + files.length;
-                loadingMessageDiv.classList.remove('hidden');
+    function searchable(item) {
+      return `${item.name} ${item.relPath} ${item.createdLabel} ${item.modifiedLabel} ${item.size} ${toBytesLabel(item.size)}`.toLowerCase();
+    }
 
-                const loadPromises = [];
-                for (let i = 0; i < files.length; i++) {
-                    const file = files[i];
-                    const promise = new Promise(resolve => {
-                        // Simulate a small delay to show the loading progress
-                        setTimeout(() => {
-                            const portlet = createPortlet(file, i, files.length);
-                            portlets.push(portlet);
-                            portletContainer.appendChild(portlet);
-                            loadingMessageDiv.textContent = `Loading... ${i + 1} of ${files.length}`;
-                            resolve();
-                        }, i * 100); // Stagger the loading slightly
-                    });
-                    loadPromises.push(promise);
-                }
+    function filteredSortedItems(collection) {
+      const { include, exclude } = parseSearch(collection.search || '');
+      let items = collection.items.filter(i => !i.closed);
 
-                Promise.all(loadPromises).then(() => {
-                    loadingMessageDiv.classList.add('hidden');
-                    attachDragAndResize();
-                    applyLayout(); // Apply saved layout after files are loaded
-                    observePortlets(); // Start observing for lazy loading
-                });
-            }
-        }
+      items = items.filter(item => {
+        const hay = searchable(item);
+        const incOk = include.every(t => hay.includes(t));
+        const excOk = exclude.every(t => !hay.includes(t));
+        return incOk && excOk;
+      });
 
-        fileInput.addEventListener('change', function() {
-            if (this.files.length > 0) {
-                handleFiles(this.files);
-            }
+      const sorter = collection.sortBy || 'name';
+      items.sort((a, b) => {
+        if (sorter === 'created') return (a.createdMs || 0) - (b.createdMs || 0);
+        if (sorter === 'modified') return (a.modifiedMs || 0) - (b.modifiedMs || 0);
+        return a.name.localeCompare(b.name);
+      });
+
+      items.sort((a, b) => a.order - b.order);
+      return items;
+    }
+
+    function pageInfoFrom(collection, items) {
+      const perPage = Math.max(1, (collection.rows || 1) * (collection.cols || 1));
+      const maxPage = Math.max(1, Math.ceil(items.length / perPage));
+      if (state.page > maxPage) state.page = maxPage;
+      if (state.page < 1) state.page = 1;
+      const start = (state.page - 1) * perPage;
+      return {
+        slice: items.slice(start, start + perPage),
+        perPage,
+        maxPage
+      };
+    }
+
+    function calcDisplayColumns(collection) {
+      const minCols = Math.max(1, Number(collection.cols) || 1);
+      const t = Math.max(0, Math.min(100, Number(collection.scale) || 0)) / 100;
+      const value = minCols - (minCols - 1) * t;
+      return Math.max(1, Math.round(value));
+    }
+
+    function updateCollectionFromControls() {
+      const c = getActiveCollection();
+      if (!c) return;
+      c.search = omniSearch.value;
+      c.sortBy = sortBy.value;
+      c.rows = Math.max(1, Number(rowsInput.value) || 1);
+      c.cols = Math.max(1, Number(colsInput.value) || 1);
+      c.scale = Math.max(0, Math.min(100, Number(sizeSlider.value) || 0));
+      c.name = collectionNameInput.value.trim() || c.name;
+      persist();
+    }
+
+    function renderPortlet(item) {
+      const card = document.createElement('article');
+      card.className = `portlet ${item.minimized ? 'collapsed' : ''}`;
+      card.draggable = true;
+      card.dataset.id = item.id;
+
+      card.addEventListener('dragstart', () => {
+        state.dragId = item.id;
+        card.classList.add('dragging');
+      });
+      card.addEventListener('dragend', () => {
+        card.classList.remove('dragging');
+      });
+      card.addEventListener('dragover', e => e.preventDefault());
+      card.addEventListener('drop', e => {
+        e.preventDefault();
+        reorderByDrop(state.dragId, item.id);
+      });
+
+      const titlebar = document.createElement('div');
+      titlebar.className = 'titlebar';
+
+      const title = document.createElement('div');
+      title.className = 'title';
+      title.title = item.relPath;
+      title.textContent = item.name;
+
+      const actions = document.createElement('div');
+      actions.className = 'actions';
+
+      const btnFull = iconBtn('⤢', 'Open in new tab', () => window.open(item.objectUrl, '_blank', 'noopener'));
+      const btnMute = iconBtn(item.muted ? '🔇' : '🔊', 'Mute/unmute', () => toggleMute(item.id));
+      const btnFreeze = iconBtn(item.frozen ? '▶' : '⏸', 'Freeze/continue', () => toggleFreeze(item.id));
+      const btnMin = iconBtn(item.minimized ? '▢' : '▁', 'Minimize/restore', () => toggleMinimized(item.id));
+      const btnClose = iconBtn('✕', 'Close', () => closeItem(item.id), 'danger');
+
+      actions.append(btnFull, btnMute, btnFreeze, btnMin, btnClose);
+      titlebar.append(title, actions);
+      card.appendChild(titlebar);
+
+      const content = document.createElement('div');
+      content.className = 'content';
+      const mediaType = (item.type || '').split('/')[0];
+      let node;
+
+      if (mediaType === 'image') {
+        node = document.createElement('img');
+        node.src = item.objectUrl;
+      } else if (mediaType === 'video') {
+        node = document.createElement('video');
+        node.src = item.objectUrl;
+        node.controls = true;
+        node.muted = item.muted;
+        if (!item.frozen) node.play().catch(() => {});
+      } else if (mediaType === 'audio') {
+        node = document.createElement('audio');
+        node.src = item.objectUrl;
+        node.controls = true;
+        node.muted = item.muted;
+        if (!item.frozen) node.play().catch(() => {});
+      } else if (item.type === 'text/html') {
+        node = document.createElement('iframe');
+        node.src = item.objectUrl;
+        node.title = item.name;
+      } else {
+        node = document.createElement('div');
+        node.className = 'hint';
+        node.textContent = `${item.name} (${item.type || 'unknown'}) preview unavailable`;
+      }
+
+      if (item.frozen && (node.tagName === 'VIDEO' || node.tagName === 'AUDIO')) node.pause();
+      content.appendChild(node);
+      card.appendChild(content);
+
+      const meta = document.createElement('div');
+      meta.className = 'meta';
+      meta.innerHTML = `
+        <div>Path: ${item.relPath}</div>
+        <div>Created: ${item.createdLabel}</div>
+        <div>Modified: ${item.modifiedLabel}</div>
+        <div>Size: ${toBytesLabel(item.size)}</div>
+      `;
+      card.appendChild(meta);
+
+      return card;
+    }
+
+    function iconBtn(text, title, onClick, cls = '') {
+      const b = document.createElement('button');
+      b.type = 'button';
+      b.textContent = text;
+      b.title = title;
+      if (cls) b.classList.add(cls);
+      b.addEventListener('click', e => {
+        e.stopPropagation();
+        onClick();
+      });
+      return b;
+    }
+
+    function reorderByDrop(dragId, dropId) {
+      const c = getActiveCollection();
+      if (!c || !dragId || !dropId || dragId === dropId) return;
+      const openItems = c.items.filter(i => !i.closed).sort((a, b) => a.order - b.order);
+      const from = openItems.findIndex(i => i.id === dragId);
+      const to = openItems.findIndex(i => i.id === dropId);
+      if (from < 0 || to < 0) return;
+      const [moved] = openItems.splice(from, 1);
+      openItems.splice(to, 0, moved);
+      openItems.forEach((it, idx) => {
+        const target = c.items.find(ci => ci.id === it.id);
+        target.order = idx;
+      });
+      persist();
+      render();
+    }
+
+    function toggleMute(id) {
+      const c = getActiveCollection();
+      const item = c?.items.find(i => i.id === id);
+      if (!item) return;
+      item.muted = !item.muted;
+      persist();
+      render();
+    }
+
+    function toggleFreeze(id) {
+      const c = getActiveCollection();
+      const item = c?.items.find(i => i.id === id);
+      if (!item) return;
+      item.frozen = !item.frozen;
+      persist();
+      render();
+    }
+
+    function toggleMinimized(id) {
+      const c = getActiveCollection();
+      const item = c?.items.find(i => i.id === id);
+      if (!item) return;
+      item.minimized = !item.minimized;
+      persist();
+      render();
+    }
+
+    function closeItem(id) {
+      const c = getActiveCollection();
+      const item = c?.items.find(i => i.id === id);
+      if (!item) return;
+      item.closed = true;
+      persist();
+      render();
+    }
+
+    function exportList() {
+      const c = getActiveCollection();
+      if (!c) return;
+      const rows = c.items.filter(i => !i.closed).map(i => i.relPath);
+      const blob = new Blob([rows.join('\n') + '\n'], { type: 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${c.name.replace(/[^a-z0-9-_]+/gi, '_') || 'collection'}_paths.txt`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    function render() {
+      const c = getActiveCollection();
+      grid.innerHTML = '';
+      if (!c) {
+        collectionMeta.textContent = 'No collection loaded.';
+        pageInfo.textContent = 'Page 1/1';
+        const empty = document.createElement('div');
+        empty.className = 'empty';
+        empty.textContent = 'Select a folder to create a collection.';
+        grid.appendChild(empty);
+        return;
+      }
+
+      collectionNameInput.value = c.name;
+      rowsInput.value = c.rows;
+      colsInput.value = c.cols;
+      sizeSlider.value = c.scale;
+      omniSearch.value = c.search || '';
+      sortBy.value = c.sortBy || 'name';
+
+      const items = filteredSortedItems(c);
+      const { slice, maxPage } = pageInfoFrom(c, items);
+      const displayCols = calcDisplayColumns(c);
+      grid.style.setProperty('--display-cols', String(displayCols));
+
+      pageInfo.textContent = `Page ${state.page}/${maxPage} • showing ${slice.length} of ${items.length}`;
+      collectionMeta.textContent = `Collection created: ${c.createdAt}`;
+
+      if (slice.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'empty';
+        empty.textContent = 'No files match current filters.';
+        grid.appendChild(empty);
+        return;
+      }
+
+      slice.forEach(item => grid.appendChild(renderPortlet(item)));
+    }
+
+    folderInput.addEventListener('change', (e) => {
+      const files = e.target.files;
+      if (files && files.length) {
+        createCollectionFromFiles(files);
+      }
+    });
+
+    [rowsInput, colsInput, omniSearch, sortBy, sizeSlider].forEach(el => {
+      el.addEventListener('input', () => {
+        updateCollectionFromControls();
+        state.page = 1;
+        render();
+      });
+      el.addEventListener('change', () => {
+        updateCollectionFromControls();
+        state.page = 1;
+        render();
+      });
+    });
+
+    collectionNameInput.addEventListener('input', () => {
+      const c = getActiveCollection();
+      if (!c) return;
+      c.name = collectionNameInput.value;
+      persist();
+      render();
+    });
+
+    prevPageBtn.addEventListener('click', () => {
+      state.page -= 1;
+      render();
+    });
+
+    nextPageBtn.addEventListener('click', () => {
+      state.page += 1;
+      render();
+    });
+
+    exportBtn.addEventListener('click', exportList);
+
+    window.addEventListener('beforeunload', () => {
+      Object.values(state.collections).forEach(c => {
+        c.items.forEach(item => {
+          if (item.objectUrl?.startsWith('blob:')) URL.revokeObjectURL(item.objectUrl);
         });
+      });
+    });
 
-        function showFullscreen(url, type, filename) {
-            fullscreenContent.innerHTML = '';
-            let content;
-            const fileType = type.split('/')[0];
-
-            if (fileType === 'image') {
-                content = document.createElement('img');
-                content.src = url;
-                enableZoomFullscreen(content);
-            } else if (fileType === 'video') {
-                content = document.createElement('video');
-                content.src = url;
-                content.controls = true;
-            } else if (fileType === 'audio') {
-                content = document.createElement('audio');
-                content.src = url;
-                content.controls = true;
-            } else if (fileType === 'text' && type === 'text/html') {
-                content = document.createElement('iframe');
-                content.src = url;
-            } else if (type === 'image/gif') {
-                content = document.createElement('img');
-                content.src = url;
-                enableZoomFullscreen(content);
-            } else {
-                content = document.createElement('p');
-                content.textContent = `Unsupported file type: ${filename}`;
-            }
-
-            if (content) {
-                fullscreenContent.appendChild(content);
-                fullscreenView.classList.remove('hidden');
-            }
-        }
-
-        fullscreenCloseButton.addEventListener('click', () => {
-            fullscreenView.classList.add('hidden');
-            // Reset zoom in fullscreen if applicable
-            const zoomedElement = fullscreenContent.querySelector('img, iframe, video, audio');
-            if (zoomedElement) {
-                zoomedElement.style.transform = 'translate(0px, 0px) scale(1)';
-            }
-        });
-
-        function enableZoom(element) {
-            let scale = 1;
-            const zoomSensitivity = 0.05;
-            let isDragging = false;
-            let startX = 0;
-            let startY = 0;
-            let translateX = 0;
-            let translateY = 0;
-
-            element.style.transformOrigin = 'center center';
-            element.style.cursor = 'grab';
-
-            function applyTransform() {
-                element.style.transform = `translate(${translateX}px, <span class="math-inline">\{translateY\}px\) scale\(</span>{scale})`;
-            }
-
-            element.addEventListener('wheel', function(event) {
-                event.preventDefault();
-                scale += event.deltaY * -zoomSensitivity;
-                scale = Math.max(0.1, Math.min(scale, 5));
-                applyTransform();
-            }, { passive: false });
-
-            element.addEventListener('mousedown', function(event) {
-                isDragging = true;
-                startX = event.clientX - translateX;
-                startY = event.clientY - translateY;
-                element.style.cursor = 'grabbing';
-            });
-
-            window.addEventListener('mouseup', function() {
-                isDragging = false;
-                element.style.cursor = 'grab';
-            });
-
-            element.addEventListener('mousemove', function(event) {
-                if (!isDragging) return;
-                translateX = event.clientX - startX;
-                translateY = event.clientY - startY;
-                applyTransform();
-            });
-
-            let initialPinchDistance = null;
-            let initialScale = null;
-
-            element.addEventListener('touchstart', function(event) {
-                if (event.touches.length === 2) {
-                    initialPinchDistance = Math.hypot(
-                        event.touches[0].clientX - event.touches[1].clientX,
-                        event.touches[0].clientY - event.touches[1].clientY
-                    );
-                    initialScale = scale;
-                } else if (event.touches.length === 1) {
-                    isDragging = true;
-                    startX = event.touches[0].clientX - translateX;
-                    startY = event.touches[0].clientY - translateY;
-                    element.style.cursor = 'grabbing';
-                }
-            }, { passive: false });
-
-            window.addEventListener('touchend', function() {
-                initialPinchDistance = null;
-                isDragging = false;
-                element.style.cursor = 'grab';
-            });
-
-            element.addEventListener('touchmove', function(event) {
-                event.preventDefault();
-                if (initialPinchDistance !== null && event.touches.length === 2) {
-                    const currentPinchDistance = Math.hypot(
-                        event.touches[0].clientX - event.touches[1].clientX,
-                        event.touches[0].clientY - event.touches[1].clientY
-                    );
-                    scale = initialScale + (currentPinchDistance - initialPinchDistance) * zoomSensitivity * 5;
-                    scale = Math.max(0.1, Math.min(scale, 5));
-                    applyTransform();
-                } else if (isDragging && event.touches.length === 1) {
-                    translateX = event.touches[0].clientX - startX;
-                    translateY = event.touches[0].clientY - startY;
-                    applyTransform();
-                }
-            }, { passive: false });
-        }
-
-        function enableZoomFullscreen(element) {
-            let scale = 1;
-            const zoomSensitivity = 0.05;
-            let isDragging = false;
-            let startX = 0;
-            let startY = 0;
-            let translateX = 0;
-            let translateY = 0;
-
-            element.style.transformOrigin = 'center center';
-            element.style.cursor = 'grab';
-
-            function applyTransform() {
-                element.style.transform = `translate(${translateX}px, <span class="math-inline">\{translateY\}px\) scale\(</span>{scale})`;
-            }
-
-            element.addEventListener('wheel', function(event) {
-                event.preventDefault();
-				scale += event.deltaY * -zoomSensitivity;
-                scale = Math.max(0.1, Math.min(scale, 5));
-                applyTransform();
-            }, { passive: false });
-
-            element.addEventListener('mousedown', function(event) {
-                isDragging = true;
-                startX = event.clientX - translateX;
-                startY = event.clientY - translateY;
-                element.style.cursor = 'grabbing';
-            });
-
-            window.addEventListener('mouseup', function() {
-                isDragging = false;
-                element.style.cursor = 'grab';
-            });
-
-            element.addEventListener('mousemove', function(event) {
-                if (!isDragging) return;
-                translateX = event.clientX - startX;
-                translateY = event.clientY - startY;
-                applyTransform();
-            });
-
-            let initialPinchDistance = null;
-            let initialScale = null;
-
-            element.addEventListener('touchstart', function(event) {
-                if (event.touches.length === 2) {
-                    initialPinchDistance = Math.hypot(
-                        event.touches[0].clientX - event.touches[1].clientX,
-                        event.touches[0].clientY - event.touches[1].clientY
-                    );
-                    initialScale = scale;
-                } else if (event.touches.length === 1) {
-                    isDragging = true;
-                    startX = event.touches[0].clientX - translateX;
-                    startY = event.touches[0].clientY - translateY;
-                    element.style.cursor = 'grabbing';
-                }
-            }, { passive: false });
-
-            window.addEventListener('touchend', function() {
-                initialPinchDistance = null;
-                isDragging = false;
-                element.style.cursor = 'grab';
-            });
-
-            element.addEventListener('touchmove', function(event) {
-                event.preventDefault();
-                if (initialPinchDistance !== null && event.touches.length === 2) {
-                    const currentPinchDistance = Math.hypot(
-                        event.touches[0].clientX - event.touches[1].clientX,
-                        event.touches[0].clientY - event.touches[1].clientY
-                    );
-                    scale = initialScale + (currentPinchDistance - initialPinchDistance) * zoomSensitivity * 5;
-                    scale = Math.max(0.1, Math.min(scale, 5));
-                    applyTransform();
-                } else if (isDragging && event.touches.length === 1) {
-                    translateX = event.touches[0].clientX - startX;
-                    translateY = event.touches[0].clientY - startY;
-                    applyTransform();
-                }
-            }, { passive: false });
-        }
-
-        function attachDragAndResize() {
-            portlets.forEach(portletContainer => {
-                const header = portletContainer.querySelector('.portlet-header');
-                const resizers = portletContainer.querySelectorAll('.resizer');
-
-                // Make portlets draggable
-                header.addEventListener('mousedown', (e) => {
-                    isDraggingPortlet = portletContainer;
-                    portletContainer.style.cursor = 'grabbing';
-                    dragOffsetX = e.clientX - portletContainer.getBoundingClientRect().left;
-                    dragOffsetY = e.clientY - portletContainer.getBoundingClientRect().top;
-                    portletContainer.style.zIndex = 1000; // Bring to front while dragging
-                });
-
-                window.addEventListener('mousemove', (e) => {
-                    if (!isDraggingPortlet) return;
-                    isDraggingPortlet.style.left = e.clientX - dragOffsetX + 'px';
-                    isDraggingPortlet.style.top = e.clientY - dragOffsetY + 'px';
-                });
-
-                window.addEventListener('mouseup', () => {
-                    if (isDraggingPortlet) {
-                        isDraggingPortlet.style.cursor = 'grab';
-                        isDraggingPortlet.style.zIndex = 'auto';
-
-                        // Calculate the new position in the flow
-                        const containerRect = portletContainer.parentNode.getBoundingClientRect();
-                        const draggedRect = isDraggingPortlet.getBoundingClientRect();
-                        let newIndex = -1;
-                        for (let i = 0; i < portletContainer.parentNode.children.length; i++) {
-                            const sibling = portletContainer.parentNode.children[i];
-                            if (sibling !== isDraggingPortlet) {
-                                const siblingRect = sibling.getBoundingClientRect();
-                                if (draggedRect.left >= siblingRect.left && draggedRect.left < siblingRect.right &&
-                                    draggedRect.top >= siblingRect.top && draggedRect.top < siblingRect.bottom) {
-                                    newIndex = i;
-                                    break;
-                                } else if (draggedRect.right > siblingRect.left && draggedRect.right <= siblingRect.right &&
-                                           draggedRect.top >= siblingRect.top && draggedRect.top < siblingRect.bottom &&
-                                           newIndex === -1) {
-                                    newIndex = i + 1;
-                                }
-                            }
-                        }
-
-                        if (newIndex !== -1 && newIndex < portletContainer.parentNode.children.length) {
-                            portletContainer.parentNode.insertBefore(isDraggingPortlet, portletContainer.parentNode.children[newIndex]);
-                        } else if (newIndex === -1 && portletContainer.parentNode.children.length > 1) {
-                            portletContainer.parentNode.appendChild(isDraggingPortlet);
-                        }
-
-                        // Reset position to be within the flex flow
-                        isDraggingPortlet.style.position = 'relative';
-                        isDraggingPortlet.style.left = 'auto';
-                        isDraggingPortlet.style.top = 'auto';
-                        isDraggingPortlet = null;
-                        saveLayout();
-                    }
-                });
-
-                // Make portlets resizable
-                resizers.forEach(resizer => {
-                    let startX, startY, startWidth, startHeight;
-
-                    resizer.addEventListener('mousedown', (e) => {
-                        isResizing = true;
-                        startX = e.clientX;
-                        startY = e.clientY;
-                        startWidth = parseInt(getComputedStyle(portletContainer).width, 10);
-                        startHeight = parseInt(getComputedStyle(portletContainer).height, 10);
-                        document.body.style.cursor = getComputedStyle(resizer).cursor;
-                    });
-
-                    window.addEventListener('mousemove', (e) => {
-                        if (!isResizing) return;
-                        const dx = e.clientX - startX;
-                        const dy = e.clientY - startY;
-
-                        if (resizer.classList.contains('right')) {
-                            portletContainer.style.width = startWidth + dx + 'px';
-                        } else if (resizer.classList.contains('left')) {
-                            portletContainer.style.width = Math.max(50, startWidth - dx) + 'px';
-                        } else if (resizer.classList.contains('bottom')) {
-                            portletContainer.style.height = startHeight + dy + 'px';
-                        } else if (resizer.classList.contains('top')) {
-                            portletContainer.style.height = Math.max(50, startHeight - dy) + 'px';
-                        }
-                    });
-
-                    window.addEventListener('mouseup', () => {
-                        if (isResizing) {
-                            isResizing = false;
-                            document.body.style.cursor = 'default';
-                            saveLayout();
-                        }
-                    });
-                });
-            });
-        }
-
-        let observer;
-
-        function observePortlets() {
-            observer = new IntersectionObserver((entries) => {
-                entries.forEach(entry => {
-                    if (entry.isIntersecting && entry.target.dataset.src && !entry.target.src) {
-                        entry.target.src = entry.target.dataset.src;
-                        delete entry.target.dataset.src; // Prevent loading again
-                    }
-                });
-            }, { rootMargin: '50px 50px 50px 50px' }); // Load elements slightly before they enter the viewport
-
-            portlets.forEach(portletContainer => {
-                const img = portletContainer.querySelector('img');
-                const iframe = portletContainer.querySelector('iframe');
-                const video = portletContainer.querySelector('video');
-                const audio = portletContainer.querySelector('audio');
-
-                if (img && !img.src) {
-                    img.dataset.src = img.src;
-                    img.removeAttribute('src');
-                    observer.observe(img);
-                } else if (iframe && !iframe.src) {
-                    iframe.dataset.src = iframe.src;
-                    iframe.removeAttribute('src');
-                    observer.observe(iframe);
-                } else if (video && !video.src) {
-                    video.dataset.src = video.src;
-                    video.removeAttribute('src');
-                    observer.observe(video);
-                } else if (audio && !audio.src) {
-                    audio.dataset.src = audio.src;
-                    audio.removeAttribute('src');
-                    observer.observe(audio);
-                }
-            });
-        }
-
-        loadLayout(); // Load saved layout on page load
-    </script>
+    hydrate();
+  </script>
 </body>
 </html>
