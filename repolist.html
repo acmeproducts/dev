@@ -47,11 +47,15 @@
       overflow: hidden;
       box-shadow: 0 8px 28px rgba(15, 23, 42, 0.08);
     }
+    .table-scroll {
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+    }
     table { width: 100%; border-collapse: collapse; }
     thead th {
-      background: #f6f8fc;
+      background: #dbeafe;
       border-bottom: 1px solid #d9e1ee;
-      color: #334155;
+      color: #000000;
       font-size: 0.78rem;
       letter-spacing: 0.04em;
       text-transform: uppercase;
@@ -60,15 +64,15 @@
       user-select: none;
       cursor: pointer;
     }
-    thead th:last-child { cursor: default; }
-    thead th[data-active="true"]::after { content: attr(data-dir); margin-left: 7px; color: #2563eb; }
+    [data-sort-key][data-active="true"]::after { content: attr(data-dir); margin-left: 6px; color: #2563eb; }
 
     tbody td {
       border-bottom: 1px solid #e3e8f3;
       border-right: 1px solid #ebf0f7;
-      padding: 10px 12px;
-      font-size: 0.92rem;
+      padding: 7px 10px;
+      font-size: 0.88rem;
       vertical-align: middle;
+      line-height: 1.25;
     }
     tbody td:last-child { border-right: 0; }
     tbody tr:nth-child(odd) td { background: #ffffff; }
@@ -76,19 +80,62 @@
     tbody tr:hover td { background: #eef4ff; }
 
     .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.84rem; }
-    .changed-cell { min-width: 220px; }
-    .commit-msg { font-weight: 600; color: #0f172a; margin-bottom: 2px; }
-    .commit-ago { font-size: 0.84rem; color: #64748b; }
+    .name-cell { min-width: 220px; }
+    .details-cell { min-width: 260px; width: 42%; }
+    .file-primary {
+      display: block;
+      font-weight: 600;
+      color: #0f172a;
+      line-height: 1.2;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .file-secondary {
+      display: block;
+      margin-top: 1px;
+      font-size: 0.76rem;
+      color: #94a3b8;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .detail-stack {
+      display: grid;
+      gap: 1px;
+      line-height: 1.15;
+    }
+    .detail-size {
+      font-size: 0.77rem;
+      color: #334155;
+      font-weight: 600;
+    }
+    .commit-ago {
+      font-size: 0.76rem;
+      color: #64748b;
+      white-space: nowrap;
+    }
+    .commit-msg {
+      font-size: 0.76rem;
+      color: #475569;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
     a { color: #1d4ed8; text-decoration: none; font-weight: 600; }
     a:hover { text-decoration: underline; }
 
-    .actions { display: flex; align-items: center; justify-content: center; gap: 8px; }
-    .links-cell {
-      white-space: nowrap;
-      width: 180px;
-      min-width: 180px;
+    .actions { white-space: nowrap; }
+    .action-group {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 2px;
+      border: 1px solid #dbe3f0;
+      border-radius: 10px;
+      background: #f8fbff;
     }
-    .link-icon {
+    .action-btn {
       display: inline-flex;
       align-items: center;
       justify-content: center;
@@ -98,27 +145,27 @@
       border-radius: 8px;
       background: #fff;
       color: #334155;
-      font-size: 0.86rem;
+      font-size: 0.72rem;
       text-decoration: none;
       font-weight: 700;
+      padding: 0;
+      cursor: pointer;
     }
-    .link-icon:hover {
+    .action-btn:hover {
       background: #f8fafc;
       text-decoration: none;
     }
-    .row-delete {
-      border: 1px solid #cbd5e1;
-      background: #f1f5f9;
-      color: #64748b;
-      border-radius: 999px;
-      width: 24px;
-      height: 24px;
-      padding: 0;
-      font-size: 0.8rem;
-      line-height: 1;
-      cursor: pointer;
+    .action-btn.ghost {
+      color: #94a3b8;
+      cursor: default;
+      background: #f8fafc;
     }
-    .row-delete:hover { background: #e2e8f0; color: #334155; }
+    .action-btn.delete {
+      background: #fef2f2;
+      color: #b91c1c;
+      border-color: #fecaca;
+    }
+    .action-btn.delete:hover { background: #fee2e2; }
 
     .recycle {
       margin: 12px 0;
@@ -173,18 +220,6 @@
     }
     .mini.danger:hover { background: #fee2e2; }
     .empty { color: #64748b; font-size: 0.9rem; padding: 12px; }
-    .edit-btn {
-      border: 1px solid #cbd5e1;
-      background: #ffffff;
-      color: #334155;
-      border-radius: 8px;
-      width: 28px;
-      height: 28px;
-      padding: 0;
-      cursor: pointer;
-      font-size: 0.95rem;
-    }
-    .edit-btn:hover { background: #f8fafc; }
     .modal {
       position: fixed;
       inset: 0;
@@ -209,6 +244,13 @@
     .modal-grid label { font-size: 0.85rem; color: #475569; }
     .modal-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 10px; }
     .ghost { background: #fff; color: #334155; border-color: #cbd5e1; }
+    @media (max-width: 760px) {
+      .wrap { width: min(1200px, 99vw); margin: 10px auto 16px; }
+      .controls { grid-template-columns: 1fr; }
+      th, td { padding: 7px 8px; }
+      .details-cell { min-width: 180px; width: auto; }
+      .action-btn { width: 26px; height: 26px; }
+    }
   </style>
 </head>
 <body>
@@ -226,19 +268,22 @@
     </section>
 
     <section class="card">
+      <div class="table-scroll">
       <table>
         <thead>
           <tr>
-            <th data-key="name">Name</th>
-            <th>Links</th>
-            <th>Commit</th>
-            <th data-key="size">Size</th>
-            <th data-key="changed">Changed</th>
-            <th>Delete</th>
+            <th><button class="mini" type="button" data-sort-key="name">File</button></th>
+            <th>
+              <span>Details</span>
+              <button class="mini" type="button" data-sort-key="size">Size</button>
+              <button class="mini" type="button" data-sort-key="changed">Changed</button>
+            </th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody id="rows"></tbody>
       </table>
+      </div>
     </section>
   </main>
   <div id="editModal" class="modal" role="dialog" aria-modal="true" aria-label="Edit file metadata">
@@ -263,7 +308,7 @@
 
   <script>
     const PAT_KEY = 'repolist:pat';
-    const state = { files: [], sortKey: 'name', sortDir: 'asc', repo: null, recycleOpen: false, editPath: null, loading: false };
+    const state = { files: [], sortKey: 'changed', sortDir: 'desc', repo: null, recycleOpen: false, editPath: null, loading: false };
 
     function parseRepoLike(value) {
       if (!value) return null;
@@ -309,7 +354,26 @@
     function shortCommitMessage(message) {
       const line = String(message || '').split('\n')[0].trim();
       if (!line) return '—';
-      return line.length > 90 ? `${line.slice(0, 87)}…` : line;
+      return line.length > 60 ? `${line.slice(0, 60)}…` : line;
+    }
+
+    function shortFileName(path) {
+      const name = String(path || '').split('/').pop() || '';
+      return name.length > 20 ? `${name.slice(0, 20)}…` : name;
+    }
+
+    function pathHint(path) {
+      const full = String(path || '');
+      const i = full.lastIndexOf('/');
+      return i > 0 ? full.slice(0, i) : '';
+    }
+
+    function commitWrappedPreview(message) {
+      const text = shortCommitMessage(message || '');
+      if (!text || text === '—') return '—';
+      const parts = [];
+      for (let i = 0; i < text.length; i += 20) parts.push(text.slice(i, i + 20));
+      return parts.join('\n');
     }
 
     function encodePath(path) {
@@ -398,6 +462,16 @@
       }
     }
 
+    function loadMetadata() {
+      try { return JSON.parse(localStorage.getItem(storageKey('repolist:metadata')) || '{}'); }
+      catch (_) { return {}; }
+    }
+
+    function saveMetadata(meta) {
+      try { localStorage.setItem(storageKey('repolist:metadata'), JSON.stringify(meta)); }
+      catch (_) {}
+    }
+
     function saveRepoCache(cache) {
       try { localStorage.setItem(storageKey('repolist:cache'), JSON.stringify(cache)); }
       catch (_) {}
@@ -448,6 +522,8 @@
       files.sort((a, b) => {
         let av = a[key], bv = b[key];
         if (key === 'name') { av = av.toLowerCase(); bv = bv.toLowerCase(); }
+        else if (key === 'commitMessage') { av = (av || '').toLowerCase(); bv = (bv || '').toLowerCase(); }
+        else if (key === 'pagesUrl' || key === 'ghListingUrl') { av = (av || '').toLowerCase(); bv = (bv || '').toLowerCase(); }
         else if (key === 'changed') { av = av ? new Date(av).getTime() : 0; bv = bv ? new Date(bv).getTime() : 0; }
         if (av < bv) return -1 * dir;
         if (av > bv) return 1 * dir;
@@ -484,33 +560,41 @@
       const tbody = document.getElementById('rows');
       const files = sortedFiles();
       if (!files.length) {
-        tbody.innerHTML = '<tr><td colspan="6" class="empty">No visible files. Restore files from Recently Deleted if needed.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="3" class="empty">No visible files. Restore files from Recently Deleted if needed.</td></tr>';
       } else {
         tbody.innerHTML = files.map((f) => {
           const canLaunch = /\.html?$/i.test(f.path);
+          const hint = pathHint(f.path);
           return `<tr>
-            <td class="mono">${esc(f.path)}</td>
-            <td class="actions links-cell">
-              <button class="edit-btn" type="button" data-edit="${esc(f.path)}" aria-label="Edit ${esc(f.path)}">✎</button>
-              ${canLaunch ? `<a class="link-icon" href="${esc(f.pagesUrl)}" target="_blank" rel="noopener" aria-label="Open Pages URL for ${esc(f.path)}">Pg</a>` : '<span class="link-icon" aria-hidden="true">—</span>'}
-              <a class="link-icon" href="${esc(f.ghListingUrl)}" target="_blank" rel="noopener" aria-label="Open GitHub blob for ${esc(f.path)}">Gh</a>
+            <td class="mono name-cell" title="${esc(f.path)}">
+              <span class="file-primary">${esc(shortFileName(f.path))}</span>
+              ${hint ? `<span class="file-secondary">${esc(hint)}</span>` : ''}
             </td>
-            <td class="changed-cell">
-              <div class="commit-msg" title="${esc(f.commitMessage || '')}">${esc(shortCommitMessage(f.commitMessage || ''))}</div>
+            <td class="details-cell" title="${esc(f.commitMessage || '')}">
+              <div class="detail-stack">
+                <span class="detail-size">${esc(fmtSize(f.size))}</span>
+                <span class="commit-ago">${esc(fmtAgo(f.changed))}</span>
+                <span class="commit-msg">${esc(shortCommitMessage(f.commitMessage || ''))}</span>
+              </div>
             </td>
-            <td>${esc(fmtSize(f.size))}</td>
-            <td class="commit-ago">${esc(fmtAgo(f.changed))}</td>
-            <td class="actions"><button class="row-delete" type="button" data-delete="${esc(f.path)}" aria-label="Delete ${esc(f.path)}">×</button></td>
+            <td class="actions">
+              <div class="action-group">
+                <button class="action-btn" type="button" data-edit="${esc(f.path)}" aria-label="Edit ${esc(f.path)}">✎</button>
+                ${canLaunch ? `<a class="action-btn" href="${esc(f.pagesUrl)}" target="_blank" rel="noopener" aria-label="Open Pages URL for ${esc(f.path)}">Pg</a>` : '<span class="action-btn ghost" aria-hidden="true">Pg</span>'}
+                <a class="action-btn" href="${esc(f.ghListingUrl)}" target="_blank" rel="noopener" aria-label="Open GitHub blob for ${esc(f.path)}">Gh</a>
+                <button class="action-btn delete" type="button" data-delete="${esc(f.path)}" aria-label="Delete ${esc(f.path)}">×</button>
+              </div>
+            </td>
           </tr>`;
         }).join('');
         document.querySelectorAll('[data-delete]').forEach((btn) => btn.addEventListener('click', () => softDelete(btn.getAttribute('data-delete'))));
         document.querySelectorAll('[data-edit]').forEach((btn) => btn.addEventListener('click', () => openEdit(btn.getAttribute('data-edit'))));
       }
 
-      document.querySelectorAll('th[data-key]').forEach((th) => {
-        const active = th.dataset.key === state.sortKey;
-        th.dataset.active = active ? 'true' : 'false';
-        th.dataset.dir = active ? (state.sortDir === 'asc' ? '▲' : '▼') : '';
+      document.querySelectorAll('[data-sort-key]').forEach((el) => {
+        const active = el.dataset.sortKey === state.sortKey;
+        el.dataset.active = active ? 'true' : 'false';
+        el.dataset.dir = active ? (state.sortDir === 'asc' ? '▲' : '▼') : '';
       });
     }
 
@@ -530,6 +614,7 @@
         const headList = await fetchJson(`https://api.github.com/repos/${owner}/${name}/commits?per_page=1&sha=${encodeURIComponent(branch)}`);
         const headSha = Array.isArray(headList) && headList[0] ? headList[0].sha : null;
         const cache = loadRepoCache();
+        const metadata = loadMetadata();
         const cachedByPath = new Map((cache?.files || []).map((f) => [f.path, f]));
 
         if (cache && cache.branch === branch && cache.headSha && headSha && cache.headSha === headSha) {
@@ -566,16 +651,24 @@
           const commitData = (!changedPaths.has(item.path) && cached)
             ? { changed: cached.changed || null, message: cached.commitMessage || '' }
             : await fetchLatestCommitForPath(owner, name, branch, item.path);
+          const persistent = metadata[item.path] || {};
+          const finalChanged = commitData.changed || cached?.changed || persistent.changed || null;
+          const finalMessage = commitData.message || cached?.commitMessage || persistent.commitMessage || '';
           return {
             path: item.path,
             name: item.path.split('/').pop(),
             size: Number.isFinite(item.size) ? item.size : 0,
-            changed: commitData.changed || null,
-            commitMessage: commitData.message || '',
+            changed: finalChanged,
+            commitMessage: finalMessage,
             pagesUrl: pagesPrefix + encodedPath,
             ghListingUrl: `https://github.com/${owner}/${name}/blob/${branch}/${encodedPath}`
           };
         }));
+
+        saveMetadata(state.files.reduce((acc, file) => {
+          acc[file.path] = { changed: file.changed || null, commitMessage: file.commitMessage || '' };
+          return acc;
+        }, {}));
 
         saveRepoCache({
           branch,
@@ -693,9 +786,9 @@
       renderRecycleBin();
     });
 
-    document.querySelectorAll('th[data-key]').forEach((th) => {
-      th.addEventListener('click', () => {
-        const key = th.dataset.key;
+    document.querySelectorAll('[data-sort-key]').forEach((el) => {
+      el.addEventListener('click', () => {
+        const key = el.dataset.sortKey;
         if (state.sortKey === key) state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
         else { state.sortKey = key; state.sortDir = key === 'name' ? 'asc' : 'desc'; }
         render();
