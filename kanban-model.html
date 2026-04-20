@@ -493,38 +493,6 @@ function loadState(){
 }
 function loadTagHistory(){ try{ const arr=JSON.parse(localStorage.getItem(TAGS_KEY)||"[]"); return Array.isArray(arr)?arr:[]; }catch{ return []; } }
 function saveTagHistory(list){ const uniq=[...new Set(list.map(t=>String(t).toLowerCase()))]; trySave(TAGS_KEY, JSON.stringify(uniq)); return uniq; }
-function getActiveCardTags(){
-  return [...new Set(
-    (state.cards||[])
-      .flatMap(c=>Array.isArray(c.tags) ? c.tags : [])
-      .map(t=>String(t).trim().toLowerCase())
-      .filter(Boolean)
-  )];
-}
-function syncTagHistoryToActiveCards(){
-  tagHistory = saveTagHistory(getActiveCardTags());
-}
-function removeTagFromActiveCards(tag){
-  const target=String(tag||"").trim().toLowerCase();
-  if(!target) return;
-  let changed=false;
-  state.cards.forEach(card=>{
-    const before=Array.isArray(card.tags) ? card.tags.length : 0;
-    if(!before) return;
-    card.tags = card.tags.filter(t=>String(t).toLowerCase()!==target);
-    if(card.tags.length!==before){
-      card.updatedAt=Date.now();
-      changed=true;
-    }
-  });
-  syncTagHistoryToActiveCards();
-  if(changed){
-    scheduleSave();
-    render();
-  }else{
-    renderTagSuggestions();
-  }
-}
 
 /* ===== App State ===== */
 const persistedState = loadState();
@@ -542,7 +510,6 @@ state.cardCollapsed = state.cardCollapsed || {};
 state.layout = state.layout || "auto";
 state.archive = Array.isArray(state.archive)? state.archive : [];
 let tagHistory = loadTagHistory();
-syncTagHistoryToActiveCards();
 const $ = s=>document.querySelector(s), $$ = s=>Array.from(document.querySelectorAll(s));
 function uid(){return Math.random().toString(36).slice(2,10)}
 function formatLastUpdated(ts){
@@ -736,20 +703,16 @@ let suppressNextCardClick=false;
 function isInteractiveCardTarget(target){
   return !!target?.closest?.('a,button,input,textarea,select,label,[contenteditable="true"]');
 }
-function shieldInteractiveControl(el){
-  if(!el) return el;
-  ["pointerdown","pointerup","mousedown","mouseup","click"].forEach(ev=>{
-    el.addEventListener(ev, e=>e.stopPropagation());
-  });
-  el.addEventListener("dragstart", e=>{
-    e.preventDefault();
-    e.stopPropagation();
-  });
-  return el;
+function hasActiveTextSelection(){
+  const sel = window.getSelection?.();
+  return !!sel && !sel.isCollapsed && String(sel).trim().length>0;
+}
+function isTextSelectableCardTarget(target){
+  return !!target?.closest?.('.card-detail,.live-notes-preview,.attachment-list,.attachment-item,.attachment-link,.card-tags,.chip');
 }
 function pointerFromCardStart(card, e){
   if(e.pointerType==="mouse") return;
-  if(isInteractiveCardTarget(e.target)) return;
+  if(isInteractiveCardTarget(e.target) || isTextSelectableCardTarget(e.target) || hasActiveTextSelection()) return;
   pointerDrag={id:card.id,pointerId:e.pointerId,startX:e.clientX,startY:e.clientY,startAt:Date.now(),active:false};
   card.setPointerCapture?.(e.pointerId);
 }
@@ -852,8 +815,10 @@ function buildInlineTagEditor(tagArr){
   const inputRow = document.createElement("div");
   inputRow.className = "inline-tag-input-row";
   const tagIn = document.createElement("input");
-  tagIn.placeholder = "type tag, press Enter";
-  inputRow.append(tagIn);
+  tagIn.placeholder = "type tag, Enter or Add";
+  const addBtn = document.createElement("button");
+  addBtn.type = "button"; addBtn.textContent = "Add";
+  inputRow.append(tagIn, addBtn);
 
   const sugLabel = document.createElement("div");
   sugLabel.className = "inline-tag-sug-label";
@@ -869,44 +834,43 @@ function buildInlineTagEditor(tagArr){
     tagArr.forEach(t=>{
       const chip = document.createElement("span"); chip.className = "chip";
       chip.innerHTML = `${escapeHtml(t)} <button type="button" title="remove tag">×</button>`;
-      chip.querySelector("button").onclick = e=>{ e.stopPropagation(); tagArr.splice(tagArr.indexOf(t),1); renderAssigned(); renderSuggestions(); tagIn.focus(); };
+      chip.querySelector("button").onclick = e=>{ e.stopPropagation(); tagArr.splice(tagArr.indexOf(t),1); renderAssigned(); renderSuggestions(); };
       assignedEl.appendChild(chip);
     });
   }
 
   function renderSuggestions(){
-    const q=tagIn.value.trim().toLowerCase();
     sugEl.innerHTML = "";
-    tagHistory
-      .filter(t=>!tagArr.includes(t))
-      .filter(t=>!q || t.includes(q))
-      .forEach(t=>{
+    const query = tagIn.value.trim().toLowerCase();
+    const show = query.length>0;
+    sugLabel.style.display = show ? "" : "none";
+    sugEl.style.display = show ? "" : "none";
+    if(!show) return;
+    tagHistory.filter(t=>!tagArr.includes(t) && t.toLowerCase().includes(query)).forEach(t=>{
       const chip = document.createElement("span"); chip.className = "chip";
       const txt = document.createElement("span"); txt.textContent = t;
       const rx = document.createElement("span"); rx.className = "sug-x"; rx.textContent = "×"; rx.title = "remove from list";
       chip.append(txt, rx);
       chip.onclick = e=>{
         e.stopPropagation();
-        if(e.target === rx){ removeTagFromActiveCards(t); return; }
+        if(e.target === rx){ tagHistory = saveTagHistory(tagHistory.filter(x=>x!==t)); renderSuggestions(); return; }
         if(!tagArr.includes(t)){ tagArr.push(t); renderAssigned(); renderSuggestions(); }
-        tagIn.focus();
       };
       sugEl.appendChild(chip);
     });
   }
 
   function commitInput(){
-    const raw = tagIn.value.trim().toLowerCase();
-    if(!raw) return;
-    const match = tagHistory.find(t=>t.includes(raw) && !tagArr.includes(t));
-    const chosen = match || raw;
-    if(chosen && !tagArr.includes(chosen)) tagArr.push(chosen);
+    const raw = tagIn.value.trim(); if(!raw) return;
+    raw.split(/[,\s]+/).forEach(piece=>{ const t=piece.trim().toLowerCase(); if(t&&!tagArr.includes(t)) tagArr.push(t); });
     tagIn.value = "";
+    bumpTagHistory(tagArr);
     renderAssigned(); renderSuggestions();
   }
 
   tagIn.addEventListener("keydown", e=>{ if(e.key==="Enter"||e.key===","){ e.preventDefault(); e.stopPropagation(); commitInput(); } });
-  tagIn.addEventListener("input", renderSuggestions);
+  tagIn.addEventListener("input", ()=> renderSuggestions());
+  addBtn.addEventListener("click", e=>{ e.stopPropagation(); commitInput(); });
 
   renderAssigned(); renderSuggestions();
   return wrap;
@@ -915,7 +879,12 @@ function buildInlineTagEditor(tagArr){
 function renderCard(card){
   const el=document.createElement("article"); el.className="card"; el.draggable=true; el.dataset.id=card.id;
   el.addEventListener("dragstart", e=>{
-    if(isInteractiveCardTarget(e.target) || e.target.closest('.card-links,.live-notes-preview,.attachment-list')){
+    if(
+      isInteractiveCardTarget(e.target) ||
+      isTextSelectableCardTarget(e.target) ||
+      hasActiveTextSelection() ||
+      e.target.closest('.card-links,.live-notes-preview,.attachment-list')
+    ){
       e.preventDefault();
       return;
     }
@@ -1012,10 +981,7 @@ function renderCard(card){
   el.append(tagsRow);
 
   const detail=document.createElement("div"); detail.className="card-detail";
-  ["pointerdown","pointerup","mousedown","mouseup","click","dragstart"].forEach(ev=>detail.addEventListener(ev, e=>{
-    if(ev==="dragstart") e.preventDefault();
-    e.stopPropagation();
-  }));
+  ["pointerdown","pointerup","mousedown","mouseup","dragstart"].forEach(ev=>detail.addEventListener(ev, e=>e.stopPropagation()));
   if(isCollapsed) detail.classList.add("collapsed");
 
   const inlineState={
@@ -1122,27 +1088,22 @@ function renderCard(card){
   titleInput.value=inlineState.title;
   titleInput.placeholder="Card title";
   titleInput.addEventListener("input", ()=>{ inlineState.title=titleInput.value; });
-  shieldInteractiveControl(titleInput);
 
   const platformSelect=document.createElement("select");
   state.platforms.forEach(pl=>{ const opt=document.createElement("option"); opt.value=pl; opt.textContent=pl; if(pl===inlineState.platform) opt.selected=true; platformSelect.append(opt); });
   platformSelect.addEventListener("change", ()=>{ inlineState.platform=platformSelect.value; });
-  shieldInteractiveControl(platformSelect);
 
   const stageSelect=document.createElement("select");
   state.stages.forEach(st=>{ const opt=document.createElement("option"); opt.value=st; opt.textContent=st; if(st===inlineState.stage) opt.selected=true; stageSelect.append(opt); });
   stageSelect.addEventListener("change", ()=>{ inlineState.stage=stageSelect.value; });
-  shieldInteractiveControl(stageSelect);
 
   const devInput=document.createElement("input");
   devInput.type="url"; devInput.placeholder="https://dev…"; devInput.value=inlineState.dev;
   devInput.addEventListener("input", ()=>{ inlineState.dev=devInput.value; });
-  shieldInteractiveControl(devInput);
 
   const liveInput=document.createElement("input");
   liveInput.type="url"; liveInput.placeholder="https://live…"; liveInput.value=inlineState.live;
   liveInput.addEventListener("input", ()=>{ inlineState.live=liveInput.value; });
-  shieldInteractiveControl(liveInput);
 
   // NEW: inline tag editor replaces plain tagsInput
   const inlineTagEditor = buildInlineTagEditor(inlineState.tagArr);
@@ -1197,7 +1158,6 @@ function renderCard(card){
     e.stopPropagation();
   });
   notesWrap.append(notesInput, notesPreview);
-  shieldInteractiveControl(notesInput);
   showInlineNotesPreview();
 
   const attachmentsWrap=document.createElement("ul");
@@ -1354,13 +1314,15 @@ function refillSelects(){ $("#fPlatform").innerHTML = state.platforms.map(p=>`<o
 /* ===== Tagging UI ===== */
 const tagInput=$("#tagInput"), tagChips=$("#tagChips"), tagSuggestions=$("#tagSuggestions"), hiddenTags=$("#fTags");
 function commitTagFromInput(){
-  const raw = tagInput.value.trim().toLowerCase();
+  const raw = tagInput.value.trim();
   if(!raw) return;
-  const selected = getFilteredTagSuggestions(raw).find(t=>!activeTags.includes(t));
-  const nextTag = selected || raw;
-  if(nextTag && !activeTags.includes(nextTag)) activeTags.push(nextTag);
+  raw.split(/[\,\s]+/).forEach(piece=>{
+    const t = piece.trim().toLowerCase();
+    if(t && !activeTags.includes(t)) activeTags.push(t);
+  });
   tagInput.value="";
   renderTagChips();
+  bumpTagHistory(activeTags);
   renderTagSuggestions();
 }
 tagInput.addEventListener("keydown", (e)=>{ if(e.key==="Enter" || e.key===","){ e.preventDefault(); commitTagFromInput(); } });
@@ -1376,26 +1338,24 @@ function renderTagChips(){
   hiddenTags.value = activeTags.join(",");
 }
 function renderTagSuggestions(){
-  tagSuggestions.innerHTML=""; if(!tagHistory.length) return;
-  const query=tagInput.value.trim().toLowerCase();
-  const suggestions=getFilteredTagSuggestions(query);
+  tagSuggestions.innerHTML="";
+  const query = tagInput.value.trim().toLowerCase();
+  if(!query || !tagHistory.length) return;
   const seen=new Set();
-  suggestions.forEach(t=>{
-    const k=t.toLowerCase(); if(seen.has(k)) return; seen.add(k);
+  tagHistory.forEach(t=>{
+    const k=t.toLowerCase();
+    if(!k.includes(query) || seen.has(k) || activeTags.includes(t)) return;
+    seen.add(k);
     const el=document.createElement("span"); el.className="chip";
     const txt=document.createElement("span"); txt.textContent=t;
-    const rm=document.createElement("span"); rm.textContent="×"; rm.className="remove"; rm.title="delete tag from active cards";
+    const rm=document.createElement("span"); rm.textContent="×"; rm.className="remove"; rm.title="remove from history";
     el.append(txt,rm);
     el.onclick=(e)=>{
-      if(e.target===rm){ removeTagFromActiveCards(t); return; }
-      if(!activeTags.includes(t)){ activeTags.push(t); renderTagChips(); }
+      if(e.target===rm){ tagHistory=saveTagHistory(tagHistory.filter(x=>x!==t)); renderTagSuggestions(); return; }
+      if(!activeTags.includes(t)){ activeTags.push(t); renderTagChips(); renderTagSuggestions(); }
     };
     tagSuggestions.appendChild(el);
   });
-}
-function getFilteredTagSuggestions(query=""){
-  const q=String(query||"").trim().toLowerCase();
-  return tagHistory.filter(t=>(!q || t.includes(q)));
 }
 
 /* ===== Attachments ===== */
@@ -1475,15 +1435,13 @@ $("#bKeySwitch").addEventListener("click", ()=>{
   // reload state from the new slot
   const fresh = loadState();
   if(fresh){
-    Object.assign(state, fresh);
-    state.collapsed   = state.collapsed||{};
-    state.cardCollapsed = state.cardCollapsed||{};
-    state.archive     = Array.isArray(state.archive)?state.archive:[];
-    state.layout      = state.layout||"auto";
-    syncTagHistoryToActiveCards();
+    state = fresh;
+    state.collapsed = (state.collapsed && typeof state.collapsed==="object") ? state.collapsed : {};
+    state.cardCollapsed = (state.cardCollapsed && typeof state.cardCollapsed==="object") ? state.cardCollapsed : {};
+    state.archive = Array.isArray(state.archive) ? state.archive : [];
+    state.layout = state.layout || "auto";
   } else {
     state.cards=[]; state.archive=[]; state.collapsed={}; state.cardCollapsed={};
-    syncTagHistoryToActiveCards();
   }
   boardsDialog.close();
   render();
@@ -1557,7 +1515,6 @@ function applyImportedBoard(obj, sourceLabel="import", options={}){
   state.cardCollapsed = state.cardCollapsed || {};
   state.lastModified = Number(state.lastModified||Date.now());
   state.cards.forEach(c=>{ c.statusColor=normalizeStatusColor(c.statusColor); });
-  syncTagHistoryToActiveCards();
   state.stages.forEach(st=>{ const list=state.cards.filter(c=>c.stage===st); list.sort((a,b)=>(a.pos??0)-(b.pos??0)||(a.createdAt-b.createdAt)); list.forEach((c,i)=>{ if(typeof c.pos!=="number") c.pos=(i+1)*1000; }); });
   clearTimeout(saveTimer);
   dirty=true;
@@ -1994,11 +1951,11 @@ function sanitizeMarkdownImages(s){
     updateKeyLabel();
     const fresh = loadState();
     if(fresh){
-      Object.assign(state, fresh);
-      state.collapsed = state.collapsed||{};
-      state.cardCollapsed = state.cardCollapsed||{};
-      state.archive = Array.isArray(state.archive)?state.archive:[];
-      state.layout = state.layout||"auto";
+      state = fresh;
+      state.collapsed = (state.collapsed && typeof state.collapsed==="object") ? state.collapsed : {};
+      state.cardCollapsed = (state.cardCollapsed && typeof state.cardCollapsed==="object") ? state.cardCollapsed : {};
+      state.archive = Array.isArray(state.archive) ? state.archive : [];
+      state.layout = state.layout || "auto";
     } else {
       state.cards=[]; state.archive=[]; state.collapsed={}; state.cardCollapsed={};
     }
