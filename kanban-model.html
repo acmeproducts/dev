@@ -1,0 +1,2069 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>AI Jobs Kanban</title>
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<style>
+:root{
+  --bg:#eef2f7;
+  --panel:#ffffff;
+  --text:#111;
+  --muted:#666;
+  --accent:#1f6feb;
+  --border:#d5dce7;
+  --danger:#b3261e;
+  --highlight:#ff7a00;
+  --search:#14532d;
+  --ok:#166534;
+  --err:#7f1d1d;
+  --toolbar-h:60px;
+  --searchbar-h:58px;
+  --stack-h:calc(var(--toolbar-h) + var(--searchbar-h));
+}
+*{box-sizing:border-box}
+html,body{height:100%}
+body{margin:0;font-family:system-ui,Segoe UI,Roboto,Ubuntu,Cantarell,Noto Sans,sans-serif;background:linear-gradient(180deg,#f4f7fb 0%, #e9eef5 100%);color:var(--text)}
+header{position:sticky;top:0;z-index:20;background:var(--panel);border-bottom:1px solid var(--border);}
+.toolbar{position:relative;z-index:22;padding:10px 16px;display:flex;gap:8px;align-items:center;flex-wrap:nowrap;white-space:nowrap;overflow:auto;background:var(--panel)}
+.toolbar .btn{flex:0 0 auto}
+.searchbar{position:relative;z-index:21;padding:10px 16px;border-top:1px solid var(--border);display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;background:var(--panel)}
+#search{width:100%;padding:10px 12px;border:1px solid var(--border);border-radius:10px;font-size:15px}
+#btnClearSearch{padding:8px 10px;border:1px solid var(--border);background:#fff;border-radius:8px;cursor:pointer}
+.btn{padding:10px 14px;border:1px solid var(--border);background:var(--panel);border-radius:10px;cursor:pointer;font-weight:600}
+.btn.primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.btn.danger{background:var(--danger);color:#fff;border-color:var(--danger)}
+.btn.small{padding:6px 8px;font-size:12px}
+.btn.icon{padding:4px 8px;font-size:14px;line-height:1}
+.btn.icon-btn{padding:8px;width:40px;height:40px;display:inline-flex;align-items:center;justify-content:center;color:#666}
+.btn.icon-btn svg{width:20px;height:20px;fill:currentColor}
+.btn.icon-btn:hover{color:#333;background:#f4f4f6}
+.btn:disabled{opacity:.6;cursor:not-allowed}
+.footer{padding:8px 16px;color:var(--muted);font-size:12px;text-align:right}
+
+/* Board key pill */
+.board-key-pill{display:inline-flex;align-items:center;gap:5px;border:1px solid var(--border);border-radius:999px;padding:6px 12px;font-size:13px;font-weight:600;cursor:pointer;background:#fff;white-space:nowrap;color:var(--muted)}
+.board-key-pill:hover{border-color:var(--accent);color:var(--accent)}
+.board-key-pill .bkp-name{color:var(--accent)}
+
+/* Layout */
+main#board{padding:16px;gap:16px;align-items:start;}
+main#board[data-layout="horizontal"], main#board[data-layout="auto"]{display:grid;grid-template-columns:repeat(auto-fit, minmax(320px,1fr));}
+main#board[data-layout="vertical"]{display:flex;flex-direction:column}
+
+/* Orientation-aware overrides when in AUTO layout */
+@media (orientation:portrait){
+  /* compact toolbar keep on one line */
+  .toolbar{gap:6px}
+  .btn{padding:8px 10px;font-size:14px}
+  main#board[data-layout="auto"]{grid-template-columns:1fr} /* stack lanes in portrait */
+}
+@media (orientation:landscape){
+  main#board[data-layout="auto"]{grid-template-columns:repeat(auto-fit, minmax(300px,1fr))} /* side-by-side lanes in landscape */
+}
+
+/* Lanes */
+.lane{background:var(--panel);border:1px solid var(--border);border-radius:14px;display:flex;flex-direction:column;min-height:0;box-shadow:0 8px 24px rgba(15,23,42,.06)}
+.lane.lane-drop-highlight{border-color:var(--highlight);box-shadow:0 0 0 2px var(--highlight) inset}
+.lane-header{padding:10px 12px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center;font-weight:700;gap:8px}
+.lane-header.dragging-lane{opacity:.6}
+.lane-title{display:flex;align-items:center;gap:8px}
+.lane-title-text{color:var(--text)}
+.lane-chevron{border:none;background:transparent;padding:0 2px;font-size:16px;line-height:1;color:#111;cursor:pointer}
+.lane-chevron[disabled]{color:#9ca3af;cursor:default}
+.lane-actions{display:flex;align-items:center;gap:6px}
+.lane-body{padding:8px;display:flex;flex-direction:column;gap:8px;min-height:0}
+.lane-body.collapsed{display:none}
+main#board[data-layout="vertical"] .lane-body{padding-inline:16px;touch-action:pan-y}
+main#board[data-layout="vertical"] .card{margin-inline:6px}
+
+/* Cards */
+.card{
+  background:#ffffff;
+  border:2px solid var(--border); /* grey oval border */
+  border-radius:14px;
+  display:flex;flex-direction:column;gap:6px;
+  padding:8px 12px;
+  cursor:grab;
+  min-height:46px;
+  box-shadow:0 4px 14px rgba(15,23,42,.06);
+  -webkit-user-drag: element;
+  user-select:none;
+  position:relative;
+  transition:border-color .08s ease, box-shadow .08s ease;
+  touch-action:manipulation;
+}
+.card *{ -webkit-user-drag: none; }
+.card.dragging{
+  opacity:.92;
+  border-color:#000;             /* source card outlined black */
+  box-shadow:0 0 0 2px #000 inset;
+}
+.card.search-hit{border-color:var(--search)}
+.card-line{display:flex;align-items:center;gap:8px;flex-wrap:nowrap;width:100%;min-width:0;justify-content:flex-start}
+.card-line{padding-right:26px}
+.card-title{font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:0 1 auto;min-width:0;max-width:100%;border:none;background:transparent;padding:0;text-align:left;cursor:pointer;color:#1f6feb}
+.card-platform{font-size:12px;color:var(--muted);border:1px solid var(--border);padding:2px 8px;border-radius:999px;flex:0 0 auto}
+.card-links{display:inline-flex;align-items:center;gap:8px;position:relative;z-index:1;flex:0 0 auto}
+.card-status-btn{border:1px solid var(--border);background:#fff;padding:0;display:inline-flex;align-items:center;justify-content:center;color:#6b7280;cursor:pointer;flex:0 0 auto;border-radius:999px;width:14px;height:14px}
+.card-status-btn:hover{border-color:var(--accent)}
+.card-status-dot{width:8px;height:8px;border-radius:999px;display:block;background:#9ca3af}
+.card-archive-btn{position:absolute;top:8px;right:8px;border:none;background:transparent;padding:2px;display:inline-flex;align-items:center;justify-content:center;color:#1f6feb;cursor:pointer;flex:0 0 auto}
+.card-archive-btn svg{width:14px;height:14px;fill:currentColor}
+.card-archive-btn:hover{color:#1d4ed8}
+.card-links a,.card-links span{font-size:12px;text-decoration:none;color:#1f6feb}
+.card-links .empty{color:#9ca3af}
+.card-links a,.attachment-item .attachment-link,.live-notes-preview{
+  user-select:text;
+  -webkit-user-select:text;
+}
+.card-detail{display:flex;flex-direction:column;gap:6px}
+.card-detail.collapsed{display:none}
+.card-edit-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}
+.card-edit-grid .full{grid-column:1/-1}
+.card-edit-field{display:flex;flex-direction:column;gap:4px;min-width:0}
+.card-edit-field label{font-size:11px;color:var(--muted);font-weight:600}
+.card-edit-field input,.card-edit-field select,.card-edit-field textarea{width:100%;border:1px solid var(--border);border-radius:8px;padding:6px 8px;font:inherit;background:#fff;color:inherit}
+.card-edit-field textarea{resize:vertical;min-height:72px}
+.card-edit-field input,.card-edit-field textarea,.card-edit-field select,
+.field input,.field textarea,.field select,
+#search,#tagInput,#bKeyInput,#bRepoUrl{
+  user-select:text;
+  -webkit-user-select:text;
+}
+.card-inline-notes{display:flex;flex-direction:column;gap:0}
+.card-inline-notes .live-notes-preview{min-height:72px;max-height:none}
+.card-inline-notes .live-notes-preview.hidden{display:none}
+.card-tags{display:flex;gap:6px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border);border-radius:999px;padding:2px 8px;background:#fff;font-size:12px;max-width:100%;overflow-wrap:anywhere}
+.chip button{border:none;background:transparent;outline:none;padding:0;margin:0;cursor:pointer;font-size:13px;font-weight:800;line-height:1;color:#444}
+.chip button:hover{color:#000}
+.tag-search-btn{cursor:pointer;color:#1f6feb}
+.tag-search-btn:hover{border-color:var(--accent);color:#1d4ed8}
+.tag-search-btn:focus-visible{outline:2px solid #93c5fd;outline-offset:1px}
+.attachment-list{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.attachment-item{display:flex;align-items:center;justify-content:space-between;gap:8px;border:1px solid var(--border);border-radius:10px;padding:6px 8px;background:#fff}
+.attachment-item .attachment-link,.attachment-item .attachment-name{font-size:12px;color:#1f6feb;text-decoration:none;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.attachment-item .attachment-name{color:var(--muted)}
+.attachment-delete{border:none;background:transparent;color:#777;cursor:pointer;font-size:16px;line-height:1;padding:0 2px;border-radius:6px;flex:0 0 auto}
+.attachment-delete:hover{color:var(--danger);background:#f6f6f8}
+/* Landing target outline (orange) */
+.drop-highlight{ border-color:var(--highlight) !important; box-shadow:0 0 0 2px var(--highlight) inset; }
+
+/* NEW: inline tag editor in card detail */
+.inline-tag-editor{display:flex;flex-direction:column;gap:5px}
+.inline-tag-assigned{display:flex;flex-wrap:wrap;gap:4px;min-height:22px}
+.inline-tag-input-row{display:flex;gap:5px}
+.inline-tag-input-row input{flex:1;border:1px solid var(--border);border-radius:8px;padding:5px 8px;font:inherit;font-size:12px}
+.inline-tag-input-row button{padding:5px 9px;border:1px solid var(--border);border-radius:8px;background:#fff;cursor:pointer;font-size:12px;font-weight:600;white-space:nowrap}
+.inline-tag-input-row button:hover{border-color:var(--accent);color:var(--accent)}
+.inline-tag-sug-label{font-size:10px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.04em}
+.inline-tag-suggestions{display:flex;flex-wrap:wrap;gap:4px}
+.chip .sug-x{cursor:pointer;font-size:12px;font-weight:800;color:#999;line-height:1}
+.chip .sug-x:hover{color:var(--danger)}
+
+/* Inline board-list rows */
+.board-list-row{display:flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid var(--border);border-radius:10px;background:#fff}
+.board-list-row.current{border-color:var(--accent)}
+.board-list-row .brow-name{flex:1;font-family:ui-monospace,monospace;font-size:13px;font-weight:600;color:var(--accent)}
+.board-list-row .brow-badge{font-size:11px;background:#e8f0fe;color:var(--accent);border-radius:999px;padding:2px 8px}
+
+/* Dialogs */
+.hidden{display:none}
+dialog{border:none;border-radius:14px;padding:0;width:min(900px,96vw)}
+.modal{position:relative;padding:16px;background:var(--panel);border:1px solid var(--border);border-radius:14px}
+.modal .modal-close{position:absolute;top:10px;right:12px;border:none;background:transparent;font-weight:800;font-size:18px;cursor:pointer;color:#777;line-height:1;padding:2px 6px;border-radius:8px}
+.modal .modal-close:hover{color:#000;background:#f2f2f6}
+.field{display:flex;flex-direction:column;gap:6px;margin:10px 0}
+.field input,.field textarea,.field select{border:1px solid var(--border);border-radius:10px;padding:10px;font-size:14px;width:100%}
+.field textarea#fNotes{min-height:144px;max-height:40vh;resize:vertical;line-height:1.45}
+.live-notes-preview{width:100%;min-height:144px;max-height:40vh;overflow:auto;border:1px solid var(--border);border-radius:10px;padding:10px;background:#f8fafc;line-height:1.45;white-space:normal;cursor:text}
+.live-notes-preview:focus{outline:2px solid rgba(31,111,235,.18);border-color:var(--accent)}
+.live-notes-preview:empty::before{content:attr(data-placeholder);color:#94a3b8}
+.live-notes-preview p{margin:0 0 8px}
+.live-notes-preview p:last-child{margin-bottom:0}
+.live-notes-preview ul,.live-notes-preview ol{margin:0 0 8px 18px;padding:0}
+.live-notes-preview code{background:#e2e8f0;padding:1px 4px;border-radius:4px;font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}
+.live-notes-preview pre{margin:0 0 8px;background:#0f172a;color:#e2e8f0;padding:8px;border-radius:8px;overflow:auto}
+.live-notes-preview a{color:#1d4ed8;text-decoration:underline}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+
+/* Search preview */
+.results{position:sticky;top:var(--stack-h);margin:0 16px 8px 16px;background:var(--panel);border:1px solid var(--border);border-radius:10px;max-height:260px;overflow:auto}
+.result-item{padding:10px 12px;border-top:1px solid var(--border);cursor:pointer}
+.result-item:first-child{border-top:none}
+.result-item:hover{background:#f1f5ff}
+.muted{color:var(--muted);font-size:12px}
+.timepill{font-size:12px;color:#555;border:1px solid var(--border);padding:2px 8px;border-radius:999px;margin-left:8px}
+
+/* Tooltip */
+#tooltip{position:fixed;z-index:50;pointer-events:none;background:#fff;color:#111;border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 28px rgba(0,0,0,.12);padding:10px 12px;max-width:360px;display:none}
+#tooltip .t-title{font-weight:800;margin-bottom:4px}
+#tooltip .t-meta{font-size:12px;color:#888;margin-bottom:4px}
+#tooltip .t-tags{font-size:12px;color:#666;margin-bottom:6px}
+#tooltip .t-notes{font-size:13px;white-space:pre-wrap;max-height:120px;overflow:auto}
+#tooltip .t-notes a{color:#1f6feb;text-decoration:none}
+#tooltip .t-notes img{max-width:100%;height:auto;border-radius:8px;margin-top:6px}
+
+/* Toast */
+#toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#fff;border:1px solid var(--border);box-shadow:0 8px 24px rgba(0,0,0,.18);border-left:6px solid var(--ok);padding:10px 14px;border-radius:12px;display:none;z-index:60;min-width:260px}
+#toast.err{border-left-color:var(--err)}
+#toast .tmsg{font-weight:700}
+#toast .tdesc{font-size:12px;color:#555;margin-top:2px}
+
+/* Responsive tightening */
+@media (max-width:900px){
+  :root{--toolbar-h:56px;--searchbar-h:56px}
+  main#board[data-layout="horizontal"], main#board[data-layout="auto"]{grid-template-columns:1fr}
+}
+@media (max-width:700px){
+  :root{--toolbar-h:104px;--searchbar-h:56px}
+  .toolbar{flex-wrap:wrap;white-space:normal;overflow:visible}
+  .card-line{flex-wrap:wrap}
+  .card-title{white-space:normal}
+}
+</style>
+</head>
+<body>
+<header>
+  <div class="toolbar">
+    <button id="btnNew" class="btn icon-btn" title="New card" aria-label="New card">+</button>
+    <button id="btnSettings" class="btn icon-btn" title="Settings" aria-label="Settings">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M19.14 12.94c.04-.31.06-.63.06-.94s-.02-.63-.06-.94l2.03-1.58a.5.5 0 0 0 .12-.64l-1.92-3.32a.5.5 0 0 0-.6-.22l-2.39.96a7.18 7.18 0 0 0-1.63-.94l-.36-2.54a.5.5 0 0 0-.49-.42h-3.84a.5.5 0 0 0-.49.42L9.2 5.32c-.58.23-1.12.54-1.63.94l-2.39-.96a.5.5 0 0 0-.6.22L2.66 8.84a.5.5 0 0 0 .12.64l2.03 1.58c-.04.31-.06.63-.06.94s.02.63.06.94l-2.03 1.58a.5.5 0 0 0-.12.64l1.92 3.32c.13.22.39.31.6.22l2.39-.96c.5.4 1.05.72 1.63.94l.36 2.54c.04.24.24.42.49.42h3.84c.25 0 .45-.18.49-.42l.36-2.54c.58-.23 1.12-.54 1.63-.94l2.39.96c.22.09.47 0 .6-.22l1.92-3.32a.5.5 0 0 0-.12-.64l-2.03-1.58ZM12 15.5A3.5 3.5 0 1 1 12 8a3.5 3.5 0 0 1 0 7.5Z"/></svg>
+    </button>
+    <button id="btnExport" class="btn icon-btn" title="Export JSON" aria-label="Export JSON">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20h14v-2H5v2Zm7-16v9.17l3.09-3.08 1.41 1.41L12 17l-4.5-5.5 1.41-1.41L11 13.17V4h1Z"/></svg>
+    </button>
+    <button id="btnImport" class="btn icon-btn" title="Import JSON" aria-label="Import JSON">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 13h10.17l-3.58 3.59L12 18l6-6-6-6-1.41 1.41L14.17 11H4v2Z"/></svg>
+    </button>
+    <button id="btnShare" class="btn icon-btn" title="Share" aria-label="Share">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 16a3 3 0 0 0-2.39 1.2l-6.71-3.35a3.1 3.1 0 0 0 0-1.7l6.7-3.35A3 3 0 1 0 15 7a3.1 3.1 0 0 0 .1.75l-6.7 3.35a3 3 0 1 0 0 1.8l6.7 3.35A3 3 0 1 0 18 16Z"/></svg>
+    </button>
+    <button id="btnPullGitHub" class="btn" title="Pull board from GitHub">Pull</button>
+    <button id="btnPushGitHub" class="btn primary" title="Push board to GitHub">Push</button>
+    <!-- board key pill -->
+    <div class="board-key-pill" id="boardKeyPill" title="Switch board / list boards">board: <span class="bkp-name" id="boardKeyLabel">kanban</span> ▾</div>
+    <input id="fileImport" type="file" accept="application/json" class="hidden" aria-hidden="true" tabindex="-1" />
+  </div>
+  <div class="searchbar">
+    <input id="search" placeholder="Omni search… (use -term to exclude)" aria-label="Omni search"/>
+    <button id="btnClearSearch" title="Clear search">×</button>
+    <span class="muted" id="searchCount"></span>
+  </div>
+</header>
+
+<div id="resultsContainer"></div>
+<main id="board" aria-live="polite" data-layout="auto"></main>
+<div class="footer" id="status"></div>
+<div id="toast"><div class="tmsg"></div><div class="tdesc"></div></div>
+
+<dialog id="editDialog">
+  <form method="dialog" class="modal" id="editForm">
+    <button type="button" id="editorCloseBtn" class="modal-close" title="Close">×</button>
+    <h3 id="editTitle">Card</h3>
+
+    <div class="field">
+      <label for="fTitle">Title</label>
+      <div class="row">
+        <input id="fTitle" placeholder="Short title" autofocus/>
+        <button id="btnSaveAndNew" class="btn small primary" value="save_new">Save & New</button>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="field">
+        <label for="fPlatform">Platform</label>
+        <select id="fPlatform"></select>
+      </div>
+      <div class="field">
+        <label for="fStage">Lane</label>
+        <select id="fStage"></select>
+      </div>
+    </div>
+
+    <div class="grid-2">
+      <div class="field">
+        <label for="fDev">Dev Link</label>
+        <input id="fDev" type="url" placeholder="https://…"/>
+      </div>
+      <div class="field">
+        <label for="fLive">Live Link</label>
+        <input id="fLive" type="url" placeholder="https://…"/>
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Tags</label>
+      <div id="tagChips" class="chips" aria-live="polite"></div>
+      <div class="tag-input-row">
+        <input id="tagInput" placeholder="type a tag, press Enter" />
+      </div>
+      <div class="suggestions" id="tagSuggestions" aria-label="Previously used tags"></div>
+      <input id="fTags" class="hidden" />
+    </div>
+
+    <div class="field">
+      <label for="fFiles">Attachments</label>
+      <div class="row">
+        <input id="fFiles" type="file" multiple />
+        <button id="btnClearFiles" type="button" class="btn small">Clear selection</button>
+      </div>
+      <div id="fileChips" class="chips" aria-live="polite"></div>
+    </div>
+
+    <div class="field">
+      <label id="fNotesLabel">Notes (Markdown + linktext--url supported)</label>
+      <textarea id="fNotes" aria-labelledby="fNotesLabel" placeholder="Type markdown or use linktext--url…"></textarea>
+      <div id="fNotesPreview" class="live-notes-preview" aria-labelledby="fNotesLabel" tabindex="0" data-placeholder="Type markdown or use linktext--url…"></div>
+    </div>
+
+    <div class="row">
+      <button class="btn primary" value="save" id="btnSave">Save</button>
+      <button class="btn" value="cancel" id="btnCancel">Cancel</button>
+      <button id="btnDelete" class="btn danger" value="delete">Archive</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="archiveDialog">
+  <form method="dialog" class="modal">
+    <h3>Archive</h3>
+    <div id="archiveList" style="max-height:60vh; overflow:auto; margin-top:8px;"></div>
+    <div class="row" style="margin-top:10px;">
+      <button class="btn danger" value="empty" id="btnEmptyArchive">Empty Archive</button>
+      <button class="btn" value="close">Close</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="searchDialog">
+  <form method="dialog" class="modal">
+    <h3>Search results</h3>
+    <div id="searchList" style="max-height:60vh; overflow:auto;"></div>
+    <div class="row" style="margin-top:10px;">
+      <button class="btn" value="close">Close</button>
+    </div>
+  </form>
+</dialog>
+
+<dialog id="settingsDialog">
+  <form method="dialog" class="modal" id="settingsForm">
+    <h3>Settings</h3>
+    <div class="field">
+      <label for="sPlatforms">Platforms (comma-separated)</label>
+      <input id="sPlatforms" value="Gemini, Claude, ChatGPT, Perplexity"/>
+    </div>
+    <div class="field">
+      <label for="sStages">Stages (left→right, top→bottom order)</label>
+      <input id="sStages" value="Done, Doing, Next"/>
+    </div>
+    <div class="field">
+      <label for="sLayout">Lanes layout</label>
+      <select id="sLayout">
+        <option value="auto" selected>Auto (portrait stacked, landscape side-by-side)</option>
+        <option value="horizontal">Horizontal</option>
+        <option value="vertical">Vertical</option>
+      </select>
+    </div>
+    <div class="row">
+      <button class="btn primary" value="save">Apply</button>
+      <button class="btn" value="cancel">Cancel</button>
+      <button type="button" class="btn" id="btnOpenArchive">Archive</button>
+      <button class="btn danger" id="btnReset" value="reset">Reset Board</button>
+    </div>
+  </form>
+</dialog>
+
+<!-- NEW: Boards dialog -->
+<dialog id="boardsDialog" style="width:min(520px,96vw)">
+  <form method="dialog" class="modal">
+    <button type="button" class="modal-close" id="boardsClose">×</button>
+    <h3>Board Manager</h3>
+    <p style="font-size:12px;color:var(--muted);margin:4px 0 12px">Export saves as <code style="background:#f0f4ff;padding:1px 5px;border-radius:4px">&lt;key&gt;.js</code>. Rename workflow: export → push → switch key → import → export → push.</p>
+
+    <div class="field">
+      <label for="bKeyInput">Board key</label>
+      <div class="row">
+        <input id="bKeyInput" placeholder="kanban" style="font-family:ui-monospace,monospace;flex:1"/>
+        <button type="button" class="btn primary" id="bKeySwitch">Switch</button>
+      </div>
+    </div>
+
+    <div class="field">
+      <label for="bRepoUrl">GitHub repo contents URL (to list *.js boards)</label>
+      <div class="row">
+        <input id="bRepoUrl" placeholder="https://api.github.com/repos/acmeproducts/stuff/contents" style="font-family:ui-monospace,monospace;font-size:12px;flex:1"/>
+        <button type="button" class="btn" id="bListBoards">List</button>
+      </div>
+    </div>
+
+    <div id="bBoardList" class="hidden" style="margin-top:4px;display:flex;flex-direction:column;gap:6px;max-height:40vh;overflow:auto"></div>
+
+    <div class="row" style="margin-top:14px">
+      <button class="btn" value="close">Close</button>
+    </div>
+  </form>
+</dialog>
+
+<div id="tooltip" role="tooltip" aria-hidden="true">
+  <div class="t-title"></div>
+  <div class="t-meta"></div>
+  <div class="t-tags"></div>
+  <div class="t-notes"></div>
+</div>
+
+<script>
+const BUILD = "2025-10-28";
+
+/* ===== NEW: Board Key System ===== */
+const BOARD_KEY_LS   = "kanban_board_key";
+const BOARD_REPO_LS  = "kanban_repo_url";
+
+function _cleanKey(raw){ return (raw||"").trim().replace(/[^A-Za-z0-9_-]+/g,"-").replace(/-+/g,"-").replace(/^-|-$/g,"")||"kanban"; }
+function getBoardKey(){ return _cleanKey(new URLSearchParams(location.search).get("board") || localStorage.getItem(BOARD_KEY_LS) || "kanban"); }
+function setBoardKey(raw){
+  const k=_cleanKey(raw);
+  localStorage.setItem(BOARD_KEY_LS, k);
+  const u=new URL(location.href); u.searchParams.set("board",k); history.replaceState(null,"",u.toString());
+  return k;
+}
+let currentBoardKey = getBoardKey();
+// keyed storage: each board gets its own localStorage slot
+function boardLS(){ return `ai_jobs_kanban__${currentBoardKey}`; }
+function updateKeyLabel(){ document.getElementById("boardKeyLabel").textContent = currentBoardKey; }
+
+/* ===== Persistence ===== */
+const STABLE_KEY = "ai_jobs_kanban";
+const TAGS_KEY = "ai_jobs_kanban_tags";
+const GITHUB_PAT_KEY = "github_pat";
+const LEGACY_GITHUB_PAT_KEYS = ["kanban_github_pat","ai_jobs_kanban_github_pat"];
+const DEFAULT_GITHUB_SYNC_CONFIG = Object.freeze({
+  owner:"acmeproducts",
+  repo:"stuff",
+  path:"kanban.json",
+  branch:"main"
+});
+const LEGACY_KEYS = ["ai_jobs_kanban_v3","ai_jobs_kanban_v4","ai_jobs_kanban_v5","ai_jobs_kanban_v6","ai_jobs_kanban_v7"];
+let dirty=false, saveTimer=null;
+let githubToken = null;
+let remoteBoardSha = null;
+let autoSyncTimer = null;
+let autoSyncInFlight = null;
+let syncBootstrapComplete = false;
+let lastFocusCheckAt = 0;
+const FOCUS_SYNC_THROTTLE_MS = 15000;
+function trySave(key, value){ try{ localStorage.setItem(key, value); return localStorage.getItem(key)===value; }catch(e){ console.warn(e); return false; } }
+function loadPersistedGithubToken(){
+  const keys=[GITHUB_PAT_KEY,...LEGACY_GITHUB_PAT_KEYS];
+  for(const key of keys){
+    const token=localStorage.getItem(key);
+    if(token?.trim()){
+      const clean=token.trim();
+      trySave(GITHUB_PAT_KEY, clean);
+      return clean;
+    }
+  }
+  return "";
+}
+function persistNow(options={}){
+  const { touchTimestamp=true, syncToGitHub=true } = options || {};
+  if(touchTimestamp) state.lastModified=Date.now();
+  // save under keyed slot AND legacy slot for compat
+  const ok = trySave(boardLS(), JSON.stringify(state));
+  trySave(STABLE_KEY, JSON.stringify(state));
+  if(ok){
+    if(syncToGitHub && syncBootstrapComplete){
+      queueAutoSync("local update");
+    }else{
+      clearAutoSync();
+    }
+  }
+  setStatus(ok? "Saved" : "Local save failed (likely storage limit)");
+  dirty=false;
+}
+function scheduleSave(){ dirty=true; clearTimeout(saveTimer); saveTimer=setTimeout(persistNow, 250); }
+function loadState(){
+  // keyed slot first, then legacy
+  let raw = localStorage.getItem(boardLS()) || localStorage.getItem(STABLE_KEY);
+  if(!raw){ for(let i=LEGACY_KEYS.length-1;i>=0;i--){ raw=localStorage.getItem(LEGACY_KEYS[i]); if(raw) break; } if(raw) trySave(boardLS(), raw); }
+  if(raw){ try{ const obj=JSON.parse(raw); if(obj?.cards && obj?.stages && obj?.platforms) return obj; }catch{} }
+  return null;
+}
+function loadTagHistory(){ try{ const arr=JSON.parse(localStorage.getItem(TAGS_KEY)||"[]"); return Array.isArray(arr)?arr:[]; }catch{ return []; } }
+function saveTagHistory(list){ const uniq=[...new Set(list.map(t=>String(t).toLowerCase()))]; trySave(TAGS_KEY, JSON.stringify(uniq)); return uniq; }
+function getActiveCardTags(){
+  return [...new Set(
+    (state.cards||[])
+      .flatMap(c=>Array.isArray(c.tags) ? c.tags : [])
+      .map(t=>String(t).trim().toLowerCase())
+      .filter(Boolean)
+  )];
+}
+function syncTagHistoryToActiveCards(){
+  tagHistory = saveTagHistory(getActiveCardTags());
+}
+function removeTagFromActiveCards(tag){
+  const target=String(tag||"").trim().toLowerCase();
+  if(!target) return;
+  let changed=false;
+  state.cards.forEach(card=>{
+    const before=Array.isArray(card.tags) ? card.tags.length : 0;
+    if(!before) return;
+    card.tags = card.tags.filter(t=>String(t).toLowerCase()!==target);
+    if(card.tags.length!==before){
+      card.updatedAt=Date.now();
+      changed=true;
+    }
+  });
+  syncTagHistoryToActiveCards();
+  if(changed){
+    scheduleSave();
+    render();
+  }else{
+    renderTagSuggestions();
+  }
+}
+
+/* ===== App State ===== */
+const persistedState = loadState();
+let state = persistedState || {
+  stages:["Done","Doing","Next"],
+  platforms:["Gemini","Claude","ChatGPT","Perplexity"],
+  cards:[],
+  archive:[],
+  collapsed:{},
+  cardCollapsed:{},
+  layout:"auto"
+};
+state.collapsed = state.collapsed || {};
+state.cardCollapsed = state.cardCollapsed || {};
+state.layout = state.layout || "auto";
+state.archive = Array.isArray(state.archive)? state.archive : [];
+let tagHistory = loadTagHistory();
+syncTagHistoryToActiveCards();
+const $ = s=>document.querySelector(s), $$ = s=>Array.from(document.querySelectorAll(s));
+function uid(){return Math.random().toString(36).slice(2,10)}
+function formatLastUpdated(ts){
+  const n=Number(ts||0);
+  if(!n) return "Never";
+  const d=new Date(n);
+  if(Number.isNaN(d.getTime())) return "Never";
+  return d.toLocaleString();
+}
+function fmtBytes(bytes){
+  const n=Number(bytes);
+  if(!Number.isFinite(n)||n<0) return "";
+  if(n<1024) return `${n} B`;
+  const units=["KB","MB","GB","TB"];
+  let value=n/1024, i=0;
+  while(value>=1024 && i<units.length-1){ value/=1024; i++; }
+  return `${value.toFixed(value>=10?0:1)} ${units[i]}`;
+}
+const STATUS_COLORS = Object.freeze(["gray","red","yellow","green","blue","orange","white","black"]);
+const STATUS_COLOR_MAP = Object.freeze({
+  gray:"#9ca3af",
+  red:"#ef4444",
+  yellow:"#eab308",
+  green:"#22c55e",
+  blue:"#3b82f6",
+  orange:"#f97316",
+  white:"#ffffff",
+  black:"#111827"
+});
+function normalizeStatusColor(color){
+  const value=String(color||"").trim().toLowerCase();
+  return STATUS_COLORS.includes(value) ? value : "gray";
+}
+
+/* ===== Ordering ===== */
+function stageCards(stage){ return state.cards.filter(c=>c.stage===stage).sort((a,b)=> (a.pos??0)-(b.pos??0) || (a.createdAt-b.createdAt)); }
+function topPos(stage){ const list=stageCards(stage); return list.length? (list[0].pos??1000)-1000 : 1000; }
+function moveToStageAt(id, stage, index){
+  const c=state.cards.find(x=>x.id===id); if(!c) return;
+  const list=stageCards(stage); let pos;
+  if(index<=0 || list.length===0) pos=(list[0]?.pos??1000)-1000;
+  else if(index>=list.length) pos=(list[list.length-1].pos??1000)+1000;
+  else { const prev=list[index-1], next=list[index]; pos=((prev.pos??0)+(next.pos??0))/2; }
+  c.stage=stage; c.pos=pos; c.updatedAt=Date.now(); maybeRebalance(stage); scheduleSave(); render(); focusCard(id);
+}
+function maybeRebalance(stage){ const list=stageCards(stage); for(let i=1;i<list.length;i++){ if(Math.abs((list[i].pos??0)-(list[i-1].pos??0))<0.5){ list.forEach((c,i)=> c.pos=(i+1)*1000); break; } } }
+
+/* ===== Rendering ===== */
+let draggingId=null, highlightEl=null, editorDirty=false;
+let draggingLaneStage=null, laneHighlightEl=null;
+function render(){
+  $("#sPlatforms").value = state.platforms.join(", ");
+  $("#sStages").value = state.stages.join(", ");
+  $("#sLayout").value = state.layout;
+
+  const board=$("#board"); board.dataset.layout=state.layout; board.innerHTML="";
+  state.stages.forEach(stage=>{
+    const lane=document.createElement("section"); lane.className="lane"; lane.dataset.stage=stage;
+    const head=document.createElement("div"); head.className="lane-header";
+    head.draggable=true;
+    const titleWrap=document.createElement("div"); titleWrap.className="lane-title";
+    const title=document.createElement("span"); title.className="lane-title-text"; title.textContent=stage;
+    title.onclick=()=>{
+      state.collapsed=state.collapsed||{};
+      state.collapsed[stage]=!state.collapsed[stage];
+      scheduleSave();
+      render();
+    };
+    const count=document.createElement("span"); count.className="muted"; count.textContent=state.cards.filter(c=>c.stage===stage).length;
+    const laneCards=stageCards(stage);
+    const laneIsCollapsed=state.collapsed?.[stage]===true;
+    const hasExpandedCards=laneCards.some(c=>state.cardCollapsed?.[c.id]!==true);
+    const hasCollapsedCards=laneCards.some(c=>state.cardCollapsed?.[c.id]===true);
+    const collapseLaneBtn=document.createElement("button");
+    collapseLaneBtn.type="button";
+    collapseLaneBtn.className="lane-chevron";
+    if(laneIsCollapsed){
+      collapseLaneBtn.textContent="▸";
+      collapseLaneBtn.title="Expand lane";
+    }else if(hasExpandedCards){
+      collapseLaneBtn.textContent="▾";
+      collapseLaneBtn.title="Collapse all cards in lane";
+    }else if(hasCollapsedCards){
+      collapseLaneBtn.textContent="▸";
+      collapseLaneBtn.title="Expand all cards in lane";
+    }else{
+      collapseLaneBtn.textContent="▾";
+      collapseLaneBtn.title="No cards in lane";
+    }
+    collapseLaneBtn.disabled=!laneIsCollapsed && !hasExpandedCards && !hasCollapsedCards;
+    collapseLaneBtn.setAttribute("aria-label", collapseLaneBtn.title);
+    collapseLaneBtn.onclick=(e)=>{
+      e.stopPropagation();
+      if(laneIsCollapsed){
+        state.collapsed=state.collapsed||{};
+        state.collapsed[stage]=false;
+        scheduleSave();
+        render();
+        return;
+      }
+      if(!hasExpandedCards && !hasCollapsedCards) return;
+      state.cardCollapsed=state.cardCollapsed||{};
+      if(hasExpandedCards) laneCards.forEach(c=>{ state.cardCollapsed[c.id]=true; });
+      else laneCards.forEach(c=>{ delete state.cardCollapsed[c.id]; });
+      scheduleSave();
+      render();
+    };
+    titleWrap.append(title,collapseLaneBtn,count);
+    head.append(titleWrap);
+
+    head.addEventListener("dragstart", e=>{
+      draggingLaneStage=stage;
+      head.classList.add("dragging-lane");
+      e.dataTransfer.setData("text/lane-stage", stage);
+      e.dataTransfer.effectAllowed="move";
+    });
+    head.addEventListener("dragend", ()=>{
+      draggingLaneStage=null;
+      head.classList.remove("dragging-lane");
+      setLaneHighlight(null);
+    });
+
+    lane.addEventListener("dragenter", e=>{
+      if(!draggingLaneStage || draggingLaneStage===stage) return;
+      e.preventDefault();
+    });
+    lane.addEventListener("dragover", e=>{
+      if(draggingId){
+        e.preventDefault();
+        setLaneHighlight(lane);
+        // body.dragover already set the correct dropIndex - do NOT overwrite it here
+        if(e.dataTransfer) e.dataTransfer.dropEffect="move";
+        return;
+      }
+      if(!draggingLaneStage || draggingLaneStage===stage) return;
+      e.preventDefault();
+      setLaneHighlight(lane);
+      if(e.dataTransfer) e.dataTransfer.dropEffect="move";
+    });
+    lane.addEventListener("dragleave", e=>{ if(!lane.contains(e.relatedTarget)) setLaneHighlight(null); });
+    lane.addEventListener("drop", e=>{
+      if(draggingId){
+        // card drop: body.drop already handled this (body fires before lane due to bubbling)
+        // just clean up highlights; do NOT call moveToStageAt again
+        setLaneHighlight(null);
+        setHighlight(null);
+        return;
+      }
+      const laneStage = draggingLaneStage || e.dataTransfer.getData("text/lane-stage");
+      if(!laneStage || laneStage===stage) return;
+      e.preventDefault();
+      const toIndex=getLaneDropIndex(stage, e.clientY);
+      moveLaneToIndex(laneStage, toIndex);
+      setLaneHighlight(null);
+    });
+
+    const body=document.createElement("div"); body.className="lane-body";
+    if(state.collapsed?.[stage]) body.classList.add("collapsed");
+
+    body.addEventListener("dragenter", e=> e.preventDefault());
+    body.addEventListener("dragover", e=>{
+      e.preventDefault();
+      setLaneHighlight(lane);
+      const {index,targetEl}=getDropTarget(body,e.clientY);
+      body.dataset.dropIndex=index;
+      setHighlight(targetEl); // highlight landing card (insert ABOVE)
+      if(e.dataTransfer) e.dataTransfer.dropEffect="move";
+    });
+    body.addEventListener("dragleave", e=>{ if(!body.contains(e.relatedTarget)){ setHighlight(null); setLaneHighlight(null); } });
+    body.addEventListener("drop", e=>{
+      e.preventDefault();
+      const id=draggingId||e.dataTransfer.getData("text/id")||e.dataTransfer.getData("text/plain");
+      if(!id){ setHighlight(null); return; }
+      const idx=Number(body.dataset.dropIndex??0);
+      moveToStageAt(id,stage,idx);
+      setHighlight(null);
+      setLaneHighlight(null);
+    });
+
+    stageCards(stage).forEach(c=> body.appendChild(renderCard(c)));
+    lane.append(head, body); board.appendChild(lane);
+  });
+
+  refillSelects();
+  applySearch($("#search").value);
+}
+document.addEventListener("dragover", e=> e.preventDefault());
+
+let pointerDrag=null;
+let suppressNextCardClick=false;
+function isInteractiveCardTarget(target){
+  return !!target?.closest?.('a,button,input,textarea,select,label,[contenteditable="true"]');
+}
+function shieldInteractiveControl(el){
+  if(!el) return el;
+  ["pointerdown","pointerup","mousedown","mouseup","click"].forEach(ev=>{
+    el.addEventListener(ev, e=>e.stopPropagation());
+  });
+  el.addEventListener("dragstart", e=>{
+    e.preventDefault();
+    e.stopPropagation();
+  });
+  return el;
+}
+function pointerFromCardStart(card, e){
+  if(e.pointerType==="mouse") return;
+  if(isInteractiveCardTarget(e.target)) return;
+  pointerDrag={id:card.id,pointerId:e.pointerId,startX:e.clientX,startY:e.clientY,startAt:Date.now(),active:false};
+  card.setPointerCapture?.(e.pointerId);
+}
+function pointerFromCardMove(cardEl, e){
+  if(!pointerDrag || pointerDrag.pointerId!==e.pointerId) return;
+  const moved=Math.hypot(e.clientX-pointerDrag.startX,e.clientY-pointerDrag.startY);
+  if(!pointerDrag.active && moved>12){ pointerDrag.active=true; draggingId=pointerDrag.id; cardEl.classList.add("dragging"); }
+  if(!pointerDrag.active) return;
+  e.preventDefault();
+  const laneBody=e.target.closest('.lane-body') || document.elementFromPoint(e.clientX,e.clientY)?.closest('.lane-body');
+  if(!laneBody) return;
+  const {index,targetEl}=getDropTarget(laneBody,e.clientY);
+  laneBody.dataset.dropIndex=index;
+  setHighlight(targetEl);
+}
+function pointerFromCardEnd(cardEl, e){
+  if(!pointerDrag || pointerDrag.pointerId!==e.pointerId) return;
+  const wasActive=pointerDrag.active;
+  const dragId=pointerDrag.id;
+  const endTarget=e.target;
+  pointerDrag=null;
+  cardEl.classList.remove("dragging");
+  draggingId=null;
+  if(wasActive){
+    suppressNextCardClick=true;
+    const laneBody=e.target.closest('.lane-body') || document.elementFromPoint(e.clientX,e.clientY)?.closest('.lane-body');
+    if(laneBody){ moveToStageAt(dragId,laneBody.closest('.lane').dataset.stage,Number(laneBody.dataset.dropIndex??0)); }
+    setHighlight(null);
+    return;
+  }
+  if(isInteractiveCardTarget(endTarget)) return;
+  suppressNextCardClick=false;
+}
+
+function setHighlight(el){ if(highlightEl && highlightEl!==el) highlightEl.classList.remove("drop-highlight"); highlightEl=el; if(highlightEl) highlightEl.classList.add("drop-highlight"); }
+function setLaneHighlight(el){ if(laneHighlightEl && laneHighlightEl!==el) laneHighlightEl.classList.remove("lane-drop-highlight"); laneHighlightEl=el; if(laneHighlightEl) laneHighlightEl.classList.add("lane-drop-highlight"); }
+function getDropTarget(body,y){
+  // All cards in the lane DOM (including the dragging card, which is still rendered)
+  const allCards=[...body.querySelectorAll(".card")];
+  const otherCards=allCards.filter(x=> x.dataset.id!==draggingId);
+  if(!otherCards.length) return {index:0,targetEl:null};
+
+  // Find which slot the pointer is in (relative to non-dragging cards)
+  let slotInOthers=otherCards.length; // default: after last
+  for(let i=0;i<otherCards.length;i++){
+    const r=otherCards[i].getBoundingClientRect();
+    if(y < r.top+r.height/2){ slotInOthers=i; break; }
+  }
+
+  // Convert slot-in-others back to index in the FULL list (what moveToStageAt expects)
+  // moveToStageAt uses stageCards() order which matches DOM order
+  let index;
+  if(slotInOthers===0){
+    index=0;
+  } else if(slotInOthers===otherCards.length){
+    // after all others → after the last card in the full list
+    index=allCards.length; // one past the end
+  } else {
+    // insert before otherCards[slotInOthers] in the full list
+    const refCard=otherCards[slotInOthers];
+    index=allCards.indexOf(refCard);
+  }
+
+  // Highlight card: the one we're inserting BEFORE (or last card if at end)
+  const targetEl=slotInOthers<otherCards.length ? otherCards[slotInOthers] : otherCards[otherCards.length-1];
+  return {index, targetEl};
+}
+function getLaneDropIndex(targetStage, y){
+  const targetIndex=state.stages.indexOf(targetStage);
+  if(targetIndex<0) return state.stages.length;
+  const targetLane=document.querySelector(`.lane[data-stage="${CSS.escape(targetStage)}"]`);
+  if(!targetLane) return targetIndex;
+  const r=targetLane.getBoundingClientRect();
+  return y < (r.top + r.height/2) ? targetIndex : targetIndex+1;
+}
+function moveLaneToIndex(stage, rawIndex){
+  const fromIndex=state.stages.indexOf(stage);
+  if(fromIndex<0) return;
+  const stages=[...state.stages];
+  stages.splice(fromIndex,1);
+  let toIndex=Math.max(0, Math.min(rawIndex, stages.length));
+  if(rawIndex>fromIndex) toIndex=Math.max(0, toIndex-1);
+  stages.splice(toIndex,0,stage);
+  state.stages=stages;
+  scheduleSave();
+  render();
+}
+
+/* ===== NEW: Inline tag editor builder (used inside renderCard) ===== */
+function buildInlineTagEditor(tagArr){
+  // tagArr is the live array on inlineState – mutate it directly
+  const wrap = document.createElement("div");
+  wrap.className = "inline-tag-editor";
+  // stop all pointer/click from bubbling out to card drag handlers
+  ["click","pointerdown","pointerup"].forEach(ev=> wrap.addEventListener(ev, e=>e.stopPropagation()));
+
+  const assignedEl = document.createElement("div");
+  assignedEl.className = "inline-tag-assigned";
+
+  const inputRow = document.createElement("div");
+  inputRow.className = "inline-tag-input-row";
+  const tagIn = document.createElement("input");
+  tagIn.placeholder = "type tag, press Enter";
+  inputRow.append(tagIn);
+
+  const sugLabel = document.createElement("div");
+  sugLabel.className = "inline-tag-sug-label";
+  sugLabel.textContent = "Suggestions (click to add · × to remove from list)";
+
+  const sugEl = document.createElement("div");
+  sugEl.className = "inline-tag-suggestions";
+
+  wrap.append(assignedEl, inputRow, sugLabel, sugEl);
+
+  function renderAssigned(){
+    assignedEl.innerHTML = "";
+    tagArr.forEach(t=>{
+      const chip = document.createElement("span"); chip.className = "chip";
+      chip.innerHTML = `${escapeHtml(t)} <button type="button" title="remove tag">×</button>`;
+      chip.querySelector("button").onclick = e=>{ e.stopPropagation(); tagArr.splice(tagArr.indexOf(t),1); renderAssigned(); renderSuggestions(); };
+      assignedEl.appendChild(chip);
+    });
+  }
+
+  function renderSuggestions(){
+    const q=tagIn.value.trim().toLowerCase();
+    sugEl.innerHTML = "";
+    tagHistory
+      .filter(t=>!tagArr.includes(t))
+      .filter(t=>!q || t.includes(q))
+      .forEach(t=>{
+      const chip = document.createElement("span"); chip.className = "chip";
+      const txt = document.createElement("span"); txt.textContent = t;
+      const rx = document.createElement("span"); rx.className = "sug-x"; rx.textContent = "×"; rx.title = "remove from list";
+      chip.append(txt, rx);
+      chip.onclick = e=>{
+        e.stopPropagation();
+        if(e.target === rx){ removeTagFromActiveCards(t); return; }
+        if(!tagArr.includes(t)){ tagArr.push(t); renderAssigned(); renderSuggestions(); }
+      };
+      sugEl.appendChild(chip);
+    });
+  }
+
+  function commitInput(){
+    const raw = tagIn.value.trim().toLowerCase();
+    if(!raw) return;
+    const match = tagHistory.find(t=>t.includes(raw) && !tagArr.includes(t));
+    const chosen = match || raw;
+    if(chosen && !tagArr.includes(chosen)) tagArr.push(chosen);
+    tagIn.value = "";
+    renderAssigned(); renderSuggestions();
+  }
+
+  tagIn.addEventListener("keydown", e=>{ if(e.key==="Enter"||e.key===","){ e.preventDefault(); e.stopPropagation(); commitInput(); } });
+  tagIn.addEventListener("input", renderSuggestions);
+
+  renderAssigned(); renderSuggestions();
+  return wrap;
+}
+
+function renderCard(card){
+  const el=document.createElement("article"); el.className="card"; el.draggable=true; el.dataset.id=card.id;
+  el.addEventListener("dragstart", e=>{
+    if(isInteractiveCardTarget(e.target) || e.target.closest('.card-links,.live-notes-preview,.attachment-list')){
+      e.preventDefault();
+      return;
+    }
+    draggingId=card.id;
+    el.classList.add("dragging");
+    e.dataTransfer.setData("text/id",card.id);
+    e.dataTransfer.setData("text/plain",card.id);
+    e.dataTransfer.effectAllowed="move";
+  });
+  el.addEventListener("dragend", ()=>{ draggingId=null; el.classList.remove("dragging"); setHighlight(null); });
+  el.addEventListener("pointerdown", (e)=> pointerFromCardStart(card, e));
+  el.addEventListener("pointermove", (e)=> pointerFromCardMove(el, e));
+  el.addEventListener("pointerup", (e)=> pointerFromCardEnd(el, e));
+  el.addEventListener("pointercancel", (e)=> pointerFromCardEnd(el, e));
+  const line=document.createElement("div"); line.className="card-line";
+  const title=document.createElement("button");
+  title.type="button";
+  title.className="card-title";
+  title.textContent=card.title||"(untitled)";
+  const isCollapsed = state.cardCollapsed?.[card.id] === true;
+  title.title = isCollapsed ? "Expand card" : "Collapse card";
+  title.onclick=(e)=>{
+    e.stopPropagation();
+    state.cardCollapsed = state.cardCollapsed || {};
+    state.cardCollapsed[card.id] = !isCollapsed;
+    scheduleSave();
+    render();
+  };
+  const links=document.createElement("span"); links.className="card-links";
+  const devUrl=normalizeUrl(card.dev);
+  const liveUrl=normalizeUrl(card.live);
+  const dev=document.createElement(devUrl?"a":"span");
+  dev.textContent="Dev";
+  if(devUrl){ dev.href=devUrl; dev.target="_blank"; dev.rel="noopener"; dev.draggable=false; dev.onclick=(e)=> e.stopPropagation(); dev.addEventListener("pointerdown",e=>e.stopPropagation()); dev.addEventListener("pointerup",e=>e.stopPropagation()); }
+  else dev.className="empty";
+  const live=document.createElement(liveUrl?"a":"span");
+  live.textContent="Live";
+  if(liveUrl){ live.href=liveUrl; live.target="_blank"; live.rel="noopener"; live.draggable=false; live.onclick=(e)=> e.stopPropagation(); live.addEventListener("pointerdown",e=>e.stopPropagation()); live.addEventListener("pointerup",e=>e.stopPropagation()); }
+  else live.className="empty";
+  const statusBtn=document.createElement("button");
+  statusBtn.type="button";
+  statusBtn.className="card-status-btn";
+  statusBtn.title="Status";
+  statusBtn.setAttribute("aria-label","Change status color");
+  const statusDot=document.createElement("span");
+  statusDot.className="card-status-dot";
+  const applyStatusDot=(colorName)=>{
+    const normalized=normalizeStatusColor(colorName);
+    statusDot.style.background=STATUS_COLOR_MAP[normalized];
+    statusDot.style.border=normalized==="white" ? "1px solid #cbd5e1" : "none";
+    statusBtn.title=`Status: ${normalized}`;
+  };
+  applyStatusDot(card.statusColor);
+  statusBtn.append(statusDot);
+  statusBtn.addEventListener("click", (e)=>{
+    e.stopPropagation();
+    const current=normalizeStatusColor(card.statusColor);
+    const choice=prompt(`Status color (${STATUS_COLORS.join(", ")})`, current);
+    if(choice===null) return;
+    const next=normalizeStatusColor(choice);
+    if(next===current) return;
+    updateCard(card.id,{ statusColor:next });
+  });
+  statusBtn.addEventListener("pointerdown", e=>e.stopPropagation());
+  statusBtn.addEventListener("pointerup", e=>e.stopPropagation());
+  links.append(dev,live,statusBtn);
+  const archiveBtn=document.createElement("button");
+  archiveBtn.type="button";
+  archiveBtn.className="card-archive-btn";
+  archiveBtn.title="Archive card";
+  archiveBtn.setAttribute("aria-label","Archive card");
+  archiveBtn.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 3h6l1 2h5v2H3V5h5l1-2Zm1 7h2v8h-2v-8Zm4 0h2v8h-2v-8ZM8 10h2v8H8v-8Zm-1 10h10a2 2 0 0 0 2-2V8H5v10a2 2 0 0 0 2 2Z"/></svg>';
+  archiveBtn.addEventListener("click", (e)=>{ e.stopPropagation(); archiveCard(card.id); });
+  archiveBtn.addEventListener("pointerdown", e=>e.stopPropagation());
+  archiveBtn.addEventListener("pointerup", e=>e.stopPropagation());
+  line.append(title,links); el.append(line,archiveBtn);
+
+  const tagsRow=document.createElement("div"); tagsRow.className="card-tags";
+  const p=document.createElement("span"); p.className="chip card-platform"; p.textContent=card.platform;
+  tagsRow.appendChild(p);
+  if(card.tags?.length){
+    card.tags.forEach(t=>{
+      const chip=document.createElement("button");
+      chip.type="button";
+      chip.className="chip tag-search-btn";
+      chip.textContent=t;
+      chip.title=`Search tag: ${t}`;
+      chip.addEventListener("click", (e)=>{ e.stopPropagation(); applyTagSearch(t); });
+      chip.addEventListener("pointerdown", e=>e.stopPropagation());
+      chip.addEventListener("pointerup", e=>e.stopPropagation());
+      tagsRow.appendChild(chip);
+    });
+  }
+  el.append(tagsRow);
+
+  const detail=document.createElement("div"); detail.className="card-detail";
+  ["pointerdown","pointerup","mousedown","mouseup","click","dragstart"].forEach(ev=>detail.addEventListener(ev, e=>{
+    if(ev==="dragstart") e.preventDefault();
+    e.stopPropagation();
+  }));
+  if(isCollapsed) detail.classList.add("collapsed");
+
+  const inlineState={
+    title: card.title||"",
+    platform: card.platform||state.platforms[0]||"General",
+    stage: card.stage,
+    dev: card.dev||"",
+    live: card.live||"",
+    statusColor: normalizeStatusColor(card.statusColor),
+    tagArr: (card.tags||[]).slice(),   // NEW: array, not comma string
+    notes: card.notes||"",
+    files: Array.isArray(card.files) ? card.files.slice() : []
+  };
+  const renderInlineAttachments=()=>{
+    attachmentsWrap.innerHTML="";
+    if(!inlineState.files.length){
+      const empty=document.createElement("span");
+      empty.className="muted";
+      empty.textContent="No attachments";
+      attachmentsWrap.append(empty);
+      return;
+    }
+    inlineState.files.forEach((f, idx)=>{
+      const item=document.createElement("li");
+      item.className="attachment-item";
+      const meta=[f?.type, typeof f?.size==="number" && f.size>=0 ? fmtBytes(f.size) : ""].filter(Boolean).join(" • ");
+      const fileName=f?.name||"attachment";
+      if(typeof f?.data === "string" && f.data){
+        const link=document.createElement("a");
+        link.className="attachment-link";
+        link.href=f.data;
+        link.download=fileName;
+        link.target="_blank";
+        link.rel="noopener";
+        link.textContent=meta ? `${fileName} (${meta})` : fileName;
+        link.draggable=false;
+        link.addEventListener("click", e=>e.stopPropagation());
+        link.addEventListener("pointerdown", e=>e.stopPropagation());
+        link.addEventListener("pointerup", e=>e.stopPropagation());
+        item.append(link);
+      }else{
+        const text=document.createElement("span");
+        text.className="attachment-name";
+        text.textContent=meta ? `${fileName} (${meta})` : fileName;
+        item.append(text);
+      }
+      const rm=document.createElement("button");
+      rm.type="button";
+      rm.className="attachment-delete";
+      rm.textContent="×";
+      rm.title="Remove attachment";
+      rm.setAttribute("aria-label",`Remove ${fileName}`);
+      rm.addEventListener("click", (e)=>{
+        e.stopPropagation();
+        inlineState.files.splice(idx,1);
+        renderInlineAttachments();
+      });
+      item.append(rm);
+      attachmentsWrap.append(item);
+    });
+  };
+  const saveInline=()=>{
+    const patch={
+      title:inlineState.title.trim()||"(untitled)",
+      platform:inlineState.platform,
+      stage:inlineState.stage,
+      dev:inlineState.dev.trim(),
+      live:inlineState.live.trim(),
+      statusColor:inlineState.statusColor,
+      notes:inlineState.notes.trim(),
+      tags: inlineState.tagArr.slice(),   // NEW: pull from tagArr
+      files:inlineState.files.slice()
+    };
+    if(
+      patch.title===card.title &&
+      patch.platform===card.platform &&
+      patch.stage===card.stage &&
+      patch.dev===card.dev &&
+      patch.live===card.live &&
+      patch.statusColor===normalizeStatusColor(card.statusColor) &&
+      patch.notes===card.notes &&
+      JSON.stringify(patch.tags)===JSON.stringify(card.tags||[]) &&
+      JSON.stringify(patch.files)===JSON.stringify(card.files||[])
+    ) return;
+    updateCard(card.id, patch);
+  };
+  detail.addEventListener("focusout", (e)=>{
+    if(detail.contains(e.relatedTarget)) return;
+    saveInline();
+  });
+
+  const grid=document.createElement("div");
+  grid.className="card-edit-grid";
+  const makeField=(label, control, full=false)=>{
+    const wrap=document.createElement("div");
+    wrap.className=`card-edit-field${full?" full":""}`;
+    const l=document.createElement("label");
+    l.textContent=label;
+    wrap.append(l, control);
+    return wrap;
+  };
+
+  const titleInput=document.createElement("input");
+  titleInput.value=inlineState.title;
+  titleInput.placeholder="Card title";
+  titleInput.addEventListener("input", ()=>{ inlineState.title=titleInput.value; });
+  shieldInteractiveControl(titleInput);
+
+  const platformSelect=document.createElement("select");
+  state.platforms.forEach(pl=>{ const opt=document.createElement("option"); opt.value=pl; opt.textContent=pl; if(pl===inlineState.platform) opt.selected=true; platformSelect.append(opt); });
+  platformSelect.addEventListener("change", ()=>{ inlineState.platform=platformSelect.value; });
+  shieldInteractiveControl(platformSelect);
+
+  const stageSelect=document.createElement("select");
+  state.stages.forEach(st=>{ const opt=document.createElement("option"); opt.value=st; opt.textContent=st; if(st===inlineState.stage) opt.selected=true; stageSelect.append(opt); });
+  stageSelect.addEventListener("change", ()=>{ inlineState.stage=stageSelect.value; });
+  shieldInteractiveControl(stageSelect);
+
+  const devInput=document.createElement("input");
+  devInput.type="url"; devInput.placeholder="https://dev…"; devInput.value=inlineState.dev;
+  devInput.addEventListener("input", ()=>{ inlineState.dev=devInput.value; });
+  shieldInteractiveControl(devInput);
+
+  const liveInput=document.createElement("input");
+  liveInput.type="url"; liveInput.placeholder="https://live…"; liveInput.value=inlineState.live;
+  liveInput.addEventListener("input", ()=>{ inlineState.live=liveInput.value; });
+  shieldInteractiveControl(liveInput);
+
+  // NEW: inline tag editor replaces plain tagsInput
+  const inlineTagEditor = buildInlineTagEditor(inlineState.tagArr);
+
+  const notesInput=document.createElement("textarea");
+  const notesPreview=document.createElement("div");
+  const notesWrap=document.createElement("div");
+  notesInput.rows=4; notesInput.placeholder="Notes or linktext--url"; notesInput.value=inlineState.notes;
+  notesPreview.className="live-notes-preview";
+  notesPreview.tabIndex=0;
+  notesPreview.dataset.placeholder="Notes or linktext--url";
+  notesWrap.className="card-inline-notes";
+  const syncInlineNotesPreview=()=>{
+    notesPreview.innerHTML=notesInput.value ? renderMarkdown(notesInput.value) : "";
+  };
+  const showInlineNotesPreview=()=>{
+    notesInput.classList.add("hidden");
+    notesPreview.classList.remove("hidden");
+    syncInlineNotesPreview();
+  };
+  const showInlineNotesEditor=()=>{
+    notesPreview.classList.add("hidden");
+    notesInput.classList.remove("hidden");
+    notesInput.focus();
+  };
+  notesInput.addEventListener("input", ()=>{ inlineState.notes=notesInput.value; });
+  notesInput.addEventListener("blur", ()=>{
+    const normalized=preprocessNotes(notesInput.value);
+    if(normalized!==notesInput.value){
+      notesInput.value=normalized;
+    }
+    inlineState.notes=notesInput.value;
+    showInlineNotesPreview();
+  });
+  notesPreview.addEventListener("click", (e)=>{
+    if(e.target.closest("a")) return;
+    e.stopPropagation();
+    showInlineNotesEditor();
+  });
+  notesPreview.addEventListener("pointerdown", (e)=>{
+    if(e.target.closest("a")){
+      e.stopPropagation();
+      return;
+    }
+    e.stopPropagation();
+  });
+  notesPreview.addEventListener("pointerup", (e)=>{
+    if(e.target.closest("a")){
+      e.stopPropagation();
+      return;
+    }
+    e.stopPropagation();
+  });
+  notesWrap.append(notesInput, notesPreview);
+  shieldInteractiveControl(notesInput);
+  showInlineNotesPreview();
+
+  const attachmentsWrap=document.createElement("ul");
+  attachmentsWrap.className="attachment-list";
+  attachmentsWrap.addEventListener("click", e=>e.stopPropagation());
+  attachmentsWrap.addEventListener("pointerdown", e=>e.stopPropagation());
+  attachmentsWrap.addEventListener("pointerup", e=>e.stopPropagation());
+  renderInlineAttachments();
+
+  grid.append(
+    makeField("Title", titleInput, true),
+    makeField("Platform", platformSelect),
+    makeField("Lane", stageSelect),
+    makeField("Dev Link", devInput),
+    makeField("Live Link", liveInput),
+    makeField("Tags", inlineTagEditor, true),   // NEW: replaced tagsInput
+    makeField("Notes", notesWrap, true),
+    makeField("Attachments", attachmentsWrap, true)
+  );
+  detail.append(grid);
+
+  el.append(detail);
+  return el;
+}
+
+/* ===== Card Ops ===== */
+function createCard(data){
+  const now=Date.now(); const stage=data.stage||state.stages[0]||"Next";
+  const c={ id:uid(), title:(data.title||"").trim(), platform:data.platform||state.platforms[0]||"General", stage, dev:normalizeUrl(data.dev), live:normalizeUrl(data.live), statusColor:normalizeStatusColor(data.statusColor), tags:normalizeTags(data.tags), notes:preprocessNotes(data.notes), pos:topPos(stage), createdAt:now, updatedAt:now, files:(data.files||[]) };
+  state.cards.push(c); bumpTagHistory(c.tags); scheduleSave(); render(); focusCard(c.id); return c.id;
+}
+function updateCard(id, patch){
+  const c=state.cards.find(x=>x.id===id); if(!c) return;
+  if(Object.prototype.hasOwnProperty.call(patch,"dev")) patch.dev=normalizeUrl(patch.dev);
+  if(Object.prototype.hasOwnProperty.call(patch,"live")) patch.live=normalizeUrl(patch.live);
+  if(Object.prototype.hasOwnProperty.call(patch,"statusColor")) patch.statusColor=normalizeStatusColor(patch.statusColor);
+  if(Object.prototype.hasOwnProperty.call(patch,"notes")) patch.notes=preprocessNotes(patch.notes);
+  Object.assign(c, patch); c.tags=normalizeTags(c.tags); c.updatedAt=Date.now(); bumpTagHistory(c.tags); scheduleSave(); render(); focusCard(c.id);
+}
+function archiveCard(id){
+  const idx = state.cards.findIndex(x=>x.id===id); if(idx===-1) return;
+  const c = state.cards[idx];
+  state.cards.splice(idx,1);
+  state.archive.push({...c, archivedAt: Date.now()});
+  scheduleSave(); render();
+}
+function restoreCard(id){
+  const idx = state.archive.findIndex(x=>x.id===id); if(idx===-1) return;
+  const c = state.archive[idx];
+  state.archive.splice(idx,1);
+  c.pos = topPos(c.stage);
+  c.updatedAt = Date.now();
+  delete c.archivedAt;
+  state.cards.push(c);
+  scheduleSave(); render(); focusCard(c.id);
+}
+function deleteCardPermanently(id){ state.archive = state.archive.filter(x=>x.id!==id); scheduleSave(); renderArchiveList(); }
+function emptyArchive(){ if(confirm("Permanently delete all archived cards? This cannot be undone.")){ state.archive = []; scheduleSave(); renderArchiveList(); } }
+function deleteCard(id){ archiveCard(id); }
+function focusCard(id){ const el=$( `.card[data-id="${id}"]` ); if(el){ el.scrollIntoView({behavior:"smooth",block:"center",inline:"center"}); el.animate([{transform:"scale(1)"},{transform:"scale(1.02)"},{transform:"scale(1)"}],{duration:450}); } }
+function normalizeTags(tags){ let arr=[]; if(Array.isArray(tags)) arr=tags; else if(typeof tags==="string") arr=tags.split(",").map(s=>s.trim()); arr=arr.map(s=>s.toLowerCase()).filter(Boolean); return [...new Set(arr)]; }
+function bumpTagHistory(tags){ if(!tags?.length) return; tagHistory=saveTagHistory([...tagHistory, ...tags]); }
+
+/* ===== Editor ===== */
+const editDialog=$("#editDialog"); const editForm=$("#editForm");
+const editorCloseBtn=$("#editorCloseBtn");
+let editingId=null, activeTags=[], pendingFiles=[], currentFiles=[];
+function getNotesValue(el){ return el?.value ?? ""; }
+function setNotesValue(el, value){ if(el) el.value=String(value||""); }
+function syncNotesPreview(){
+  const notesInput=$("#fNotes");
+  const notesPreview=$("#fNotesPreview");
+  if(!notesInput || !notesPreview) return;
+  notesPreview.innerHTML=notesInput.value ? renderMarkdown(notesInput.value) : "";
+}
+function showNotesPreview(){
+  const notesInput=$("#fNotes");
+  const notesPreview=$("#fNotesPreview");
+  if(!notesInput || !notesPreview) return;
+  notesInput.classList.add("hidden");
+  notesPreview.classList.remove("hidden");
+}
+function showNotesEditor(){
+  const notesInput=$("#fNotes");
+  const notesPreview=$("#fNotesPreview");
+  if(!notesInput || !notesPreview) return;
+  notesPreview.classList.add("hidden");
+  notesInput.classList.remove("hidden");
+  notesInput.focus();
+}
+function openEditor(id=null, presetStage=null){
+  editingId=id; editorDirty=false;
+  $("#editTitle").textContent=id? "Edit Card":"New Card";
+  const c=id? state.cards.find(x=>x.id===id):null;
+  refillSelects();
+  $("#fPlatform").value = c?.platform || (state.platforms[0]||"General");
+  $("#fStage").value = c?.stage || (presetStage || state.stages[0] || "Next");
+  $("#fTitle").value = c?.title || "";
+  $("#fDev").value = c?.dev || "";
+  $("#fLive").value = c?.live || "";
+  setNotesValue($("#fNotes"), c?.notes || "");
+  syncNotesPreview();
+  showNotesPreview();
+  $("#btnDelete").classList.toggle("hidden", !id);
+  activeTags = c?.tags ? [...c.tags] : [];
+  currentFiles = Array.isArray(c?.files) ? c.files.slice() : [];
+  pendingFiles = [];
+  renderTagChips(); renderTagSuggestions();
+  renderFileChips();
+  $("#fFiles").value = ""; // reset file input
+  editDialog.showModal(); $("#fTitle").focus();
+}
+editDialog.addEventListener("close", ()=>{
+  const action=editDialog.returnValue; if(action==="cancel"){ editingId=null; return; }
+  const payload=collectEditorData();
+  if(action==="delete" && editingId){ deleteCard(editingId); editingId=null; return; }
+  if(action==="save" || action==="save_new"){
+    if(!payload.title){ alert("Title is required."); openEditor(editingId); return; }
+    if(editingId) updateCard(editingId, payload); else createCard(payload);
+    const savedStage = payload.stage;
+    if(action==="save_new"){ openEditor(null, savedStage); } else { editingId=null; }
+  }
+  editorDirty=false;
+});
+editForm.addEventListener("input", ()=>{ editorDirty=true; });
+editForm.addEventListener("change", ()=>{ editorDirty=true; });
+$("#fNotesPreview").addEventListener("click", (e)=>{
+  if(e.target.closest("a")) return;
+  showNotesEditor();
+});
+$("#fNotesPreview").addEventListener("keydown", (e)=>{
+  if(e.key!=="Enter" && e.key!==" ") return;
+  e.preventDefault();
+  showNotesEditor();
+});
+$("#fNotes").addEventListener("input", ()=>{ syncNotesPreview(); editorDirty=true; });
+$("#fNotes").addEventListener("blur", ()=>{
+  const notes=$("#fNotes");
+  const normalized=preprocessNotes(notes.value);
+  if(normalized!==notes.value) notes.value=normalized;
+  syncNotesPreview();
+  showNotesPreview();
+  editorDirty=true;
+});
+editorCloseBtn.addEventListener("click", ()=>{
+  if(editorDirty){ if(confirm("Discard changes?")) { editDialog.close("cancel"); editorDirty=false; } }
+  else { editDialog.close("cancel"); }
+});
+$("#fTitle").addEventListener("keydown", (e)=>{ if(e.key==="Enter"){ e.preventDefault(); $("#btnSave").click(); } });
+$("#btnSaveAndNew").addEventListener("click", (e)=>{ e.preventDefault(); editDialog.close("save_new"); });
+function collectEditorData(){ return { platform:$("#fPlatform").value, stage:$("#fStage").value, title:$("#fTitle").value.trim(), dev:$("#fDev").value.trim(), live:$("#fLive").value.trim(), tags:activeTags.join(","), notes:getNotesValue($("#fNotes")), files: currentFiles.slice() }; }
+function refillSelects(){ $("#fPlatform").innerHTML = state.platforms.map(p=>`<option>${p}</option>`).join(""); $("#fStage").innerHTML = state.stages.map(s=>`<option>${s}</option>`).join(""); }
+
+/* ===== Tagging UI ===== */
+const tagInput=$("#tagInput"), tagChips=$("#tagChips"), tagSuggestions=$("#tagSuggestions"), hiddenTags=$("#fTags");
+function commitTagFromInput(){
+  const raw = tagInput.value.trim().toLowerCase();
+  if(!raw) return;
+  const selected = getFilteredTagSuggestions(raw).find(t=>!activeTags.includes(t));
+  const nextTag = selected || raw;
+  if(nextTag && !activeTags.includes(nextTag)) activeTags.push(nextTag);
+  tagInput.value="";
+  renderTagChips();
+  renderTagSuggestions();
+}
+tagInput.addEventListener("keydown", (e)=>{ if(e.key==="Enter" || e.key===","){ e.preventDefault(); commitTagFromInput(); } });
+tagInput.addEventListener("blur", ()=>{ commitTagFromInput(); });
+tagInput.addEventListener("input", ()=> renderTagSuggestions());
+function renderTagChips(){
+  tagChips.innerHTML="";
+  activeTags.forEach(t=>{
+    const el=document.createElement("span"); el.className="chip"; el.innerHTML=`${escapeHtml(t)} <button title="remove" aria-label="remove tag">×</button>`;
+    el.querySelector("button").onclick=()=>{ activeTags=activeTags.filter(x=>x!==t); renderTagChips(); };
+    tagChips.appendChild(el);
+  });
+  hiddenTags.value = activeTags.join(",");
+}
+function renderTagSuggestions(){
+  tagSuggestions.innerHTML=""; if(!tagHistory.length) return;
+  const query=tagInput.value.trim().toLowerCase();
+  const suggestions=getFilteredTagSuggestions(query);
+  const seen=new Set();
+  suggestions.forEach(t=>{
+    const k=t.toLowerCase(); if(seen.has(k)) return; seen.add(k);
+    const el=document.createElement("span"); el.className="chip";
+    const txt=document.createElement("span"); txt.textContent=t;
+    const rm=document.createElement("span"); rm.textContent="×"; rm.className="remove"; rm.title="delete tag from active cards";
+    el.append(txt,rm);
+    el.onclick=(e)=>{
+      if(e.target===rm){ removeTagFromActiveCards(t); return; }
+      if(!activeTags.includes(t)){ activeTags.push(t); renderTagChips(); }
+    };
+    tagSuggestions.appendChild(el);
+  });
+}
+function getFilteredTagSuggestions(query=""){
+  const q=String(query||"").trim().toLowerCase();
+  return tagHistory.filter(t=>(!q || t.includes(q)));
+}
+
+/* ===== Attachments ===== */
+const fFiles=$("#fFiles"), fileChips=$("#fileChips"), btnClearFiles=$("#btnClearFiles");
+btnClearFiles.addEventListener("click", ()=>{ pendingFiles=[]; fFiles.value=""; renderFileChips(); });
+fFiles.addEventListener("change", async (e)=>{ await addFiles(Array.from(e.target.files||[])); });
+async function addFiles(files){
+  for(const file of files){ const dataUrl = await readAsDataURL(file); pendingFiles.push({name:file.name,type:file.type,size:file.size,data:dataUrl}); }
+  currentFiles = mergeFiles(currentFiles, pendingFiles); pendingFiles = []; renderFileChips(); }
+function mergeFiles(existing, added){ const byName=new Map(existing.map(x=>[x.name,x])); for(const f of added){ byName.set(f.name, f); } return Array.from(byName.values()); }
+function renderFileChips(){
+  fileChips.innerHTML="";
+  if(!currentFiles.length){ fileChips.innerHTML="<span class='muted'>No attachments</span>"; return; }
+  const list=document.createElement("ul");
+  list.className="attachment-list";
+  currentFiles.forEach((f,idx)=>{
+    const item=document.createElement("li");
+    item.className="attachment-item";
+    const a=document.createElement("a");
+    a.className="attachment-link";
+    a.href=f.data;
+    a.download=f.name;
+    a.textContent=f.name;
+    a.onclick=(e)=>e.stopPropagation();
+    const rm=document.createElement("button");
+    rm.type="button";
+    rm.className="attachment-delete";
+    rm.textContent="×";
+    rm.title="remove attachment";
+    rm.onclick=(e)=>{ e.stopPropagation(); currentFiles.splice(idx,1); renderFileChips(); };
+    item.append(a, rm);
+    list.appendChild(item);
+  });
+  fileChips.appendChild(list);
+}
+function readAsDataURL(file){ return new Promise((res,rej)=>{ const r=new FileReader(); r.onload=()=>res(r.result); r.onerror=rej; r.readAsDataURL(file); }); }
+
+/* ===== Settings ===== */
+const settingsDialog=$("#settingsDialog");
+$("#btnNew").onclick=()=> openEditor(null, state.stages[0]);
+$("#btnSettings").onclick=()=>{
+  $("#sPlatforms").value=state.platforms.join(", ");
+  $("#sStages").value=state.stages.join(", ");
+  $("#sLayout").value=state.layout;
+  settingsDialog.showModal();
+};
+settingsDialog.addEventListener("close", ()=>{
+  const v=settingsDialog.returnValue; if(v==="cancel") return;
+  if(v==="reset"){ if(confirm("Remove all cards? (Archive remains)")){ state.cards=[]; scheduleSave(); render(); } return; }
+  if(v==="save"){
+    const platforms=$("#sPlatforms").value.split(",").map(s=>s.trim()).filter(Boolean);
+    const stages=$("#sStages").value.split(",").map(s=>s.trim()).filter(Boolean);
+    const layout=$("#sLayout").value; // auto|horizontal|vertical
+    if(stages.length){ const newFirst=stages[0]; state.cards.forEach(c=>{ if(!stages.includes(c.stage)){ c.stage=newFirst; c.pos=topPos(newFirst); c.updatedAt=Date.now(); } }); state.stages=stages; }
+    if(platforms.length) state.platforms=platforms;
+    state.layout = layout;
+    scheduleSave(); render();
+  }
+});
+
+/* ===== NEW: Boards Modal ===== */
+const boardsDialog = $("#boardsDialog");
+$("#boardKeyPill").addEventListener("click", ()=>{
+  $("#bKeyInput").value = currentBoardKey;
+  $("#bRepoUrl").value = localStorage.getItem(BOARD_REPO_LS)||"https://api.github.com/repos/acmeproducts/stuff/contents";
+  $("#bBoardList").classList.add("hidden");
+  boardsDialog.showModal();
+});
+$("#boardsClose").addEventListener("click", ()=> boardsDialog.close());
+
+$("#bKeySwitch").addEventListener("click", ()=>{
+  const raw = $("#bKeyInput").value.trim();
+  if(!raw){ alert("Enter a board key."); return; }
+  const key = setBoardKey(raw);
+  currentBoardKey = key;
+  updateKeyLabel();
+  // reload state from the new slot
+  const fresh = loadState();
+  if(fresh){
+    Object.assign(state, fresh);
+    state.collapsed   = state.collapsed||{};
+    state.cardCollapsed = state.cardCollapsed||{};
+    state.archive     = Array.isArray(state.archive)?state.archive:[];
+    state.layout      = state.layout||"auto";
+    syncTagHistoryToActiveCards();
+  } else {
+    state.cards=[]; state.archive=[]; state.collapsed={}; state.cardCollapsed={};
+    syncTagHistoryToActiveCards();
+  }
+  boardsDialog.close();
+  render();
+  toast("Switched","board: "+key);
+});
+
+$("#bListBoards").addEventListener("click", async ()=>{
+  const url = $("#bRepoUrl").value.trim();
+  if(!url){ alert("Enter the GitHub repo contents API URL."); return; }
+  localStorage.setItem(BOARD_REPO_LS, url);
+  try{
+    const res = await fetch(url, { headers:{ Accept:"application/vnd.github.v3+json" } });
+    if(!res.ok) throw new Error("HTTP "+res.status);
+    const files = await res.json();
+    const jsFiles = files.filter(f=> f.type==="file" && f.name?.endsWith(".js"));
+    const listEl = $("#bBoardList");
+    listEl.innerHTML = "";
+    if(!jsFiles.length){
+      listEl.innerHTML = "<span class='muted'>No .js files found.</span>";
+    } else {
+      jsFiles.forEach(f=>{
+        const key = f.name.replace(/\.js$/,"");
+        const row = document.createElement("div");
+        row.style.cssText = "display:flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid var(--border);border-radius:10px;background:#fff";
+        if(key===currentBoardKey) row.style.borderColor="var(--accent)";
+        row.innerHTML = `<span style="flex:1;font-family:ui-monospace,monospace;font-size:13px;font-weight:600;color:var(--accent)">${escapeHtml(f.name)}</span>${key===currentBoardKey?'<span style="font-size:11px;background:#e8f0fe;color:var(--accent);border-radius:999px;padding:2px 8px">current</span>':''}`;
+        const selBtn = document.createElement("button");
+        selBtn.type="button"; selBtn.className="btn small"; selBtn.textContent="Select";
+        selBtn.onclick = ()=>{ $("#bKeyInput").value = key; };
+        row.appendChild(selBtn);
+        listEl.appendChild(row);
+      });
+    }
+    listEl.classList.remove("hidden");
+  }catch(err){ alert("Could not fetch list: "+err.message); }
+});
+
+/* ===== Import/Export/Share ===== */
+const DRIVE_SHARE_URL = "https://drive.google.com/file/d/1Fzzsy_Vu8xK5IGVMt5O4-BNFtuKmAoIx/view?usp=drivesdk";
+const DRIVE_FILE_ID = (DRIVE_SHARE_URL.match(/\/d\/([a-zA-Z0-9_-]+)/)?.[1]) || "";
+const DRIVE_JSON_URLS = DRIVE_FILE_ID
+  ? [
+      `https://drive.google.com/uc?export=media&id=${encodeURIComponent(DRIVE_FILE_ID)}`,
+      `https://drive.google.com/uc?export=download&id=${encodeURIComponent(DRIVE_FILE_ID)}`,
+      `https://drive.googleusercontent.com/uc?id=${encodeURIComponent(DRIVE_FILE_ID)}&export=download`,
+      `https://drive.usercontent.google.com/download?id=${encodeURIComponent(DRIVE_FILE_ID)}&export=download&confirm=t`
+    ]
+  : [];
+
+// NEW: export filename = currentBoardKey.js
+$("#btnExport").onclick=()=>{
+  const data=JSON.stringify(state,null,2);
+  const blob=new Blob([data],{type:"application/json"});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement("a"); a.href=url; a.download=`${currentBoardKey}.js`; a.click();
+  URL.revokeObjectURL(url);
+  setStatus(`Exported as ${currentBoardKey}.js`);
+};
+
+function toast(title, desc="", isErr=false){ const t=document.getElementById("toast"); t.className=isErr? "err":""; t.querySelector(".tmsg").textContent=title; t.querySelector(".tdesc").textContent=desc; t.style.display="block"; clearTimeout(t._timer); t._timer=setTimeout(()=>{ t.style.display="none"; }, 2800); }
+function applyImportedBoard(obj, sourceLabel="import", options={}){
+  if(!(Array.isArray(obj?.cards)&&Array.isArray(obj?.platforms)&&Array.isArray(obj?.stages))){
+    toast("Import failed","Invalid JSON", true);
+    alert("Invalid JSON structure.");
+    return false;
+  }
+  state=obj;
+  state.collapsed = state.collapsed || {};
+  state.layout = state.layout || "auto";
+  state.archive = Array.isArray(state.archive)? state.archive : [];
+  state.cardCollapsed = state.cardCollapsed || {};
+  state.lastModified = Number(state.lastModified||Date.now());
+  state.cards.forEach(c=>{ c.statusColor=normalizeStatusColor(c.statusColor); });
+  syncTagHistoryToActiveCards();
+  state.stages.forEach(st=>{ const list=state.cards.filter(c=>c.stage===st); list.sort((a,b)=>(a.pos??0)-(b.pos??0)||(a.createdAt-b.createdAt)); list.forEach((c,i)=>{ if(typeof c.pos!=="number") c.pos=(i+1)*1000; }); });
+  clearTimeout(saveTimer);
+  dirty=true;
+  persistNow({ touchTimestamp:false, syncToGitHub:false });
+  render();
+  toast("Import successful","Board replaced");
+  setStatus(`Imported ${sourceLabel} and saved to local storage.`);
+  return true;
+}
+function isValidBoardData(obj){
+  return Array.isArray(obj?.cards) && Array.isArray(obj?.platforms) && Array.isArray(obj?.stages);
+}
+function parseBoardPayload(text){
+  if(!text) return null;
+  const raw = String(text).trim();
+  if(!raw) return null;
+  try{
+    const obj = JSON.parse(raw);
+    return isValidBoardData(obj) ? obj : null;
+  }catch{}
+  const preMatch = raw.match(/<pre[^>]*>([\s\S]*?)<\/pre>/i);
+  const candidate = preMatch?.[1] || raw;
+  if(!candidate) return null;
+  try{
+    const decoded = candidate
+      .replace(/&quot;/g, '"')
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>');
+    const obj = JSON.parse(decoded.trim());
+    return isValidBoardData(obj) ? obj : null;
+  }catch{}
+  return null;
+}
+async function fetchCentralizedBoard(){
+  for(const url of DRIVE_JSON_URLS){
+    try{
+      const res = await fetch(url, { cache:"no-store" });
+      if(!res.ok) continue;
+      const txt = await res.text();
+      const obj = parseBoardPayload(txt);
+      if(obj) return obj;
+    }catch(err){
+      console.warn("Centralized board fetch failed:", err);
+    }
+  }
+  return null;
+}
+async function bootstrapCentralizedBoard(){
+  const remote = await fetchCentralizedBoard();
+  if(!remote) return;
+  applyImportedBoard(remote, "centralized Google Drive");
+}
+function clearAutoSync(){
+  if(autoSyncTimer){ clearTimeout(autoSyncTimer); autoSyncTimer=null; }
+}
+function queueAutoSync(reason="change"){
+  clearAutoSync();
+  if(!syncBootstrapComplete) return;
+  autoSyncTimer=setTimeout(()=>{
+    autoSyncTimer=null;
+    syncBoardWithGitHub(reason, { silent:true }).catch(err=>{
+      console.warn("Auto sync failed", err);
+    });
+  }, 900);
+}
+function checkForRemoteUpdateOnFocus(){
+  if(!syncBootstrapComplete) return;
+  if(autoSyncInFlight) return;
+  const now=Date.now();
+  if(now-lastFocusCheckAt < FOCUS_SYNC_THROTTLE_MS) return;
+  lastFocusCheckAt=now;
+  syncBoardWithGitHub("tab focus check", { silent:true }).catch(err=>{
+    console.warn("Foreground sync check failed", err);
+  });
+}
+function triggerRealtimeDriveSync(){
+  if(typeof pushStateToRemote==="function") pushStateToRemote();
+  queueAutoSync("local update");
+}
+
+async function forceRefreshFromDrive(){
+  setStatus("Refreshing from Google Drive…");
+  const remote = await fetchCentralizedBoard();
+  if(!remote){
+    toast("Refresh failed","Could not load board from Google Drive", true);
+    setStatus("Google Drive refresh failed.");
+    return;
+  }
+  applyImportedBoard(remote, "Google Drive refresh");
+}
+$("#btnImport").onclick=()=> $("#fileImport").click();
+$("#fileImport").onchange=(e)=>{ const f=e.target.files?.[0]; if(!f) return; const r=new FileReader(); r.onload=()=>{ try{ applyImportedBoard(JSON.parse(r.result), "JSON file"); }catch(err){ toast("Import failed","Could not parse file", true); alert("Failed to parse JSON."); } }; r.readAsText(f); };
+$("#btnShare").onclick=()=>{ window.open(DRIVE_SHARE_URL, "_blank", "noopener"); };
+/* ===== Archive UI ===== */
+const archiveDialog=$("#archiveDialog");
+$("#btnOpenArchive").onclick=()=>{ renderArchiveList(); archiveDialog.showModal(); };
+archiveDialog.addEventListener("close", (e)=>{ if(archiveDialog.returnValue==="empty"){ emptyArchive(); } });
+function renderArchiveList(){
+  const list=$("#archiveList"); list.innerHTML="";
+  if(!state.archive.length){ list.innerHTML = "<div class='muted'>Archive is empty.</div>"; return; }
+  state.archive.slice().sort((a,b)=> (b.archivedAt||0)-(a.archivedAt||0)).forEach(c=>{
+    const row=document.createElement("div"); row.className="result-item";
+    row.innerHTML = `
+      <strong>${escapeHtml(c.title||"(untitled)")}</strong>
+      <div class="muted">${escapeHtml(c.platform)} · ${escapeHtml(c.stage)}
+        ${c.tags?.length? " · #"+c.tags.join(" #"):""}
+        <span class="timepill">Archived ${escapeHtml(fmtDate(c.archivedAt))}</span>
+      </div>
+      <div class="row" style="margin-top:6px;">
+        <button class="btn small" data-act="restore" data-id="${c.id}">Restore</button>
+        <button class="btn small danger" data-act="delete" data-id="${c.id}">Delete Permanently</button>
+      </div>
+    `;
+    row.querySelector('[data-act="restore"]').onclick=()=> restoreCard(c.id);
+    row.querySelector('[data-act="delete"]').onclick=()=> deleteCardPermanently(c.id);
+    list.appendChild(row);
+  });
+}
+$("#btnEmptyArchive").onclick=(e)=>{ e.preventDefault(); archiveDialog.close("empty"); };
+
+/* ===== Search ===== */
+const searchInput=$("#search"); let searchDebounce, currentMatches=[];
+$("#btnClearSearch").addEventListener("click", ()=>{ searchInput.value=""; applySearch(""); });
+searchInput.addEventListener("input", ()=>{ clearTimeout(searchDebounce); searchDebounce=setTimeout(()=> applySearch(searchInput.value), 120); });
+searchInput.addEventListener("keydown", (e)=>{ if(e.key==="Escape"){ searchInput.value=""; applySearch(""); return; } if(e.key==="Enter"){ e.preventDefault(); openSearchModal(currentMatches); } });
+function applySearch(q){
+  const {includes, excludes}=parseSearch(q||""); const all=state.cards.slice();
+  currentMatches = filterCards(all, includes, excludes);
+  highlightMatches(new Set(currentMatches.map(c=>c.id)), includes.length||excludes.length);
+  renderResultsPreview(currentMatches.slice(0,120));
+  $("#searchCount").textContent=(includes.length||excludes.length)? `${currentMatches.length} match(es)`:"";
+}
+function applyTagSearch(tag){
+  const next=(tag||"").trim().toLowerCase();
+  if(!next) return;
+  searchInput.value=next;
+  applySearch(next);
+}
+function parseSearch(q){ const parts=q.trim().toLowerCase().split(/\s+/).filter(Boolean); const includes=[], excludes=[]; for(const p of parts){ if(p.startsWith("-")&&p.length>1) excludes.push(p.slice(1)); else includes.push(p); } return {includes,excludes}; }
+function haystack(c){ const files = (c.files||[]).map(f=>f.name).join(" "); return [c.title,c.platform,c.stage,c.notes,c.dev,c.live,normalizeStatusColor(c.statusColor),files,...(c.tags||[])].join(" ").toLowerCase(); }
+function filterCards(cards, inc, exc){ return cards.filter(c=>{ const hay=haystack(c); for(const e of exc){ if(hay.includes(e)) return false; } for(const i of inc){ if(!hay.includes(i)) return false; } return true; }); }
+function highlightMatches(idset, active){ $$(".card").forEach(el=>{ el.classList.toggle("search-hit", active && idset.has(el.dataset.id)); el.style.opacity = active && !idset.has(el.dataset.id) ? 0.35 : 1; }); }
+function renderResultsPreview(cards){ const cont=$("#resultsContainer"); cont.innerHTML=""; const active=$("#search").value.trim().length>0; if(!active||!cards.length) return; const box=document.createElement("div"); box.className="results"; cards.forEach(c=>{ const item=document.createElement("div"); item.className="result-item"; item.innerHTML=`<strong>${escapeHtml(c.title)}</strong><div class="muted">${escapeHtml(c.platform)} · ${escapeHtml(c.stage)}${c.tags?.length? " · #"+c.tags.join(" #"):""}</div>`; item.onclick=()=>{ openEditor(c.id); }; box.appendChild(item); }); cont.appendChild(box); }
+const searchDialog=$("#searchDialog");
+function openSearchModal(cards){ const list=$("#searchList"); list.innerHTML=""; if(!cards.length){ list.innerHTML="<div class='muted'>No results (active cards only)</div>"; } else { cards.forEach(c=>{ const row=document.createElement("div"); row.className="result-item"; row.innerHTML=`<strong>${escapeHtml(c.title)}</strong><div class="muted">${escapeHtml(c.platform)} · ${escapeHtml(c.stage)}${c.tags?.length? " · #"+c.tags.join(" #"):""}</div>`; row.onclick=()=>{ searchDialog.close("close"); openEditor(c.id); }; list.appendChild(row); }); } searchDialog.showModal(); }
+
+/* ===== Tooltip ===== */
+const tooltip = document.getElementById("tooltip");
+function showTooltip(e, card){
+  tooltip.querySelector(".t-title").textContent = card.title || "(untitled)";
+  tooltip.querySelector(".t-meta").textContent = `${card.platform} · ${card.stage}`;
+  tooltip.querySelector(".t-tags").textContent = card.tags?.length ? "tags: " + card.tags.join(", ") : "no tags";
+  tooltip.querySelector(".t-notes").innerHTML = renderMarkdown(card.notes||"");
+  if(card.files && card.files.length){
+    const imgs = card.files.filter(f=>/^image\//.test(f.type));
+    if(imgs.length){
+      const frag = document.createElement('div');
+      imgs.forEach(f=>{ const im=new Image(); im.src=f.data; im.alt=f.name; im.style.maxWidth='100%'; im.style.height='auto'; im.style.marginTop='6px'; im.style.borderRadius='8px'; frag.appendChild(im); });
+      tooltip.querySelector('.t-notes').appendChild(frag);
+    }
+  }
+  tooltip.style.display = "block"; positionTooltip(e);
+}
+function positionTooltip(e){ const pad=12; let x=e.clientX+pad, y=e.clientY+pad; const rect=tooltip.getBoundingClientRect(); if(x+rect.width>window.innerWidth-6) x=e.clientX-rect.width-pad; if(y+rect.height>window.innerHeight-6) y=e.clientY-rect.height-pad; tooltip.style.left=x+"px"; tooltip.style.top=y+"px"; tooltip.setAttribute("aria-hidden","false"); }
+function hideTooltip(){ tooltip.style.display="none"; tooltip.setAttribute("aria-hidden","true"); }
+
+/* ===== Helpers ===== */
+function fmtDate(ts){ if(!ts) return ""; const d=new Date(ts); const pad=n=>String(n).padStart(2,"0"); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`; }
+function escapeHtml(s){ return String(s||"").replace(/[&<>"']/g, m=> ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;"}[m])); }
+// NEW: status bar shows current board key
+function setStatus(t){ const detail=t? `${t} • ` : ""; document.getElementById("status").textContent=`${detail}Last updated: ${formatLastUpdated(state.lastModified)} • Build ${BUILD} • board: ${currentBoardKey}`; }
+function b64EncodeUnicode(str){ return btoa(unescape(encodeURIComponent(str))); }
+function b64DecodeUnicode(b64){ return decodeURIComponent(escape(atob(b64))); }
+async function validateToken(token){
+  if(!token || !token.trim()) return false;
+  try{
+    const res=await fetch("https://api.github.com/user",{ headers:{ "Authorization":"token "+token.trim(), "Accept":"application/vnd.github.v3+json" } });
+    return res.ok;
+  }catch{ return false; }
+}
+function requestTokenInApp(message=""){
+  return new Promise((resolve)=>{
+    const existing=document.getElementById("tokenGate");
+    if(existing) existing.remove();
+    const gate=document.createElement("div");
+    gate.id="tokenGate";
+    gate.style.cssText="position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,.72);display:flex;align-items:center;justify-content:center;padding:16px;";
+    gate.innerHTML=`<div style="width:min(560px,100%);background:#1e1e1e;color:#f3f3f3;border:1px solid #3a3a3a;border-radius:14px;padding:18px;box-shadow:0 8px 24px rgba(0,0,0,.45);font-family:Inter,system-ui,sans-serif;"><h2 style="margin:0 0 10px 0;font-size:18px;">GitHub Personal Access Token</h2><p style="margin:0 0 10px 0;font-size:13px;line-height:1.45;color:#d5d5d5;">Enter a token once. This app stores it in local storage and reuses it until GitHub rejects it.</p><p id="tokenGateMessage" style="margin:0 0 10px 0;font-size:12px;color:#ffb9b9;min-height:1em;">${message||""}</p><input id="tokenGateInput" type="password" autocomplete="off" placeholder="ghp_..." style="width:100%;padding:10px 12px;border-radius:10px;border:1px solid #4a4a4a;background:#121212;color:#f3f3f3;outline:none;"><div style="margin-top:12px;display:flex;justify-content:flex-end;gap:8px;"><button id="tokenGateSave" type="button" style="padding:9px 12px;border-radius:10px;border:1px solid #1f6feb;background:#238636;color:#fff;cursor:pointer;">Save & Continue</button></div></div>`;
+    document.body.appendChild(gate);
+    const input=gate.querySelector("#tokenGateInput");
+    const saveBtn=gate.querySelector("#tokenGateSave");
+    const messageEl=gate.querySelector("#tokenGateMessage");
+    input.focus();
+    const submit=()=>{
+      const value=input.value.trim();
+      if(!value){ messageEl.textContent="Token is required."; input.focus(); return; }
+      gate.remove();
+      resolve(value);
+    };
+    input.addEventListener("keydown",(e)=>{ if(e.key==="Enter") submit(); });
+    saveBtn.addEventListener("click",submit);
+  });
+}
+async function ensureGithubToken(){
+  if(!githubToken) githubToken=loadPersistedGithubToken();
+  if(githubToken) return githubToken;
+  let message="";
+  while(!githubToken){
+    const input=await requestTokenInApp(message);
+    if(await validateToken(input)){
+      githubToken=input.trim();
+      trySave(GITHUB_PAT_KEY, githubToken);
+      return githubToken;
+    }
+    message="That token is invalid. Please try again.";
+  }
+  return githubToken;
+}
+function resetGithubToken(){
+  githubToken=null;
+  localStorage.removeItem(GITHUB_PAT_KEY);
+}
+function getGitHubSyncConfig(){
+  return DEFAULT_GITHUB_SYNC_CONFIG;
+}
+async function githubFetch(url, options={}){
+  const token=await ensureGithubToken();
+  const headers={"Authorization":"token "+token,"Accept":"application/vnd.github.v3+json",...(options.headers||{})};
+  const res=await fetch(url,{...options,headers});
+  if(res.status===401 || res.status===403){
+    resetGithubToken();
+    const freshToken=await ensureGithubToken();
+    const retryHeaders={"Authorization":"token "+freshToken,"Accept":"application/vnd.github.v3+json",...(options.headers||{})};
+    const retryRes=await fetch(url,{...options,headers:retryHeaders});
+    if(!retryRes.ok) throw new Error(`GitHub API error (${retryRes.status})`);
+    if(retryRes.status===204) return null;
+    return retryRes.json();
+  }
+  if(!res.ok) throw new Error(`GitHub API error (${res.status})`);
+  if(res.status===204) return null;
+  return res.json();
+}
+async function fetchGitHubBoard(cfg){
+  const url=`https://api.github.com/repos/${encodeURIComponent(cfg.owner)}/${encodeURIComponent(cfg.repo)}/contents/${encodeURIComponent(cfg.path)}?ref=${encodeURIComponent(cfg.branch)}`;
+  const data=await githubFetch(url);
+  const text=b64DecodeUnicode((data.content||"").replace(/\n/g,""));
+  return { sha:data.sha, board:JSON.parse(text) };
+}
+function boardTimestamp(board){
+  const ts=Number(board?.lastModified||0);
+  return Number.isFinite(ts) ? ts : 0;
+}
+function boardsEqual(a,b){
+  try{ return JSON.stringify(a)===JSON.stringify(b); }catch{ return false; }
+}
+async function pushBoardToGitHub(options={}){
+  const cfg=getGitHubSyncConfig();
+  const { silent=false, reason="manual push", expectedSha=null } = options || {};
+  setStatus(`Pushing to GitHub (${cfg.owner}/${cfg.repo}:${cfg.path})…`);
+  const payload={ message:`Update Kanban board (${new Date().toISOString()})`, content:b64EncodeUnicode(JSON.stringify(state,null,2)), branch:cfg.branch };
+  if(expectedSha) payload.sha=expectedSha;
+  else if(remoteBoardSha) payload.sha=remoteBoardSha;
+  try{
+    const url=`https://api.github.com/repos/${encodeURIComponent(cfg.owner)}/${encodeURIComponent(cfg.repo)}/contents/${encodeURIComponent(cfg.path)}`;
+    const resp=await githubFetch(url,{ method:"PUT", headers:{"Content-Type":"application/json"}, body:JSON.stringify(payload) });
+    remoteBoardSha=resp?.content?.sha || resp?.commit?.sha || remoteBoardSha;
+    if(!silent) toast("Push successful",`Board saved to GitHub (${reason})`);
+    setStatus(`Pushed to ${cfg.owner}/${cfg.repo}:${cfg.path}`);
+    return resp;
+  }catch(err){
+    remoteBoardSha=null;
+    if(!silent) toast("Push failed", err.message||"GitHub push failed", true);
+    setStatus("GitHub push failed");
+    throw err;
+  }
+}
+async function pullBoardFromGitHub(options={}){
+  const cfg=getGitHubSyncConfig();
+  const { silent=false, reason="manual pull" } = options || {};
+  clearAutoSync();
+  setStatus(`Pulling from GitHub (${cfg.owner}/${cfg.repo}:${cfg.path})…`);
+  try{
+    const remote=await fetchGitHubBoard(cfg);
+    remoteBoardSha=remote.sha || null;
+    applyImportedBoard(remote.board, `GitHub (${cfg.owner}/${cfg.repo}:${cfg.path})`, { skipAutoSync:true });
+    if(!silent) toast("Pull successful",`Board loaded from GitHub (${reason})`);
+    return remote;
+  }catch(err){
+    remoteBoardSha=null;
+    if(!silent) toast("Pull failed", err.message||"GitHub pull failed", true);
+    setStatus("GitHub pull failed");
+    throw err;
+  }
+}
+async function syncBoardWithGitHub(reason="sync", options={}){
+  clearAutoSync();
+  if(autoSyncInFlight) return autoSyncInFlight;
+  const { silent=false } = options || {};
+  autoSyncInFlight=(async()=>{
+    const cfg=getGitHubSyncConfig();
+    if(!silent) setStatus(`Syncing with GitHub (${cfg.owner}/${cfg.repo}:${cfg.path})…`);
+    const remote=await fetchGitHubBoard(cfg);
+    remoteBoardSha=remote.sha || null;
+    const localTs=boardTimestamp(state);
+    const remoteTs=boardTimestamp(remote.board);
+    if(boardsEqual(remote.board, state)){
+      if(!silent) setStatus(`GitHub already up to date (${cfg.owner}/${cfg.repo}:${cfg.path})`);
+      return { action:"noop", remote };
+    }
+    if(remoteTs > localTs){
+      applyImportedBoard(remote.board, `GitHub (${cfg.owner}/${cfg.repo}:${cfg.path})`, { skipAutoSync:true });
+      if(!silent){
+        toast("GitHub updated","Loaded newer board from repository");
+        setStatus(`Pulled newer board from ${cfg.owner}/${cfg.repo}:${cfg.path}`);
+      }
+      return { action:"pull", remote };
+    }
+    await pushBoardToGitHub({ silent:true, reason, expectedSha:remote.sha || null });
+    if(!silent) toast("GitHub updated","Pushed latest local board to repository");
+    return { action:"push", remote };
+  })();
+  try{
+    return await autoSyncInFlight;
+  }finally{
+    autoSyncInFlight=null;
+  }
+}
+
+function normalizeUrl(url){
+  const val=String(url||"").trim();
+  if(!val) return "";
+  if(/^[a-zA-Z][a-zA-Z\d+\-.]*:\/\//.test(val)) return val;
+  if(/^[\w.-]+\.[a-zA-Z]{2,}(?:[\/:?#]|$)/.test(val)) return `https://${val}`;
+  return val;
+}
+function normalizeShorthandUrl(url){
+  const raw=String(url||"").trim();
+  if(!raw) return "";
+  if(/^[a-zA-Z][a-zA-Z\d+\-.]*:\/\//.test(raw)) return raw;
+  const match=raw.match(/^([^\/?#]+)(.*)$/);
+  if(!match) return `https://${raw}`;
+  let [, host, rest]=match;
+  if(!host.includes(".")) host += ".com";
+  return `https://${host}${rest}`;
+}
+function shorthandToMarkdown(text){
+  return String(text||"").replace(/(^|[\s(>])([A-Za-z0-9][^\n<>()\[\]]*?\S)\s*--\s*([^\s<>()]+)(?=$|[\s),.!?])/g, (match, prefix, label, rawUrl)=>{
+    const trimmedLabel=label.trim();
+    const normalizedUrl=normalizeShorthandUrl(rawUrl);
+    if(!trimmedLabel || !normalizedUrl) return match;
+    return `${prefix}[**${trimmedLabel}**](${normalizedUrl})`;
+  });
+}
+function preprocessNotes(s){
+  const source=String(s||"");
+  const protectedChunks=[];
+  const tokenized=source.replace(/!?\[[^\]]+\]\([^\)]+\)/g, (match)=>{
+    const token=`__MD_LINK_${protectedChunks.length}__`;
+    protectedChunks.push(match);
+    return token;
+  });
+  const shorthandNormalized=shorthandToMarkdown(tokenized);
+  const retokenized=shorthandNormalized.replace(/!?\[[^\]]+\]\([^\)]+\)/g, (match)=>{
+    const token=`__MD_LINK_${protectedChunks.length}__`;
+    protectedChunks.push(match);
+    return token;
+  });
+  const normalized=retokenized.replace(/https?:\/\/[^\s<>"]+/g, (rawUrl)=>{
+    const trimmed=rawUrl.replace(/[),.;!?]+$/g, "");
+    const suffix=rawUrl.slice(trimmed.length);
+    let label="link";
+    try{
+      const u=new URL(trimmed);
+      label=(u.hostname||"").replace(/^www\./i,"") || "link";
+    }catch{
+      return rawUrl;
+    }
+    return `[${label}](${trimmed})${suffix}`;
+  });
+  return normalized.replace(/__MD_LINK_(\d+)__/g, (_, idx)=> protectedChunks[Number(idx)] ?? "");
+}
+function linkifyNotes(s){
+  return String(s||"").replace(/(?<!\]\()https?:\/\/[^\s)]+(?![^<]*>)/g, '<a href="$&" target="_blank" rel="noopener">$&<\/a>');
+}
+function inlineMarkdown(text){
+  return String(text||"")
+    .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
+    .replace(/\*([^*]+)\*/g, "<em>$1</em>")
+    .replace(/`([^`]+)`/g, "<code>$1</code>")
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+}
+function renderMarkdown(source){
+  const withImages=sanitizeMarkdownImages(escapeHtml(preprocessNotes(source||"")));
+  const lines=withImages.split(/\r?\n/);
+  let html="", inList=false, inCode=false;
+  for(const rawLine of lines){
+    const line=rawLine||"";
+    if(line.startsWith("```")){ html += inCode ? "</code></pre>" : "<pre><code>"; inCode=!inCode; continue; }
+    if(inCode){ html += `${line}\n`; continue; }
+    const li=line.match(/^\s*[-*]\s+(.*)$/);
+    if(li){ if(!inList){ html+="<ul>"; inList=true; } html += `<li>${inlineMarkdown(linkifyNotes(li[1]))}</li>`; continue; }
+    if(inList){ html+="</ul>"; inList=false; }
+    if(/^\s*$/.test(line)) continue;
+    if(line.startsWith("### ")){ html += `<p><strong>${inlineMarkdown(linkifyNotes(line.slice(4)))}</strong></p>`; continue; }
+    if(line.startsWith("## ")){ html += `<p><strong>${inlineMarkdown(linkifyNotes(line.slice(3)))}</strong></p>`; continue; }
+    if(line.startsWith("# ")){ html += `<p><strong>${inlineMarkdown(linkifyNotes(line.slice(2)))}</strong></p>`; continue; }
+    html += `<p>${inlineMarkdown(linkifyNotes(line))}</p>`;
+  }
+  if(inList) html += "</ul>";
+  if(inCode) html += "</code></pre>";
+  return html;
+}
+function sanitizeMarkdownImages(s){
+  return String(s||"").replace(/!\[[^\]]*\]\((data:image\/[a-zA-Z0-9+.-]+;base64,[^\)]+)\)/g, (m,src)=>`<img src="${src}" alt="pasted"/>`);
+}
+
+/* ===== Boards Modal ===== */
+(function(){
+  const dlg = document.getElementById("boardsDialog");
+  document.getElementById("boardKeyPill").addEventListener("click", ()=>{
+    document.getElementById("bKeyInput").value = currentBoardKey;
+    document.getElementById("bRepoUrl").value = localStorage.getItem(BOARD_REPO_LS)||"https://api.github.com/repos/acmeproducts/stuff/contents";
+    document.getElementById("bBoardList").classList.add("hidden");
+    dlg.showModal();
+  });
+  document.getElementById("boardsClose").addEventListener("click", ()=> dlg.close());
+
+  document.getElementById("bKeySwitch").addEventListener("click", ()=>{
+    const raw = document.getElementById("bKeyInput").value.trim();
+    if(!raw){ alert("Enter a board key."); return; }
+    const key = setBoardKey(raw);
+    currentBoardKey = key;
+    updateKeyLabel();
+    const fresh = loadState();
+    if(fresh){
+      Object.assign(state, fresh);
+      state.collapsed = state.collapsed||{};
+      state.cardCollapsed = state.cardCollapsed||{};
+      state.archive = Array.isArray(state.archive)?state.archive:[];
+      state.layout = state.layout||"auto";
+    } else {
+      state.cards=[]; state.archive=[]; state.collapsed={}; state.cardCollapsed={};
+    }
+    dlg.close();
+    render();
+    toast("Switched","board: "+key);
+  });
+
+  document.getElementById("bListBoards").addEventListener("click", async ()=>{
+    const url = document.getElementById("bRepoUrl").value.trim();
+    if(!url){ alert("Enter the GitHub repo contents API URL."); return; }
+    localStorage.setItem(BOARD_REPO_LS, url);
+    const listEl = document.getElementById("bBoardList");
+    listEl.innerHTML = "<span class='muted'>Loading…</span>";
+    listEl.classList.remove("hidden");
+    try{
+      const res = await fetch(url, { headers:{ Accept:"application/vnd.github.v3+json" } });
+      if(!res.ok) throw new Error("HTTP "+res.status);
+      const files = await res.json();
+      const jsFiles = files.filter(f=> f.type==="file" && f.name?.endsWith(".js"));
+      listEl.innerHTML = "";
+      if(!jsFiles.length){
+        listEl.innerHTML = "<span class='muted'>No .js files found.</span>";
+      } else {
+        jsFiles.forEach(f=>{
+          const key = f.name.replace(/\.js$/,"");
+          const row = document.createElement("div");
+          row.className = "board-list-row" + (key===currentBoardKey?" current":"");
+          const nm = document.createElement("span"); nm.className="brow-name"; nm.textContent=f.name;
+          row.appendChild(nm);
+          if(key===currentBoardKey){ const b=document.createElement("span"); b.className="brow-badge"; b.textContent="current"; row.appendChild(b); }
+          const btn = document.createElement("button"); btn.type="button"; btn.className="btn small"; btn.textContent="Select";
+          btn.onclick = ()=>{ document.getElementById("bKeyInput").value = key; };
+          row.appendChild(btn);
+          listEl.appendChild(row);
+        });
+      }
+    }catch(err){ listEl.innerHTML = `<span class='muted'>Error: ${escapeHtml(err.message)}</span>`; }
+  });
+})();
+
+/* ===== Init ===== */
+updateKeyLabel();
+window.addEventListener("beforeunload", ()=>{ if(dirty) persistNow(); });
+(async ()=>{
+  render();
+  try{
+    setStatus("Checking GitHub token…");
+    await ensureGithubToken();
+    syncBootstrapComplete=true;
+    await pullBoardFromGitHub({ silent:true, reason:"startup refresh" });
+    setStatus("Loaded from GitHub");
+  }catch(err){
+    syncBootstrapComplete=true;
+    console.warn("GitHub bootstrap failed", err);
+    toast("GitHub sync unavailable", err?.message||"Using local board", true);
+    setStatus("Loaded local board");
+  }
+})();
+
+$("#btnPushGitHub").addEventListener("click", ()=>{ syncBoardWithGitHub("manual sync").catch(err=>console.warn("Manual sync failed", err)); });
+$("#btnPullGitHub").addEventListener("click", ()=>{ pullBoardFromGitHub({ reason:"manual pull" }).catch(err=>console.warn("Manual pull failed", err)); });
+document.addEventListener("visibilitychange", ()=>{
+  if(document.visibilityState==="visible") checkForRemoteUpdateOnFocus();
+});
+window.addEventListener("focus", checkForRemoteUpdateOnFocus);
+</script>
+</body>
+</html>
