@@ -125,7 +125,7 @@
     a { color: #1d4ed8; text-decoration: none; font-weight: 600; }
     a:hover { text-decoration: underline; }
 
-    .actions { white-space: nowrap; }
+    .actions { white-space: nowrap; width: 1%; padding-right: 4px; }
     .action-group {
       display: inline-flex;
       align-items: center;
@@ -567,7 +567,7 @@
           const hint = pathHint(f.path);
           return `<tr>
             <td class="mono name-cell" title="${esc(f.path)}">
-              <span class="file-primary">${esc(shortFileName(f.path))}</span>
+              <span class="file-primary" data-fullname="${esc(f.path)}">${esc(shortFileName(f.path))}</span>
               ${hint ? `<span class="file-secondary">${esc(hint)}</span>` : ''}
             </td>
             <td class="details-cell" title="${esc(f.commitMessage || '')}">
@@ -590,6 +590,15 @@
         document.querySelectorAll('[data-delete]').forEach((btn) => btn.addEventListener('click', () => softDelete(btn.getAttribute('data-delete'))));
         document.querySelectorAll('[data-edit]').forEach((btn) => btn.addEventListener('click', () => openEdit(btn.getAttribute('data-edit'))));
       }
+
+      document.querySelectorAll('.file-primary').forEach((el) => {
+        const fullName = el.getAttribute('data-fullname') || '';
+        if (el.scrollWidth > el.clientWidth) {
+          el.title = fullName;
+        } else {
+          el.removeAttribute('title');
+        }
+      });
 
       document.querySelectorAll('[data-sort-key]').forEach((el) => {
         const active = el.dataset.sortKey === state.sortKey;
