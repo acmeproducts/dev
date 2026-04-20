@@ -274,10 +274,14 @@
             reverbNode: null,
             delayNode: null,
             pannerNode: null,
+            dynamicsNode: null,
             activeOscillators: [],
             currentScheme: 'pentatonic',
             baseVolume: 0.3,
             ambientInterval: null,
+            autoPlayInterval: null,
+            autoPlayIndex: 0,
+            lastToneAt: 0,
 
             schemes: {
                 pentatonic: {
@@ -299,16 +303,23 @@
                 this.reverbNode = this.audioCtx.createConvolver();
                 this.delayNode = this.audioCtx.createDelay();
                 this.pannerNode = this.audioCtx.createStereoPanner();
+                this.dynamicsNode = this.audioCtx.createDynamicsCompressor();
 
                 this.masterGain.gain.value = this.baseVolume;
                 this.delayNode.delayTime.value = 0.3;
+                this.dynamicsNode.threshold.value = -26;
+                this.dynamicsNode.knee.value = 20;
+                this.dynamicsNode.ratio.value = 3;
+                this.dynamicsNode.attack.value = 0.01;
+                this.dynamicsNode.release.value = 0.2;
 
                 this.createReverb();
 
                 this.masterGain.connect(this.reverbNode);
                 this.reverbNode.connect(this.delayNode);
                 this.delayNode.connect(this.pannerNode);
-                this.pannerNode.connect(this.audioCtx.destination);
+                this.pannerNode.connect(this.dynamicsNode);
+                this.dynamicsNode.connect(this.audioCtx.destination);
 
                 this.startAmbientSounds();
             },
@@ -343,7 +354,7 @@
                 }, 8000 + Math.random() * 4000);
             },
 
-            playTone(frequency, volume, pan = 0) {
+            playTone(frequency, volume, pan = 0, duration = 2) {
                 if (!this.audioCtx || this.audioCtx.state !== 'running') return;
 
                 const now = this.audioCtx.currentTime;
@@ -351,21 +362,26 @@
                 const osc = this.audioCtx.createOscillator();
                 const gainNode = this.audioCtx.createGain();
                 const panner = this.audioCtx.createStereoPanner();
+                const filter = this.audioCtx.createBiquadFilter();
 
                 osc.type = 'sine';
                 osc.frequency.value = frequency;
                 panner.pan.value = pan;
+                filter.type = 'lowpass';
+                filter.frequency.value = Math.min(2500, frequency * 6);
+                filter.Q.value = 0.5;
                 
                 gainNode.gain.setValueAtTime(0, now);
-                gainNode.gain.linearRampToValueAtTime(volume * this.baseVolume, now + 0.1);
-                gainNode.gain.exponentialRampToValueAtTime(0.001, now + 2);
+                gainNode.gain.linearRampToValueAtTime(volume * this.baseVolume, now + 0.06);
+                gainNode.gain.exponentialRampToValueAtTime(0.001, now + duration);
 
-                osc.connect(gainNode);
+                osc.connect(filter);
+                filter.connect(gainNode);
                 gainNode.connect(panner);
                 panner.connect(this.masterGain);
 
                 osc.start(now);
-                osc.stop(now + 2);
+                osc.stop(now + duration);
 
                 const harmonicOsc = this.audioCtx.createOscillator();
                 const harmonicGain = this.audioCtx.createGain();
@@ -374,17 +390,40 @@
                 harmonicOsc.frequency.value = frequency * 1.5;
                 
                 harmonicGain.gain.setValueAtTime(0, now);
-                harmonicGain.gain.linearRampToValueAtTime(volume * this.baseVolume * 0.3, now + 0.1);
-                harmonicGain.gain.exponentialRampToValueAtTime(0.001, now + 1.5);
+                harmonicGain.gain.linearRampToValueAtTime(volume * this.baseVolume * 0.25, now + 0.08);
+                harmonicGain.gain.exponentialRampToValueAtTime(0.001, now + Math.max(0.4, duration * 0.75));
 
                 harmonicOsc.connect(harmonicGain);
                 harmonicGain.connect(panner);
 
                 harmonicOsc.start(now);
-                harmonicOsc.stop(now + 1.5);
+                harmonicOsc.stop(now + Math.max(0.4, duration * 0.75));
 
                 this.activeOscillators.push(osc, harmonicOsc);
                 this.cleanupOscillators();
+            },
+
+            startAutoPlaySequence() {
+                if (!isSoundEnabled || this.autoPlayInterval) return;
+                if (!this.audioCtx) this.init();
+                if (this.audioCtx.state === 'suspended') this.audioCtx.resume();
+
+                const pattern = [0, 2, 4, 2, 1, 3, 0, 4];
+                this.autoPlayIndex = 0;
+                this.autoPlayInterval = setInterval(() => {
+                    const frequencies = this.schemes[this.currentScheme].frequencies;
+                    const note = frequencies[pattern[this.autoPlayIndex % pattern.length] % frequencies.length];
+                    const octave = this.autoPlayIndex % 6 === 0 ? 0.5 : 1;
+                    const pan = Math.sin(this.autoPlayIndex * 0.6) * 0.75;
+                    this.playTone(note * octave, 0.22, pan, 2.2);
+                    this.autoPlayIndex++;
+                }, 900);
+            },
+
+            stopAutoPlaySequence() {
+                if (!this.autoPlayInterval) return;
+                clearInterval(this.autoPlayInterval);
+                this.autoPlayInterval = null;
             },
 
             cleanupOscillators() {
@@ -408,6 +447,27 @@
         };
 
         let isSoundEnabled = false;
+        let interactionSoundFrame = null;
+        let lastInteractionPos = null;
+        let lastInteractionTime = 0;
+        let idleSoundTimer = null;
+        const AUTO_PLAY_IDLE_MS = 20000;
+
+        function resetIdleSoundTimer() {
+            if (idleSoundTimer) clearTimeout(idleSoundTimer);
+            SoundEngine.stopAutoPlaySequence();
+
+            idleSoundTimer = setTimeout(() => {
+                if (isSoundEnabled) {
+                    SoundEngine.startAutoPlaySequence();
+                }
+            }, AUTO_PLAY_IDLE_MS);
+        }
+
+        function registerActivity() {
+            lastInteractionTime = performance.now();
+            resetIdleSoundTimer();
+        }
 
         soundToggle.addEventListener('click', () => {
             isSoundEnabled = !isSoundEnabled;
@@ -417,6 +477,13 @@
                 SoundEngine.init();
                 if (SoundEngine.audioCtx.state === 'suspended') {
                     SoundEngine.audioCtx.resume();
+                }
+                resetIdleSoundTimer();
+            } else {
+                SoundEngine.stopAutoPlaySequence();
+                if (idleSoundTimer) {
+                    clearTimeout(idleSoundTimer);
+                    idleSoundTimer = null;
                 }
             }
         });
@@ -432,14 +499,29 @@
 
         function playInteractionSound(x, y) {
             if (!isSoundEnabled) return;
+            SoundEngine.stopAutoPlaySequence();
 
             const frequencies = SoundEngine.schemes[SoundEngine.currentScheme].frequencies;
             const normalizedY = y / canvas.height;
-            const freqIndex = Math.floor(normalizedY * frequencies.length);
-            const frequency = frequencies[freqIndex];
+            const freqIndex = Math.max(0, Math.min(frequencies.length - 1, Math.floor(normalizedY * frequencies.length)));
+            let frequency = frequencies[freqIndex];
+            
+            let velocity = 0;
+            if (lastInteractionPos) {
+                const dx = x - lastInteractionPos.x;
+                const dy = y - lastInteractionPos.y;
+                const elapsed = Math.max(16, performance.now() - lastInteractionTime);
+                velocity = Math.min(1, Math.sqrt(dx * dx + dy * dy) / elapsed * 2.2);
+            }
+            frequency *= 1 + velocity * 0.15;
             
             const pan = (x / canvas.width) * 2 - 1;
-            SoundEngine.playTone(frequency, 0.3, pan);
+            const volume = 0.2 + velocity * 0.35;
+            const duration = 0.8 + (1 - velocity) * 0.8;
+
+            SoundEngine.playTone(frequency, volume, pan, duration);
+            lastInteractionPos = { x, y };
+            registerActivity();
         }
 
         const history = [];
@@ -476,6 +558,7 @@
                 currentStep--;
                 loadState(history[currentStep]);
                 updateHistoryButtons();
+                registerActivity();
             }
         });
 
@@ -484,6 +567,7 @@
                 currentStep++;
                 loadState(history[currentStep]);
                 updateHistoryButtons();
+                registerActivity();
             }
         });
 
@@ -528,6 +612,7 @@
             const pos = getMousePos(e);
             lastX = pos.x;
             lastY = pos.y;
+            registerActivity();
 
             if (currentTool === 'stone') {
                 placeStone(pos.x, pos.y);
@@ -583,7 +668,12 @@
                 erase(pos.x, pos.y);
             }
 
-            playInteractionSound(pos.x, pos.y);
+            if (!interactionSoundFrame) {
+                interactionSoundFrame = requestAnimationFrame(() => {
+                    playInteractionSound(pos.x, pos.y);
+                    interactionSoundFrame = null;
+                });
+            }
             lastX = pos.x;
             lastY = pos.y;
         }
@@ -620,6 +710,7 @@
                 saveState();
             }
             isDrawing = false;
+            registerActivity();
         }
 
         window.addEventListener('resize', resizeCanvas);
@@ -641,6 +732,7 @@
         document.getElementById('clear').addEventListener('click', () => {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
             saveState();
+            registerActivity();
         });
 
         resizeCanvas();
