@@ -797,7 +797,7 @@
       if (!item) return;
       item.minimized = !item.minimized;
       persist();
-      rerenderItem(id);
+      render();
     }
 
     function toggleMetaPin(id) {
@@ -908,9 +908,11 @@
       minimized.forEach(item => {
         const row = document.createElement('div');
         row.className = 'tray-item';
-        row.innerHTML = `<span title="${item.relPath}">${item.name}</span>`;
+        const name = document.createElement('span');
+        name.title = item.relPath;
+        name.textContent = item.name;
         const restoreBtn = iconBtn('Restore', 'Restore item', () => toggleMinimized(item.id), 'mini');
-        row.appendChild(restoreBtn);
+        row.append(name, restoreBtn);
         minList.appendChild(row);
       });
 
@@ -923,10 +925,12 @@
       removed.forEach(item => {
         const row = document.createElement('div');
         row.className = 'tray-item';
-        row.innerHTML = `<span title="${item.relPath}">${item.name}</span>`;
+        const name = document.createElement('span');
+        name.title = item.relPath;
+        name.textContent = item.name;
         const restoreBtn = iconBtn('Restore', 'Restore item', () => restoreItem(item.id), 'mini');
         const deleteBtn = iconBtn('Delete', 'Delete from collection', () => deleteItem(item.id), 'mini danger');
-        row.append(restoreBtn, deleteBtn);
+        row.append(name, restoreBtn, deleteBtn);
         removedList.appendChild(row);
       });
     }
