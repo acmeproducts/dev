@@ -37,8 +37,10 @@
       cursor: pointer;
     }
     button:hover { background: #1d4ed8; }
-    #status { margin: 8px 0 10px; min-height: 1.2em; color: #334155; font-size: 0.92rem; }
+    .status-row { margin: 8px 0 10px; min-height: 1.2em; display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    #status { min-height: 1.2em; color: #334155; font-size: 0.92rem; }
     #status.error { color: #b91c1c; }
+    #exportCsvBtn { display: none; margin: 0; width: auto; padding: 5px 9px; font-size: 0.76rem; border-radius: 8px; white-space: nowrap; }
 
     .card {
       border: 1px solid #d8deea;
@@ -51,7 +53,7 @@
       overflow-x: auto;
       -webkit-overflow-scrolling: touch;
     }
-    table { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    table { width: 100%; border-collapse: collapse; }
     thead th {
       background: #dbeafe;
       border-bottom: 1px solid #d9e1ee;
@@ -62,9 +64,10 @@
       padding: 12px;
       text-align: left;
       user-select: none;
-      cursor: pointer;
+      cursor: default;
     }
-    [data-sort-key][data-active="true"]::after { content: attr(data-dir); margin-left: 6px; color: #2563eb; }
+    [data-sort-key] { cursor: pointer; }
+    [data-sort-key][data-active="true"]::after { content: attr(data-dir); margin-left: 6px; color: #64748b; }
 
     tbody td {
       border-bottom: 1px solid #e3e8f3;
@@ -80,8 +83,26 @@
     tbody tr:hover td { background: #eef4ff; }
 
     .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.84rem; }
-    .name-cell { min-width: 220px; max-width: 0; }
-    .details-cell { min-width: 220px; width: 40%; }
+    .name-cell {
+      width: 240px;
+      max-width: 240px;
+      min-width: 150px;
+      white-space: nowrap;
+      overflow: hidden;
+    }
+    .open-cell {
+      width: 30px;
+      min-width: 30px;
+      max-width: 30px;
+      text-align: center;
+      padding: 5px 0;
+      white-space: nowrap;
+    }
+    .desc-cell { min-width: 300px; width: 48%; }
+    .delete-cell, .edit-cell, .size-cell, .changed-cell { white-space: nowrap; }
+    .delete-cell, .edit-cell { width: 38px; text-align: center; padding: 5px; }
+    .size-cell { width: 6ch; min-width: 6ch; padding: 7px 4px; }
+    .changed-cell { width: 8ch; min-width: 8ch; padding: 7px 4px; }
     .file-primary {
       display: block;
       font-weight: 600;
@@ -90,63 +111,44 @@
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      max-width: 100%;
+      vertical-align: middle;
     }
-    .file-secondary {
-      display: block;
-      margin-top: 1px;
-      font-size: 0.76rem;
-      color: #94a3b8;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .detail-stack {
-      display: grid;
-      gap: 1px;
-      line-height: 1.15;
-    }
-    .detail-size {
-      font-size: 0.77rem;
-      color: #334155;
-      font-weight: 600;
-    }
-    .commit-ago {
-      font-size: 0.76rem;
+    .file-external {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
       color: #64748b;
-      white-space: nowrap;
+      background: #f8fafc;
+      line-height: 1;
+      text-decoration: none;
+      vertical-align: middle;
     }
+    .file-external:hover { background: #e2e8f0; text-decoration: none; }
     .commit-msg {
       font-size: 0.76rem;
       color: #475569;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      white-space: pre-line;
+      overflow-wrap: anywhere;
     }
     a { color: #1d4ed8; text-decoration: none; font-weight: 600; }
     a:hover { text-decoration: underline; }
 
-    .actions { white-space: nowrap; }
-    .actions-col { width: 124px; }
-    .action-group {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      padding: 1px;
-      border: 1px solid #dbe3f0;
-      border-radius: 10px;
-      background: #f8fbff;
-    }
     .action-btn {
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      width: 24px;
-      height: 24px;
+      width: 22px;
+      height: 22px;
       border: 1px solid #cbd5e1;
-      border-radius: 8px;
+      border-radius: 6px;
       background: #fff;
       color: #334155;
-      font-size: 0.66rem;
+      font-size: 0.67rem;
       text-decoration: none;
       font-weight: 700;
       padding: 0;
@@ -160,13 +162,14 @@
       color: #94a3b8;
       cursor: default;
       background: #f8fafc;
+      pointer-events: none;
     }
     .action-btn.delete {
-      background: #fef2f2;
-      color: #b91c1c;
-      border-color: #fecaca;
+      color: #64748b;
+      border-color: #cbd5e1;
+      background: #f8fafc;
     }
-    .action-btn.delete:hover { background: #fee2e2; }
+    .action-btn.delete:hover { background: #e2e8f0; }
 
     .recycle {
       margin: 12px 0;
@@ -214,6 +217,17 @@
       cursor: pointer;
     }
     .mini:hover { background: #edf3ff; }
+    .sort-chip {
+      border-color: #cbd5e1;
+      background: #f8fafc;
+      color: #64748b;
+    }
+    .sort-chip:hover { background: #e2e8f0; }
+    [data-sort-key][data-active="true"].sort-chip {
+      background: #e2e8f0;
+      border-color: #cbd5e1;
+      color: #475569;
+    }
     .mini.danger {
       border-color: #fecaca;
       background: #fef2f2;
@@ -248,9 +262,12 @@
     @media (max-width: 760px) {
       .wrap { width: min(1200px, 99vw); margin: 10px auto 16px; }
       .controls { grid-template-columns: 1fr; }
-      th, td { padding: 7px 8px; }
-      .details-cell { min-width: 180px; width: auto; }
-      .action-btn { width: 24px; height: 24px; }
+      .status-row { flex-wrap: wrap; }
+      th, td { padding: 6px 6px; }
+      .name-cell { min-width: 110px; width: 160px; max-width: 160px; }
+      .open-cell { width: 24px; min-width: 24px; max-width: 24px; padding: 5px 0; }
+      .desc-cell { min-width: 220px; width: auto; }
+      .action-btn { width: 20px; height: 20px; }
     }
   </style>
 </head>
@@ -261,30 +278,29 @@
       <input id="repoInput" placeholder="owner/repo or github.com/owner/repo">
       <input id="tokenInput" type="password" placeholder="GitHub PAT (optional, persisted)">
     </div>
-    <div id="status" role="status" aria-live="polite"></div>
+    <div class="status-row">
+      <div id="status" role="status" aria-live="polite"></div>
+      <button id="exportCsvBtn" class="mini" type="button">Export CSV</button>
+    </div>
 
     <section id="recycle" class="recycle" style="display:none;">
       <div id="recycleHeader" class="recycle-header"><span id="recycleChev" class="chev">▸</span><span id="recycleLabel">Recently Deleted (0)</span></div>
       <div id="recycleList" class="recycle-list"></div>
+      <div style="padding: 0 10px 10px;"><button id="deleteAllDeletedBtn" class="mini danger" type="button" style="display:none;">Delete All</button></div>
     </section>
 
     <section class="card">
       <div class="table-scroll">
       <table>
-        <colgroup>
-          <col>
-          <col>
-          <col class="actions-col">
-        </colgroup>
         <thead>
           <tr>
-            <th><button class="mini" type="button" data-sort-key="name">File</button></th>
-            <th>
-              <span>Details</span>
-              <button class="mini" type="button" data-sort-key="size">Size</button>
-              <button class="mini" type="button" data-sort-key="changed">Changed</button>
-            </th>
-            <th>Actions</th>
+            <th><button class="mini sort-chip" type="button" data-sort-key="name">Filename</button></th>
+            <th>Open</th>
+            <th>Delete</th>
+            <th>Edit</th>
+            <th><button class="mini sort-chip" type="button" data-sort-key="commitMessage">Description</button></th>
+            <th><button class="mini sort-chip" type="button" data-sort-key="size">Size</button></th>
+            <th><button class="mini sort-chip" type="button" data-sort-key="changed">Changed</button></th>
           </tr>
         </thead>
         <tbody id="rows"></tbody>
@@ -360,25 +376,20 @@
     function shortCommitMessage(message) {
       const line = String(message || '').split('\n')[0].trim();
       if (!line) return '—';
-      return line.length > 60 ? `${line.slice(0, 60)}…` : line;
+      return line.length > 131 ? `${line.slice(0, 131)}…` : line;
     }
 
     function shortFileName(path) {
-      const name = String(path || '').split('/').pop() || '';
-      return name.length > 20 ? `${name.slice(0, 20)}…` : name;
-    }
-
-    function pathHint(path) {
       const full = String(path || '');
-      const i = full.lastIndexOf('/');
-      return i > 0 ? full.slice(0, i) : '';
+      return full.length > 40 ? `${full.slice(0, 40)}…` : full;
     }
 
     function commitWrappedPreview(message) {
       const text = shortCommitMessage(message || '');
       if (!text || text === '—') return '—';
       const parts = [];
-      for (let i = 0; i < text.length; i += 20) parts.push(text.slice(i, i + 20));
+      for (let i = 0; i < text.length; i += 130) parts.push(text.slice(i, i + 130));
+      if (parts.join('').length < text.length) parts.push('…');
       return parts.join('\n');
     }
 
@@ -541,11 +552,14 @@
     function renderRecycleBin() {
       const wrap = document.getElementById('recycle');
       const list = loadDeleted();
+      const deleteAllBtn = document.getElementById('deleteAllDeletedBtn');
       if (!list.length) {
         wrap.style.display = 'none';
+        deleteAllBtn.style.display = 'none';
         return;
       }
       wrap.style.display = 'block';
+      deleteAllBtn.style.display = 'inline-flex';
       document.getElementById('recycleLabel').textContent = `Recently Deleted (${list.length})`;
       document.getElementById('recycleChev').textContent = state.recycleOpen ? '▾' : '▸';
       wrap.classList.toggle('open', state.recycleOpen);
@@ -566,51 +580,66 @@
       const tbody = document.getElementById('rows');
       const files = sortedFiles();
       if (!files.length) {
-        tbody.innerHTML = '<tr><td colspan="3" class="empty">No visible files. Restore files from Recently Deleted if needed.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="7" class="empty">No visible files. Restore files from Recently Deleted if needed.</td></tr>';
       } else {
         tbody.innerHTML = files.map((f) => {
           const canLaunch = /\.html?$/i.test(f.path);
-          const hint = pathHint(f.path);
           return `<tr>
             <td class="mono name-cell" title="${esc(f.path)}">
-              <span class="file-primary" title="${esc(f.path)}">${esc(shortFileName(f.path))}</span>
-              ${hint ? `<span class="file-secondary">${esc(hint)}</span>` : ''}
+              ${canLaunch ? `<a class="file-primary" href="${esc(f.pagesUrl)}" target="_blank" rel="noopener" title="${esc(f.path)}">${esc(shortFileName(f.path))}</a>` : `<span class="file-primary" title="${esc(f.path)}">${esc(shortFileName(f.path))}</span>`}
             </td>
-            <td class="details-cell" title="${esc(f.commitMessage || '')}">
-              <div class="detail-stack">
-                <span class="detail-size">${esc(fmtSize(f.size))}</span>
-                <span class="commit-ago">${esc(fmtAgo(f.changed))}</span>
-                <span class="commit-msg">${esc(shortCommitMessage(f.commitMessage || ''))}</span>
-              </div>
+            <td class="open-cell">
+              <a class="file-external" href="${esc(f.ghListingUrl)}" target="_blank" rel="noopener" aria-label="Open GitHub blob for ${esc(f.path)}"><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M14 3h7v7h-2V6.41l-9.29 9.3-1.42-1.42 9.3-9.29H14V3z"></path><path fill="currentColor" d="M5 5h6v2H7v10h10v-4h2v6H5z"></path></svg></a>
             </td>
-            <td class="actions">
-              <div class="action-group">
-                <button class="action-btn" type="button" data-edit="${esc(f.path)}" aria-label="Edit ${esc(f.path)}">✎</button>
-                ${canLaunch ? `<a class="action-btn" href="${esc(f.pagesUrl)}" target="_blank" rel="noopener" aria-label="Open Pages URL for ${esc(f.path)}">Pg</a>` : '<span class="action-btn ghost" aria-hidden="true">Pg</span>'}
-                <a class="action-btn" href="${esc(f.ghListingUrl)}" target="_blank" rel="noopener" aria-label="Open GitHub blob for ${esc(f.path)}">Gh</a>
-                <button class="action-btn delete" type="button" data-delete="${esc(f.path)}" aria-label="Delete ${esc(f.path)}">×</button>
-              </div>
+            <td class="delete-cell">
+              <button class="action-btn delete" type="button" data-delete="${esc(f.path)}" aria-label="Delete ${esc(f.path)}"><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M9 3h6l1 2h4v2H4V5h4l1-2zm1 6h2v9h-2V9zm4 0h2v9h-2V9zM7 9h2v9H7V9z"></path></svg></button>
             </td>
+            <td class="edit-cell">
+              <button class="action-btn" type="button" data-edit="${esc(f.path)}" aria-label="Edit ${esc(f.path)}"><svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="currentColor" d="M3 17.25V21h3.75L17.8 9.94l-3.75-3.75L3 17.25zm18-11.5a1 1 0 0 0 0-1.41l-1.34-1.34a1 1 0 0 0-1.41 0l-1.83 1.83 3.75 3.75L21 5.75z"></path></svg></button>
+            </td>
+            <td class="desc-cell" title="${esc(f.commitMessage || '')}">
+              <span class="commit-msg">${esc(commitWrappedPreview(f.commitMessage || ''))}</span>
+            </td>
+            <td class="size-cell">${esc(fmtSize(f.size))}</td>
+            <td class="changed-cell" title="${esc(f.changed || '')}">${esc(fmtAgo(f.changed))}</td>
           </tr>`;
         }).join('');
         document.querySelectorAll('[data-delete]').forEach((btn) => btn.addEventListener('click', () => softDelete(btn.getAttribute('data-delete'))));
         document.querySelectorAll('[data-edit]').forEach((btn) => btn.addEventListener('click', () => openEdit(btn.getAttribute('data-edit'))));
       }
-
-      document.querySelectorAll('.file-primary').forEach((el) => {
-        const fullName = el.getAttribute('data-fullname') || '';
-        if (el.scrollWidth > el.clientWidth) {
-          el.title = fullName;
-        } else {
-          el.removeAttribute('title');
-        }
-      });
+      document.getElementById('exportCsvBtn').style.display = files.length ? 'inline-flex' : 'none';
 
       document.querySelectorAll('[data-sort-key]').forEach((el) => {
         const active = el.dataset.sortKey === state.sortKey;
         el.dataset.active = active ? 'true' : 'false';
         el.dataset.dir = active ? (state.sortDir === 'asc' ? '▲' : '▼') : '';
       });
+    }
+
+    function exportCsv() {
+      const files = sortedFiles();
+      if (!files.length) return;
+      const q = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+      const rows = ['filename,pages_url,blob_url,description,size,updated_when,updated_iso'];
+      const asLink = (v) => `=HYPERLINK("${String(v ?? '').replace(/"/g, '""')}","${String(v ?? '').replace(/"/g, '""')}")`;
+      for (const f of files) {
+        rows.push([
+          q(f.path),
+          q(asLink(f.pagesUrl || '')),
+          q(asLink(f.ghListingUrl || '')),
+          q(f.commitMessage || ''),
+          q(f.size),
+          q(fmtAgo(f.changed)),
+          q(f.changed || '')
+        ].join(','));
+      }
+      const blob = new Blob([rows.join('\n')], { type: 'text/csv;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${state.repo?.owner || 'repo'}-${state.repo?.name || 'files'}-files.csv`;
+      a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 500);
     }
 
     async function loadRepo(value) {
@@ -795,17 +824,28 @@
     document.getElementById('editModal').addEventListener('click', (e) => {
       if (e.target.id === 'editModal') closeEdit();
     });
+    document.getElementById('exportCsvBtn').addEventListener('click', exportCsv);
 
     document.getElementById('recycleHeader').addEventListener('click', () => {
       state.recycleOpen = !state.recycleOpen;
       renderRecycleBin();
+    });
+    document.getElementById('deleteAllDeletedBtn').addEventListener('click', () => {
+      const list = loadDeleted();
+      if (!list.length) return;
+      if (!window.confirm(`Delete all ${list.length} recently deleted entries forever? This cannot be undone.`)) return;
+      const purged = loadPurgedSet();
+      for (const item of list) purged.add(item.path);
+      savePurgedSet(purged);
+      saveDeleted([]);
+      render();
     });
 
     document.querySelectorAll('[data-sort-key]').forEach((el) => {
       el.addEventListener('click', () => {
         const key = el.dataset.sortKey;
         if (state.sortKey === key) state.sortDir = state.sortDir === 'asc' ? 'desc' : 'asc';
-        else { state.sortKey = key; state.sortDir = key === 'name' ? 'asc' : 'desc'; }
+        else { state.sortKey = key; state.sortDir = (key === 'name' || key === 'commitMessage') ? 'asc' : 'desc'; }
         render();
       });
     });
