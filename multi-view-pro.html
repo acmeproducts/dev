@@ -123,6 +123,64 @@
       max-width: 55%;
     }
 
+    .title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      min-width: 0;
+      position: relative;
+      flex: 1;
+    }
+
+    .meta-trigger {
+      border: 1px solid #2b3344;
+      background: transparent;
+      color: var(--muted);
+      border-radius: 999px;
+      width: 19px;
+      height: 19px;
+      padding: 0;
+      line-height: 1;
+      font-size: 11px;
+    }
+
+    .meta-pop {
+      position: absolute;
+      left: 0;
+      top: calc(100% + 6px);
+      min-width: 280px;
+      max-width: min(65vw, 540px);
+      z-index: 40;
+      background: #121722;
+      border: 1px solid #2b3344;
+      border-radius: 8px;
+      box-shadow: 0 8px 22px rgba(0, 0, 0, 0.45);
+      padding: 8px;
+      display: none;
+      font-size: 11px;
+      color: var(--muted);
+      line-height: 1.35;
+    }
+
+    .meta-pop .meta-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+      color: #c8d3ea;
+      font-size: 11px;
+    }
+
+    .meta-pop .meta-line {
+      margin: 2px 0;
+      overflow-wrap: anywhere;
+    }
+
+    .portlet:hover .meta-pop,
+    .meta-pop.pinned {
+      display: block;
+    }
+
     .actions {
       display: flex;
       gap: 4px;
@@ -150,16 +208,7 @@
       border-radius: 6px;
     }
 
-    .meta {
-      border-top: 1px solid #2b3344;
-      padding: 7px;
-      font-size: 11px;
-      color: var(--muted);
-      display: grid;
-      gap: 2px;
-    }
-
-    .collapsed .content, .collapsed .meta { display: none; }
+    .collapsed .content { display: none; }
 
     .pager {
       display: flex;
@@ -295,6 +344,9 @@
               ...collection,
               items: (collection.items || []).map(item => ({
                 ...item,
+                muted: item.muted ?? true,
+                frozen: item.frozen ?? true,
+                metaPinned: item.metaPinned ?? false,
                 objectUrl: null
               }))
             }
@@ -344,8 +396,9 @@
           modifiedLabel: new Date(modifiedMs).toISOString(),
           closed: false,
           minimized: false,
-          muted: false,
-          frozen: false,
+          muted: true,
+          frozen: true,
+          metaPinned: false,
           order: index,
           objectUrl: URL.createObjectURL(file)
         };
@@ -370,6 +423,11 @@
       render();
     }
 
+    function wildcardToRegex(term) {
+      const escaped = term.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*');
+      return new RegExp(`^${escaped}$`, 'i');
+    }
+
     function parseSearch(query) {
       const terms = query.trim().split(/\s+/).filter(Boolean);
       const include = [];
@@ -378,7 +436,12 @@
         if (t.startsWith('-') && t.length > 1) exclude.push(t.slice(1).toLowerCase());
         else include.push(t.toLowerCase());
       });
-      return { include, exclude };
+      return {
+        includePlain: include.filter(t => !t.includes('*')),
+        includeWild: include.filter(t => t.includes('*')).map(wildcardToRegex),
+        excludePlain: exclude.filter(t => !t.includes('*')),
+        excludeWild: exclude.filter(t => t.includes('*')).map(wildcardToRegex)
+      };
     }
 
     function searchable(item) {
@@ -386,13 +449,16 @@
     }
 
     function filteredSortedItems(collection) {
-      const { include, exclude } = parseSearch(collection.search || '');
+      const { includePlain, includeWild, excludePlain, excludeWild } = parseSearch(collection.search || '');
       let items = collection.items.filter(i => !i.closed);
 
       items = items.filter(item => {
         const hay = searchable(item);
-        const incOk = include.every(t => hay.includes(t));
-        const excOk = exclude.every(t => !hay.includes(t));
+        const nameHay = `${item.name} ${item.relPath}`.toLowerCase();
+        const incOk = includePlain.every(t => hay.includes(t))
+          && includeWild.every(rx => rx.test(nameHay));
+        const excOk = excludePlain.every(t => !hay.includes(t))
+          && excludeWild.every(rx => !rx.test(nameHay));
         return incOk && excOk;
       });
 
@@ -462,10 +528,38 @@
       const titlebar = document.createElement('div');
       titlebar.className = 'titlebar';
 
+      const titleWrap = document.createElement('div');
+      titleWrap.className = 'title-wrap';
+
       const title = document.createElement('div');
       title.className = 'title';
       title.title = item.relPath;
       title.textContent = item.name;
+
+      const metaTrigger = iconBtn('i', 'Show details', () => toggleMetaPin(item.id));
+      metaTrigger.classList.add('meta-trigger');
+
+      const metaPop = document.createElement('div');
+      metaPop.className = `meta-pop ${item.metaPinned ? 'pinned' : ''}`;
+      const metaHead = document.createElement('div');
+      metaHead.className = 'meta-head';
+      const metaTitle = document.createElement('span');
+      metaTitle.textContent = 'Portlet details';
+      const pinBtn = iconBtn(item.metaPinned ? 'Unpin' : 'Pin', 'Pin/unpin details card', () => toggleMetaPin(item.id));
+      metaHead.append(metaTitle, pinBtn);
+      metaPop.appendChild(metaHead);
+      [
+        `Path: ${item.relPath}`,
+        `Created: ${item.createdLabel}`,
+        `Modified: ${item.modifiedLabel}`,
+        `Size: ${toBytesLabel(item.size)}`
+      ].forEach(line => {
+        const row = document.createElement('div');
+        row.className = 'meta-line';
+        row.textContent = line;
+        metaPop.appendChild(row);
+      });
+      titleWrap.append(title, metaTrigger, metaPop);
 
       const actions = document.createElement('div');
       actions.className = 'actions';
@@ -481,7 +575,7 @@
       const btnClose = iconBtn('✕', 'Close', () => closeItem(item.id), 'danger');
 
       actions.append(btnFull, btnMute, btnFreeze, btnMin, btnClose);
-      titlebar.append(title, actions);
+      titlebar.append(titleWrap, actions);
       card.appendChild(titlebar);
 
       const content = document.createElement('div');
@@ -506,8 +600,9 @@
         if (!item.frozen) node.play().catch(() => {});
       } else if (canOpen && item.type === 'text/html') {
         node = document.createElement('iframe');
-        node.src = item.objectUrl;
+        node.src = item.frozen ? 'about:blank' : item.objectUrl;
         node.title = item.name;
+        node.setAttribute('sandbox', 'allow-scripts allow-same-origin');
       } else {
         node = document.createElement('div');
         node.className = 'hint';
@@ -519,20 +614,6 @@
       if (item.frozen && (node.tagName === 'VIDEO' || node.tagName === 'AUDIO')) node.pause();
       content.appendChild(node);
       card.appendChild(content);
-
-      const meta = document.createElement('div');
-      meta.className = 'meta';
-      [
-        `Path: ${item.relPath}`,
-        `Created: ${item.createdLabel}`,
-        `Modified: ${item.modifiedLabel}`,
-        `Size: ${toBytesLabel(item.size)}`
-      ].forEach(line => {
-        const row = document.createElement('div');
-        row.textContent = line;
-        meta.appendChild(row);
-      });
-      card.appendChild(meta);
 
       return card;
     }
@@ -573,7 +654,7 @@
       if (!item) return;
       item.muted = !item.muted;
       persist();
-      render();
+      rerenderItem(id);
     }
 
     function toggleFreeze(id) {
@@ -582,7 +663,7 @@
       if (!item) return;
       item.frozen = !item.frozen;
       persist();
-      render();
+      rerenderItem(id);
     }
 
     function toggleMinimized(id) {
@@ -591,7 +672,31 @@
       if (!item) return;
       item.minimized = !item.minimized;
       persist();
-      render();
+      rerenderItem(id);
+    }
+
+    function toggleMetaPin(id) {
+      const c = getActiveCollection();
+      const item = c?.items.find(i => i.id === id);
+      if (!item) return;
+      item.metaPinned = !item.metaPinned;
+      persist();
+      rerenderItem(id);
+    }
+
+    function rerenderItem(id) {
+      const existing = grid.querySelector(`.portlet[data-id="${CSS.escape(id)}"]`);
+      if (!existing) {
+        render();
+        return;
+      }
+      const c = getActiveCollection();
+      const item = c?.items.find(i => i.id === id && !i.closed);
+      if (!item) {
+        render();
+        return;
+      }
+      existing.replaceWith(renderPortlet(item));
     }
 
     function closeItem(id) {
