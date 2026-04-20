@@ -309,7 +309,7 @@ body {
     font-weight: 500;
 }
 
-.form-group input, 
+.form-group input,
 .form-group textarea {
     padding: 0.75rem;
     border: 1px solid #ddd;
@@ -606,7 +606,7 @@ body {
     border-left: 4px solid #4299e1;
 }
 </style>
-    
+
     <!-- Other Head Elements -->
 </head>
 <body>
@@ -628,7 +628,7 @@ body {
     <div class="menu-header">
         <h2 class="menu-title">Apps</h2>
     </div>
-    
+
     <!-- Home Menu Item (Always First) -->
     <ul class="menu-list">
         <li class="menu-item home-menu-item">
@@ -643,7 +643,7 @@ body {
             </a>
         </li>
     </ul>
-    
+
     <!-- File List -->
     <div class="menu-scroll">
         <ul class="menu-list" id="fileList">
@@ -654,7 +654,7 @@ body {
             </div>
         </ul>
     </div>
-    
+
     <!-- Config Menu Item (Always at bottom) -->
     <ul class="menu-list">
         <li class="menu-item">
@@ -678,18 +678,18 @@ body {
         </button>
         <h2 class="panel-title">Configuration</h2>
     </div>
-    
+
     <div class="form">
         <div class="form-group">
             <label for="appTitle">App Title</label>
             <input type="text" id="appTitle" placeholder="Enter app title">
         </div>
-        
+
         <div class="form-group">
             <label for="appDesc">App Description</label>
             <textarea id="appDesc" rows="2" placeholder="Enter app description"></textarea>
         </div>
-        
+
         <div class="form-group">
             <label for="appImage">App Image</label>
             <button class="upload-btn" id="appImageBtn" style="margin-top: 0.5rem;">
@@ -703,7 +703,7 @@ body {
             <input type="file" id="appImageInput" accept="image/*" style="display: none;">
             <img id="appImagePreview" class="image-preview" src="">
         </div>
-        
+
         <div class="form-group">
             <label>Theme Color</label>
             <div class="color-options" id="colorOptions">
@@ -715,7 +715,7 @@ body {
                 <div class="color-option" data-color="4a5568" style="background-color: #4a5568;"></div>
             </div>
         </div>
-        
+
         <div class="form-group">
             <label>Configuration Import/Export</label>
             <div style="display: flex; gap: 10px; margin-top: 10px;">
@@ -738,10 +738,10 @@ body {
             </div>
             <input type="file" id="importConfigInput" accept=".json" style="display: none;">
         </div>
-        
+
         <!-- File Management Section -->
         <h3 class="section-header">File Management</h3>
-        
+
         <button class="upload-btn" id="uploadBtn">
             <svg class="upload-btn-icon" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                 <path d="M21 15V19C21 19.5304 20.7893 20.0391 20.4142 20.4142C20.0391 20.7893 19.5304 21 19 21H5C4.46957 21 3.96086 20.7893 3.58579 20.4142C3.21071 20.0391 3 19.5304 3 19V15" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -751,7 +751,7 @@ body {
             Upload HTML File
         </button>
         <input type="file" id="fileInput" accept=".html,.htm" multiple style="display: none;">
-        
+
         <!-- File Edit Dialog -->
         <div class="file-edit-dialog" id="fileEditDialog">
             <div class="file-edit-header">
@@ -763,18 +763,18 @@ body {
                     </svg>
                 </button>
             </div>
-            
+
             <div class="form">
                 <div class="form-group">
                     <label for="fileTitle">File Title</label>
                     <input type="text" id="fileTitle" placeholder="Enter file title">
                 </div>
-                
+
                 <div class="form-group">
                     <label for="fileDesc">Description (optional)</label>
                     <textarea id="fileDesc" rows="2" placeholder="Enter file description"></textarea>
                 </div>
-                
+
                 <div class="form-group">
                     <label>Icon Type</label>
                     <div class="color-options">
@@ -788,7 +788,7 @@ body {
                         </select>
                     </div>
                 </div>
-                
+
                 <div class="form-group" id="customIconGroup" style="display: none;">
                     <label for="customIcon">Custom Icon</label>
                     <button class="upload-btn" id="customIconBtn" style="margin-top: 0.5rem;">
@@ -802,18 +802,18 @@ body {
                     <input type="file" id="customIconInput" accept="image/*" style="display: none;">
                     <img id="customIconPreview" class="image-preview" src="">
                 </div>
-                
+
                 <button class="save-btn" id="saveFileBtn">Save File</button>
             </div>
         </div>
-        
+
         <div class="file-manager">
             <h4>Your HTML Files</h4>
             <ul class="file-list" id="configFileList">
                 <!-- File items will be added here dynamically -->
             </ul>
         </div>
-        
+
         <button class="save-btn" id="saveConfigBtn">Save Configuration</button>
     </div>
 </div>
@@ -835,19 +835,20 @@ body {
         </div>
     </div>
     <div class="alert" id="alert"></div>
-    
+
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             // Improved event handling for consistent menu open/close and app switching
             console.log('DOM loaded - initializing app');
-            
+
             // Database setup
             let db;
+            let recoveryMode = false;
             const DB_NAME = 'htmlFileManagerDB';
             const DB_VERSION = 1;
             const STORE_NAME = 'files';
             const CONFIG_STORE = 'config';
-            
+
             // App state
             let files = [];
             let currentFileId = null;
@@ -857,7 +858,7 @@ body {
                 image: 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIxNjAwIiBoZWlnaHQ9IjE2MDAiIHZpZXdCb3g9IjAgMCAxNjAwIDE2MDAiPgogIDxjaXJjbGUgY3g9IjgwMCIgY3k9IjgwMCIgcj0iODAwIiBmaWxsPSIjZmZmZmZmIi8+CiAgPHBhdGggZD0iTTExNTAgODUwYzAgMTkzLjMtMTU2LjcgMzUwLTM1MCAzNTBzLTM1MC0xNTYuNy0zNTAtMzUwYzAtMTkzLjMgMTU2LjctMzUwIDM1MC0zNTBzMzUwIDE1Ni43IDM1MCAzNTB6IiBmaWxsPSIjZjNmNGY2Ii8+CiAgPHBhdGggZD0iTTg1MCA1NTBjLTgzIDAtMTUwIDY3LTE1MCAxNTB2MzAwYzAgODMgNjcgMTUwIDE1MCAxNTBoMEMxMTAwIDExNTAgMTEwMCA4NTAgMTEwMCA1NTBIODUweiIgZmlsbD0iI2YzZjRmNiIvPgogIDxwYXRoIGQ9Ik03MDAgNTUwYy04MyAwLTE1MCA2Ny0xNTAgMTUwdjMwMGMwIDgzIDY3IDE1MCAxNTAgMTUwaDBDOTUwIDExNTAgOTUwIDg1MCA5NTAgNTUwSDcwMHoiIGZpbGw9IiNmM2Y0ZjYiLz4KPC9zdmc+Cg==',
                 themeColor: '4299e1'
             };
-            
+
             // DOM Elements
             const elements = {
                 splash: document.getElementById('splash'),
@@ -902,249 +903,330 @@ body {
                 alert: document.getElementById('alert'),
                 homeLink: document.getElementById('homeLink')
             };
-            
+
             // Update date and time
             function updateDateTime() {
                 if (elements.dateTime) {
                     const now = new Date();
-                    const options = { 
-                        weekday: 'long', 
-                        year: 'numeric', 
-                        month: 'long', 
+                    const options = {
+                        weekday: 'long',
+                        year: 'numeric',
+                        month: 'long',
                         day: 'numeric',
                         hour: '2-digit',
-                        minute: '2-digit' 
+                        minute: '2-digit'
                     };
                     elements.dateTime.textContent = now.toLocaleDateString(undefined, options);
                 }
             }
-            
+
+            function enableRecoveryMode(reason) {
+                if (!recoveryMode) {
+                    recoveryMode = true;
+                    console.warn('Recovery mode enabled:', reason);
+                    showAlert('Recovery mode enabled: local database unavailable, using in-memory storage.');
+                } else {
+                    console.warn('Recovery mode still active:', reason);
+                }
+            }
+
             // Initialize IndexedDB
             function initDB() {
-                return new Promise((resolve, reject) => {
+                return new Promise((resolve) => {
                     console.log('Initializing IndexedDB...');
+                    if (!window.indexedDB) {
+                        enableRecoveryMode('IndexedDB API is not available in this browser context.');
+                        resolve();
+                        return;
+                    }
                     const request = indexedDB.open(DB_NAME, DB_VERSION);
-                    
+
                     request.onupgradeneeded = (event) => {
-                        console.log('Database upgrade needed');
-                        const db = event.target.result;
-                        
-                        // Create files store if it doesn't exist
-                        if (!db.objectStoreNames.contains(STORE_NAME)) {
-                            const store = db.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
-                            store.createIndex('title', 'title', { unique: false });
-                            store.createIndex('order', 'order', { unique: false });
-                        }
-                        
-                        // Create config store if it doesn't exist
-                        if (!db.objectStoreNames.contains(CONFIG_STORE)) {
-                            db.createObjectStore(CONFIG_STORE, { keyPath: 'id' });
+                        try {
+                            console.log('Database upgrade needed');
+                            const db = event.target.result;
+
+                            // Create files store if it doesn't exist
+                            if (!db.objectStoreNames.contains(STORE_NAME)) {
+                                const store = db.createObjectStore(STORE_NAME, { keyPath: 'id', autoIncrement: true });
+                                store.createIndex('title', 'title', { unique: false });
+                                store.createIndex('order', 'order', { unique: false });
+                            }
+
+                            // Create config store if it doesn't exist
+                            if (!db.objectStoreNames.contains(CONFIG_STORE)) {
+                                db.createObjectStore(CONFIG_STORE, { keyPath: 'id' });
+                            }
+                        } catch (error) {
+                            enableRecoveryMode(`Database upgrade failed: ${error.message}`);
                         }
                     };
-                    
+
                     request.onsuccess = (event) => {
                         db = event.target.result;
+                        recoveryMode = false;
+                        db.onclose = () => enableRecoveryMode('Database connection closed unexpectedly.');
+                        db.onerror = () => enableRecoveryMode('Database connection reported an error.');
                         console.log('Database initialized successfully');
                         resolve();
                     };
-                    
+
                     request.onerror = (event) => {
                         console.error('Database error:', event.target.error);
-                        reject('Could not initialize database');
+                        enableRecoveryMode('Could not initialize database.');
+                        resolve();
+                    };
+
+                    request.onblocked = () => {
+                        enableRecoveryMode('Database open request blocked by another tab or process.');
+                        resolve();
                     };
                 });
             }
-            
+
             // Load all files
             function loadFiles() {
                 return new Promise((resolve, reject) => {
-                    if (!db) {
-                        reject('Database not initialized');
+                    if (!db || recoveryMode) {
+                        console.warn('Database unavailable while loading files; using in-memory files.');
+                        resolve(files);
                         return;
                     }
-                    
-                    const transaction = db.transaction(STORE_NAME, 'readonly');
-                    const store = transaction.objectStore(STORE_NAME);
-                    const request = store.getAll();
-                    
-                    request.onsuccess = (event) => {
-                        files = event.target.result;
-                        console.log(`Loaded ${files.length} files`);
+
+                    try {
+                        const transaction = db.transaction(STORE_NAME, 'readonly');
+                        const store = transaction.objectStore(STORE_NAME);
+                        const request = store.getAll();
+
+                        request.onsuccess = (event) => {
+                            files = event.target.result;
+                            console.log(`Loaded ${files.length} files`);
+                            resolve(files);
+                        };
+
+                        request.onerror = (event) => {
+                            console.error('Error loading files:', event.target.error);
+                            enableRecoveryMode('Could not load files from database.');
+                            resolve(files);
+                        };
+                    } catch (error) {
+                        console.error('loadFiles transaction failed:', error);
+                        enableRecoveryMode(`Load files transaction failed: ${error.message}`);
                         resolve(files);
-                    };
-                    
-                    request.onerror = (event) => {
-                        console.error('Error loading files:', event.target.error);
-                        reject('Could not load files');
-                    };
+                    }
                 });
             }
-            
+
             // Load app configuration
             function loadConfig() {
                 return new Promise((resolve, reject) => {
-                    if (!db) {
+                    if (!db || recoveryMode) {
                         resolve(appConfig);
                         return;
                     }
-                    
-                    const transaction = db.transaction(CONFIG_STORE, 'readonly');
-                    const store = transaction.objectStore(CONFIG_STORE);
-                    const request = store.get('appConfig');
-                    
-                    request.onsuccess = (event) => {
-                        if (event.target.result) {
-                            appConfig = event.target.result.config;
-                            console.log('Loaded app config', appConfig);
-                        }
+
+                    try {
+                        const transaction = db.transaction(CONFIG_STORE, 'readonly');
+                        const store = transaction.objectStore(CONFIG_STORE);
+                        const request = store.get('appConfig');
+
+                        request.onsuccess = (event) => {
+                            if (event.target.result) {
+                                appConfig = event.target.result.config;
+                                console.log('Loaded app config', appConfig);
+                            }
+                            resolve(appConfig);
+                        };
+
+                        request.onerror = (event) => {
+                            console.error('Error loading config:', event.target.error);
+                            enableRecoveryMode('Could not load config from database.');
+                            resolve(appConfig);
+                        };
+                    } catch (error) {
+                        console.error('loadConfig transaction failed:', error);
+                        enableRecoveryMode(`Load config transaction failed: ${error.message}`);
                         resolve(appConfig);
-                    };
-                    
-                    request.onerror = (event) => {
-                        console.error('Error loading config:', event.target.error);
-                        resolve(appConfig);
-                    };
+                    }
                 });
             }
-            
+
             // Save app configuration
             function saveConfig() {
-                return new Promise((resolve, reject) => {
-                    if (!db) {
-                        console.error('Database not initialized, trying to initialize...');
-                        initDB().then(() => {
-                            saveConfig().then(resolve).catch(reject);
-                        }).catch(err => {
-                            console.error('Failed to initialize database:', err);
-                            reject('Database initialization failed');
-                        });
+                return new Promise((resolve) => {
+                    if (!db || recoveryMode) {
+                        console.warn('Database unavailable; config remains active in memory for this session.');
+                        resolve();
                         return;
                     }
-                    
-                    const transaction = db.transaction(CONFIG_STORE, 'readwrite');
-                    const store = transaction.objectStore(CONFIG_STORE);
-                    const request = store.put({
-                        id: 'appConfig',
-                        config: appConfig
-                    });
-                    
-                    request.onsuccess = () => {
-                        console.log('Config saved successfully');
+
+                    try {
+                        const transaction = db.transaction(CONFIG_STORE, 'readwrite');
+                        const store = transaction.objectStore(CONFIG_STORE);
+                        const request = store.put({
+                            id: 'appConfig',
+                            config: appConfig
+                        });
+
+                        request.onsuccess = () => {
+                            console.log('Config saved successfully');
+                            resolve();
+                        };
+
+                        request.onerror = (event) => {
+                            console.error('Error saving config:', event.target.error);
+                            enableRecoveryMode('Could not persist configuration.');
+                            resolve();
+                        };
+
+                        transaction.onerror = (event) => {
+                            console.error('Transaction error while saving config:', event.target.error);
+                            enableRecoveryMode('Configuration transaction failed.');
+                            resolve();
+                        };
+                    } catch (error) {
+                        console.error('saveConfig transaction failed:', error);
+                        enableRecoveryMode(`Save config transaction failed: ${error.message}`);
                         resolve();
-                    };
-                    
-                    request.onerror = (event) => {
-                        console.error('Error saving config:', event.target.error);
-                        reject('Could not save configuration');
-                    };
-                    
-                    // Add transaction completion handler
-                    transaction.oncomplete = () => {
-                        console.log('Config save transaction completed');
-                    };
-                    
-                    transaction.onerror = (event) => {
-                        console.error('Transaction error while saving config:', event.target.error);
-                    };
+                    }
                 });
             }
-            
+
             // Add a new file
             function addFile(file) {
                 return new Promise((resolve, reject) => {
-                    if (!db) {
-                        reject('Database not initialized');
+                    if (!db || recoveryMode) {
+                        const highestOrder = files.reduce((max, f) => Math.max(max, Number(f.order ?? -1)), -1);
+                        file.order = highestOrder + 1;
+                        file.id = file.id || Date.now() + Math.floor(Math.random() * 1000);
+                        files.push(file);
+                        resolve(file.id);
                         return;
                     }
-                    
-                    // Get the highest order value
-                    const transaction = db.transaction(STORE_NAME, 'readwrite');
-                    const store = transaction.objectStore(STORE_NAME);
-                    
-                    // Get all files to find the highest order
-                    const getAllRequest = store.getAll();
-                    getAllRequest.onsuccess = () => {
-                        const existingFiles = getAllRequest.result;
-                        let highestOrder = -1;
-                        
-                        // Find the highest order value
-                        existingFiles.forEach(f => {
-                            if (f.order > highestOrder) {
-                                highestOrder = f.order;
-                            }
-                        });
-                        
-                        // Set the order to be one higher than the highest existing order
-                        file.order = highestOrder + 1;
-                        console.log('Setting new file order to:', file.order);
-                        
-                        const addRequest = store.add(file);
-                        addRequest.onsuccess = (event) => {
-                            console.log('File added successfully with ID:', event.target.result);
-                            resolve(event.target.result);
+
+                    try {
+                        // Get the highest order value
+                        const transaction = db.transaction(STORE_NAME, 'readwrite');
+                        const store = transaction.objectStore(STORE_NAME);
+
+                        // Get all files to find the highest order
+                        const getAllRequest = store.getAll();
+                        getAllRequest.onsuccess = () => {
+                            const existingFiles = getAllRequest.result;
+                            let highestOrder = -1;
+
+                            // Find the highest order value
+                            existingFiles.forEach(f => {
+                                if (f.order > highestOrder) {
+                                    highestOrder = f.order;
+                                }
+                            });
+
+                            // Set the order to be one higher than the highest existing order
+                            file.order = highestOrder + 1;
+                            console.log('Setting new file order to:', file.order);
+
+                            const addRequest = store.add(file);
+                            addRequest.onsuccess = (event) => {
+                                console.log('File added successfully with ID:', event.target.result);
+                                resolve(event.target.result);
+                            };
+
+                            addRequest.onerror = (event) => {
+                                console.error('Error adding file:', event.target.error);
+                                enableRecoveryMode('Could not add file to database; keeping in memory.');
+                                file.id = file.id || Date.now() + Math.floor(Math.random() * 1000);
+                                files.push(file);
+                                resolve(file.id);
+                            };
                         };
-                        
-                        addRequest.onerror = (event) => {
-                            console.error('Error adding file:', event.target.error);
-                            reject('Could not add file');
+
+                        getAllRequest.onerror = (event) => {
+                            console.error('Error getting files:', event.target.error);
+                            enableRecoveryMode('Could not read file list from database; keeping new file in memory.');
+                            file.id = file.id || Date.now() + Math.floor(Math.random() * 1000);
+                            files.push(file);
+                            resolve(file.id);
                         };
-                    };
-                    
-                    getAllRequest.onerror = (event) => {
-                        console.error('Error getting files:', event.target.error);
-                        reject('Could not get files');
-                    };
+                    } catch (error) {
+                        console.error('addFile transaction failed:', error);
+                        enableRecoveryMode(`Add file transaction failed: ${error.message}`);
+                        file.id = file.id || Date.now() + Math.floor(Math.random() * 1000);
+                        files.push(file);
+                        resolve(file.id);
+                    }
                 });
             }
-            
+
             // Update a file
             function updateFile(file) {
                 return new Promise((resolve, reject) => {
-                    if (!db) {
-                        reject('Database not initialized');
+                    const inMemoryIndex = files.findIndex(f => f.id === file.id);
+                    if (inMemoryIndex !== -1) {
+                        files[inMemoryIndex] = { ...files[inMemoryIndex], ...file };
+                    }
+
+                    if (!db || recoveryMode) {
+                        resolve();
                         return;
                     }
-                    
-                    const transaction = db.transaction(STORE_NAME, 'readwrite');
-                    const store = transaction.objectStore(STORE_NAME);
-                    const request = store.put(file);
-                    
-                    request.onsuccess = () => {
-                        console.log(`File ${file.id} updated successfully`);
+
+                    try {
+                        const transaction = db.transaction(STORE_NAME, 'readwrite');
+                        const store = transaction.objectStore(STORE_NAME);
+                        const request = store.put(file);
+
+                        request.onsuccess = () => {
+                            console.log(`File ${file.id} updated successfully`);
+                            resolve();
+                        };
+
+                        request.onerror = (event) => {
+                            console.error('Error updating file:', event.target.error);
+                            enableRecoveryMode('Could not update file in database; kept in memory.');
+                            resolve();
+                        };
+                    } catch (error) {
+                        console.error('updateFile transaction failed:', error);
+                        enableRecoveryMode(`Update file transaction failed: ${error.message}`);
                         resolve();
-                    };
-                    
-                    request.onerror = (event) => {
-                        console.error('Error updating file:', event.target.error);
-                        reject('Could not update file');
-                    };
+                    }
                 });
             }
-            
+
             // Delete a file
             function deleteFile(id) {
                 return new Promise((resolve, reject) => {
-                    if (!db) {
-                        reject('Database not initialized');
+                    files = files.filter(f => f.id !== id);
+
+                    if (!db || recoveryMode) {
+                        resolve();
                         return;
                     }
-                    
-                    const transaction = db.transaction(STORE_NAME, 'readwrite');
-                    const store = transaction.objectStore(STORE_NAME);
-                    const request = store.delete(id);
-                    
-                    request.onsuccess = () => {
-                        console.log(`File ${id} deleted successfully`);
+
+                    try {
+                        const transaction = db.transaction(STORE_NAME, 'readwrite');
+                        const store = transaction.objectStore(STORE_NAME);
+                        const request = store.delete(id);
+
+                        request.onsuccess = () => {
+                            console.log(`File ${id} deleted successfully`);
+                            resolve();
+                        };
+
+                        request.onerror = (event) => {
+                            console.error('Error deleting file:', event.target.error);
+                            enableRecoveryMode('Could not delete file from database; removed in memory.');
+                            resolve();
+                        };
+                    } catch (error) {
+                        console.error('deleteFile transaction failed:', error);
+                        enableRecoveryMode(`Delete file transaction failed: ${error.message}`);
                         resolve();
-                    };
-                    
-                    request.onerror = (event) => {
-                        console.error('Error deleting file:', event.target.error);
-                        reject('Could not delete file');
-                    };
+                    }
                 });
             }
-            
+
             // Move a file up in order
             function moveFileUp(id) {
                 console.log('Moving file up:', id);
@@ -1153,17 +1235,17 @@ body {
                     console.log('Already at the top');
                     return; // Already at the top
                 }
-                
+
                 const prevFile = files[fileIndex - 1];
                 const currentFile = files[fileIndex];
-                
+
                 console.log('Swapping order:', currentFile.order, 'with', prevFile.order);
-                
+
                 // Swap the order values
                 const tempOrder = prevFile.order;
                 prevFile.order = currentFile.order;
                 currentFile.order = tempOrder;
-                
+
                 // Update both files in the database
                 Promise.all([
                     updateFile(prevFile),
@@ -1184,7 +1266,7 @@ body {
                     showAlert('Error updating file order');
                 });
             }
-            
+
             // Move a file down in order
             function moveFileDown(id) {
                 console.log('Moving file down:', id);
@@ -1193,17 +1275,17 @@ body {
                     console.log('Already at the bottom');
                     return; // Already at the bottom
                 }
-                
+
                 const nextFile = files[fileIndex + 1];
                 const currentFile = files[fileIndex];
-                
+
                 console.log('Swapping order:', currentFile.order, 'with', nextFile.order);
-                
+
                 // Swap the order values
                 const tempOrder = nextFile.order;
                 nextFile.order = currentFile.order;
                 currentFile.order = tempOrder;
-                
+
                 // Update both files in the database
                 Promise.all([
                     updateFile(nextFile),
@@ -1224,42 +1306,42 @@ body {
                     showAlert('Error updating file order');
                 });
             }
-            
+
             // Apply app configuration to UI
             function applyConfig() {
                 // Update title and splash screen
                 elements.splashTitle.textContent = appConfig.title;
                 elements.splashDesc.textContent = appConfig.description;
                 elements.splashImage.src = appConfig.image;
-                
+
                 // Update subtle title bar
                 elements.titleBar.textContent = appConfig.title;
-                
+
                 // Apply theme color
                 const bgColor = `#${appConfig.themeColor}`;
                 const secondColor = getLighterColor(appConfig.themeColor);
                 elements.splash.style.background = `linear-gradient(135deg, ${bgColor}, ${secondColor})`;
-                
+
                 // Update meta tags
                 const themeColorMeta = document.querySelector('meta[name="theme-color"]');
                 if (themeColorMeta) {
                     themeColorMeta.content = bgColor;
                 }
-                
+
                 // Update buttons
                 elements.uploadBtn.style.backgroundColor = bgColor;
                 elements.saveConfigBtn.style.backgroundColor = bgColor;
                 elements.saveFileBtn.style.backgroundColor = bgColor;
-                
+
                 // Update form values
                 elements.appTitle.value = appConfig.title;
                 elements.appDesc.value = appConfig.description;
-                
+
                 if (appConfig.image) {
                     elements.appImagePreview.src = appConfig.image;
                     elements.appImagePreview.style.display = 'block';
                 }
-                
+
                 // Update theme color selection
                 const colorOptions = elements.colorOptions.querySelectorAll('.color-option');
                 colorOptions.forEach(option => {
@@ -1268,57 +1350,57 @@ body {
                         option.classList.add('selected');
                     }
                 });
-                
+
                 document.title = appConfig.title;
             }
-            
+
             // Get a lighter color from a hex color
             function getLighterColor(hex) {
                 const r = parseInt(hex.substr(0, 2), 16);
                 const g = parseInt(hex.substr(2, 2), 16);
                 const b = parseInt(hex.substr(4, 2), 16);
-                
+
                 const lighterR = Math.min(r + 40, 255).toString(16).padStart(2, '0');
                 const lighterG = Math.min(g + 40, 255).toString(16).padStart(2, '0');
                 const lighterB = Math.min(b + 40, 255).toString(16).padStart(2, '0');
-                
+
                 return `#${lighterR}${lighterG}${lighterB}`;
             }
-            
+
             // Render menu file list
             function renderMenuFileList() {
                 const fileList = elements.fileList;
-                
+
                 // Clear the list first
                 while (fileList.firstChild) {
                     fileList.removeChild(fileList.firstChild);
                 }
-                
+
                 // Show empty state if no files
                 if (files.length === 0) {
                     fileList.appendChild(elements.emptyState);
                     return;
                 }
-                
+
                 // Sort files by order
                 files.sort((a, b) => a.order - b.order);
-                
+
                 // Create list items for each file
                 files.forEach(file => {
                     const listItem = createMenuFileItem(file);
                     fileList.appendChild(listItem);
                 });
             }
-            
+
             // Render config file list
             function renderConfigFileList() {
                 const fileList = elements.configFileList;
-                
+
                 // Clear the list first
                 while (fileList.firstChild) {
                     fileList.removeChild(fileList.firstChild);
                 }
-                
+
                 // Show message if no files
                 if (files.length === 0) {
                     const emptyItem = document.createElement('li');
@@ -1328,30 +1410,30 @@ body {
                     fileList.appendChild(emptyItem);
                     return;
                 }
-                
+
                 // Sort files by order
                 files.sort((a, b) => a.order - b.order);
-                
+
                 // Create list items for each file
                 files.forEach(file => {
                     const listItem = createConfigFileItem(file);
                     fileList.appendChild(listItem);
                 });
             }
-            
+
             // Create a menu item for a file
             function createMenuFileItem(file) {
                 const li = document.createElement('li');
                 li.className = 'menu-item';
-                
+
                 const link = document.createElement('a');
                 link.href = '#';
                 link.dataset.id = file.id;
-                
+
                 // Create icon
                 const icon = document.createElement('div');
                 icon.className = 'menu-item-icon';
-                
+
                 if (file.iconType === 'custom' && file.customIcon) {
                     const img = document.createElement('img');
                     img.src = file.customIcon;
@@ -1361,46 +1443,46 @@ body {
                 } else {
                     icon.innerHTML = getIconSVG(file.iconType || 'file');
                 }
-                
+
                 // Create main content
                 const main = document.createElement('div');
                 main.className = 'menu-item-main';
-                
+
                 const title = document.createElement('div');
                 title.className = 'menu-item-title';
                 title.textContent = file.title || 'Untitled';
                 main.appendChild(title);
-                
+
                 if (file.description) {
                     const desc = document.createElement('div');
                     desc.className = 'menu-item-desc';
                     desc.textContent = file.description;
                     main.appendChild(desc);
                 }
-                
+
                 // Assemble the link
                 link.appendChild(icon);
                 link.appendChild(main);
-                
+
                 // Add click event to open file
                 link.addEventListener('click', (e) => {
                     e.preventDefault();
                     openFile(file);
                 });
-                
+
                 li.appendChild(link);
                 return li;
             }
-            
+
             // Create a config file item
             function createConfigFileItem(file) {
                 const li = document.createElement('li');
                 li.className = 'file-item';
-                
+
                 // Create icon
                 const icon = document.createElement('div');
                 icon.className = 'file-item-icon';
-                
+
                 if (file.iconType === 'custom' && file.customIcon) {
                     const img = document.createElement('img');
                     img.src = file.customIcon;
@@ -1410,16 +1492,16 @@ body {
                 } else {
                     icon.innerHTML = getIconSVG(file.iconType || 'file');
                 }
-                
+
                 // Create main content
                 const main = document.createElement('div');
                 main.className = 'file-item-main';
-                
+
                 const title = document.createElement('div');
                 title.className = 'file-item-title';
                 title.textContent = file.title || 'Untitled';
                 main.appendChild(title);
-                
+
                 if (file.description) {
                     const desc = document.createElement('div');
                     desc.style.fontSize = '0.85rem';
@@ -1427,11 +1509,11 @@ body {
                     desc.textContent = file.description;
                     main.appendChild(desc);
                 }
-                
+
                 // Create controls
                 const controls = document.createElement('div');
                 controls.className = 'file-item-controls';
-                
+
                 // Edit button
                 const editBtn = document.createElement('button');
                 editBtn.className = 'file-control-btn';
@@ -1444,7 +1526,7 @@ body {
                 editBtn.addEventListener('click', () => {
                     openFileEditDialog(file);
                 });
-                
+
                 // Delete button
                 const deleteBtn = document.createElement('button');
                 deleteBtn.className = 'file-control-btn';
@@ -1457,7 +1539,7 @@ body {
                 deleteBtn.addEventListener('click', () => {
                     confirmDelete(file.id);
                 });
-                
+
                 // Move up button
                 const upBtn = document.createElement('button');
                 upBtn.className = 'file-control-btn';
@@ -1470,7 +1552,7 @@ body {
                 upBtn.addEventListener('click', () => {
                     moveFileUp(file.id);
                 });
-                
+
                 // Move down button
                 const downBtn = document.createElement('button');
                 downBtn.className = 'file-control-btn';
@@ -1483,20 +1565,20 @@ body {
                 downBtn.addEventListener('click', () => {
                     moveFileDown(file.id);
                 });
-                
+
                 controls.appendChild(editBtn);
                 controls.appendChild(deleteBtn);
                 controls.appendChild(upBtn);
                 controls.appendChild(downBtn);
-                
+
                 // Assemble the item
                 li.appendChild(icon);
                 li.appendChild(main);
                 li.appendChild(controls);
-                
+
                 return li;
             }
-            
+
             // Get SVG for icon type
             function getIconSVG(type) {
                 switch(type) {
@@ -1549,18 +1631,18 @@ body {
                         `;
                 }
             }
-            
+
             // Process file upload
             function processFiles(uploadedFiles) {
                 if (!uploadedFiles || uploadedFiles.length === 0) return;
-                
+
                 const filePromises = [];
-                
+
                 for (let i = 0; i < uploadedFiles.length; i++) {
                     const file = uploadedFiles[i];
                     filePromises.push(processFile(file));
                 }
-                
+
                 Promise.all(filePromises)
                     .then(() => {
                         return loadFiles();
@@ -1575,22 +1657,22 @@ body {
                         showAlert('Error uploading files');
                     });
             }
-            
+
             // Process a single file
             function processFile(file) {
                 return new Promise((resolve, reject) => {
                     const reader = new FileReader();
-                    
+
                     reader.onload = (e) => {
                         const content = e.target.result;
-                        
+
                         // Try to extract title from the file
                         let title = file.name;
                         const titleMatch = content.match(/<title[^>]*>(.*?)<\/title>/i);
                         if (titleMatch && titleMatch[1]) {
                             title = titleMatch[1];
                         }
-                        
+
                         // Create new file object
                         const newFile = {
                             title: title,
@@ -1600,7 +1682,7 @@ body {
                             iconType: 'file',
                             customIcon: null
                         };
-                        
+
                         // Add to database
                         addFile(newFile)
                             .then(id => {
@@ -1609,15 +1691,15 @@ body {
                             })
                             .catch(reject);
                     };
-                    
+
                     reader.onerror = () => {
                         reject(`Error reading file: ${file.name}`);
                     };
-                    
+
                     reader.readAsText(file);
                 });
             }
-            
+
             // Open menu
             function openMenu() {
                 console.log('Opening menu');
@@ -1625,7 +1707,7 @@ body {
                 elements.menuOverlay.classList.add('active');
                 elements.viewerPanel.classList.add('menu-open');
             }
-            
+
             // Close menu
             function closeMenu() {
                 console.log('Closing menu');
@@ -1633,7 +1715,7 @@ body {
                 elements.menuOverlay.classList.remove('active');
                 elements.viewerPanel.classList.remove('menu-open');
             }
-            
+
             // Toggle menu (open if closed, close if open)
             function toggleMenu() {
                 if (elements.menuPanel.classList.contains('active')) {
@@ -1642,21 +1724,21 @@ body {
                     openMenu();
                 }
             }
-            
+
             // Open config panel
             function openConfigPanel() {
                 console.log('Opening config panel');
                 closeMenu();
-                
+
                 // Fill in current values
                 elements.appTitle.value = appConfig.title;
                 elements.appDesc.value = appConfig.description;
-                
+
                 if (appConfig.image) {
                     elements.appImagePreview.src = appConfig.image;
                     elements.appImagePreview.style.display = 'block';
                 }
-                
+
                 // Set correct color option
                 const colorOptions = elements.colorOptions.querySelectorAll('.color-option');
                 colorOptions.forEach(option => {
@@ -1665,26 +1747,26 @@ body {
                         option.classList.add('selected');
                     }
                 });
-                
+
                 // Render file list
                 renderConfigFileList();
-                
+
                 elements.configPanel.classList.add('active');
-                
+
                 // Hide home screen
                 elements.splash.classList.add('hidden');
             }
-            
+
             // Open file edit dialog
             function openFileEditDialog(file) {
                 console.log('Opening file edit dialog for:', file.id);
                 currentFileId = file.id;
-                
+
                 // Fill in current values
                 elements.fileTitle.value = file.title || '';
                 elements.fileDesc.value = file.description || '';
                 elements.iconType.value = file.iconType || 'file';
-                
+
                 // Handle custom icon display
                 if (file.iconType === 'custom' && file.customIcon) {
                     elements.customIconGroup.style.display = 'block';
@@ -1694,90 +1776,90 @@ body {
                     elements.customIconGroup.style.display = 'none';
                     elements.customIconPreview.style.display = 'none';
                 }
-                
+
                 elements.fileEditDialog.classList.add('active');
             }
-            
+
             // Close file edit dialog
             function closeFileEditDialog() {
                 elements.fileEditDialog.classList.remove('active');
                 currentFileId = null;
             }
-            
+
             // Open file viewer
             function openFile(file) {
                 console.log('Opening file:', file.id);
                 closeMenu();
-                
+
                 // Hide home screen
                 elements.splash.classList.add('hidden');
-                
+
                 // Pre-load content before showing
                 const blob = new Blob([file.content], { type: 'text/html' });
                 const url = URL.createObjectURL(blob);
-                
+
                 // Prepare iframe with content
                 elements.viewerFrame.onload = () => {
                     // Show viewer panel after content is loaded
                     elements.viewerPanel.classList.add('active');
-                    
+
                     // Make sure title bar is visible
                     elements.titleBar.style.opacity = '1';
-                    
+
                     // Clean up URL
                     setTimeout(() => URL.revokeObjectURL(url), 100);
                 };
-                
+
                 // Set source to load content
                 elements.viewerFrame.src = url;
             }
-            
+
             // Go back to home
             function showHomeScreen() {
                 console.log('Showing home screen');
                 closeMenu();
-                
+
                 // Hide viewer panel
                 elements.viewerFrame.src = 'about:blank';
-                
+
                 // Show home screen
                 elements.splash.classList.remove('hidden');
             }
-            
+
             // Show alert message
             function showAlert(message, duration = 3000) {
                 const alert = elements.alert;
                 alert.textContent = message;
                 alert.classList.add('active');
-                
+
                 setTimeout(() => {
                     alert.classList.remove('active');
                 }, duration);
             }
-            
+
             // Confirm delete
             function confirmDelete(id) {
                 currentFileId = id;
                 elements.confirmDialog.classList.add('active');
             }
-            
+
             // Add swipe gesture support
             function addSwipeSupport() {
                 let touchStartX = 0;
                 let touchEndX = 0;
-                
+
                 // Minimum distance required for swipe
                 const minSwipeDistance = 50;
-                
+
                 document.addEventListener('touchstart', function(e) {
                     touchStartX = e.changedTouches[0].screenX;
                 }, false);
-                
+
                 document.addEventListener('touchend', function(e) {
                     touchEndX = e.changedTouches[0].screenX;
                     handleSwipe();
                 }, false);
-                
+
                 function handleSwipe() {
                     if (touchEndX - touchStartX > minSwipeDistance) {
                         // Swipe right - open menu
@@ -1788,50 +1870,50 @@ body {
                     }
                 }
             }
-            
+
             // Set up event listeners
             function setupEventListeners() {
                 // Menu button
                 elements.menuTouchArea.addEventListener('click', toggleMenu);
-                
+
                 // Menu overlay (close menu when clicking outside)
                 elements.menuOverlay.addEventListener('click', closeMenu);
-                
+
                 // Home link
                 elements.homeLink.addEventListener('click', (e) => {
                     e.preventDefault();
                     showHomeScreen();
                 });
-                
+
                 // Upload button
                 elements.uploadBtn.addEventListener('click', () => {
                     elements.fileInput.click();
                 });
-                
+
                 // File input change
                 elements.fileInput.addEventListener('change', (e) => {
                     processFiles(e.target.files);
                     e.target.value = ''; // Reset input
                 });
-                
+
                 // Config link
                 elements.configLink.addEventListener('click', (e) => {
                     e.preventDefault();
                     openConfigPanel();
                 });
-                
+
                 // Config back button
                 elements.configBackBtn.addEventListener('click', () => {
                     elements.configPanel.classList.remove('active');
                     showHomeScreen();
                     openMenu();
                 });
-                
+
                 // App image button
                 elements.appImageBtn.addEventListener('click', () => {
                     elements.appImageInput.click();
                 });
-                
+
                 // App image input change
                 elements.appImageInput.addEventListener('change', (e) => {
                     const file = e.target.files[0];
@@ -1844,7 +1926,7 @@ body {
                         reader.readAsDataURL(file);
                     }
                 });
-                
+
                 // Color options
                 elements.colorOptions.querySelectorAll('.color-option').forEach(option => {
                     option.addEventListener('click', () => {
@@ -1852,38 +1934,38 @@ body {
                         elements.colorOptions.querySelectorAll('.color-option').forEach(opt => {
                             opt.classList.remove('selected');
                         });
-                        
+
                         // Select this one
                         option.classList.add('selected');
                     });
                 });
-                
+
                 // Save config button
                 elements.saveConfigBtn.addEventListener('click', async () => {
                     // Get values from form
                     appConfig.title = elements.appTitle.value.trim() || 'HTML Viewer';
                     appConfig.description = elements.appDesc.value.trim() || 'Patch #1001 Applied';
-                    
+
                     if (elements.appImagePreview.src) {
                         appConfig.image = elements.appImagePreview.src;
                     }
-                    
+
                     // Get selected color
                     const selectedColor = elements.colorOptions.querySelector('.color-option.selected');
                     if (selectedColor) {
                         appConfig.themeColor = selectedColor.dataset.color;
                     }
-                    
+
                     try {
                         // Save to database
                         await saveConfig();
-                        
+
                         // Apply to UI
                         applyConfig();
-                        
+
                         // Show confirmation message
                         showAlert('Configuration saved successfully');
-                        
+
                         // Close panel after saving
                         elements.configPanel.classList.remove('active');
                         showHomeScreen();
@@ -1893,7 +1975,7 @@ body {
                         showAlert('Error saving configuration');
                     }
                 });
-                
+
                 // Icon type change
                 elements.iconType.addEventListener('change', () => {
                     if (elements.iconType.value === 'custom') {
@@ -1902,12 +1984,12 @@ body {
                         elements.customIconGroup.style.display = 'none';
                     }
                 });
-                
+
                 // Custom icon button
                 elements.customIconBtn.addEventListener('click', () => {
                     elements.customIconInput.click();
                 });
-                
+
                 // Custom icon input change
                 elements.customIconInput.addEventListener('change', (e) => {
                     const file = e.target.files[0];
@@ -1920,17 +2002,17 @@ body {
                         reader.readAsDataURL(file);
                     }
                 });
-                
+
                 // Close edit dialog
                 elements.fileEditClose.addEventListener('click', closeFileEditDialog);
-                
+
                 // Save file button
                 elements.saveFileBtn.addEventListener('click', async () => {
                     if (!currentFileId) {
                         showAlert('No file selected');
                         return;
                     }
-                    
+
                     try {
                         // Find file in array
                         const fileIndex = files.findIndex(f => f.id === currentFileId);
@@ -1938,21 +2020,21 @@ body {
                             showAlert('File not found');
                             return;
                         }
-                        
+
                         // Update file object
                         files[fileIndex].title = elements.fileTitle.value.trim() || 'Untitled';
                         files[fileIndex].description = elements.fileDesc.value.trim();
                         files[fileIndex].iconType = elements.iconType.value;
-                        
+
                         if (elements.iconType.value === 'custom' && elements.customIconPreview.src) {
                             files[fileIndex].customIcon = elements.customIconPreview.src;
                         }
-                        
+
                         // Save to database
                         await updateFile(files[fileIndex]);
-                        
+
                         showAlert('File updated');
-                        
+
                         // Close dialog and refresh list
                         closeFileEditDialog();
                         renderConfigFileList();
@@ -1962,7 +2044,7 @@ body {
                         showAlert('Error updating file');
                     }
                 });
-                
+
                 // Confirm delete - cancel
                 if (elements.cancelDeleteBtn) {
                     elements.cancelDeleteBtn.addEventListener('click', () => {
@@ -1970,12 +2052,12 @@ body {
                         currentFileId = null;
                     });
                 }
-                
+
                 // Confirm delete - confirm
                 if (elements.confirmDeleteBtn) {
                     elements.confirmDeleteBtn.addEventListener('click', async () => {
                         if (!currentFileId) return;
-                        
+
                         try {
                             await deleteFile(currentFileId);
                             await loadFiles();
@@ -1986,53 +2068,66 @@ body {
                             console.error('Error deleting file:', error);
                             showAlert('Error deleting file');
                         }
-                        
+
                         elements.confirmDialog.classList.remove('active');
                         currentFileId = null;
                     });
                 }
             }
-            
+
             // Initialize app
             async function initApp() {
-                try {
-                    // Update date time immediately
+                // Keep startup resilient: soft-fail each step and continue.
+                const safeStep = async (label, action) => {
+                    try {
+                        await action();
+                    } catch (error) {
+                        console.error(`Startup step failed (${label}):`, error);
+                        enableRecoveryMode(`Startup step failed: ${label}.`);
+                    }
+                };
+
+                await safeStep('clock', async () => {
                     updateDateTime();
                     setInterval(updateDateTime, 60000);
-                    
-                    // Initialize database
+                });
+
+                await safeStep('event listeners', async () => {
+                    setupEventListeners();
+                });
+
+                await safeStep('database initialization', async () => {
                     await initDB();
-                    
-                    // Load app configuration
+                });
+
+                await safeStep('load config', async () => {
                     await loadConfig();
-                    
-                    // Apply configuration to UI
+                });
+
+                await safeStep('apply config', async () => {
                     applyConfig();
-                    
-                    // Load files
+                });
+
+                await safeStep('load files', async () => {
                     await loadFiles();
-                    
-                    // Render file lists
+                });
+
+                await safeStep('render lists', async () => {
                     renderMenuFileList();
                     renderConfigFileList();
-                    
-                    // Add swipe gesture support
+                });
+
+                await safeStep('swipe support', async () => {
                     addSwipeSupport();
-                    
-                    // Set up event listeners
-                    setupEventListeners();
-                    
-                    console.log('App initialized successfully');
-                } catch (error) {
-                    console.error('Error initializing app:', error);
-                    showAlert('Error initializing app');
-                }
+                });
+
+                console.log('App initialized with resilient startup');
             }
-            
+
             // Start the app
             initApp();
         });
     </script>
-    
+
 </body>
 </html>
