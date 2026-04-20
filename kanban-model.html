@@ -869,7 +869,7 @@ function buildInlineTagEditor(tagArr){
     tagArr.forEach(t=>{
       const chip = document.createElement("span"); chip.className = "chip";
       chip.innerHTML = `${escapeHtml(t)} <button type="button" title="remove tag">×</button>`;
-      chip.querySelector("button").onclick = e=>{ e.stopPropagation(); tagArr.splice(tagArr.indexOf(t),1); renderAssigned(); renderSuggestions(); };
+      chip.querySelector("button").onclick = e=>{ e.stopPropagation(); tagArr.splice(tagArr.indexOf(t),1); renderAssigned(); renderSuggestions(); tagIn.focus(); };
       assignedEl.appendChild(chip);
     });
   }
@@ -889,6 +889,7 @@ function buildInlineTagEditor(tagArr){
         e.stopPropagation();
         if(e.target === rx){ removeTagFromActiveCards(t); return; }
         if(!tagArr.includes(t)){ tagArr.push(t); renderAssigned(); renderSuggestions(); }
+        tagIn.focus();
       };
       sugEl.appendChild(chip);
     });
