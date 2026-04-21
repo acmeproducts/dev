@@ -286,25 +286,25 @@
 
             schemes: {
                 pentatonic: {
-                    frequencies: [329.63, 392.0, 440.0, 493.88, 587.33],
+                    frequencies: [392.0, 440.0, 493.88, 587.33, 659.25],
                     oscillatorType: 'triangle',
-                    filterMultiplier: 3.2,
-                    harmonicRatio: 1.5,
-                    harmonicMix: 0.04
+                    filterMultiplier: 4.5,
+                    harmonicRatio: 2,
+                    harmonicMix: 0.08
                 },
                 singing_bowl: {
-                    frequencies: [293.66, 329.63, 392.0, 440.0, 523.25, 587.33],
+                    frequencies: [369.99, 415.3, 466.16, 523.25, 622.25, 698.46],
                     oscillatorType: 'sine',
-                    filterMultiplier: 2.8,
-                    harmonicRatio: 1.5,
-                    harmonicMix: 0.035
+                    filterMultiplier: 3.5,
+                    harmonicRatio: 1.333,
+                    harmonicMix: 0.06
                 },
                 gentle_major: {
-                    frequencies: [261.63, 329.63, 392.0, 440.0, 493.88, 523.25],
+                    frequencies: [349.23, 392.0, 440.0, 523.25, 587.33, 659.25],
                     oscillatorType: 'triangle',
-                    filterMultiplier: 3.8,
-                    harmonicRatio: 1.5,
-                    harmonicMix: 0.045
+                    filterMultiplier: 5,
+                    harmonicRatio: 2,
+                    harmonicMix: 0.07
                 }
             },
 
@@ -319,7 +319,7 @@
                 this.dynamicsNode = this.audioCtx.createDynamicsCompressor();
 
                 this.masterGain.gain.value = this.baseVolume;
-                this.delayNode.delayTime.value = 0.11;
+                this.delayNode.delayTime.value = 0.08;
                 this.dynamicsNode.threshold.value = -30;
                 this.dynamicsNode.knee.value = 18;
                 this.dynamicsNode.ratio.value = 2;
@@ -338,8 +338,9 @@
             },
 
             createReverb() {
-                const duration = 1.1;
-                const decay = 2.2;
+
+                const duration = 0.7;
+                const decay = 2.4;
                 const sampleRate = this.audioCtx.sampleRate;
                 const length = sampleRate * duration;
                 const impulse = this.audioCtx.createBuffer(2, length, sampleRate);
@@ -363,7 +364,7 @@
 
                     const frequencies = this.schemes[this.currentScheme].frequencies;
                     const frequency = frequencies[Math.floor(Math.random() * frequencies.length)];
-                    this.playTone(frequency, 0.035, -0.8 + Math.random() * 1.6, 1.1);
+                    this.playTone(frequency, 0.05, -0.8 + Math.random() * 1.6, 0.75);
                 }, 8000 + Math.random() * 4000);
             },
 
@@ -391,13 +392,10 @@
                 filter.type = 'lowpass';
                 filter.frequency.value = Math.min(2200, frequency * (scheme.filterMultiplier || 4));
                 filter.Q.value = 0.35;
-                bodyFilter.type = 'bandpass';
-                bodyFilter.frequency.value = Math.min(1800, frequency * 2.2);
-                bodyFilter.Q.value = 0.8;
                 
                 gainNode.gain.setValueAtTime(0, now);
-                gainNode.gain.linearRampToValueAtTime(volume * this.baseVolume * 0.5, now + 0.01);
-                gainNode.gain.exponentialRampToValueAtTime(0.0001, now + duration);
+                gainNode.gain.linearRampToValueAtTime(volume * this.baseVolume * 0.6, now + 0.02);
+                gainNode.gain.exponentialRampToValueAtTime(0.001, now + duration);
 
                 osc.connect(filter);
                 bodyOsc.connect(bodyFilter);
@@ -418,8 +416,8 @@
                 harmonicOsc.frequency.value = frequency * (scheme.harmonicRatio || 2);
                 
                 harmonicGain.gain.setValueAtTime(0, now);
-                harmonicGain.gain.linearRampToValueAtTime(volume * this.baseVolume * (scheme.harmonicMix || 0.06), now + 0.01);
-                harmonicGain.gain.exponentialRampToValueAtTime(0.0001, now + Math.max(0.2, duration * 0.45));
+                harmonicGain.gain.linearRampToValueAtTime(volume * this.baseVolume * (scheme.harmonicMix || 0.06), now + 0.03);
+                harmonicGain.gain.exponentialRampToValueAtTime(0.001, now + Math.max(0.25, duration * 0.65));
 
                 harmonicOsc.connect(harmonicGain);
                 harmonicGain.connect(panner);
@@ -459,16 +457,11 @@
                     if (!isSoundEnabled) return;
                     const frequencies = this.schemes[this.currentScheme].frequencies;
                     const note = frequencies[pattern[this.autoPlayIndex % pattern.length] % frequencies.length];
-                    const octave = this.autoPlayIndex % 7 === 0 ? 0.5 : 1;
-                    const pan = Math.sin(this.autoPlayIndex * 0.55) * 0.65;
-                    const jitter = 0.92 + Math.random() * 0.16;
-                    this.playTone(note * octave * jitter, 0.055, pan, 1 + Math.random() * 0.5);
+                    const octave = this.autoPlayIndex % 8 === 0 ? 0.5 : 1;
+                    const pan = Math.sin(this.autoPlayIndex * 0.6) * 0.75;
+                    this.playTone(note * octave, 0.08, pan, 0.85);
                     this.autoPlayIndex++;
-                    this.autoPlayTimeout = setTimeout(playNext, 1200 + Math.random() * 900);
-                };
-
-                this.autoPlayInterval = true;
-                playNext();
+                }, 1000);
             },
 
             stopAutoPlaySequence() {
@@ -567,11 +560,11 @@
                 const elapsed = Math.max(16, performance.now() - lastInteractionTime);
                 velocity = Math.min(1, Math.sqrt(dx * dx + dy * dy) / elapsed * 2.2);
             }
-            frequency *= 1 + velocity * 0.03;
+            frequency *= 1 + velocity * 0.08;
             
             const pan = (x / canvas.width) * 2 - 1;
-            const volume = 0.04 + velocity * 0.06;
-            const duration = 0.35 + (1 - velocity) * 0.45;
+            const volume = 0.05 + velocity * 0.08;
+            const duration = 0.22 + (1 - velocity) * 0.35;
 
             SoundEngine.playTone(frequency, volume, pan, duration);
             lastInteractionPos = { x, y };
