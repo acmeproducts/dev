@@ -280,18 +280,31 @@
             baseVolume: 0.3,
             ambientInterval: null,
             autoPlayInterval: null,
+            autoPlayTimeout: null,
             autoPlayIndex: 0,
             lastToneAt: 0,
 
             schemes: {
                 pentatonic: {
-                    frequencies: [293.66, 329.63, 369.99, 440.00, 493.88]
+                    frequencies: [329.63, 392.0, 440.0, 493.88, 587.33],
+                    oscillatorType: 'triangle',
+                    filterMultiplier: 3.2,
+                    harmonicRatio: 1.5,
+                    harmonicMix: 0.04
                 },
                 singing_bowl: {
-                    frequencies: [136.1, 174.6, 261.6, 294.3, 326.6, 349.2, 392.0, 436.1]
+                    frequencies: [293.66, 329.63, 392.0, 440.0, 523.25, 587.33],
+                    oscillatorType: 'sine',
+                    filterMultiplier: 2.8,
+                    harmonicRatio: 1.5,
+                    harmonicMix: 0.035
                 },
                 gentle_major: {
-                    frequencies: [261.63, 293.66, 329.63, 349.23, 392.00, 440.00, 493.88]
+                    frequencies: [261.63, 329.63, 392.0, 440.0, 493.88, 523.25],
+                    oscillatorType: 'triangle',
+                    filterMultiplier: 3.8,
+                    harmonicRatio: 1.5,
+                    harmonicMix: 0.045
                 }
             },
 
@@ -306,12 +319,12 @@
                 this.dynamicsNode = this.audioCtx.createDynamicsCompressor();
 
                 this.masterGain.gain.value = this.baseVolume;
-                this.delayNode.delayTime.value = 0.3;
-                this.dynamicsNode.threshold.value = -26;
-                this.dynamicsNode.knee.value = 20;
-                this.dynamicsNode.ratio.value = 3;
-                this.dynamicsNode.attack.value = 0.01;
-                this.dynamicsNode.release.value = 0.2;
+                this.delayNode.delayTime.value = 0.11;
+                this.dynamicsNode.threshold.value = -30;
+                this.dynamicsNode.knee.value = 18;
+                this.dynamicsNode.ratio.value = 2;
+                this.dynamicsNode.attack.value = 0.006;
+                this.dynamicsNode.release.value = 0.15;
 
                 this.createReverb();
 
@@ -325,8 +338,8 @@
             },
 
             createReverb() {
-                const duration = 3;
-                const decay = 2;
+                const duration = 1.1;
+                const decay = 2.2;
                 const sampleRate = this.audioCtx.sampleRate;
                 const length = sampleRate * duration;
                 const impulse = this.audioCtx.createBuffer(2, length, sampleRate);
@@ -350,7 +363,7 @@
 
                     const frequencies = this.schemes[this.currentScheme].frequencies;
                     const frequency = frequencies[Math.floor(Math.random() * frequencies.length)];
-                    this.playTone(frequency, 0.1, -0.8 + Math.random() * 1.6);
+                    this.playTone(frequency, 0.035, -0.8 + Math.random() * 1.6, 1.1);
                 }, 8000 + Math.random() * 4000);
             },
 
@@ -358,48 +371,80 @@
                 if (!this.audioCtx || this.audioCtx.state !== 'running') return;
 
                 const now = this.audioCtx.currentTime;
+                const scheme = this.schemes[this.currentScheme];
                 
                 const osc = this.audioCtx.createOscillator();
+                const bodyOsc = this.audioCtx.createOscillator();
                 const gainNode = this.audioCtx.createGain();
                 const panner = this.audioCtx.createStereoPanner();
                 const filter = this.audioCtx.createBiquadFilter();
+                const bodyFilter = this.audioCtx.createBiquadFilter();
+                const attackNoise = this.audioCtx.createBufferSource();
+                const noiseGain = this.audioCtx.createGain();
+                const noiseFilter = this.audioCtx.createBiquadFilter();
 
-                osc.type = 'sine';
+                osc.type = scheme.oscillatorType || 'sine';
                 osc.frequency.value = frequency;
+                bodyOsc.type = 'triangle';
+                bodyOsc.frequency.value = frequency * 1.01;
                 panner.pan.value = pan;
                 filter.type = 'lowpass';
-                filter.frequency.value = Math.min(2500, frequency * 6);
-                filter.Q.value = 0.5;
+                filter.frequency.value = Math.min(2200, frequency * (scheme.filterMultiplier || 4));
+                filter.Q.value = 0.35;
+                bodyFilter.type = 'bandpass';
+                bodyFilter.frequency.value = Math.min(1800, frequency * 2.2);
+                bodyFilter.Q.value = 0.8;
                 
                 gainNode.gain.setValueAtTime(0, now);
-                gainNode.gain.linearRampToValueAtTime(volume * this.baseVolume, now + 0.06);
-                gainNode.gain.exponentialRampToValueAtTime(0.001, now + duration);
+                gainNode.gain.linearRampToValueAtTime(volume * this.baseVolume * 0.5, now + 0.01);
+                gainNode.gain.exponentialRampToValueAtTime(0.0001, now + duration);
 
                 osc.connect(filter);
+                bodyOsc.connect(bodyFilter);
                 filter.connect(gainNode);
+                bodyFilter.connect(gainNode);
                 gainNode.connect(panner);
                 panner.connect(this.masterGain);
 
                 osc.start(now);
                 osc.stop(now + duration);
+                bodyOsc.start(now);
+                bodyOsc.stop(now + duration * 0.9);
 
                 const harmonicOsc = this.audioCtx.createOscillator();
                 const harmonicGain = this.audioCtx.createGain();
                 
                 harmonicOsc.type = 'sine';
-                harmonicOsc.frequency.value = frequency * 1.5;
+                harmonicOsc.frequency.value = frequency * (scheme.harmonicRatio || 2);
                 
                 harmonicGain.gain.setValueAtTime(0, now);
-                harmonicGain.gain.linearRampToValueAtTime(volume * this.baseVolume * 0.25, now + 0.08);
-                harmonicGain.gain.exponentialRampToValueAtTime(0.001, now + Math.max(0.4, duration * 0.75));
+                harmonicGain.gain.linearRampToValueAtTime(volume * this.baseVolume * (scheme.harmonicMix || 0.06), now + 0.01);
+                harmonicGain.gain.exponentialRampToValueAtTime(0.0001, now + Math.max(0.2, duration * 0.45));
 
                 harmonicOsc.connect(harmonicGain);
                 harmonicGain.connect(panner);
 
                 harmonicOsc.start(now);
-                harmonicOsc.stop(now + Math.max(0.4, duration * 0.75));
+                harmonicOsc.stop(now + Math.max(0.22, duration * 0.5));
 
-                this.activeOscillators.push(osc, harmonicOsc);
+                const noiseBufferLength = Math.max(1, Math.floor(this.audioCtx.sampleRate * 0.03));
+                const noiseBuffer = this.audioCtx.createBuffer(1, noiseBufferLength, this.audioCtx.sampleRate);
+                const noiseData = noiseBuffer.getChannelData(0);
+                for (let i = 0; i < noiseBufferLength; i++) {
+                    noiseData[i] = (Math.random() * 2 - 1) * 0.35;
+                }
+                attackNoise.buffer = noiseBuffer;
+                noiseFilter.type = 'highpass';
+                noiseFilter.frequency.value = 1400;
+                noiseGain.gain.setValueAtTime(volume * this.baseVolume * 0.02, now);
+                noiseGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.04);
+                attackNoise.connect(noiseFilter);
+                noiseFilter.connect(noiseGain);
+                noiseGain.connect(panner);
+                attackNoise.start(now);
+                attackNoise.stop(now + 0.04);
+
+                this.activeOscillators.push(osc, bodyOsc, harmonicOsc, attackNoise);
                 this.cleanupOscillators();
             },
 
@@ -410,19 +455,28 @@
 
                 const pattern = [0, 2, 4, 2, 1, 3, 0, 4];
                 this.autoPlayIndex = 0;
-                this.autoPlayInterval = setInterval(() => {
+                const playNext = () => {
+                    if (!isSoundEnabled) return;
                     const frequencies = this.schemes[this.currentScheme].frequencies;
                     const note = frequencies[pattern[this.autoPlayIndex % pattern.length] % frequencies.length];
-                    const octave = this.autoPlayIndex % 6 === 0 ? 0.5 : 1;
-                    const pan = Math.sin(this.autoPlayIndex * 0.6) * 0.75;
-                    this.playTone(note * octave, 0.22, pan, 2.2);
+                    const octave = this.autoPlayIndex % 7 === 0 ? 0.5 : 1;
+                    const pan = Math.sin(this.autoPlayIndex * 0.55) * 0.65;
+                    const jitter = 0.92 + Math.random() * 0.16;
+                    this.playTone(note * octave * jitter, 0.055, pan, 1 + Math.random() * 0.5);
                     this.autoPlayIndex++;
-                }, 900);
+                    this.autoPlayTimeout = setTimeout(playNext, 1200 + Math.random() * 900);
+                };
+
+                this.autoPlayInterval = true;
+                playNext();
             },
 
             stopAutoPlaySequence() {
                 if (!this.autoPlayInterval) return;
-                clearInterval(this.autoPlayInterval);
+                if (this.autoPlayTimeout) {
+                    clearTimeout(this.autoPlayTimeout);
+                    this.autoPlayTimeout = null;
+                }
                 this.autoPlayInterval = null;
             },
 
@@ -513,11 +567,11 @@
                 const elapsed = Math.max(16, performance.now() - lastInteractionTime);
                 velocity = Math.min(1, Math.sqrt(dx * dx + dy * dy) / elapsed * 2.2);
             }
-            frequency *= 1 + velocity * 0.15;
+            frequency *= 1 + velocity * 0.03;
             
             const pan = (x / canvas.width) * 2 - 1;
-            const volume = 0.2 + velocity * 0.35;
-            const duration = 0.8 + (1 - velocity) * 0.8;
+            const volume = 0.04 + velocity * 0.06;
+            const duration = 0.35 + (1 - velocity) * 0.45;
 
             SoundEngine.playTone(frequency, volume, pan, duration);
             lastInteractionPos = { x, y };
