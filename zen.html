@@ -280,6 +280,7 @@
             baseVolume: 0.3,
             ambientInterval: null,
             autoPlayInterval: null,
+            autoPlayTimeout: null,
             autoPlayIndex: 0,
             lastToneAt: 0,
 
@@ -337,6 +338,7 @@
             },
 
             createReverb() {
+
                 const duration = 0.7;
                 const decay = 2.4;
                 const sampleRate = this.audioCtx.sampleRate;
@@ -373,12 +375,19 @@
                 const scheme = this.schemes[this.currentScheme];
                 
                 const osc = this.audioCtx.createOscillator();
+                const bodyOsc = this.audioCtx.createOscillator();
                 const gainNode = this.audioCtx.createGain();
                 const panner = this.audioCtx.createStereoPanner();
                 const filter = this.audioCtx.createBiquadFilter();
+                const bodyFilter = this.audioCtx.createBiquadFilter();
+                const attackNoise = this.audioCtx.createBufferSource();
+                const noiseGain = this.audioCtx.createGain();
+                const noiseFilter = this.audioCtx.createBiquadFilter();
 
                 osc.type = scheme.oscillatorType || 'sine';
                 osc.frequency.value = frequency;
+                bodyOsc.type = 'triangle';
+                bodyOsc.frequency.value = frequency * 1.01;
                 panner.pan.value = pan;
                 filter.type = 'lowpass';
                 filter.frequency.value = Math.min(2200, frequency * (scheme.filterMultiplier || 4));
@@ -389,12 +398,16 @@
                 gainNode.gain.exponentialRampToValueAtTime(0.001, now + duration);
 
                 osc.connect(filter);
+                bodyOsc.connect(bodyFilter);
                 filter.connect(gainNode);
+                bodyFilter.connect(gainNode);
                 gainNode.connect(panner);
                 panner.connect(this.masterGain);
 
                 osc.start(now);
                 osc.stop(now + duration);
+                bodyOsc.start(now);
+                bodyOsc.stop(now + duration * 0.9);
 
                 const harmonicOsc = this.audioCtx.createOscillator();
                 const harmonicGain = this.audioCtx.createGain();
@@ -410,9 +423,26 @@
                 harmonicGain.connect(panner);
 
                 harmonicOsc.start(now);
-                harmonicOsc.stop(now + Math.max(0.4, duration * 0.75));
+                harmonicOsc.stop(now + Math.max(0.22, duration * 0.5));
 
-                this.activeOscillators.push(osc, harmonicOsc);
+                const noiseBufferLength = Math.max(1, Math.floor(this.audioCtx.sampleRate * 0.03));
+                const noiseBuffer = this.audioCtx.createBuffer(1, noiseBufferLength, this.audioCtx.sampleRate);
+                const noiseData = noiseBuffer.getChannelData(0);
+                for (let i = 0; i < noiseBufferLength; i++) {
+                    noiseData[i] = (Math.random() * 2 - 1) * 0.35;
+                }
+                attackNoise.buffer = noiseBuffer;
+                noiseFilter.type = 'highpass';
+                noiseFilter.frequency.value = 1400;
+                noiseGain.gain.setValueAtTime(volume * this.baseVolume * 0.02, now);
+                noiseGain.gain.exponentialRampToValueAtTime(0.0001, now + 0.04);
+                attackNoise.connect(noiseFilter);
+                noiseFilter.connect(noiseGain);
+                noiseGain.connect(panner);
+                attackNoise.start(now);
+                attackNoise.stop(now + 0.04);
+
+                this.activeOscillators.push(osc, bodyOsc, harmonicOsc, attackNoise);
                 this.cleanupOscillators();
             },
 
@@ -423,7 +453,8 @@
 
                 const pattern = [0, 2, 4, 2, 1, 3, 0, 4];
                 this.autoPlayIndex = 0;
-                this.autoPlayInterval = setInterval(() => {
+                const playNext = () => {
+                    if (!isSoundEnabled) return;
                     const frequencies = this.schemes[this.currentScheme].frequencies;
                     const note = frequencies[pattern[this.autoPlayIndex % pattern.length] % frequencies.length];
                     const octave = this.autoPlayIndex % 8 === 0 ? 0.5 : 1;
@@ -435,7 +466,10 @@
 
             stopAutoPlaySequence() {
                 if (!this.autoPlayInterval) return;
-                clearInterval(this.autoPlayInterval);
+                if (this.autoPlayTimeout) {
+                    clearTimeout(this.autoPlayTimeout);
+                    this.autoPlayTimeout = null;
+                }
                 this.autoPlayInterval = null;
             },
 
