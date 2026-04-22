@@ -366,6 +366,7 @@
             dryGain: null,
             dynamicsNode: null,
             activeOscillators: [],
+            activeVoices: new Set(),
             currentScheme: 'pentatonic',
             currentInstrument: 'marimba',
             baseVolume: 0.3,
@@ -580,8 +581,28 @@
 
                 const stopAt = now + envelope.release + 0.05;
                 const oscillators = this.buildInstrumentVoice(instrument.type, frequency, gainNode, stopAt, softness);
+                const voice = { gainNode, oscillators };
+                this.activeVoices.add(voice);
+                this.trimVoices();
 
                 gainNode.connect(bus.input);
+                oscillators.forEach((osc) => {
+                    osc.onended = () => {
+                        try {
+                            osc.disconnect();
+                        } catch (err) {
+                            // no-op
+                        }
+                    };
+                });
+                setTimeout(() => {
+                    try {
+                        gainNode.disconnect();
+                    } catch (err) {
+                        // no-op
+                    }
+                    this.activeVoices.delete(voice);
+                }, Math.max(80, (stopAt - now) * 1000 + 60));
                 this.activeOscillators.push(...oscillators);
                 this.cleanupOscillators();
             },
@@ -731,6 +752,24 @@
                 }
             },
 
+            trimVoices() {
+                const maxVoices = 24;
+                if (this.activeVoices.size <= maxVoices) return;
+                const overflow = this.activeVoices.size - maxVoices;
+                let removed = 0;
+                for (const voice of this.activeVoices) {
+                    if (removed >= overflow) break;
+                    try {
+                        voice.gainNode.gain.cancelScheduledValues(this.audioCtx.currentTime);
+                        voice.gainNode.gain.setTargetAtTime(0.0001, this.audioCtx.currentTime, 0.02);
+                    } catch (err) {
+                        // no-op
+                    }
+                    this.activeVoices.delete(voice);
+                    removed++;
+                }
+            },
+
             setVolume(value) {
                 this.baseVolume = value;
                 if (this.masterGain) {
@@ -783,6 +822,7 @@
         let interactionSoundFrame = null;
         let lastInteractionPos = null;
         let lastInteractionTime = 0;
+        let lastPlayedAt = 0;
         let idleSoundTimer = null;
         const AUTO_PLAY_IDLE_MS = 10000;
         const SOUND_PRESET_KEY = 'zenGardenSoundPresetV2';
@@ -988,6 +1028,9 @@
 
         function playInteractionSound(x, y) {
             if (!isSoundEnabled) return;
+            const now = performance.now();
+            if (now - lastPlayedAt < 34) return;
+            lastPlayedAt = now;
             SoundEngine.stopAutoPlaySequence();
 
             const frequencies = SoundEngine.schemes[SoundEngine.currentScheme].frequencies;
