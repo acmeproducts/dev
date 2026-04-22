@@ -184,21 +184,55 @@
         }
 
         .sound-control {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
+            display: grid;
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 0.4rem 0.6rem;
             margin-bottom: 1rem;
-            padding: 0.5rem;
+            padding: 0.6rem;
             background: #3a2820;
             border-radius: 4px;
         }
 
-        .sound-control label {
-            flex: 1;
+        .sound-row {
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
+            min-width: 0;
         }
 
-        .sound-control input[type="range"] {
-            width: 100px;
+        .sound-row label {
+            font-size: 0.78rem;
+            white-space: nowrap;
+        }
+
+        .sound-row input[type="range"] {
+            width: 100%;
+            min-width: 56px;
+            margin-top: 0;
+        }
+
+        .sound-row select {
+            width: 100%;
+            min-width: 0;
+        }
+
+        .sound-actions {
+            grid-column: 1 / -1;
+            display: grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            gap: 0.4rem;
+        }
+
+        .sound-actions button {
+            margin: 0;
+            padding: 0.38rem 0.25rem;
+            font-size: 0.78rem;
+            line-height: 1.2;
+        }
+
+        #sound-toggle {
+            grid-column: 1 / -1;
+            padding: 0.38rem;
         }
 
         select {
@@ -217,18 +251,49 @@
         </div>
     </div>
 
-    <div class="controls">
+        <div class="controls">
         <div class="menu-toggle">☰</div>
         <div class="tool-group">
             <div class="sound-control">
-                <label>Sound</label>
-                <input type="range" id="volume" min="0" max="100" value="30">
-                <select id="sound-scheme">
-                    <option value="pentatonic">Pentatonic</option>
-                    <option value="singing_bowl">Singing Bowl</option>
-                    <option value="gentle_major">Gentle Major</option>
-                </select>
-                <button id="sound-toggle" style="width: auto; padding: 0.5rem;">🔇</button>
+                <div class="sound-row">
+                    <label for="volume">Volume</label>
+                    <input type="range" id="volume" min="0" max="100" value="30">
+                </div>
+                <div class="sound-row">
+                    <label for="sound-scheme">Scale</label>
+                    <select id="sound-scheme">
+                        <option value="pentatonic">Pentatonic</option>
+                        <option value="singing_bowl">Singing Bowl</option>
+                        <option value="gentle_major">Gentle Major</option>
+                    </select>
+                </div>
+                <div class="sound-row">
+                    <label for="instrument-select">Voice</label>
+                    <select id="instrument-select">
+                        <option value="marimba">Marimba</option>
+                        <option value="flute">Flute</option>
+                        <option value="kalimba">Kalimba</option>
+                        <option value="bell">Bell</option>
+                    </select>
+                </div>
+                <div class="sound-row">
+                    <label for="attack-control">Atk</label>
+                    <input type="range" id="attack-control" min="2" max="80" value="24">
+                </div>
+                <div class="sound-row">
+                    <label for="release-control">Rel</label>
+                    <input type="range" id="release-control" min="20" max="400" value="170">
+                </div>
+                <div class="sound-row">
+                    <label for="brightness-control">Bright</label>
+                    <input type="range" id="brightness-control" min="10" max="100" value="55">
+                </div>
+                <button id="sound-toggle">🔇 Sound</button>
+                <div class="sound-actions">
+                    <button id="save-sound-preset">Save</button>
+                    <button id="load-sound-preset">Load</button>
+                    <button id="reset-sound-preset">Reset</button>
+                </div>
             </div>
         </div>
         <div class="tool-group">
@@ -259,6 +324,13 @@
         const soundToggle = document.getElementById('sound-toggle');
         const volumeControl = document.getElementById('volume');
         const soundScheme = document.getElementById('sound-scheme');
+        const instrumentSelect = document.getElementById('instrument-select');
+        const attackControl = document.getElementById('attack-control');
+        const releaseControl = document.getElementById('release-control');
+        const brightnessControl = document.getElementById('brightness-control');
+        const saveSoundPresetBtn = document.getElementById('save-sound-preset');
+        const loadSoundPresetBtn = document.getElementById('load-sound-preset');
+        const resetSoundPresetBtn = document.getElementById('reset-sound-preset');
         const controls = document.querySelector('.controls');
         const menuToggle = document.querySelector('.menu-toggle');
         const undoBtn = document.getElementById('undo');
@@ -273,37 +345,62 @@
             masterGain: null,
             reverbNode: null,
             delayNode: null,
-            pannerNode: null,
             dynamicsNode: null,
             activeOscillators: [],
             currentScheme: 'pentatonic',
+            currentInstrument: 'marimba',
             baseVolume: 0.3,
             ambientInterval: null,
-            autoPlayInterval: null,
+            autoPlayTimer: null,
             autoPlayIndex: 0,
-            lastToneAt: 0,
+            timbre: {
+                attack: 0.024,
+                release: 0.17,
+                brightness: 0.55
+            },
+            autoPatterns: [
+                [0, 2, 4, 1, 3, 4, 2],
+                [0, 3, 2, 4, 1, 2, 0, 4],
+                [0, 1, 3, 2, 4, 3, 1]
+            ],
+            activePattern: 0,
+            autoDirection: 1,
 
             schemes: {
                 pentatonic: {
                     frequencies: [392.0, 440.0, 493.88, 587.33, 659.25],
-                    oscillatorType: 'triangle',
-                    filterMultiplier: 4.5,
-                    harmonicRatio: 2,
-                    harmonicMix: 0.08
+                    root: 196
                 },
                 singing_bowl: {
                     frequencies: [369.99, 415.3, 466.16, 523.25, 622.25, 698.46],
-                    oscillatorType: 'sine',
-                    filterMultiplier: 3.5,
-                    harmonicRatio: 1.333,
-                    harmonicMix: 0.06
+                    root: 184.99
                 },
                 gentle_major: {
                     frequencies: [349.23, 392.0, 440.0, 523.25, 587.33, 659.25],
-                    oscillatorType: 'triangle',
-                    filterMultiplier: 5,
-                    harmonicRatio: 2,
-                    harmonicMix: 0.07
+                    root: 174.61
+                }
+            },
+
+            instruments: {
+                marimba: {
+                    type: 'marimba',
+                    color: 1.1,
+                    ambientGain: 0.75
+                },
+                flute: {
+                    type: 'flute',
+                    color: 0.9,
+                    ambientGain: 0.65
+                },
+                kalimba: {
+                    type: 'kalimba',
+                    color: 1.2,
+                    ambientGain: 0.8
+                },
+                bell: {
+                    type: 'bell',
+                    color: 1.3,
+                    ambientGain: 0.55
                 }
             },
 
@@ -314,7 +411,6 @@
                 this.masterGain = this.audioCtx.createGain();
                 this.reverbNode = this.audioCtx.createConvolver();
                 this.delayNode = this.audioCtx.createDelay();
-                this.pannerNode = this.audioCtx.createStereoPanner();
                 this.dynamicsNode = this.audioCtx.createDynamicsCompressor();
 
                 this.masterGain.gain.value = this.baseVolume;
@@ -329,8 +425,7 @@
 
                 this.masterGain.connect(this.reverbNode);
                 this.reverbNode.connect(this.delayNode);
-                this.delayNode.connect(this.pannerNode);
-                this.pannerNode.connect(this.dynamicsNode);
+                this.delayNode.connect(this.dynamicsNode);
                 this.dynamicsNode.connect(this.audioCtx.destination);
 
                 this.startAmbientSounds();
@@ -361,82 +456,173 @@
                     if (!this.audioCtx || this.audioCtx.state !== 'running') return;
 
                     const frequencies = this.schemes[this.currentScheme].frequencies;
-                    const frequency = frequencies[Math.floor(Math.random() * frequencies.length)];
-                    this.playTone(frequency, 0.05, -0.8 + Math.random() * 1.6, 0.75);
+                    const pool = [0, 2, 4, 1, 3];
+                    const idx = pool[Math.floor(Math.random() * pool.length)] % frequencies.length;
+                    const frequency = frequencies[idx] * (Math.random() > 0.65 ? 0.5 : 1);
+                    const drift = 0.985 + Math.random() * 0.03;
+                    this.playVoice({
+                        frequency: frequency * drift,
+                        volume: 0.05 * this.instruments[this.currentInstrument].ambientGain,
+                        pan: -0.8 + Math.random() * 1.6,
+                        duration: 1.3 + Math.random() * 1.2,
+                        softness: 0.8
+                    });
                 }, 8000 + Math.random() * 4000);
             },
 
-            playTone(frequency, volume, pan = 0, duration = 2) {
+            makeEnvelope(volume, duration, softness = 0.5) {
+                const attack = this.timbre.attack * (0.6 + softness * 0.8);
+                const release = Math.max(0.08, duration * (0.52 + softness * 0.35) + this.timbre.release * 0.55);
+                const sustain = Math.max(0.001, volume * (0.55 + softness * 0.35));
+                return { attack, release, sustain };
+            },
+
+            createVoiceBus(pan = 0, brightness = 1) {
+                const panner = this.audioCtx.createStereoPanner();
+                const toneFilter = this.audioCtx.createBiquadFilter();
+                const highshelf = this.audioCtx.createBiquadFilter();
+
+                panner.pan.value = Math.max(-1, Math.min(1, pan));
+                toneFilter.type = 'lowpass';
+                toneFilter.frequency.value = 700 + this.timbre.brightness * 3500 * brightness;
+                toneFilter.Q.value = 0.4 + this.timbre.brightness * 3;
+                highshelf.type = 'highshelf';
+                highshelf.frequency.value = 2000;
+                highshelf.gain.value = -6 + this.timbre.brightness * 10;
+
+                toneFilter.connect(highshelf);
+                highshelf.connect(panner);
+                panner.connect(this.masterGain);
+                return { input: toneFilter };
+            },
+
+            createOsc(type, frequency, detune = 0) {
+                const osc = this.audioCtx.createOscillator();
+                osc.type = type;
+                osc.frequency.value = frequency;
+                osc.detune.value = detune;
+                return osc;
+            },
+
+            playVoice({ frequency, volume, pan = 0, duration = 1, softness = 0.4 }) {
                 if (!this.audioCtx || this.audioCtx.state !== 'running') return;
 
                 const now = this.audioCtx.currentTime;
-                const scheme = this.schemes[this.currentScheme];
-                
-                const osc = this.audioCtx.createOscillator();
+                const instrument = this.instruments[this.currentInstrument] || this.instruments.marimba;
+                const bus = this.createVoiceBus(pan, instrument.color);
+                const envelope = this.makeEnvelope(volume, duration, softness);
                 const gainNode = this.audioCtx.createGain();
-                const panner = this.audioCtx.createStereoPanner();
-                const filter = this.audioCtx.createBiquadFilter();
-
-                osc.type = scheme.oscillatorType || 'sine';
-                osc.frequency.value = frequency;
-                panner.pan.value = pan;
-                filter.type = 'lowpass';
-                filter.frequency.value = Math.min(2200, frequency * (scheme.filterMultiplier || 4));
-                filter.Q.value = 0.35;
-                
                 gainNode.gain.setValueAtTime(0, now);
-                gainNode.gain.linearRampToValueAtTime(volume * this.baseVolume * 0.6, now + 0.02);
-                gainNode.gain.exponentialRampToValueAtTime(0.001, now + duration);
+                gainNode.gain.linearRampToValueAtTime(envelope.sustain * this.baseVolume, now + envelope.attack);
+                gainNode.gain.exponentialRampToValueAtTime(0.001, now + envelope.release);
 
-                osc.connect(filter);
-                filter.connect(gainNode);
-                gainNode.connect(panner);
-                panner.connect(this.masterGain);
+                const stopAt = now + envelope.release + 0.05;
+                const oscillators = this.buildInstrumentVoice(instrument.type, frequency, gainNode, stopAt, softness);
 
-                osc.start(now);
-                osc.stop(now + duration);
-
-                const harmonicOsc = this.audioCtx.createOscillator();
-                const harmonicGain = this.audioCtx.createGain();
-                
-                harmonicOsc.type = 'sine';
-                harmonicOsc.frequency.value = frequency * (scheme.harmonicRatio || 2);
-                
-                harmonicGain.gain.setValueAtTime(0, now);
-                harmonicGain.gain.linearRampToValueAtTime(volume * this.baseVolume * (scheme.harmonicMix || 0.06), now + 0.03);
-                harmonicGain.gain.exponentialRampToValueAtTime(0.001, now + Math.max(0.25, duration * 0.65));
-
-                harmonicOsc.connect(harmonicGain);
-                harmonicGain.connect(panner);
-
-                harmonicOsc.start(now);
-                harmonicOsc.stop(now + Math.max(0.4, duration * 0.75));
-
-                this.activeOscillators.push(osc, harmonicOsc);
+                gainNode.connect(bus.input);
+                this.activeOscillators.push(...oscillators);
                 this.cleanupOscillators();
             },
 
+            buildInstrumentVoice(type, frequency, gainNode, stopAt, softness) {
+                const now = this.audioCtx.currentTime;
+                const voices = [];
+                const startAndStop = (osc, at = now) => {
+                    osc.start(at);
+                    osc.stop(stopAt);
+                    voices.push(osc);
+                };
+
+                if (type === 'flute') {
+                    const carrier = this.createOsc('sine', frequency, 0);
+                    const breath = this.createOsc('triangle', frequency * 2, -3);
+                    const lfo = this.createOsc('sine', 5 + softness * 2, 0);
+                    const lfoGain = this.audioCtx.createGain();
+                    lfoGain.gain.value = 6 + this.timbre.brightness * 4;
+                    lfo.connect(lfoGain);
+                    lfoGain.connect(carrier.detune);
+                    carrier.connect(gainNode);
+                    breath.connect(gainNode);
+                    startAndStop(carrier);
+                    startAndStop(breath);
+                    startAndStop(lfo);
+                    return voices;
+                }
+
+                if (type === 'kalimba') {
+                    const pluck = this.createOsc('triangle', frequency, 0);
+                    const overtone = this.createOsc('sine', frequency * 3.01, 0);
+                    const overtoneGain = this.audioCtx.createGain();
+                    overtoneGain.gain.value = 0.22 + this.timbre.brightness * 0.16;
+                    overtone.connect(overtoneGain);
+                    overtoneGain.connect(gainNode);
+                    pluck.connect(gainNode);
+                    startAndStop(pluck);
+                    startAndStop(overtone);
+                    return voices;
+                }
+
+                if (type === 'bell') {
+                    const ratios = [1, 2.76, 5.21];
+                    ratios.forEach((ratio, idx) => {
+                        const partial = this.createOsc('sine', frequency * ratio, idx * 3);
+                        const partialGain = this.audioCtx.createGain();
+                        partialGain.gain.value = [0.8, 0.27, 0.14][idx];
+                        partial.connect(partialGain);
+                        partialGain.connect(gainNode);
+                        startAndStop(partial);
+                    });
+                    return voices;
+                }
+
+                const body = this.createOsc('triangle', frequency, 0);
+                const wood = this.createOsc('square', frequency * 2, -7);
+                const woodGain = this.audioCtx.createGain();
+                woodGain.gain.value = 0.14 + this.timbre.brightness * 0.1;
+                wood.connect(woodGain);
+                woodGain.connect(gainNode);
+                body.connect(gainNode);
+                startAndStop(body);
+                startAndStop(wood);
+                return voices;
+            },
+
             startAutoPlaySequence() {
-                if (!isSoundEnabled || this.autoPlayInterval) return;
+                if (!isSoundEnabled || this.autoPlayTimer) return;
                 if (!this.audioCtx) this.init();
                 if (this.audioCtx.state === 'suspended') this.audioCtx.resume();
 
-                const pattern = [0, 2, 4, 2, 1, 3, 0, 4];
                 this.autoPlayIndex = 0;
-                this.autoPlayInterval = setInterval(() => {
+                this.activePattern = (this.activePattern + 1) % this.autoPatterns.length;
+                const runStep = () => {
+                    if (!this.autoPlayTimer || !isSoundEnabled) return;
                     const frequencies = this.schemes[this.currentScheme].frequencies;
-                    const note = frequencies[pattern[this.autoPlayIndex % pattern.length] % frequencies.length];
-                    const octave = this.autoPlayIndex % 8 === 0 ? 0.5 : 1;
+                    const pattern = this.autoPatterns[this.activePattern];
+                    const step = pattern[this.autoPlayIndex % pattern.length];
+                    const note = frequencies[step % frequencies.length];
+                    const octave = this.autoDirection > 0 ? 0.5 : 1;
                     const pan = Math.sin(this.autoPlayIndex * 0.6) * 0.75;
-                    this.playTone(note * octave, 0.08, pan, 0.85);
+                    this.playVoice({
+                        frequency: note * octave,
+                        volume: 0.07,
+                        pan,
+                        duration: 1 + (this.autoPlayIndex % 3) * 0.16,
+                        softness: 0.95
+                    });
                     this.autoPlayIndex++;
-                }, 1000);
+                    if (this.autoPlayIndex % pattern.length === 0) {
+                        this.autoDirection *= -1;
+                    }
+                    const nextMs = 1400 + ((this.autoPlayIndex * 97) % 530);
+                    this.autoPlayTimer = setTimeout(runStep, nextMs);
+                };
+                this.autoPlayTimer = setTimeout(runStep, 900);
             },
 
             stopAutoPlaySequence() {
-                if (!this.autoPlayInterval) return;
-                clearInterval(this.autoPlayInterval);
-                this.autoPlayInterval = null;
+                if (!this.autoPlayTimer) return;
+                clearTimeout(this.autoPlayTimer);
+                this.autoPlayTimer = null;
             },
 
             cleanupOscillators() {
@@ -456,6 +642,24 @@
                 if (this.schemes[scheme]) {
                     this.currentScheme = scheme;
                 }
+            },
+
+            setInstrument(instrument) {
+                if (this.instruments[instrument]) {
+                    this.currentInstrument = instrument;
+                }
+            },
+
+            setTimbre({ attack, release, brightness }) {
+                if (typeof attack === 'number' && Number.isFinite(attack)) {
+                    this.timbre.attack = Math.max(0.002, Math.min(0.1, attack));
+                }
+                if (typeof release === 'number' && Number.isFinite(release)) {
+                    this.timbre.release = Math.max(0.04, Math.min(0.6, release));
+                }
+                if (typeof brightness === 'number' && Number.isFinite(brightness)) {
+                    this.timbre.brightness = Math.max(0.1, Math.min(1, brightness));
+                }
             }
         };
 
@@ -465,6 +669,88 @@
         let lastInteractionTime = 0;
         let idleSoundTimer = null;
         const AUTO_PLAY_IDLE_MS = 20000;
+        const SOUND_PRESET_KEY = 'zenGardenSoundPresetV2';
+
+        function getSoundStateFromUI() {
+            return {
+                isSoundEnabled,
+                volume: Number(volumeControl.value),
+                scheme: soundScheme.value,
+                instrument: instrumentSelect.value,
+                attack: Number(attackControl.value),
+                release: Number(releaseControl.value),
+                brightness: Number(brightnessControl.value)
+            };
+        }
+
+        function applySoundStateToUI(state) {
+            volumeControl.value = String(state.volume);
+            soundScheme.value = state.scheme;
+            instrumentSelect.value = state.instrument;
+            attackControl.value = String(state.attack);
+            releaseControl.value = String(state.release);
+            brightnessControl.value = String(state.brightness);
+            soundToggle.textContent = state.isSoundEnabled ? '🔊 Sound' : '🔇 Sound';
+        }
+
+        function normalizeSoundPreset(data) {
+            if (!data || typeof data !== 'object') return null;
+            const schemes = Object.keys(SoundEngine.schemes);
+            const instruments = Object.keys(SoundEngine.instruments);
+            const asNumber = (value, fallback, min, max) => {
+                const n = Number(value);
+                if (!Number.isFinite(n)) return fallback;
+                return Math.max(min, Math.min(max, n));
+            };
+            return {
+                isSoundEnabled: Boolean(data.isSoundEnabled),
+                volume: asNumber(data.volume, 30, 0, 100),
+                scheme: schemes.includes(data.scheme) ? data.scheme : 'pentatonic',
+                instrument: instruments.includes(data.instrument) ? data.instrument : 'marimba',
+                attack: asNumber(data.attack, 24, 2, 80),
+                release: asNumber(data.release, 170, 20, 400),
+                brightness: asNumber(data.brightness, 55, 10, 100)
+            };
+        }
+
+        function applySoundStateToEngine(state) {
+            SoundEngine.setVolume(state.volume / 100);
+            SoundEngine.setScheme(state.scheme);
+            SoundEngine.setInstrument(state.instrument);
+            SoundEngine.setTimbre({
+                attack: state.attack / 1000,
+                release: state.release / 1000,
+                brightness: state.brightness / 100
+            });
+        }
+
+        function saveSoundPreset() {
+            try {
+                localStorage.setItem(SOUND_PRESET_KEY, JSON.stringify(getSoundStateFromUI()));
+            } catch (err) {
+                console.warn('Unable to save sound preset', err);
+            }
+        }
+
+        function loadSoundPreset() {
+            let parsed = null;
+            try {
+                parsed = JSON.parse(localStorage.getItem(SOUND_PRESET_KEY));
+            } catch (err) {
+                parsed = null;
+            }
+            const state = normalizeSoundPreset(parsed) || normalizeSoundPreset(getSoundStateFromUI());
+            applySoundStateToUI(state);
+            applySoundStateToEngine(state);
+            isSoundEnabled = state.isSoundEnabled;
+            if (isSoundEnabled) {
+                SoundEngine.init();
+                if (SoundEngine.audioCtx.state === 'suspended') SoundEngine.audioCtx.resume();
+                resetIdleSoundTimer();
+            } else {
+                SoundEngine.stopAutoPlaySequence();
+            }
+        }
 
         function resetIdleSoundTimer() {
             if (idleSoundTimer) clearTimeout(idleSoundTimer);
@@ -484,7 +770,7 @@
 
         soundToggle.addEventListener('click', () => {
             isSoundEnabled = !isSoundEnabled;
-            soundToggle.textContent = isSoundEnabled ? '🔊' : '🔇';
+            soundToggle.textContent = isSoundEnabled ? '🔊 Sound' : '🔇 Sound';
             
             if (isSoundEnabled) {
                 SoundEngine.init();
@@ -499,15 +785,69 @@
                     idleSoundTimer = null;
                 }
             }
+            saveSoundPreset();
         });
 
         volumeControl.addEventListener('input', () => {
             const volume = volumeControl.value / 100;
             SoundEngine.setVolume(volume);
+            saveSoundPreset();
         });
 
         soundScheme.addEventListener('change', () => {
             SoundEngine.setScheme(soundScheme.value);
+            saveSoundPreset();
+        });
+
+        instrumentSelect.addEventListener('change', () => {
+            SoundEngine.setInstrument(instrumentSelect.value);
+            saveSoundPreset();
+        });
+
+        attackControl.addEventListener('input', () => {
+            SoundEngine.setTimbre({ attack: Number(attackControl.value) / 1000 });
+            saveSoundPreset();
+        });
+
+        releaseControl.addEventListener('input', () => {
+            SoundEngine.setTimbre({ release: Number(releaseControl.value) / 1000 });
+            saveSoundPreset();
+        });
+
+        brightnessControl.addEventListener('input', () => {
+            SoundEngine.setTimbre({ brightness: Number(brightnessControl.value) / 100 });
+            saveSoundPreset();
+        });
+
+        saveSoundPresetBtn.addEventListener('click', () => {
+            saveSoundPreset();
+            registerActivity();
+        });
+
+        loadSoundPresetBtn.addEventListener('click', () => {
+            loadSoundPreset();
+            registerActivity();
+        });
+
+        resetSoundPresetBtn.addEventListener('click', () => {
+            const defaults = normalizeSoundPreset({
+                isSoundEnabled: false,
+                volume: 30,
+                scheme: 'pentatonic',
+                instrument: 'marimba',
+                attack: 24,
+                release: 170,
+                brightness: 55
+            });
+            applySoundStateToUI(defaults);
+            applySoundStateToEngine(defaults);
+            isSoundEnabled = false;
+            SoundEngine.stopAutoPlaySequence();
+            if (idleSoundTimer) {
+                clearTimeout(idleSoundTimer);
+                idleSoundTimer = null;
+            }
+            saveSoundPreset();
         });
 
         function playInteractionSound(x, y) {
@@ -529,10 +869,10 @@
             frequency *= 1 + velocity * 0.08;
             
             const pan = (x / canvas.width) * 2 - 1;
-            const volume = 0.05 + velocity * 0.08;
-            const duration = 0.22 + (1 - velocity) * 0.35;
+            const volume = 0.042 + velocity * 0.05;
+            const duration = 0.35 + (1 - velocity) * 0.28;
 
-            SoundEngine.playTone(frequency, volume, pan, duration);
+            SoundEngine.playVoice({ frequency, volume, pan, duration, softness: 0.42 + (1 - velocity) * 0.3 });
             lastInteractionPos = { x, y };
             registerActivity();
         }
@@ -589,7 +929,7 @@
         });
 
         document.querySelectorAll('.controls button').forEach(button => {
-            if (!['clear', 'undo', 'redo', 'sound-toggle'].includes(button.id)) {
+            if (!['clear', 'undo', 'redo', 'sound-toggle', 'save-sound-preset', 'load-sound-preset', 'reset-sound-preset'].includes(button.id)) {
                 button.addEventListener('click', (e) => {
                     document.querySelectorAll('.controls button').forEach(b => b.classList.remove('active'));
                     e.target.classList.add('active');
@@ -750,6 +1090,7 @@
 
         resizeCanvas();
         saveState();
+        loadSoundPreset();
         controls.classList.add('open');
     </script>
 </body>
