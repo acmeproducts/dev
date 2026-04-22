@@ -278,12 +278,10 @@
                         <option value="kalimba">Kalimba</option>
                         <option value="bell">Bell</option>
                         <option value="acoustic_guitar">Acoustic Guitar</option>
-                        <option value="nylon_guitar">Nylon Guitar</option>
                         <option value="harp">Harp</option>
                         <option value="cello">Cello</option>
                         <option value="violin">Violin</option>
                         <option value="sitar">Sitar</option>
-                        <option value="pipa">Pipa</option>
                     </select>
                 </div>
                 <div class="sound-row">
@@ -462,16 +460,6 @@
                     type: 'sitar',
                     color: 1.32,
                     ambientGain: 0.6
-                },
-                nylon_guitar: {
-                    type: 'nylon_guitar',
-                    color: 1.05,
-                    ambientGain: 0.7
-                },
-                pipa: {
-                    type: 'pipa',
-                    color: 1.28,
-                    ambientGain: 0.74
                 }
             },
 
@@ -670,16 +658,14 @@
                     return voices;
                 }
 
-                if (type === 'acoustic_guitar' || type === 'harp' || type === 'nylon_guitar' || type === 'pipa') {
-                    const isNylon = type === 'nylon_guitar';
-                    const isPipa = type === 'pipa';
+                if (type === 'acoustic_guitar' || type === 'harp') {
                     const base = this.createOsc('triangle', frequency, 0);
-                    const body = this.createOsc('sine', frequency * (type === 'harp' ? 2.01 : (isPipa ? 2.04 : 2)), isNylon ? -5 : -2);
-                    const spark = this.createOsc('sine', frequency * (type === 'harp' ? 3.02 : (isPipa ? 3.3 : 3.01)), isPipa ? 11 : 2);
+                    const body = this.createOsc('sine', frequency * (type === 'harp' ? 2.01 : 2), -2);
+                    const spark = this.createOsc('sine', frequency * (type === 'harp' ? 3.02 : 3.01), 2);
                     const bodyGain = this.audioCtx.createGain();
                     const sparkGain = this.audioCtx.createGain();
-                    bodyGain.gain.value = type === 'harp' ? 0.21 : (isNylon ? 0.2 : 0.16);
-                    sparkGain.gain.value = type === 'harp' ? 0.15 : (isPipa ? 0.2 : 0.11);
+                    bodyGain.gain.value = type === 'harp' ? 0.21 : 0.16;
+                    sparkGain.gain.value = type === 'harp' ? 0.15 : 0.11;
                     body.connect(bodyGain);
                     spark.connect(sparkGain);
                     bodyGain.connect(gainNode);
