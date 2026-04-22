@@ -265,6 +265,9 @@
                         <option value="pentatonic">Pentatonic</option>
                         <option value="singing_bowl">Singing Bowl</option>
                         <option value="gentle_major">Gentle Major</option>
+                        <option value="c_major">C Major</option>
+                        <option value="d_dorian">D Dorian</option>
+                        <option value="a_minor">A Minor</option>
                     </select>
                 </div>
                 <div class="sound-row">
@@ -274,6 +277,11 @@
                         <option value="flute">Flute</option>
                         <option value="kalimba">Kalimba</option>
                         <option value="bell">Bell</option>
+                        <option value="acoustic_guitar">Acoustic Guitar</option>
+                        <option value="harp">Harp</option>
+                        <option value="cello">Cello</option>
+                        <option value="violin">Violin</option>
+                        <option value="sitar">Sitar</option>
                     </select>
                 </div>
                 <div class="sound-row">
@@ -287,6 +295,14 @@
                 <div class="sound-row">
                     <label for="brightness-control">Bright</label>
                     <input type="range" id="brightness-control" min="10" max="100" value="55">
+                </div>
+                <div class="sound-row">
+                    <label for="autoplay-speed-control">Auto Spd</label>
+                    <input type="range" id="autoplay-speed-control" min="40" max="220" value="100">
+                </div>
+                <div class="sound-row">
+                    <label for="reverb-control">Reverb</label>
+                    <input type="range" id="reverb-control" min="0" max="100" value="45">
                 </div>
                 <button id="sound-toggle">🔇 Sound</button>
                 <div class="sound-actions">
@@ -328,6 +344,8 @@
         const attackControl = document.getElementById('attack-control');
         const releaseControl = document.getElementById('release-control');
         const brightnessControl = document.getElementById('brightness-control');
+        const autoplaySpeedControl = document.getElementById('autoplay-speed-control');
+        const reverbControl = document.getElementById('reverb-control');
         const saveSoundPresetBtn = document.getElementById('save-sound-preset');
         const loadSoundPresetBtn = document.getElementById('load-sound-preset');
         const resetSoundPresetBtn = document.getElementById('reset-sound-preset');
@@ -344,7 +362,8 @@
             audioCtx: null,
             masterGain: null,
             reverbNode: null,
-            delayNode: null,
+            reverbGain: null,
+            dryGain: null,
             dynamicsNode: null,
             activeOscillators: [],
             currentScheme: 'pentatonic',
@@ -358,6 +377,8 @@
                 release: 0.17,
                 brightness: 0.55
             },
+            autoPlaySpeed: 1,
+            reverbMix: 0.45,
             autoPatterns: [
                 [0, 2, 4, 1, 3, 4, 2],
                 [0, 3, 2, 4, 1, 2, 0, 4],
@@ -378,6 +399,18 @@
                 gentle_major: {
                     frequencies: [349.23, 392.0, 440.0, 523.25, 587.33, 659.25],
                     root: 174.61
+                },
+                c_major: {
+                    frequencies: [261.63, 293.66, 329.63, 392.0, 440.0, 523.25, 587.33],
+                    root: 130.81
+                },
+                d_dorian: {
+                    frequencies: [293.66, 329.63, 349.23, 440.0, 493.88, 587.33, 659.25],
+                    root: 146.83
+                },
+                a_minor: {
+                    frequencies: [220.0, 246.94, 261.63, 329.63, 349.23, 440.0, 493.88],
+                    root: 110
                 }
             },
 
@@ -401,6 +434,31 @@
                     type: 'bell',
                     color: 1.3,
                     ambientGain: 0.55
+                },
+                acoustic_guitar: {
+                    type: 'acoustic_guitar',
+                    color: 1.15,
+                    ambientGain: 0.72
+                },
+                harp: {
+                    type: 'harp',
+                    color: 1.22,
+                    ambientGain: 0.8
+                },
+                cello: {
+                    type: 'cello',
+                    color: 0.88,
+                    ambientGain: 0.68
+                },
+                violin: {
+                    type: 'violin',
+                    color: 1.08,
+                    ambientGain: 0.64
+                },
+                sitar: {
+                    type: 'sitar',
+                    color: 1.32,
+                    ambientGain: 0.6
                 }
             },
 
@@ -410,22 +468,26 @@
                 this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                 this.masterGain = this.audioCtx.createGain();
                 this.reverbNode = this.audioCtx.createConvolver();
-                this.delayNode = this.audioCtx.createDelay();
+                this.reverbGain = this.audioCtx.createGain();
+                this.dryGain = this.audioCtx.createGain();
                 this.dynamicsNode = this.audioCtx.createDynamicsCompressor();
 
                 this.masterGain.gain.value = this.baseVolume;
-                this.delayNode.delayTime.value = 0.08;
+                this.reverbGain.gain.value = this.reverbMix;
+                this.dryGain.gain.value = 1 - this.reverbMix * 0.45;
                 this.dynamicsNode.threshold.value = -30;
                 this.dynamicsNode.knee.value = 18;
-                this.dynamicsNode.ratio.value = 2;
-                this.dynamicsNode.attack.value = 0.006;
-                this.dynamicsNode.release.value = 0.15;
+                this.dynamicsNode.ratio.value = 2.5;
+                this.dynamicsNode.attack.value = 0.004;
+                this.dynamicsNode.release.value = 0.09;
 
                 this.createReverb();
 
+                this.masterGain.connect(this.dryGain);
                 this.masterGain.connect(this.reverbNode);
-                this.reverbNode.connect(this.delayNode);
-                this.delayNode.connect(this.dynamicsNode);
+                this.reverbNode.connect(this.reverbGain);
+                this.reverbGain.connect(this.dynamicsNode);
+                this.dryGain.connect(this.dynamicsNode);
                 this.dynamicsNode.connect(this.audioCtx.destination);
 
                 this.startAmbientSounds();
@@ -514,7 +576,7 @@
                 const gainNode = this.audioCtx.createGain();
                 gainNode.gain.setValueAtTime(0, now);
                 gainNode.gain.linearRampToValueAtTime(envelope.sustain * this.baseVolume, now + envelope.attack);
-                gainNode.gain.exponentialRampToValueAtTime(0.001, now + envelope.release);
+                gainNode.gain.setTargetAtTime(0.0001, now + envelope.attack, Math.max(0.03, envelope.release * 0.45));
 
                 const stopAt = now + envelope.release + 0.05;
                 const oscillators = this.buildInstrumentVoice(instrument.type, frequency, gainNode, stopAt, softness);
@@ -575,6 +637,44 @@
                     return voices;
                 }
 
+                if (type === 'acoustic_guitar' || type === 'harp') {
+                    const base = this.createOsc('triangle', frequency, 0);
+                    const body = this.createOsc('sine', frequency * (type === 'harp' ? 2.01 : 2), -2);
+                    const spark = this.createOsc('sine', frequency * (type === 'harp' ? 3.02 : 3.01), 2);
+                    const bodyGain = this.audioCtx.createGain();
+                    const sparkGain = this.audioCtx.createGain();
+                    bodyGain.gain.value = type === 'harp' ? 0.21 : 0.16;
+                    sparkGain.gain.value = type === 'harp' ? 0.15 : 0.11;
+                    body.connect(bodyGain);
+                    spark.connect(sparkGain);
+                    bodyGain.connect(gainNode);
+                    sparkGain.connect(gainNode);
+                    base.connect(gainNode);
+                    startAndStop(base);
+                    startAndStop(body);
+                    startAndStop(spark);
+                    return voices;
+                }
+
+                if (type === 'cello' || type === 'violin' || type === 'sitar') {
+                    const bowed = this.createOsc(type === 'cello' ? 'sawtooth' : 'triangle', frequency, 0);
+                    const resonance = this.createOsc('sine', frequency * (type === 'sitar' ? 1.98 : 2), type === 'sitar' ? 8 : -4);
+                    const shimmer = this.createOsc('sine', frequency * (type === 'cello' ? 1.5 : 2.99), type === 'violin' ? 5 : 0);
+                    const resonanceGain = this.audioCtx.createGain();
+                    const shimmerGain = this.audioCtx.createGain();
+                    resonanceGain.gain.value = type === 'cello' ? 0.16 : 0.2;
+                    shimmerGain.gain.value = type === 'sitar' ? 0.24 : 0.1;
+                    resonance.connect(resonanceGain);
+                    shimmer.connect(shimmerGain);
+                    resonanceGain.connect(gainNode);
+                    shimmerGain.connect(gainNode);
+                    bowed.connect(gainNode);
+                    startAndStop(bowed);
+                    startAndStop(resonance);
+                    startAndStop(shimmer);
+                    return voices;
+                }
+
                 const body = this.createOsc('triangle', frequency, 0);
                 const wood = this.createOsc('square', frequency * 2, -7);
                 const woodGain = this.audioCtx.createGain();
@@ -613,7 +713,7 @@
                     if (this.autoPlayIndex % pattern.length === 0) {
                         this.autoDirection *= -1;
                     }
-                    const nextMs = 1400 + ((this.autoPlayIndex * 97) % 530);
+                    const nextMs = Math.max(250, (1400 + ((this.autoPlayIndex * 97) % 530)) / this.autoPlaySpeed);
                     this.autoPlayTimer = setTimeout(runStep, nextMs);
                 };
                 this.autoPlayTimer = setTimeout(runStep, 900);
@@ -660,6 +760,22 @@
                 if (typeof brightness === 'number' && Number.isFinite(brightness)) {
                     this.timbre.brightness = Math.max(0.1, Math.min(1, brightness));
                 }
+            },
+
+            setAutoPlaySpeed(speed) {
+                if (typeof speed !== 'number' || !Number.isFinite(speed)) return;
+                this.autoPlaySpeed = Math.max(0.4, Math.min(2.2, speed));
+            },
+
+            setReverbMix(mix) {
+                if (typeof mix !== 'number' || !Number.isFinite(mix)) return;
+                this.reverbMix = Math.max(0, Math.min(1, mix));
+                if (this.reverbGain && this.audioCtx) {
+                    this.reverbGain.gain.setValueAtTime(this.reverbMix, this.audioCtx.currentTime);
+                }
+                if (this.dryGain && this.audioCtx) {
+                    this.dryGain.gain.setValueAtTime(1 - this.reverbMix * 0.45, this.audioCtx.currentTime);
+                }
             }
         };
 
@@ -668,7 +784,7 @@
         let lastInteractionPos = null;
         let lastInteractionTime = 0;
         let idleSoundTimer = null;
-        const AUTO_PLAY_IDLE_MS = 20000;
+        const AUTO_PLAY_IDLE_MS = 10000;
         const SOUND_PRESET_KEY = 'zenGardenSoundPresetV2';
 
         function getSoundStateFromUI() {
@@ -679,7 +795,9 @@
                 instrument: instrumentSelect.value,
                 attack: Number(attackControl.value),
                 release: Number(releaseControl.value),
-                brightness: Number(brightnessControl.value)
+                brightness: Number(brightnessControl.value),
+                autoPlaySpeed: Number(autoplaySpeedControl.value),
+                reverb: Number(reverbControl.value)
             };
         }
 
@@ -690,6 +808,8 @@
             attackControl.value = String(state.attack);
             releaseControl.value = String(state.release);
             brightnessControl.value = String(state.brightness);
+            autoplaySpeedControl.value = String(state.autoPlaySpeed);
+            reverbControl.value = String(state.reverb);
             soundToggle.textContent = state.isSoundEnabled ? '🔊 Sound' : '🔇 Sound';
         }
 
@@ -709,7 +829,9 @@
                 instrument: instruments.includes(data.instrument) ? data.instrument : 'marimba',
                 attack: asNumber(data.attack, 24, 2, 80),
                 release: asNumber(data.release, 170, 20, 400),
-                brightness: asNumber(data.brightness, 55, 10, 100)
+                brightness: asNumber(data.brightness, 55, 10, 100),
+                autoPlaySpeed: asNumber(data.autoPlaySpeed, 100, 40, 220),
+                reverb: asNumber(data.reverb, 45, 0, 100)
             };
         }
 
@@ -722,6 +844,8 @@
                 release: state.release / 1000,
                 brightness: state.brightness / 100
             });
+            SoundEngine.setAutoPlaySpeed(state.autoPlaySpeed / 100);
+            SoundEngine.setReverbMix(state.reverb / 100);
         }
 
         function saveSoundPreset() {
@@ -819,6 +943,16 @@
             saveSoundPreset();
         });
 
+        autoplaySpeedControl.addEventListener('input', () => {
+            SoundEngine.setAutoPlaySpeed(Number(autoplaySpeedControl.value) / 100);
+            saveSoundPreset();
+        });
+
+        reverbControl.addEventListener('input', () => {
+            SoundEngine.setReverbMix(Number(reverbControl.value) / 100);
+            saveSoundPreset();
+        });
+
         saveSoundPresetBtn.addEventListener('click', () => {
             saveSoundPreset();
             registerActivity();
@@ -837,7 +971,9 @@
                 instrument: 'marimba',
                 attack: 24,
                 release: 170,
-                brightness: 55
+                brightness: 55,
+                autoPlaySpeed: 100,
+                reverb: 45
             });
             applySoundStateToUI(defaults);
             applySoundStateToEngine(defaults);
@@ -855,7 +991,7 @@
             SoundEngine.stopAutoPlaySequence();
 
             const frequencies = SoundEngine.schemes[SoundEngine.currentScheme].frequencies;
-            const normalizedY = y / canvas.height;
+            const normalizedY = 1 - (y / canvas.height);
             const freqIndex = Math.max(0, Math.min(frequencies.length - 1, Math.floor(normalizedY * frequencies.length)));
             let frequency = frequencies[freqIndex];
             
