@@ -262,25 +262,26 @@
                 <div class="sound-row">
                     <label for="sound-scheme">Key</label>
                     <select id="sound-scheme">
-                        <option value="c">C</option>
-                        <option value="d" selected>D</option>
-                        <option value="e">E</option>
-                        <option value="f">F</option>
-                        <option value="g">G</option>
-                        <option value="a">A</option>
-                        <option value="b">B</option>
+                        <option value="pentatonic">Pentatonic</option>
+                        <option value="singing_bowl">Singing Bowl</option>
+                        <option value="gentle_major">Gentle Major</option>
+                        <option value="c_major">C Major</option>
+                        <option value="d_dorian">D Dorian</option>
+                        <option value="a_minor">A Minor</option>
                     </select>
                 </div>
                 <div class="sound-row">
                     <label for="instrument-select">Voice</label>
                     <select id="instrument-select">
+                        <option value="marimba">Marimba</option>
+                        <option value="flute">Flute</option>
+                        <option value="kalimba">Kalimba</option>
+                        <option value="bell">Bell</option>
                         <option value="acoustic_guitar">Acoustic Guitar</option>
-                        <option value="nylon_guitar">Nylon Guitar</option>
                         <option value="harp">Harp</option>
                         <option value="cello">Cello</option>
                         <option value="violin">Violin</option>
                         <option value="sitar">Sitar</option>
-                        <option value="pipa">Pipa</option>
                     </select>
                 </div>
                 <div class="sound-row">
@@ -366,8 +367,8 @@
             dynamicsNode: null,
             activeOscillators: [],
             activeVoices: new Set(),
-            currentScheme: 'd',
-            currentInstrument: 'acoustic_guitar',
+            currentScheme: 'pentatonic',
+            currentInstrument: 'marimba',
             baseVolume: 0.3,
             ambientInterval: null,
             autoPlayTimer: null,
@@ -394,9 +395,49 @@
             ],
             keyOffsets: { c: -2, d: 0, e: 2, f: 3, g: 5, a: 7, b: 9 },
 
-            schemes: {},
+            schemes: {
+                pentatonic: {
+                    frequencies: [392.0, 440.0, 493.88, 587.33, 659.25],
+                    root: 196
+                },
+                singing_bowl: {
+                    frequencies: [369.99, 415.3, 466.16, 523.25, 622.25, 698.46],
+                    root: 184.99
+                },
+                gentle_major: {
+                    frequencies: [349.23, 392.0, 440.0, 523.25, 587.33, 659.25],
+                    root: 174.61
+                },
+                c_major: {
+                    frequencies: [261.63, 293.66, 329.63, 392.0, 440.0, 523.25, 587.33],
+                    root: 130.81
+                },
+                d_dorian: {
+                    frequencies: [293.66, 329.63, 349.23, 440.0, 493.88, 587.33, 659.25],
+                    root: 146.83
+                },
+                a_minor: {
+                    frequencies: [220.0, 246.94, 261.63, 329.63, 349.23, 440.0, 493.88],
+                    root: 110
+                }
+            },
 
             instruments: {
+                acoustic_guitar: {
+                    type: 'acoustic_guitar',
+                    color: 1.15,
+                    ambientGain: 0.72
+                },
+                harp: {
+                    type: 'harp',
+                    color: 1.22,
+                    ambientGain: 0.8
+                },
+                bell: {
+                    type: 'bell',
+                    color: 1.3,
+                    ambientGain: 0.55
+                },
                 acoustic_guitar: {
                     type: 'acoustic_guitar',
                     color: 1.15,
@@ -421,16 +462,6 @@
                     type: 'sitar',
                     color: 1.32,
                     ambientGain: 0.6
-                },
-                nylon_guitar: {
-                    type: 'nylon_guitar',
-                    color: 1.05,
-                    ambientGain: 0.7
-                },
-                pipa: {
-                    type: 'pipa',
-                    color: 1.28,
-                    ambientGain: 0.74
                 }
             },
 
@@ -680,16 +711,14 @@
                     return voices;
                 }
 
-                if (type === 'acoustic_guitar' || type === 'harp' || type === 'nylon_guitar' || type === 'pipa') {
-                    const isNylon = type === 'nylon_guitar';
-                    const isPipa = type === 'pipa';
+                if (type === 'acoustic_guitar' || type === 'harp') {
                     const base = this.createOsc('triangle', frequency, 0);
-                    const body = this.createOsc('sine', frequency * (type === 'harp' ? 2.01 : (isPipa ? 2.04 : 2)), isNylon ? -5 : -2);
-                    const spark = this.createOsc('sine', frequency * (type === 'harp' ? 3.02 : (isPipa ? 3.3 : 3.01)), isPipa ? 11 : 2);
+                    const body = this.createOsc('sine', frequency * (type === 'harp' ? 2.01 : 2), -2);
+                    const spark = this.createOsc('sine', frequency * (type === 'harp' ? 3.02 : 3.01), 2);
                     const bodyGain = this.audioCtx.createGain();
                     const sparkGain = this.audioCtx.createGain();
-                    bodyGain.gain.value = type === 'harp' ? 0.21 : (isNylon ? 0.2 : 0.16);
-                    sparkGain.gain.value = type === 'harp' ? 0.15 : (isPipa ? 0.2 : 0.11);
+                    bodyGain.gain.value = type === 'harp' ? 0.21 : 0.16;
+                    sparkGain.gain.value = type === 'harp' ? 0.15 : 0.11;
                     body.connect(bodyGain);
                     spark.connect(sparkGain);
                     bodyGain.connect(gainNode);
