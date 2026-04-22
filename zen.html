@@ -260,7 +260,7 @@
                     <input type="range" id="volume" min="0" max="100" value="30">
                 </div>
                 <div class="sound-row">
-                    <label for="sound-scheme">Scale</label>
+                    <label for="sound-scheme">Key</label>
                     <select id="sound-scheme">
                         <option value="pentatonic">Pentatonic</option>
                         <option value="singing_bowl">Singing Bowl</option>
@@ -387,6 +387,13 @@
             ],
             activePattern: 0,
             autoDirection: 1,
+            baseScaleD: [
+                73.42, 82.41, 98.0, 110.0, 123.47,
+                146.83, 164.81, 196.0, 220.0, 246.94,
+                293.66, 329.63, 392.0, 440.0, 493.88,
+                587.33, 659.25, 783.99, 880.0, 987.77, 1174.66
+            ],
+            keyOffsets: { c: -2, d: 0, e: 2, f: 3, g: 5, a: 7, b: 9 },
 
             schemes: {
                 pentatonic: {
@@ -416,19 +423,14 @@
             },
 
             instruments: {
-                marimba: {
-                    type: 'marimba',
-                    color: 1.1,
-                    ambientGain: 0.75
+                acoustic_guitar: {
+                    type: 'acoustic_guitar',
+                    color: 1.15,
+                    ambientGain: 0.72
                 },
-                flute: {
-                    type: 'flute',
-                    color: 0.9,
-                    ambientGain: 0.65
-                },
-                kalimba: {
-                    type: 'kalimba',
-                    color: 1.2,
+                harp: {
+                    type: 'harp',
+                    color: 1.22,
                     ambientGain: 0.8
                 },
                 bell: {
@@ -465,6 +467,7 @@
 
             init() {
                 if (this.audioCtx) return;
+                this.buildKeySchemes();
 
                 this.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
                 this.masterGain = this.audioCtx.createGain();
@@ -494,6 +497,19 @@
                 this.startAmbientSounds();
             },
 
+            buildKeySchemes() {
+                this.schemes = {};
+                Object.keys(this.keyOffsets).forEach((key) => {
+                    const semitoneShift = this.keyOffsets[key];
+                    const transposition = Math.pow(2, semitoneShift / 12);
+                    const frequencies = this.baseScaleD.map((freq) => freq * transposition);
+                    this.schemes[key] = {
+                        frequencies,
+                        root: frequencies[0]
+                    };
+                });
+            },
+
             createReverb() {
                 const duration = 0.7;
                 const decay = 2.4;
@@ -514,23 +530,7 @@
 
             startAmbientSounds() {
                 if (this.ambientInterval) clearInterval(this.ambientInterval);
-
-                this.ambientInterval = setInterval(() => {
-                    if (!this.audioCtx || this.audioCtx.state !== 'running') return;
-
-                    const frequencies = this.schemes[this.currentScheme].frequencies;
-                    const pool = [0, 2, 4, 1, 3];
-                    const idx = pool[Math.floor(Math.random() * pool.length)] % frequencies.length;
-                    const frequency = frequencies[idx] * (Math.random() > 0.65 ? 0.5 : 1);
-                    const drift = 0.985 + Math.random() * 0.03;
-                    this.playVoice({
-                        frequency: frequency * drift,
-                        volume: 0.05 * this.instruments[this.currentInstrument].ambientGain,
-                        pan: -0.8 + Math.random() * 1.6,
-                        duration: 1.3 + Math.random() * 1.2,
-                        softness: 0.8
-                    });
-                }, 8000 + Math.random() * 4000);
+                this.ambientInterval = null;
             },
 
             makeEnvelope(volume, duration, softness = 0.5) {
@@ -571,7 +571,11 @@
                 if (!this.audioCtx || this.audioCtx.state !== 'running') return;
 
                 const now = this.audioCtx.currentTime;
-                const instrument = this.instruments[this.currentInstrument] || this.instruments.marimba;
+                const instrument = this.instruments[this.currentInstrument] || this.instruments.acoustic_guitar;
+                if (['acoustic_guitar', 'nylon_guitar', 'harp', 'cello', 'violin', 'sitar', 'pipa'].includes(instrument.type)) {
+                    this.playStringNote({ frequency, volume, pan, duration, softness, instrument });
+                    return;
+                }
                 const bus = this.createVoiceBus(pan, instrument.color);
                 const envelope = this.makeEnvelope(volume, duration, softness);
                 const gainNode = this.audioCtx.createGain();
@@ -605,6 +609,55 @@
                 }, Math.max(80, (stopAt - now) * 1000 + 60));
                 this.activeOscillators.push(...oscillators);
                 this.cleanupOscillators();
+            },
+
+            playStringNote({ frequency, volume, pan = 0, duration = 1, softness = 0.5, instrument }) {
+                const now = this.audioCtx.currentTime;
+                const bus = this.createVoiceBus(pan, instrument.color);
+                const sampleRate = this.audioCtx.sampleRate;
+                const decayTime = Math.max(0.9, Math.min(2.2, duration * 1.9 + this.timbre.release * 1.3));
+                const bufferSize = Math.floor(sampleRate * decayTime);
+                const buffer = this.audioCtx.createBuffer(1, bufferSize, sampleRate);
+                const data = buffer.getChannelData(0);
+                const delayLength = Math.max(2, Math.floor(sampleRate / Math.max(42, frequency)));
+                const delayLine = new Float32Array(delayLength);
+                const brightnessBias = 0.994 + this.timbre.brightness * 0.005;
+                const materialDamp = instrument.type === 'cello' ? 0.9968 : (instrument.type === 'harp' ? 0.9978 : 0.9972);
+                const filterFactor = Math.min(0.9992, Math.max(0.992, brightnessBias * materialDamp));
+
+                for (let i = 0; i < delayLength; i++) delayLine[i] = Math.random() * 2 - 1;
+                let idx = 0;
+                let last = 0;
+                for (let i = 0; i < bufferSize; i++) {
+                    const current = (delayLine[idx] + last) * 0.5 * filterFactor;
+                    last = delayLine[idx];
+                    delayLine[idx] = current;
+                    data[i] = current;
+                    idx = (idx + 1) % delayLength;
+                }
+
+                const source = this.audioCtx.createBufferSource();
+                source.buffer = buffer;
+                const gainNode = this.audioCtx.createGain();
+                const envelope = this.makeEnvelope(volume, duration, softness);
+                gainNode.gain.setValueAtTime(0, now);
+                gainNode.gain.linearRampToValueAtTime(envelope.sustain * this.baseVolume * 1.2, now + envelope.attack * 0.9);
+                gainNode.gain.setTargetAtTime(0.0001, now + envelope.attack + 0.03, Math.max(0.04, envelope.release * 0.6));
+
+                source.connect(gainNode);
+                gainNode.connect(bus.input);
+                source.start(now);
+                const stopAt = now + decayTime + 0.04;
+                source.stop(stopAt);
+
+                const voice = { gainNode, oscillators: [source] };
+                this.activeVoices.add(voice);
+                this.trimVoices();
+                source.onended = () => {
+                    try { source.disconnect(); } catch (err) {}
+                    try { gainNode.disconnect(); } catch (err) {}
+                    this.activeVoices.delete(voice);
+                };
             },
 
             buildInstrumentVoice(type, frequency, gainNode, stopAt, softness) {
@@ -865,8 +918,8 @@
             return {
                 isSoundEnabled: Boolean(data.isSoundEnabled),
                 volume: asNumber(data.volume, 30, 0, 100),
-                scheme: schemes.includes(data.scheme) ? data.scheme : 'pentatonic',
-                instrument: instruments.includes(data.instrument) ? data.instrument : 'marimba',
+                scheme: schemes.includes(data.scheme) ? data.scheme : 'd',
+                instrument: instruments.includes(data.instrument) ? data.instrument : 'acoustic_guitar',
                 attack: asNumber(data.attack, 24, 2, 80),
                 release: asNumber(data.release, 170, 20, 400),
                 brightness: asNumber(data.brightness, 55, 10, 100),
@@ -1007,8 +1060,8 @@
             const defaults = normalizeSoundPreset({
                 isSoundEnabled: false,
                 volume: 30,
-                scheme: 'pentatonic',
-                instrument: 'marimba',
+                scheme: 'd',
+                instrument: 'acoustic_guitar',
                 attack: 24,
                 release: 170,
                 brightness: 55,
