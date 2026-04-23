@@ -33,6 +33,21 @@
       padding: 16px;
     }
 
+    .controls-toggle {
+      margin-bottom: 10px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .controls-panel {
+      display: none;
+    }
+
+    .controls-panel.open {
+      display: block;
+    }
+
     .toolbar {
       display: grid;
       gap: 10px;
@@ -309,61 +324,64 @@
 </head>
 <body>
   <div class="shell">
-    <div class="toolbar">
-      <div class="field">
-        <label for="folderInput">Select folder (recursive)</label>
-        <input id="folderInput" type="file" webkitdirectory directory multiple />
+    <button id="controlsToggle" type="button" class="controls-toggle" aria-expanded="false" aria-controls="controlsPanel">⚙ Controls</button>
+    <section id="controlsPanel" class="controls-panel">
+      <div class="toolbar">
+        <div class="field">
+          <label for="folderInput">Select folder (recursive)</label>
+          <input id="folderInput" type="file" webkitdirectory directory multiple />
+        </div>
+        <div class="field">
+          <label for="rowsInput">Rows per page</label>
+          <input id="rowsInput" type="number" min="1" value="3" />
+        </div>
+        <div class="field">
+          <label for="colsInput">Columns baseline</label>
+          <input id="colsInput" type="number" min="1" value="4" />
+        </div>
+        <div class="field">
+          <label for="exportBtn">Export paths</label>
+          <button id="exportBtn">Export list (.txt)</button>
+        </div>
       </div>
-      <div class="field">
-        <label for="rowsInput">Rows per page</label>
-        <input id="rowsInput" type="number" min="1" value="3" />
+
+      <div class="omni-row">
+        <input id="omniSearch" placeholder="Omni search: filename/date/size. Use -term to exclude" />
+        <select id="sortBy">
+          <option value="name">Sort: filename</option>
+          <option value="created">Sort: created</option>
+          <option value="modified">Sort: modified</option>
+        </select>
       </div>
-      <div class="field">
-        <label for="colsInput">Columns baseline</label>
-        <input id="colsInput" type="number" min="1" value="4" />
+
+      <div class="collection-row">
+        <input id="collectionName" placeholder="Collection name" />
+        <div class="hint" id="collectionMeta">No collection loaded.</div>
       </div>
-      <div class="field">
-        <label for="exportBtn">Export paths</label>
-        <button id="exportBtn">Export list (.txt)</button>
+      <div class="saved-row">
+        <input id="collectionPicker" list="collectionOptions" placeholder="Search or choose previous collection" />
+        <datalist id="collectionOptions"></datalist>
+        <button id="loadCollectionBtn" type="button">Load saved</button>
       </div>
-    </div>
 
-    <div class="omni-row">
-      <input id="omniSearch" placeholder="Omni search: filename/date/size. Use -term to exclude" />
-      <select id="sortBy">
-        <option value="name">Sort: filename</option>
-        <option value="created">Sort: created</option>
-        <option value="modified">Sort: modified</option>
-      </select>
-    </div>
+      <div class="slider-row field">
+        <label for="sizeSlider">Portlet size / density (left = more per row, right = larger)</label>
+        <input id="sizeSlider" type="range" min="0" max="100" value="0" />
+      </div>
 
-    <div class="collection-row">
-      <input id="collectionName" placeholder="Collection name" />
-      <div class="hint" id="collectionMeta">No collection loaded.</div>
-    </div>
-    <div class="saved-row">
-      <input id="collectionPicker" list="collectionOptions" placeholder="Search or choose previous collection" />
-      <datalist id="collectionOptions"></datalist>
-      <button id="loadCollectionBtn" type="button">Load saved</button>
-    </div>
-
-    <div class="slider-row field">
-      <label for="sizeSlider">Portlet size / density (left = more per row, right = larger)</label>
-      <input id="sizeSlider" type="range" min="0" max="100" value="0" />
-    </div>
-
-    <div class="pager">
-      <button id="prevPage">Back page</button>
-      <button id="nextPage">Next page</button>
-      <span id="pageInfo" class="hint">Page 1/1</span>
-    </div>
-    <section id="minTray" class="tray" style="display:none;">
-      <div id="minTrayHeader" class="tray-header"><span id="minChev" class="chev">▸</span><span id="minLabel">Minimized (0)</span></div>
-      <div id="minTrayList" class="tray-list"></div>
-    </section>
-    <section id="removedTray" class="tray" style="display:none;">
-      <div id="removedTrayHeader" class="tray-header"><span id="removedChev" class="chev">▸</span><span id="removedLabel">Removed (0)</span></div>
-      <div id="removedTrayList" class="tray-list"></div>
+      <div class="pager">
+        <button id="prevPage">Back page</button>
+        <button id="nextPage">Next page</button>
+        <span id="pageInfo" class="hint">Page 1/1</span>
+      </div>
+      <section id="minTray" class="tray" style="display:none;">
+        <div id="minTrayHeader" class="tray-header"><span id="minChev" class="chev">▸</span><span id="minLabel">Minimized (0)</span></div>
+        <div id="minTrayList" class="tray-list"></div>
+      </section>
+      <section id="removedTray" class="tray" style="display:none;">
+        <div id="removedTrayHeader" class="tray-header"><span id="removedChev" class="chev">▸</span><span id="removedLabel">Removed (0)</span></div>
+        <div id="removedTrayList" class="tray-list"></div>
+      </section>
     </section>
 
     <div id="grid"></div>
@@ -374,6 +392,8 @@
     const ACTIVE_KEY = 'multiViewProActiveCollection';
 
     const folderInput = document.getElementById('folderInput');
+    const controlsToggle = document.getElementById('controlsToggle');
+    const controlsPanel = document.getElementById('controlsPanel');
     const rowsInput = document.getElementById('rowsInput');
     const colsInput = document.getElementById('colsInput');
     const omniSearch = document.getElementById('omniSearch');
@@ -396,8 +416,16 @@
       page: 1,
       dragId: null,
       minTrayOpen: false,
-      removedTrayOpen: false
+      removedTrayOpen: false,
+      controlsOpen: false
     };
+
+    function setControlsOpen(open) {
+      state.controlsOpen = open;
+      controlsPanel.classList.toggle('open', open);
+      controlsToggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+      controlsToggle.textContent = open ? '⚙ Hide controls' : '⚙ Controls';
+    }
 
     function nowStamp() {
       const d = new Date();
@@ -1061,6 +1089,9 @@
     });
 
     exportBtn.addEventListener('click', exportList);
+    controlsToggle.addEventListener('click', () => {
+      setControlsOpen(!state.controlsOpen);
+    });
 
     window.addEventListener('beforeunload', () => {
       Object.values(state.collections).forEach(c => {
@@ -1070,6 +1101,7 @@
       });
     });
 
+    setControlsOpen(false);
     hydrate();
   </script>
 </body>
