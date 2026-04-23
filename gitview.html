@@ -213,9 +213,6 @@
       const repo = await fetchJson(`https://api.github.com/repos/${owner}/${name}`);
       const branch = repo.default_branch || 'main';
       const tree = await fetchJson(`https://api.github.com/repos/${owner}/${name}/git/trees/${encodeURIComponent(branch)}?recursive=1`);
-      if (tree.truncated) {
-        throw new Error('Repository tree is truncated by GitHub API; refine scope or use folder import fallback.');
-      }
       const blobs = (tree.tree || []).filter(x => x.type === 'blob');
       const id = new Date().toISOString();
       const pagesPrefix = name.toLowerCase() === `${owner.toLowerCase()}.github.io` ? `https://${owner}.github.io/` : `https://${owner}.github.io/${name}/`;
@@ -331,7 +328,7 @@
   function cardPreview(item) {
     const can = item.previewUrl && item.previewUrl.startsWith('blob:');
     if (can && item.type.startsWith('image/')) return `<img src="${item.previewUrl}" alt="">`;
-    if (/\.html?$/i.test(item.path)) return `<iframe src="${item.previewUrl || item.pagesUrl || 'about:blank'}" sandbox="allow-scripts allow-same-origin"></iframe>`;
+    if (/\.html?$/i.test(item.path)) return `<iframe src="${item.pagesUrl || 'about:blank'}" sandbox="allow-scripts allow-same-origin"></iframe>`;
     return `<div class="hint">Preview unavailable</div>`;
   }
 
@@ -396,11 +393,8 @@
   function render() { renderPickers(); renderWorkspace(); renderTrays(); renderLog(); }
 
   function snapshot() {
-    state.lastBulkSnapshot = {
-      collections: JSON.parse(JSON.stringify(state.collections)),
-      activeId: state.activeId,
-      page: state.page
-    };
+    const c = active(); if (!c) return;
+    state.lastBulkSnapshot = JSON.parse(JSON.stringify(c.items));
   }
 
   function selectedItems() { const c = active(); return c ? c.items.filter(i => i.selected) : []; }
@@ -411,30 +405,18 @@
   function invertVisible() { const c = active(); if (!c) return; visibleSlice(c).slice.forEach(i => i.selected = !i.selected); persist(); log('Inverted selection on visible page.'); renderWorkspace(); }
 
   function queueOrRun(fnName, payload) {
-    const c = active();
-    if (!c) return;
-    const ids = selectedItems().map(i => i.id);
-    if (!ids.length) return setStatus('No selected items.', 'error');
     if (!navigator.onLine) {
-      state.queue.push({
-        fnName,
-        payload,
-        collectionId: state.activeId,
-        ids,
-        at: new Date().toISOString()
-      });
+      state.queue.push({ fnName, payload, at: new Date().toISOString() });
       persist();
-      log(`Offline: queued ${fnName} for ${ids.length} items.`, 'warn');
+      log(`Offline: queued ${fnName}.`, 'warn');
       return;
     }
-    return runBulk(fnName, payload, { collectionId: state.activeId, ids });
+    return runBulk(fnName, payload);
   }
 
-  async function runBulk(fnName, payload, options = {}) {
-    const collectionId = options.collectionId || state.activeId;
-    const c = state.collections[collectionId];
-    if (!c) return;
-    const ids = Array.isArray(options.ids) ? options.ids : selectedItems().map(i => i.id);
+  async function runBulk(fnName, payload) {
+    const c = active(); if (!c) return;
+    const ids = selectedItems().map(i => i.id);
     if (!ids.length) return setStatus('No selected items.', 'error');
     snapshot();
     const failures = [];
@@ -480,10 +462,9 @@
   }
 
   function undoBulk() {
-    if (!state.lastBulkSnapshot) return;
-    state.collections = JSON.parse(JSON.stringify(state.lastBulkSnapshot.collections));
-    state.activeId = state.lastBulkSnapshot.activeId;
-    state.page = state.lastBulkSnapshot.page;
+    const c = active();
+    if (!c || !state.lastBulkSnapshot) return;
+    c.items = JSON.parse(JSON.stringify(state.lastBulkSnapshot));
     persist();
     log('Undo last bulk action.');
     render();
@@ -493,7 +474,7 @@
     if (!navigator.onLine || !state.queue.length) return;
     const q = [...state.queue];
     state.queue = [];
-    q.forEach(job => runBulk(job.fnName, job.payload, { collectionId: job.collectionId, ids: job.ids }));
+    q.forEach(job => runBulk(job.fnName, job.payload));
     persist();
     log(`Processed ${q.length} queued actions.`);
   }
@@ -508,9 +489,7 @@
   }
 
   function runPreset() {
-    const selected = $('presetPicker').value;
-    if (selected === '') return;
-    const idx = Number(selected);
+    const idx = Number($('presetPicker').value);
     if (Number.isNaN(idx)) return;
     const preset = loadPresets()[idx];
     if (!preset) return;
