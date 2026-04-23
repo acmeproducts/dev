@@ -123,7 +123,12 @@
       flex-direction: column;
     }
 
-    .portlet.dragging { opacity: 0.45; }
+    .portlet.dragging {
+      opacity: 0.45;
+      cursor: grabbing;
+      transform: scale(0.99);
+      box-shadow: 0 12px 28px rgba(0, 0, 0, 0.35);
+    }
 
     .titlebar {
       display: flex;
@@ -243,7 +248,8 @@
     .actions .danger:hover { border-color: var(--danger); color: var(--danger); }
 
     .content {
-      min-height: 130px;
+      flex: 1 1 auto;
+      min-height: 0;
       display: flex;
       align-items: center;
       justify-content: center;
@@ -329,7 +335,7 @@
       <div class="toolbar">
         <div class="field">
           <label for="folderInput">Select folder (recursive)</label>
-          <input id="folderInput" type="file" webkitdirectory directory multiple />
+          <input id="folderInput" type="file" webkitdirectory directory multiple accept="image/*,video/*,text/html,text/plain,text/rtf,text/markdown,application/pdf,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.openxmlformats-officedocument.presentationml.presentation,.pdf,.xlsx,.docx,.pptx,.html,.htm,.txt,.rtf,.md" />
         </div>
         <div class="field">
           <label for="rowsInput">Rows per page</label>
@@ -415,6 +421,7 @@
       activeCollectionId: null,
       page: 1,
       dragId: null,
+      dragInProgress: false,
       minTrayOpen: false,
       removedTrayOpen: false,
       controlsOpen: false
@@ -639,14 +646,20 @@
       card.draggable = true;
       card.dataset.id = item.id;
 
-      card.addEventListener('dragstart', () => {
+      card.addEventListener('dragstart', e => {
+        if (e.dataTransfer) {
+          e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setData('text/plain', item.id);
+        }
         state.dragId = item.id;
+        state.dragInProgress = true;
         card.classList.add('dragging');
       });
       card.addEventListener('dragend', () => {
         state.dragId = null;
         card.classList.remove('dragging');
         card.classList.remove('drop-before', 'drop-after');
+        window.setTimeout(() => { state.dragInProgress = false; }, 0);
       });
       card.addEventListener('dragover', e => {
         e.preventDefault();
@@ -768,6 +781,7 @@
       if (cls) b.classList.add(...cls.split(/\s+/).filter(Boolean));
       b.addEventListener('click', e => {
         e.stopPropagation();
+        if (state.dragInProgress) return;
         onClick();
       });
       return b;
