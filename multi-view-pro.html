@@ -33,11 +33,52 @@
       padding: 16px;
     }
 
-    .controls-toggle {
+    .sticky-header {
+      position: sticky;
+      top: 0;
+      z-index: 90;
       margin-bottom: 10px;
+      padding: 8px 10px;
+      border: 1px solid #2b3344;
+      border-radius: 12px;
+      background: rgba(23, 26, 33, 0.94);
+      backdrop-filter: blur(7px);
+      display: grid;
+      grid-template-columns: minmax(220px, 1.2fr) auto auto minmax(170px, 1fr) auto;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .sticky-actions {
       display: inline-flex;
       align-items: center;
       gap: 6px;
+    }
+
+    .controls-toggle {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      white-space: nowrap;
+      padding: 8px 10px;
+    }
+
+    .sticky-pager {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      justify-self: end;
+    }
+
+    .sticky-pager button {
+      padding: 8px 10px;
+      min-width: 90px;
+    }
+
+    #pageInfo {
+      min-width: 170px;
+      text-align: right;
+      display: inline-block;
     }
 
     .controls-panel {
@@ -225,13 +266,13 @@
     }
 
     .portlet.drop-before {
-      outline: 2px dashed #4da3ff;
+      outline: 2px dashed #ff9800;
       outline-offset: -3px;
     }
     .portlet.drop-after {
-      outline: 2px dashed #7cc6ff;
+      outline: 2px dashed #ff9800;
       outline-offset: -3px;
-      box-shadow: inset 0 -3px 0 #7cc6ff;
+      box-shadow: inset -3px 0 0 #ff9800;
     }
 
     .actions {
@@ -326,11 +367,40 @@
     }
     .mini:hover { border-color: var(--accent); }
     .mini.danger:hover { border-color: var(--danger); color: var(--danger); }
+
+    @media (max-width: 1060px) {
+      .sticky-header {
+        grid-template-columns: 1fr 1fr;
+      }
+      .sticky-actions,
+      .sticky-pager,
+      #pageInfo {
+        justify-self: start;
+        text-align: left;
+      }
+    }
   </style>
 </head>
 <body>
   <div class="shell">
-    <button id="controlsToggle" type="button" class="controls-toggle" aria-expanded="false" aria-controls="controlsPanel">⚙ Controls</button>
+    <header class="sticky-header">
+      <input id="omniSearch" placeholder="Search filename/date/size (use -term to exclude)" />
+      <select id="sortBy">
+        <option value="name">Sort: filename</option>
+        <option value="created">Sort: created</option>
+        <option value="modified">Sort: modified</option>
+      </select>
+      <input id="sizeSlider" type="range" min="0" max="100" value="0" />
+      <div class="sticky-actions">
+        <button id="controlsToggle" type="button" class="controls-toggle" aria-expanded="false" aria-controls="controlsPanel">⚙ Controls</button>
+      </div>
+      <div class="sticky-pager">
+        <button id="prevPage">Back page</button>
+        <button id="nextPage">Next page</button>
+        <span id="pageInfo" class="hint">Page 1/1</span>
+      </div>
+    </header>
+
     <section id="controlsPanel" class="controls-panel">
       <div class="toolbar">
         <div class="field">
@@ -351,15 +421,6 @@
         </div>
       </div>
 
-      <div class="omni-row">
-        <input id="omniSearch" placeholder="Omni search: filename/date/size. Use -term to exclude" />
-        <select id="sortBy">
-          <option value="name">Sort: filename</option>
-          <option value="created">Sort: created</option>
-          <option value="modified">Sort: modified</option>
-        </select>
-      </div>
-
       <div class="collection-row">
         <input id="collectionName" placeholder="Collection name" />
         <div class="hint" id="collectionMeta">No collection loaded.</div>
@@ -370,16 +431,7 @@
         <button id="loadCollectionBtn" type="button">Load saved</button>
       </div>
 
-      <div class="slider-row field">
-        <label for="sizeSlider">Portlet size / density (left = more per row, right = larger)</label>
-        <input id="sizeSlider" type="range" min="0" max="100" value="0" />
-      </div>
-
-      <div class="pager">
-        <button id="prevPage">Back page</button>
-        <button id="nextPage">Next page</button>
-        <span id="pageInfo" class="hint">Page 1/1</span>
-      </div>
+      <div class="hint" style="margin:8px 0 12px;">Portlet size slider, search, sort, and page controls are pinned in the sticky header.</div>
       <section id="minTray" class="tray" style="display:none;">
         <div id="minTrayHeader" class="tray-header"><span id="minChev" class="chev">▸</span><span id="minLabel">Minimized (0)</span></div>
         <div id="minTrayList" class="tray-list"></div>
@@ -481,7 +533,9 @@
                 metaPinned: item.metaPinned ?? false,
                 metaOpen: false,
                 objectUrl: null
-              }))
+              })),
+              baseRows: Math.max(1, Number(collection.baseRows ?? collection.rows ?? 3) || 3),
+              baseCols: Math.max(1, Number(collection.baseCols ?? collection.cols ?? 4) || 4)
             }
           ])
         );
@@ -495,6 +549,9 @@
       }
       if (state.activeCollectionId) {
         const c = getActiveCollection();
+        const scaled = computeScaledLayout(c.baseRows, c.baseCols, c.scale ?? 0);
+        c.rows = scaled.rows;
+        c.cols = scaled.cols;
         omniSearch.value = c.search || '';
         sortBy.value = c.sortBy || 'name';
         rowsInput.value = c.rows || 3;
@@ -542,6 +599,8 @@
         id,
         name,
         createdAt,
+        baseRows: Number(rowsInput.value) || 3,
+        baseCols: Number(colsInput.value) || 4,
         rows: Number(rowsInput.value) || 3,
         cols: Number(colsInput.value) || 4,
         scale: Number(sizeSlider.value) || 0,
@@ -608,6 +667,15 @@
       return items;
     }
 
+    function computeScaledLayout(baseRows, baseCols, scale) {
+      const normalizedScale = Math.max(0, Math.min(100, Number(scale) || 0)) / 100;
+      const densityFactor = 1 + (normalizedScale * 1.8);
+      return {
+        rows: Math.max(1, Math.round((Number(baseRows) || 1) / densityFactor)),
+        cols: Math.max(1, Math.round((Number(baseCols) || 1) / densityFactor))
+      };
+    }
+
     function pageInfoFrom(collection, items) {
       const perPage = Math.max(1, (collection.rows || 1) * (collection.cols || 1));
       const maxPage = Math.max(1, Math.ceil(items.length / perPage));
@@ -622,20 +690,27 @@
     }
 
     function calcDisplayColumns(collection) {
-      const minCols = Math.max(1, Number(collection.cols) || 1);
-      const t = Math.max(0, Math.min(100, Number(collection.scale) || 0)) / 100;
-      const value = minCols - (minCols - 1) * t;
-      return Math.max(1, Math.round(value));
+      return Math.max(1, Number(collection.cols) || 1);
     }
 
-    function updateCollectionFromControls() {
+    function updateCollectionFromControls(source = 'general') {
       const c = getActiveCollection();
       if (!c) return;
       c.search = omniSearch.value;
       c.sortBy = sortBy.value;
-      c.rows = Math.max(1, Number(rowsInput.value) || 1);
-      c.cols = Math.max(1, Number(colsInput.value) || 1);
       c.scale = Math.max(0, Math.min(100, Number(sizeSlider.value) || 0));
+      if (source === 'rows-cols') {
+        c.baseRows = Math.max(1, Number(rowsInput.value) || 1);
+        c.baseCols = Math.max(1, Number(colsInput.value) || 1);
+      } else if (typeof c.baseRows !== 'number' || typeof c.baseCols !== 'number') {
+        c.baseRows = Math.max(1, Number(c.rows) || 1);
+        c.baseCols = Math.max(1, Number(c.cols) || 1);
+      }
+      const scaled = computeScaledLayout(c.baseRows, c.baseCols, c.scale);
+      c.rows = scaled.rows;
+      c.cols = scaled.cols;
+      rowsInput.value = String(c.rows);
+      colsInput.value = String(c.cols);
       c.name = collectionNameInput.value.trim() || c.name;
       persist();
     }
@@ -663,8 +738,9 @@
       });
       card.addEventListener('dragover', e => {
         e.preventDefault();
+        if (!state.dragId || state.dragId === item.id) return;
         const rect = card.getBoundingClientRect();
-        const placeAfter = e.clientY > rect.top + (rect.height / 2);
+        const placeAfter = e.clientX > rect.left + (rect.width / 2);
         card.classList.toggle('drop-after', placeAfter);
         card.classList.toggle('drop-before', !placeAfter);
       });
@@ -1044,12 +1120,14 @@
 
     [rowsInput, colsInput, omniSearch, sortBy, sizeSlider].forEach(el => {
       el.addEventListener('input', () => {
-        updateCollectionFromControls();
+        const source = (el === rowsInput || el === colsInput) ? 'rows-cols' : 'general';
+        updateCollectionFromControls(source);
         state.page = 1;
         render();
       });
       el.addEventListener('change', () => {
-        updateCollectionFromControls();
+        const source = (el === rowsInput || el === colsInput) ? 'rows-cols' : 'general';
+        updateCollectionFromControls(source);
         state.page = 1;
         render();
       });
