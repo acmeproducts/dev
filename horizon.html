@@ -6,7 +6,8 @@
   <style>
     body { margin: 0; background: #000; color: #fff; font-family: Arial, sans-serif; overflow: hidden; }
     .controls { padding: 10px; background: #111; display: flex; align-items: center; gap: 10px; }
-    button { background: #333; color: white; border: none; padding: 8px 12px; cursor: pointer; }
+    button, select { background: #333; color: white; border: none; padding: 8px 12px; cursor: pointer; }
+    label { color: #ccc; display: flex; align-items: center; gap: 6px; }
     .panel-container { display: flex; flex-direction: column; height: calc(100vh - 100px); overflow-y: auto; }
     .panel { flex: none; height: 350px; border-bottom: 1px solid #444; position: relative; padding: 5px; }
     .label { font-size: 18px; padding: 5px 10px; }
@@ -20,6 +21,14 @@
     <button onclick="stopCapture()">Stop</button>
     <button onclick="clearData()">Clear</button>
     <button onclick="downloadRaw()">Download Raw Data</button>
+    <label>View
+      <select id="viewMode" onchange="setViewMode(this.value)">
+        <option value="mean">Mean</option>
+        <option value="range">Range</option>
+        <option value="shape">Shape</option>
+        <option value="nested">Nested</option>
+      </select>
+    </label>
   </div>
   <div class="status" id="status">Idle</div>
   <div class="panel-container">
@@ -38,6 +47,21 @@ analyser.fftSize = 2048;
 const bufferLength = analyser.frequencyBinCount;
 const dataArray = new Uint8Array(bufferLength);
 let streamSource, captureInterval, fullCapture = [];
+const CHANNEL_COUNT = 10;
+const PROFILE_POINTS = 10;
+const ONE_SECOND_MS = 1000;
+const ONE_MINUTE_MS = 60 * ONE_SECOND_MS;
+const TEN_MINUTES_MS = 10 * ONE_MINUTE_MS;
+const ONE_HOUR_MS = 60 * ONE_MINUTE_MS;
+const EIGHT_HOURS_MS = 8 * ONE_HOUR_MS;
+const DAY_MS = 24 * ONE_HOUR_MS;
+const VIEW_LABELS = {
+  mean: 'Mean channel energy',
+  range: 'Min/max spread',
+  shape: 'Compressed shape',
+  nested: 'Nested child energy'
+};
+let viewMode = 'mean';
 const canvases = [1,2,3,4,5].map(n => document.getElementById('canvas'+n));
 const charts = [];
 const statusEl = document.getElementById('status');
@@ -45,6 +69,12 @@ const statusEl = document.getElementById('status');
 function setStatus(msg, color = "#0f0") {
   statusEl.textContent = msg;
   statusEl.style.color = color;
+}
+
+function setViewMode(mode) {
+  viewMode = mode;
+  updatePanels();
+  setStatus(`View: ${VIEW_LABELS[mode]}`, "#0ff");
 }
 
 function startCapture() {
@@ -85,7 +115,13 @@ function captureSample() {
     const slice = dataArray.slice(start, end);
     return slice.reduce((a,b)=>a+b,0)/slice.length;
   });
-  fullCapture.push({ timestamp: now.toISOString(), channels: bandData });
+  fullCapture.push({
+    timestamp: now.toISOString(),
+    startTime: now.toISOString(),
+    endTime: now.toISOString(),
+    channels: bandData
+  });
+  pruneCapture();
   updatePanels();
 }
 
@@ -134,51 +170,177 @@ function initCharts() {
 
 function updatePanels() {
   const now = Date.now();
-  redrawChart(charts[0], fullCapture.filter(s => Date.parse(s.timestamp) >= now - 60000));
-  redrawChart(charts[1], bucketSamples(fullCapture.filter(s => Date.parse(s.timestamp) >= now - 600000), 5));
-  redrawChart(charts[2], bucketSamples(fullCapture.filter(s => Date.parse(s.timestamp) >= now - 3600000), 30));
-  redrawChart(charts[3], bucketSamples(fullCapture.filter(s => Date.parse(s.timestamp) >= now - 28800000), 120));
-  redrawChart(charts[4], bucketSamples(fullCapture.filter(s => Date.parse(s.timestamp) >= now - 86400000), 600));
+  pruneCapture(now);
+
+  const last24h = fullCapture.filter(s => toTime(s) >= now - DAY_MS);
+  const oneMinute = last24h.filter(s => toTime(s) >= now - ONE_MINUTE_MS);
+  const minuteComposites = bucketSamples(last24h, ONE_MINUTE_MS);
+  const tenMinuteComposites = bucketSamples(minuteComposites, TEN_MINUTES_MS);
+  const hourComposites = bucketSamples(tenMinuteComposites, ONE_HOUR_MS);
+  const eightHourComposites = bucketSamples(hourComposites, EIGHT_HOURS_MS);
+
+  redrawChart(charts[0], oneMinute, viewMode);
+  redrawChart(charts[1], minuteComposites.filter(s => toTime(s) >= now - TEN_MINUTES_MS), viewMode);
+  redrawChart(charts[2], tenMinuteComposites.filter(s => toTime(s) >= now - ONE_HOUR_MS), viewMode);
+  redrawChart(charts[3], hourComposites.filter(s => toTime(s) >= now - EIGHT_HOURS_MS), viewMode);
+  redrawChart(charts[4], eightHourComposites.filter(s => toTime(s) >= now - DAY_MS), viewMode);
 }
 
-function bucketSamples(samples, seconds) {
+function pruneCapture(now = Date.now()) {
+  fullCapture = fullCapture.filter(s => toTime(s) >= now - DAY_MS);
+}
+
+function bucketSamples(samples, intervalMs) {
   const buckets = [];
   let current = [];
-  let baseTime = null;
-  samples.forEach(s => {
-    const t = Date.parse(s.timestamp);
-    if (!baseTime) baseTime = t;
-    if (t - baseTime < seconds * 1000) {
-      current.push(s);
+  let bucketStart = null;
+
+  samples.forEach(sample => {
+    const t = toTime(sample);
+    if (bucketStart === null) bucketStart = t;
+
+    if (t - bucketStart < intervalMs) {
+      current.push(sample);
     } else {
       buckets.push(aggregateBucket(current));
-      current = [s];
-      baseTime = t;
+      current = [sample];
+      bucketStart = t;
     }
   });
+
   if (current.length) buckets.push(aggregateBucket(current));
   return buckets;
 }
 
 function aggregateBucket(bucket) {
-  const sums = Array(10).fill(0);
-  bucket.forEach(sample => {
-    sample.channels.forEach((v,i) => sums[i] += v);
-  });
-  return { channels: sums.map(s => s / bucket.length) };
+  const normalized = bucket.map(normalizeSample);
+  const average = averageVectors(normalized.map(sample => sample.average));
+  const min = combineVectors(normalized.map(sample => sample.min), Math.min);
+  const max = combineVectors(normalized.map(sample => sample.max), Math.max);
+  const profile = buildProfile(normalized);
+  const startTime = new Date(Math.min(...normalized.map(sample => Date.parse(sample.startTime)))).toISOString();
+  const endTime = new Date(Math.max(...normalized.map(sample => Date.parse(sample.endTime)))).toISOString();
+
+  return {
+    timestamp: startTime,
+    startTime,
+    endTime,
+    channels: average,
+    average,
+    min,
+    max,
+    profile,
+    children: normalized,
+    sourceCount: normalized.reduce((total, sample) => total + sample.sourceCount, 0)
+  };
 }
 
-function redrawChart(chart, data) {
-  if (!data.length) return;
-  while (chart.data.labels.length >= 60) {
-    chart.data.labels.shift();
-    chart.data.datasets.forEach(ds => ds.data.shift());
+function normalizeSample(sample) {
+  const average = sample.average || sample.channels || Array(CHANNEL_COUNT).fill(0);
+  const min = sample.min || average;
+  const max = sample.max || average;
+  const profile = sample.profile || buildProfile([{ average, sourceCount: 1 }]);
+  const timestamp = sample.timestamp || sample.startTime || new Date().toISOString();
+
+  return {
+    timestamp,
+    startTime: sample.startTime || timestamp,
+    endTime: sample.endTime || timestamp,
+    channels: average,
+    average,
+    min,
+    max,
+    profile,
+    children: sample.children || [],
+    sourceCount: sample.sourceCount || 1
+  };
+}
+
+function averageVectors(vectors) {
+  const sums = Array(CHANNEL_COUNT).fill(0);
+  if (!vectors.length) return sums;
+
+  vectors.forEach(vector => {
+    vector.forEach((value, i) => sums[i] += value);
+  });
+
+  return sums.map(sum => sum / vectors.length);
+}
+
+function combineVectors(vectors, reducer) {
+  if (!vectors.length) return Array(CHANNEL_COUNT).fill(0);
+
+  return Array.from({length: CHANNEL_COUNT}, (_, i) => (
+    vectors.map(vector => vector[i]).reduce(reducer)
+  ));
+}
+
+function buildProfile(samples) {
+  const profile = Array(PROFILE_POINTS).fill(0);
+  const counts = Array(PROFILE_POINTS).fill(0);
+  if (!samples.length) return profile;
+
+  samples.forEach((sample, index) => {
+    const profileSource = sample.profile && sample.profile.length ? sample.profile : [channelEnergy(sample.average || sample.channels || [])];
+
+    profileSource.forEach((value, pointIndex) => {
+      const slot = Math.min(PROFILE_POINTS - 1, Math.floor(((index + pointIndex / profileSource.length) / samples.length) * PROFILE_POINTS));
+      profile[slot] += value;
+      counts[slot] += 1;
+    });
+  });
+
+  return profile.map((value, i) => counts[i] ? value / counts[i] : 0);
+}
+
+function channelEnergy(channels) {
+  if (!channels.length) return 0;
+  return channels.reduce((sum, value) => sum + value, 0) / channels.length;
+}
+
+function childEnergyProfile(item) {
+  return buildProfile((item.children && item.children.length ? item.children : [item]).map(normalizeSample));
+}
+
+function toTime(sample) {
+  return Date.parse(sample.startTime || sample.timestamp);
+}
+
+function formatLabel(item) {
+  const start = new Date(item.startTime || item.timestamp).toLocaleTimeString();
+  const end = new Date(item.endTime || item.timestamp).toLocaleTimeString();
+  return start === end ? start : `${start}-${end}`;
+}
+
+function valuesForMode(item, mode) {
+  const sample = normalizeSample(item);
+
+  if (mode === 'range') {
+    return sample.max.map((value, i) => Math.max(0, value - sample.min[i]));
   }
-  const now = new Date().toLocaleTimeString();
-  chart.data.labels.push(now);
-  for (let i = 0; i < 10; i++) {
-    chart.data.datasets[i].data.push(data[data.length-1]?.channels[i] || 0);
+
+  if (mode === 'shape') {
+    return sample.profile;
   }
+
+  if (mode === 'nested') {
+    return childEnergyProfile(sample);
+  }
+
+  return sample.average;
+}
+
+function redrawChart(chart, data, mode) {
+  const isChannelView = mode === 'mean' || mode === 'range';
+  chart.data.labels = data.map(formatLabel);
+
+  chart.data.datasets.forEach((dataset, i) => {
+    dataset.label = isChannelView ? `CH${i + 1}` : `P${i + 1}`;
+    dataset.data = data.map(item => valuesForMode(item, mode)[i] || 0);
+    dataset.backgroundColor = isChannelView ? `hsl(${i * 36},100%,50%)` : `hsl(${210 + i * 8},70%,${35 + i * 4}%)`;
+    dataset.stack = 'stack1';
+  });
+
   chart.update();
 }
 
