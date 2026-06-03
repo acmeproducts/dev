@@ -57,7 +57,7 @@ const EIGHT_HOURS_MS = 8 * ONE_HOUR_MS;
 const DAY_MS = 24 * ONE_HOUR_MS;
 const VIEW_LABELS = {
   mean: 'Mean channel energy',
-  range: 'Min/max spread',
+  range: 'Level with variation',
   shape: 'Compressed shape',
   nested: 'Nested child energy'
 };
@@ -312,11 +312,22 @@ function formatLabel(item) {
   return start === end ? start : `${start}-${end}`;
 }
 
+function primaryEnergy(item, sample) {
+  const candidates = [item.energy, item.level, item.primaryEnergy];
+  const storedEnergy = candidates.find(value => Number.isFinite(value));
+  return storedEnergy === undefined ? channelEnergy(sample.average) : storedEnergy;
+}
+
+function scalarEnergySpread(sample) {
+  const spread = sample.max.map((value, i) => Math.max(0, value - sample.min[i]));
+  return channelEnergy(spread);
+}
+
 function valuesForMode(item, mode) {
   const sample = normalizeSample(item);
 
   if (mode === 'range') {
-    return sample.max.map((value, i) => Math.max(0, value - sample.min[i]));
+    return [primaryEnergy(item, sample), scalarEnergySpread(sample)];
   }
 
   if (mode === 'shape') {
@@ -331,13 +342,23 @@ function valuesForMode(item, mode) {
 }
 
 function redrawChart(chart, data, mode) {
-  const isChannelView = mode === 'mean' || mode === 'range';
+  const isChannelView = mode === 'mean';
+  const isRangeView = mode === 'range';
+  const datasetCount = isRangeView ? 2 : PROFILE_POINTS;
   chart.data.labels = data.map(formatLabel);
+  const values = data.map(item => valuesForMode(item, mode));
+
+  while (chart.data.datasets.length < datasetCount) {
+    chart.data.datasets.push({ label: '', data: [], backgroundColor: '', stack: 'stack1' });
+  }
+  chart.data.datasets.length = datasetCount;
 
   chart.data.datasets.forEach((dataset, i) => {
-    dataset.label = isChannelView ? `CH${i + 1}` : `P${i + 1}`;
-    dataset.data = data.map(item => valuesForMode(item, mode)[i] || 0);
-    dataset.backgroundColor = isChannelView ? `hsl(${i * 36},100%,50%)` : `hsl(${210 + i * 8},70%,${35 + i * 4}%)`;
+    dataset.label = isRangeView ? (i === 0 ? 'Level' : 'Variation') : (isChannelView ? `CH${i + 1}` : `P${i + 1}`);
+    dataset.data = values.map(value => value[i] || 0);
+    dataset.backgroundColor = isRangeView
+      ? (i === 0 ? 'rgba(0, 200, 255, 0.85)' : 'rgba(255, 255, 255, 0.35)')
+      : (isChannelView ? `hsl(${i * 36},100%,50%)` : `hsl(${210 + i * 8},70%,${35 + i * 4}%)`);
     dataset.stack = 'stack1';
   });
 
