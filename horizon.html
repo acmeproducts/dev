@@ -23,10 +23,10 @@
     <button onclick="downloadRaw()">Download Raw Data</button>
     <label>View
       <select id="viewMode" onchange="setViewMode(this.value)">
-        <option value="level">Level</option>
-        <option value="range">Range</option>
+        <option value="mean">Mean</option>
+        <option value="range">Trend</option>
         <option value="shape">Shape</option>
-        <option value="trend">Trend</option>
+        <option value="nested">Nested</option>
       </select>
     </label>
   </div>
@@ -48,7 +48,6 @@ const bufferLength = analyser.frequencyBinCount;
 const dataArray = new Uint8Array(bufferLength);
 let streamSource, captureInterval, fullCapture = [];
 const BAND_COUNT = 10;
-const DATASET_COUNT = 10;
 const PROFILE_POINTS = 10;
 const ONE_SECOND_MS = 1000;
 const ONE_MINUTE_MS = 60 * ONE_SECOND_MS;
@@ -57,12 +56,12 @@ const ONE_HOUR_MS = 60 * ONE_MINUTE_MS;
 const EIGHT_HOURS_MS = 8 * ONE_HOUR_MS;
 const DAY_MS = 24 * ONE_HOUR_MS;
 const VIEW_LABELS = {
-  level: 'Environmental noise level',
-  range: 'Level with variation',
-  shape: 'Compressed noise shape',
-  trend: 'Absolute level with trend profile'
+  mean: 'Mean environmental energy',
+  range: 'Energy trend with variation',
+  shape: 'Environmental energy profile',
+  nested: 'Nested energy profile'
 };
-let viewMode = 'level';
+let viewMode = 'mean';
 const canvases = [1,2,3,4,5].map(n => document.getElementById('canvas'+n));
 const charts = [];
 const statusEl = document.getElementById('status');
@@ -119,7 +118,7 @@ function captureSample() {
     timestamp: now.toISOString(),
     startTime: now.toISOString(),
     endTime: now.toISOString(),
-    energy: channelEnergy(bandData),
+    energy: averageEnergy(bandData),
     bands: bandData
   });
   pruneCapture();
@@ -143,13 +142,12 @@ function initCharts() {
       type: 'bar',
       data: {
         labels: [],
-        datasets: Array.from({length: DATASET_COUNT}, (_, ch) => ({
-          label: datasetLabel(viewMode, ch),
+        datasets: [{
+          label: 'Energy',
           data: [],
-          backgroundColor: datasetColor(viewMode, ch),
-          stack: 'stack1',
-          hidden: !datasetLabel(viewMode, ch)
-        }))
+          backgroundColor: 'rgba(0, 200, 255, 0.85)',
+          stack: 'energy'
+        }]
       },
       options: {
         responsive: true,
@@ -216,11 +214,10 @@ function bucketSamples(samples, intervalMs) {
 
 function aggregateBucket(bucket) {
   const normalized = bucket.map(normalizeSample);
-  const averageBands = averageVectors(normalized.map(sample => sample.bands));
-  const minBands = combineVectors(normalized.map(sample => sample.minBands), Math.min);
-  const maxBands = combineVectors(normalized.map(sample => sample.maxBands), Math.max);
-  const energyValues = normalized.map(sample => sample.averageEnergy);
-  const averageEnergy = averageNumbers(energyValues);
+  const bandSets = normalized.map(sample => sample.bands).filter(bands => bands && bands.length);
+  const bands = bandSets.length ? averageVectors(bandSets) : undefined;
+  const energyValues = normalized.map(sample => sample.energy);
+  const energy = averageScalars(energyValues);
   const minEnergy = Math.min(...normalized.map(sample => sample.minEnergy));
   const maxEnergy = Math.max(...normalized.map(sample => sample.maxEnergy));
   const profile = buildProfile(normalized);
@@ -231,48 +228,48 @@ function aggregateBucket(bucket) {
     timestamp: startTime,
     startTime,
     endTime,
-    energy: averageEnergy,
-    averageEnergy,
+    energy,
+    averageEnergy: energy,
     minEnergy,
     maxEnergy,
-    bands: averageBands,
-    channels: averageBands,
-    average: averageBands,
-    minBands,
-    maxBands,
     profile,
+    bands,
     children: normalized,
     sourceCount: normalized.reduce((total, sample) => total + sample.sourceCount, 0)
   };
 }
 
 function normalizeSample(sample) {
-  const bands = sample.bands || sample.average || sample.channels || Array(BAND_COUNT).fill(0);
-  const minBands = sample.minBands || sample.min || bands;
-  const maxBands = sample.maxBands || sample.max || bands;
-  const averageEnergy = sample.averageEnergy ?? sample.energy ?? channelEnergy(bands);
-  const minEnergy = sample.minEnergy ?? averageEnergy;
-  const maxEnergy = sample.maxEnergy ?? averageEnergy;
-  const profile = sample.profile || buildProfile([{ averageEnergy, energy: averageEnergy, sourceCount: 1 }]);
+  const bands = sample.bands || sample.channels || sample.average || Array(BAND_COUNT).fill(0);
+  const energy = coerceEnergy(sample.energy, sample.averageEnergy, sample.level, sample.primaryEnergy, averageEnergy(bands));
+  const minEnergy = coerceEnergy(sample.minEnergy, sample.min && averageEnergy(sample.min), energy);
+  const maxEnergy = coerceEnergy(sample.maxEnergy, sample.max && averageEnergy(sample.max), energy);
+  const profile = sample.profile || Array(PROFILE_POINTS).fill(energy);
   const timestamp = sample.timestamp || sample.startTime || new Date().toISOString();
 
   return {
     timestamp,
     startTime: sample.startTime || timestamp,
     endTime: sample.endTime || timestamp,
-    energy: averageEnergy,
-    averageEnergy,
+    energy,
+    averageEnergy: coerceEnergy(sample.averageEnergy, energy),
     minEnergy,
     maxEnergy,
-    bands,
-    channels: bands,
-    average: bands,
-    minBands,
-    maxBands,
     profile,
+    bands,
     children: sample.children || [],
     sourceCount: sample.sourceCount || 1
   };
+}
+
+function coerceEnergy(...values) {
+  const value = values.find(candidate => Number.isFinite(candidate));
+  return value === undefined ? 0 : value;
+}
+
+function averageScalars(values) {
+  if (!values.length) return 0;
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
 }
 
 function averageVectors(vectors) {
@@ -286,26 +283,13 @@ function averageVectors(vectors) {
   return sums.map(sum => sum / vectors.length);
 }
 
-function averageNumbers(values) {
-  if (!values.length) return 0;
-  return values.reduce((sum, value) => sum + value, 0) / values.length;
-}
-
-function combineVectors(vectors, reducer) {
-  if (!vectors.length) return Array(BAND_COUNT).fill(0);
-
-  return Array.from({length: BAND_COUNT}, (_, i) => (
-    vectors.map(vector => vector[i]).reduce(reducer)
-  ));
-}
-
 function buildProfile(samples) {
   const profile = Array(PROFILE_POINTS).fill(0);
   const counts = Array(PROFILE_POINTS).fill(0);
   if (!samples.length) return profile;
 
   samples.forEach((sample, index) => {
-    const profileSource = sample.profile && sample.profile.length ? sample.profile : [sample.averageEnergy ?? sample.energy ?? channelEnergy(sample.bands || sample.average || sample.channels || [])];
+    const profileSource = sample.profile && sample.profile.length ? sample.profile : [sample.energy || 0];
 
     profileSource.forEach((value, pointIndex) => {
       const slot = Math.min(PROFILE_POINTS - 1, Math.floor(((index + pointIndex / profileSource.length) / samples.length) * PROFILE_POINTS));
@@ -317,9 +301,13 @@ function buildProfile(samples) {
   return profile.map((value, i) => counts[i] ? value / counts[i] : 0);
 }
 
-function channelEnergy(channels) {
-  if (!channels.length) return 0;
-  return channels.reduce((sum, value) => sum + value, 0) / channels.length;
+function averageEnergy(values) {
+  if (!values.length) return 0;
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+
+function childEnergyProfile(item) {
+  return buildProfile((item.children && item.children.length ? item.children : [item]).map(normalizeSample));
 }
 
 function toTime(sample) {
@@ -332,53 +320,66 @@ function formatLabel(item) {
   return start === end ? start : `${start}-${end}`;
 }
 
+function primaryEnergy(item, sample) {
+  return coerceEnergy(item.energy, item.averageEnergy, item.level, item.primaryEnergy, sample.energy);
+}
+
+function scalarEnergySpread(sample) {
+  return Math.max(0, sample.maxEnergy - sample.minEnergy);
+}
+
 function valuesForMode(item, mode) {
   const sample = normalizeSample(item);
 
   if (mode === 'range') {
-    return [sample.averageEnergy, Math.max(0, sample.maxEnergy - sample.minEnergy)];
+    return [primaryEnergy(item, sample), scalarEnergySpread(sample)];
   }
 
   if (mode === 'shape') {
     return sample.profile;
   }
 
-  if (mode === 'trend') {
-    const first = sample.profile[0] || sample.averageEnergy;
-    const last = sample.profile[sample.profile.length - 1] || sample.averageEnergy;
-    return [sample.averageEnergy, Math.max(0, last - first), Math.max(0, first - last)];
+  if (mode === 'nested') {
+    return childEnergyProfile(sample);
   }
 
-  return [sample.averageEnergy];
-}
-
-function datasetLabel(mode, index) {
-  if (mode === 'range') return ['Level', 'Variation'][index] || '';
-  if (mode === 'shape') return `Shape ${index + 1}`;
-  if (mode === 'trend') return ['Level', 'Rising trend', 'Falling trend'][index] || '';
-  return index === 0 ? 'Level' : '';
-}
-
-function datasetColor(mode, index) {
-  if (mode === 'range') return ['rgba(125, 196, 255, 0.8)', 'rgba(255, 255, 255, 0.35)'][index] || 'rgba(0,0,0,0)';
-  if (mode === 'shape') return `hsl(${210 + index * 8},70%,${35 + index * 4}%)`;
-  if (mode === 'trend') return ['rgba(190, 190, 190, 0.75)', 'rgba(96, 255, 170, 0.65)', 'rgba(255, 120, 120, 0.65)'][index] || 'rgba(0,0,0,0)';
-  return index === 0 ? 'rgba(125, 196, 255, 0.85)' : 'rgba(0,0,0,0)';
+  return [primaryEnergy(item, sample)];
 }
 
 function redrawChart(chart, data, mode) {
+  const isRangeView = mode === 'range';
+  const isProfileView = mode === 'shape' || mode === 'nested';
+  const datasetCount = isRangeView ? 2 : (isProfileView ? PROFILE_POINTS : 1);
   chart.data.labels = data.map(formatLabel);
+  const values = data.map(item => valuesForMode(item, mode));
+
+  while (chart.data.datasets.length < datasetCount) {
+    chart.data.datasets.push({ label: '', data: [], backgroundColor: '', stack: 'energy' });
+  }
+  chart.data.datasets.length = datasetCount;
 
   chart.data.datasets.forEach((dataset, i) => {
     dataset.label = datasetLabel(mode, i);
-    dataset.data = data.map(item => valuesForMode(item, mode)[i] || 0);
+    dataset.data = values.map(value => value[i] || 0);
     dataset.backgroundColor = datasetColor(mode, i);
-    dataset.stack = 'stack1';
-    dataset.hidden = !dataset.label;
+    dataset.stack = isProfileView ? 'profile' : 'energy';
   });
 
   chart.update();
 }
+
+function datasetLabel(mode, index) {
+  if (mode === 'range') return index === 0 ? 'Average Energy' : 'Variation';
+  if (mode === 'shape' || mode === 'nested') return `Profile ${index + 1}`;
+  return 'Energy';
+}
+
+function datasetColor(mode, index) {
+  if (mode === 'range') return index === 0 ? 'rgba(0, 200, 255, 0.85)' : 'rgba(255, 255, 255, 0.35)';
+  if (mode === 'shape' || mode === 'nested') return `hsl(${210 + index * 8},70%,${35 + index * 4}%)`;
+  return 'rgba(0, 200, 255, 0.85)';
+}
+
 
 function clearDisplays() {
   charts.forEach(chart => {
