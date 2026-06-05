@@ -6,7 +6,8 @@
   <style>
     body { margin: 0; background: #000; color: #fff; font-family: Arial, sans-serif; overflow: hidden; }
     .controls { padding: 10px; background: #111; display: flex; align-items: center; gap: 10px; }
-    button { background: #333; color: white; border: none; padding: 8px 12px; cursor: pointer; }
+    button, select { background: #333; color: white; border: none; padding: 8px 12px; cursor: pointer; }
+    label { color: #ccc; display: flex; align-items: center; gap: 6px; }
     .panel-container { display: flex; flex-direction: column; height: calc(100vh - 100px); overflow-y: auto; }
     .panel { flex: none; height: 350px; border-bottom: 1px solid #444; position: relative; padding: 5px; }
     .label { font-size: 18px; padding: 5px 10px; }
@@ -20,6 +21,14 @@
     <button onclick="stopCapture()">Stop</button>
     <button onclick="clearData()">Clear</button>
     <button onclick="downloadRaw()">Download Raw Data</button>
+    <label>View
+      <select id="viewMode" onchange="setViewMode(this.value)">
+        <option value="level">Level</option>
+        <option value="range">Range</option>
+        <option value="shape">Shape</option>
+        <option value="trend">Trend</option>
+      </select>
+    </label>
   </div>
   <div class="status" id="status">Idle</div>
   <div class="panel-container">
@@ -38,6 +47,22 @@ analyser.fftSize = 2048;
 const bufferLength = analyser.frequencyBinCount;
 const dataArray = new Uint8Array(bufferLength);
 let streamSource, captureInterval, fullCapture = [];
+const BAND_COUNT = 10;
+const DATASET_COUNT = 10;
+const PROFILE_POINTS = 10;
+const ONE_SECOND_MS = 1000;
+const ONE_MINUTE_MS = 60 * ONE_SECOND_MS;
+const TEN_MINUTES_MS = 10 * ONE_MINUTE_MS;
+const ONE_HOUR_MS = 60 * ONE_MINUTE_MS;
+const EIGHT_HOURS_MS = 8 * ONE_HOUR_MS;
+const DAY_MS = 24 * ONE_HOUR_MS;
+const VIEW_LABELS = {
+  level: 'Environmental noise level',
+  range: 'Level with variation',
+  shape: 'Compressed noise shape',
+  trend: 'Absolute level with trend profile'
+};
+let viewMode = 'level';
 const canvases = [1,2,3,4,5].map(n => document.getElementById('canvas'+n));
 const charts = [];
 const statusEl = document.getElementById('status');
@@ -45,6 +70,12 @@ const statusEl = document.getElementById('status');
 function setStatus(msg, color = "#0f0") {
   statusEl.textContent = msg;
   statusEl.style.color = color;
+}
+
+function setViewMode(mode) {
+  viewMode = mode;
+  updatePanels();
+  setStatus(`View: ${VIEW_LABELS[mode]}`, "#0ff");
 }
 
 function startCapture() {
@@ -78,14 +109,20 @@ function clearData() {
 function captureSample() {
   analyser.getByteFrequencyData(dataArray);
   const now = new Date();
-  const bands = 10;
-  const bandData = Array.from({length: bands}, (_, i) => {
-    const start = Math.floor(i * bufferLength / bands);
-    const end = Math.floor((i+1) * bufferLength / bands);
+  const bandData = Array.from({length: BAND_COUNT}, (_, i) => {
+    const start = Math.floor(i * bufferLength / BAND_COUNT);
+    const end = Math.floor((i+1) * bufferLength / BAND_COUNT);
     const slice = dataArray.slice(start, end);
     return slice.reduce((a,b)=>a+b,0)/slice.length;
   });
-  fullCapture.push({ timestamp: now.toISOString(), channels: bandData });
+  fullCapture.push({
+    timestamp: now.toISOString(),
+    startTime: now.toISOString(),
+    endTime: now.toISOString(),
+    energy: channelEnergy(bandData),
+    bands: bandData
+  });
+  pruneCapture();
   updatePanels();
 }
 
@@ -106,11 +143,12 @@ function initCharts() {
       type: 'bar',
       data: {
         labels: [],
-        datasets: Array.from({length: 10}, (_, ch) => ({
-          label: `CH${ch+1}`,
+        datasets: Array.from({length: DATASET_COUNT}, (_, ch) => ({
+          label: datasetLabel(viewMode, ch),
           data: [],
-          backgroundColor: `hsl(${ch*36},100%,50%)`,
-          stack: 'stack1'
+          backgroundColor: datasetColor(viewMode, ch),
+          stack: 'stack1',
+          hidden: !datasetLabel(viewMode, ch)
         }))
       },
       options: {
@@ -134,51 +172,211 @@ function initCharts() {
 
 function updatePanels() {
   const now = Date.now();
-  redrawChart(charts[0], fullCapture.filter(s => Date.parse(s.timestamp) >= now - 60000));
-  redrawChart(charts[1], bucketSamples(fullCapture.filter(s => Date.parse(s.timestamp) >= now - 600000), 5));
-  redrawChart(charts[2], bucketSamples(fullCapture.filter(s => Date.parse(s.timestamp) >= now - 3600000), 30));
-  redrawChart(charts[3], bucketSamples(fullCapture.filter(s => Date.parse(s.timestamp) >= now - 28800000), 120));
-  redrawChart(charts[4], bucketSamples(fullCapture.filter(s => Date.parse(s.timestamp) >= now - 86400000), 600));
+  pruneCapture(now);
+
+  const last24h = fullCapture.filter(s => toTime(s) >= now - DAY_MS);
+  const oneMinute = last24h.filter(s => toTime(s) >= now - ONE_MINUTE_MS);
+  const minuteComposites = bucketSamples(last24h, ONE_MINUTE_MS);
+  const tenMinuteComposites = bucketSamples(minuteComposites, TEN_MINUTES_MS);
+  const hourComposites = bucketSamples(tenMinuteComposites, ONE_HOUR_MS);
+  const eightHourComposites = bucketSamples(hourComposites, EIGHT_HOURS_MS);
+
+  redrawChart(charts[0], oneMinute, viewMode);
+  redrawChart(charts[1], minuteComposites.filter(s => toTime(s) >= now - TEN_MINUTES_MS), viewMode);
+  redrawChart(charts[2], tenMinuteComposites.filter(s => toTime(s) >= now - ONE_HOUR_MS), viewMode);
+  redrawChart(charts[3], hourComposites.filter(s => toTime(s) >= now - EIGHT_HOURS_MS), viewMode);
+  redrawChart(charts[4], eightHourComposites.filter(s => toTime(s) >= now - DAY_MS), viewMode);
 }
 
-function bucketSamples(samples, seconds) {
+function pruneCapture(now = Date.now()) {
+  fullCapture = fullCapture.filter(s => toTime(s) >= now - DAY_MS);
+}
+
+function bucketSamples(samples, intervalMs) {
   const buckets = [];
   let current = [];
-  let baseTime = null;
-  samples.forEach(s => {
-    const t = Date.parse(s.timestamp);
-    if (!baseTime) baseTime = t;
-    if (t - baseTime < seconds * 1000) {
-      current.push(s);
+  let bucketStart = null;
+
+  samples.forEach(sample => {
+    const t = toTime(sample);
+    if (bucketStart === null) bucketStart = t;
+
+    if (t - bucketStart < intervalMs) {
+      current.push(sample);
     } else {
       buckets.push(aggregateBucket(current));
-      current = [s];
-      baseTime = t;
+      current = [sample];
+      bucketStart = t;
     }
   });
+
   if (current.length) buckets.push(aggregateBucket(current));
   return buckets;
 }
 
 function aggregateBucket(bucket) {
-  const sums = Array(10).fill(0);
-  bucket.forEach(sample => {
-    sample.channels.forEach((v,i) => sums[i] += v);
-  });
-  return { channels: sums.map(s => s / bucket.length) };
+  const normalized = bucket.map(normalizeSample);
+  const averageBands = averageVectors(normalized.map(sample => sample.bands));
+  const minBands = combineVectors(normalized.map(sample => sample.minBands), Math.min);
+  const maxBands = combineVectors(normalized.map(sample => sample.maxBands), Math.max);
+  const energyValues = normalized.map(sample => sample.averageEnergy);
+  const averageEnergy = averageNumbers(energyValues);
+  const minEnergy = Math.min(...normalized.map(sample => sample.minEnergy));
+  const maxEnergy = Math.max(...normalized.map(sample => sample.maxEnergy));
+  const profile = buildProfile(normalized);
+  const startTime = new Date(Math.min(...normalized.map(sample => Date.parse(sample.startTime)))).toISOString();
+  const endTime = new Date(Math.max(...normalized.map(sample => Date.parse(sample.endTime)))).toISOString();
+
+  return {
+    timestamp: startTime,
+    startTime,
+    endTime,
+    energy: averageEnergy,
+    averageEnergy,
+    minEnergy,
+    maxEnergy,
+    bands: averageBands,
+    channels: averageBands,
+    average: averageBands,
+    minBands,
+    maxBands,
+    profile,
+    children: normalized,
+    sourceCount: normalized.reduce((total, sample) => total + sample.sourceCount, 0)
+  };
 }
 
-function redrawChart(chart, data) {
-  if (!data.length) return;
-  while (chart.data.labels.length >= 60) {
-    chart.data.labels.shift();
-    chart.data.datasets.forEach(ds => ds.data.shift());
+function normalizeSample(sample) {
+  const bands = sample.bands || sample.average || sample.channels || Array(BAND_COUNT).fill(0);
+  const minBands = sample.minBands || sample.min || bands;
+  const maxBands = sample.maxBands || sample.max || bands;
+  const averageEnergy = sample.averageEnergy ?? sample.energy ?? channelEnergy(bands);
+  const minEnergy = sample.minEnergy ?? averageEnergy;
+  const maxEnergy = sample.maxEnergy ?? averageEnergy;
+  const profile = sample.profile || buildProfile([{ averageEnergy, energy: averageEnergy, sourceCount: 1 }]);
+  const timestamp = sample.timestamp || sample.startTime || new Date().toISOString();
+
+  return {
+    timestamp,
+    startTime: sample.startTime || timestamp,
+    endTime: sample.endTime || timestamp,
+    energy: averageEnergy,
+    averageEnergy,
+    minEnergy,
+    maxEnergy,
+    bands,
+    channels: bands,
+    average: bands,
+    minBands,
+    maxBands,
+    profile,
+    children: sample.children || [],
+    sourceCount: sample.sourceCount || 1
+  };
+}
+
+function averageVectors(vectors) {
+  const sums = Array(BAND_COUNT).fill(0);
+  if (!vectors.length) return sums;
+
+  vectors.forEach(vector => {
+    vector.forEach((value, i) => sums[i] += value);
+  });
+
+  return sums.map(sum => sum / vectors.length);
+}
+
+function averageNumbers(values) {
+  if (!values.length) return 0;
+  return values.reduce((sum, value) => sum + value, 0) / values.length;
+}
+
+function combineVectors(vectors, reducer) {
+  if (!vectors.length) return Array(BAND_COUNT).fill(0);
+
+  return Array.from({length: BAND_COUNT}, (_, i) => (
+    vectors.map(vector => vector[i]).reduce(reducer)
+  ));
+}
+
+function buildProfile(samples) {
+  const profile = Array(PROFILE_POINTS).fill(0);
+  const counts = Array(PROFILE_POINTS).fill(0);
+  if (!samples.length) return profile;
+
+  samples.forEach((sample, index) => {
+    const profileSource = sample.profile && sample.profile.length ? sample.profile : [sample.averageEnergy ?? sample.energy ?? channelEnergy(sample.bands || sample.average || sample.channels || [])];
+
+    profileSource.forEach((value, pointIndex) => {
+      const slot = Math.min(PROFILE_POINTS - 1, Math.floor(((index + pointIndex / profileSource.length) / samples.length) * PROFILE_POINTS));
+      profile[slot] += value;
+      counts[slot] += 1;
+    });
+  });
+
+  return profile.map((value, i) => counts[i] ? value / counts[i] : 0);
+}
+
+function channelEnergy(channels) {
+  if (!channels.length) return 0;
+  return channels.reduce((sum, value) => sum + value, 0) / channels.length;
+}
+
+function toTime(sample) {
+  return Date.parse(sample.startTime || sample.timestamp);
+}
+
+function formatLabel(item) {
+  const start = new Date(item.startTime || item.timestamp).toLocaleTimeString();
+  const end = new Date(item.endTime || item.timestamp).toLocaleTimeString();
+  return start === end ? start : `${start}-${end}`;
+}
+
+function valuesForMode(item, mode) {
+  const sample = normalizeSample(item);
+
+  if (mode === 'range') {
+    return [sample.averageEnergy, Math.max(0, sample.maxEnergy - sample.minEnergy)];
   }
-  const now = new Date().toLocaleTimeString();
-  chart.data.labels.push(now);
-  for (let i = 0; i < 10; i++) {
-    chart.data.datasets[i].data.push(data[data.length-1]?.channels[i] || 0);
+
+  if (mode === 'shape') {
+    return sample.profile;
   }
+
+  if (mode === 'trend') {
+    const first = sample.profile[0] || sample.averageEnergy;
+    const last = sample.profile[sample.profile.length - 1] || sample.averageEnergy;
+    return [sample.averageEnergy, Math.max(0, last - first), Math.max(0, first - last)];
+  }
+
+  return [sample.averageEnergy];
+}
+
+function datasetLabel(mode, index) {
+  if (mode === 'range') return ['Level', 'Variation'][index] || '';
+  if (mode === 'shape') return `Shape ${index + 1}`;
+  if (mode === 'trend') return ['Level', 'Rising trend', 'Falling trend'][index] || '';
+  return index === 0 ? 'Level' : '';
+}
+
+function datasetColor(mode, index) {
+  if (mode === 'range') return ['rgba(125, 196, 255, 0.8)', 'rgba(255, 255, 255, 0.35)'][index] || 'rgba(0,0,0,0)';
+  if (mode === 'shape') return `hsl(${210 + index * 8},70%,${35 + index * 4}%)`;
+  if (mode === 'trend') return ['rgba(190, 190, 190, 0.75)', 'rgba(96, 255, 170, 0.65)', 'rgba(255, 120, 120, 0.65)'][index] || 'rgba(0,0,0,0)';
+  return index === 0 ? 'rgba(125, 196, 255, 0.85)' : 'rgba(0,0,0,0)';
+}
+
+function redrawChart(chart, data, mode) {
+  chart.data.labels = data.map(formatLabel);
+
+  chart.data.datasets.forEach((dataset, i) => {
+    dataset.label = datasetLabel(mode, i);
+    dataset.data = data.map(item => valuesForMode(item, mode)[i] || 0);
+    dataset.backgroundColor = datasetColor(mode, i);
+    dataset.stack = 'stack1';
+    dataset.hidden = !dataset.label;
+  });
+
   chart.update();
 }
 
