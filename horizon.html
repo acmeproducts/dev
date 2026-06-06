@@ -319,8 +319,10 @@ function getAllSamples() {
 }
 
 function filterSamplesByRange(samples, startTime, endTime) {
-  const start = startTime ? Date.parse(startTime) : -Infinity;
-  const end = endTime ? Date.parse(endTime) : Infinity;
+  const parsedStart = startTime ? Date.parse(startTime) : -Infinity;
+  const parsedEnd = endTime ? Date.parse(endTime) : Infinity;
+  const start = Number.isFinite(parsedStart) ? parsedStart : -Infinity;
+  const end = Number.isFinite(parsedEnd) ? parsedEnd : Infinity;
   return samples.filter(sample => {
     const time = toTime(sample);
     return Number.isFinite(time) && time >= start && time <= end;
@@ -392,7 +394,7 @@ function bucketSamples(samples, intervalMs) {
   const buckets = [];
   let current = [];
   let bucketStart = null;
-  samples.forEach(sample => {
+  ordered.forEach(sample => {
     const t = toTime(sample);
     if (!Number.isFinite(t)) return;
     if (bucketStart === null) bucketStart = t;
@@ -490,15 +492,17 @@ function renderArt(model = buildHorizonModel()) {
   artCtx.clearRect(0, 0, width, height);
   artCtx.fillStyle = palette.background;
   artCtx.fillRect(0, 0, width, height);
-  const source = model.comparison.length ? model.comparison : chooseArtComposites(model, width);
-  if (!source.length) {
+  const drawEmptyState = () => {
     artCtx.fillStyle = palette.line;
     artCtx.globalAlpha = 0.5;
     artCtx.font = '18px Arial';
     artCtx.fillText('Start recording to grow an open-ended sound archive.', 24, 44);
     artCtx.globalAlpha = 1;
-    return;
-  }
+  };
+  if (!model || !Array.isArray(model.samples) || !model.samples.length) return drawEmptyState();
+  const comparison = Array.isArray(model.comparison) ? model.comparison : [];
+  const source = comparison.length ? comparison : chooseArtComposites(model, width);
+  if (!source.length) return drawEmptyState();
   if (artConfig.mode === 'shape') return renderShape(source, palette, width, height);
   if (artConfig.mode === 'color') return renderColor(source, palette, width, height);
   if (artConfig.mode === 'scale') return renderScale(source, palette, width, height);
