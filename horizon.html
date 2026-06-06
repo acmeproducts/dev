@@ -12,6 +12,9 @@
     details { background: #090909; border-top: 1px solid #222; }
     summary { cursor: pointer; padding: 8px 10px; color: #9df; }
     #artCanvas { display: block; width: 100%; height: calc(100vh - 245px); min-height: 360px; background: #090710; }
+    .art-stage { position: relative; }
+    .time-hud { position: absolute; top: 14px; right: 16px; max-width: min(420px, 48vw); padding: 10px 12px; border: 1px solid rgba(157, 243, 255, 0.28); border-radius: 12px; background: rgba(5, 8, 18, 0.72); color: #eaffff; font-size: 13px; line-height: 1.35; pointer-events: none; box-shadow: 0 12px 30px rgba(0,0,0,0.35); backdrop-filter: blur(6px); }
+    .time-hud strong { color: #7fffd4; }
     .panel-container { display: none; flex-direction: column; height: 300px; overflow-y: auto; opacity: 0.45; }
     .panel { flex: none; height: 350px; border-bottom: 1px solid #444; position: relative; padding: 5px; }
     .label { font-size: 18px; padding: 5px 10px; }
@@ -44,7 +47,7 @@
     <div class="config-row">
       <label>Mode<select id="artMode"><option value="story">Story</option><option value="shape">Shape</option><option value="color">Color</option><option value="scale">Scale</option><option value="weave">Weave</option></select></label>
       <label>Seed<input id="artSeed" value="horizon"></label>
-      <label>Palette<select id="artPalette"><option value="dusk">Dusk</option><option value="ember">Ember</option><option value="ocean">Ocean</option><option value="forest">Forest</option><option value="monochrome">Monochrome</option></select></label>
+      <label>Palette<select id="artPalette"><option value="aurora" selected>Aurora</option><option value="dusk">Dusk</option><option value="ember">Ember</option><option value="ocean">Ocean</option><option value="forest">Forest</option><option value="neon">Neon</option><option value="monochrome">Monochrome</option></select></label>
       <label>Color By<select id="artColorBy"><option value="intensity">Intensity</option><option value="frequency">Frequency</option></select></label>
       <button onclick="saveConfig()">Save Config</button>
       <button onclick="loadConfig()">Load Saved Config</button>
@@ -53,7 +56,10 @@
     </div>
   </details>
   <div class="status" id="status">Idle</div>
-  <canvas id="artCanvas"></canvas>
+  <div class="art-stage">
+    <canvas id="artCanvas"></canvas>
+    <div class="time-hud" id="timeHud">Timeline ready — record audio, then hover the artwork to inspect exact moments like 2:00 PM or 2:30 PM.</div>
+  </div>
   <details>
     <summary>Legacy measurement horizons</summary>
     <div class="panel-container" style="display:flex">
@@ -96,20 +102,27 @@ const INTENSITY_CLASSES = [
 ];
 const BAND_LABELS = ['Sub', 'Rumble', 'Low', 'Warmth', 'Body', 'Mid', 'Presence', 'Detail', 'Sharp', 'Air'];
 const PALETTES = {
+  aurora: { background: '#040716', quiet: '#10205a', ambient: '#134bc2', moderate: '#00a9ff', loud: '#00ffd1', louder: '#f7ff4a', loudest: '#ff4fd8', accent: '#ffb000', line: '#f8ffff' },
   dusk: { background: '#090710', quiet: '#25233f', ambient: '#3e3a6d', moderate: '#6a5191', loud: '#b45a86', louder: '#ec7a63', loudest: '#ffd38a', accent: '#9df3ff', line: '#f8e9ff' },
   ember: { background: '#120806', quiet: '#2b1712', ambient: '#643018', moderate: '#a34a1d', loud: '#de6a22', louder: '#ff9838', loudest: '#ffe0a0', accent: '#ffcf6e', line: '#fff0c2' },
   ocean: { background: '#031016', quiet: '#082637', ambient: '#0d4660', moderate: '#15748c', loud: '#20a7b2', louder: '#58d1d7', loudest: '#c1fffb', accent: '#7cc8ff', line: '#e5ffff' },
   forest: { background: '#061107', quiet: '#122818', ambient: '#1f482b', moderate: '#3d7440', loud: '#68a554', louder: '#a1cf6b', loudest: '#efffc0', accent: '#d6a957', line: '#f4ffe0' },
-  monochrome: { background: '#050505', quiet: '#1c1c1c', ambient: '#333', moderate: '#666', loud: '#999', louder: '#ccc', loudest: '#fff', accent: '#aaa', line: '#f6f6f6' }
+  monochrome: { background: '#050505', quiet: '#1c1c1c', ambient: '#333', moderate: '#666', loud: '#999', louder: '#ccc', loudest: '#fff', accent: '#aaa', line: '#f6f6f6' },
+  neon: { background: '#020006', quiet: '#24004d', ambient: '#4b00b8', moderate: '#006cff', loud: '#00f5ff', louder: '#39ff14', loudest: '#fffb00', accent: '#ff2bd6', line: '#ffffff' }
 };
 const timeConfig = { source: 'all', range: 'last24h', startDate: '', endDate: '', weekday: 'any', timeStart: '', timeEnd: '', compare: 'none' };
-const artConfig = { mode: 'story', seed: 'horizon', palette: 'dusk', colorBy: 'intensity' };
+const artConfig = { mode: 'story', seed: 'horizon', palette: 'aurora', colorBy: 'intensity' };
 let viewMode = 'mean';
 const canvases = [1,2,3,4,5].map(n => document.getElementById('canvas'+n));
 const charts = [];
 const statusEl = document.getElementById('status');
 const artCanvas = document.getElementById('artCanvas');
 const artCtx = artCanvas.getContext('2d');
+const timeHud = document.getElementById('timeHud');
+let lastArtRender = null;
+let lastPanelUpdate = 0;
+let pendingPanelFrame = null;
+let lastChartUpdate = -Infinity;
 const configControls = {
   timeSource: 'source', timeRange: 'range', timeStartDate: 'startDate', timeEndDate: 'endDate', timeWeekday: 'weekday', timeStart: 'timeStart', timeEnd: 'timeEnd', timeCompare: 'compare',
   artMode: 'mode', artSeed: 'seed', artPalette: 'palette', artColorBy: 'colorBy'
@@ -195,7 +208,7 @@ function captureSample() {
   };
   fullCapture.push(sample);
   if (currentSession) currentSession.samples.push(sample);
-  updatePanels();
+  requestPanelUpdate();
 }
 
 function downloadRaw() {
@@ -279,7 +292,7 @@ function readConfigControls() {
     const target = id.startsWith('time') ? timeConfig : artConfig;
     target[key] = el.value;
   });
-  updatePanels();
+  requestPanelUpdate(true);
 }
 
 function initCharts() {
@@ -292,13 +305,29 @@ function initCharts() {
   }
 }
 
-function updatePanels() {
+function requestPanelUpdate(force = false) {
+  if (pendingPanelFrame) cancelAnimationFrame(pendingPanelFrame);
+  pendingPanelFrame = requestAnimationFrame(() => {
+    pendingPanelFrame = null;
+    const now = performance.now();
+    if (!force && now - lastPanelUpdate < 250) return;
+    lastPanelUpdate = now;
+    updatePanels(force);
+  });
+}
+
+function updatePanels(forceCharts = false) {
   const model = buildHorizonModel();
-  redrawChart(charts[0], model.seconds, viewMode);
-  redrawChart(charts[1], model.minutes, viewMode);
-  redrawChart(charts[2], model.hours, viewMode);
-  redrawChart(charts[3], model.days, viewMode);
-  redrawChart(charts[4], model.months, viewMode);
+  const now = performance.now();
+  const shouldUpdateCharts = forceCharts || now - lastChartUpdate > 3000;
+  if (shouldUpdateCharts) {
+    redrawChart(charts[0], model.seconds, viewMode);
+    redrawChart(charts[1], model.minutes, viewMode);
+    redrawChart(charts[2], model.hours, viewMode);
+    redrawChart(charts[3], model.days, viewMode);
+    redrawChart(charts[4], model.months, viewMode);
+    lastChartUpdate = now;
+  }
   renderArt(model);
 }
 
@@ -391,6 +420,7 @@ function buildHorizonModel() {
 
 function bucketSamples(samples, intervalMs) {
   if (!Array.isArray(samples) || !samples.length || !Number.isFinite(intervalMs) || intervalMs <= 0) return [];
+  const ordered = samples.filter(sample => Number.isFinite(toTime(sample))).slice().sort((a, b) => safeTime(a) - safeTime(b));
   const buckets = [];
   let current = [];
   let bucketStart = null;
@@ -498,16 +528,124 @@ function renderArt(model = buildHorizonModel()) {
     artCtx.font = '18px Arial';
     artCtx.fillText('Start recording to grow an open-ended sound archive.', 24, 44);
     artCtx.globalAlpha = 1;
+    lastArtRender = null;
+    updateTimeHud([], null);
   };
   if (!model || !Array.isArray(model.samples) || !model.samples.length) return drawEmptyState();
   const comparison = Array.isArray(model.comparison) ? model.comparison : [];
   const source = comparison.length ? comparison : chooseArtComposites(model, width);
   if (!source.length) return drawEmptyState();
-  if (artConfig.mode === 'shape') return renderShape(source, palette, width, height);
-  if (artConfig.mode === 'color') return renderColor(source, palette, width, height);
-  if (artConfig.mode === 'scale') return renderScale(source, palette, width, height);
-  if (artConfig.mode === 'weave') return renderWeave(source, palette, width, height);
-  renderStory(source, palette, width, height);
+  if (artConfig.mode === 'shape') renderShape(source, palette, width, height);
+  else if (artConfig.mode === 'color') renderColor(source, palette, width, height);
+  else if (artConfig.mode === 'scale') renderScale(source, palette, width, height);
+  else if (artConfig.mode === 'weave') renderWeave(source, palette, width, height);
+  else renderStory(source, palette, width, height);
+  drawTimeGuides(source, palette, width, height);
+  lastArtRender = { items: source, palette, width, height, model };
+  updateTimeHud(source, null);
+}
+
+
+function drawTimeGuides(items, palette, width, height, focusIndex = -1) {
+  const times = items.map(item => safeTime(item)).filter(Number.isFinite);
+  if (!times.length) return;
+  const blockW = width / items.length;
+  artCtx.save();
+  artCtx.globalAlpha = 0.9;
+  artCtx.strokeStyle = 'rgba(255,255,255,0.16)';
+  artCtx.fillStyle = 'rgba(255,255,255,0.72)';
+  artCtx.font = '12px Arial';
+  artCtx.textBaseline = 'top';
+  const guideIndexes = pickGuideIndexes(items, width);
+  guideIndexes.forEach(index => {
+    const item = items[index];
+    const x = Math.min(width - 1, index * blockW);
+    artCtx.beginPath();
+    artCtx.moveTo(x, 0);
+    artCtx.lineTo(x, height);
+    artCtx.stroke();
+    const label = formatTimeGuide(item, items);
+    artCtx.save();
+    artCtx.translate(Math.min(width - 86, x + 4), 8 + (index % 2) * 18);
+    artCtx.fillStyle = palette.line;
+    artCtx.fillText(label, 0, 0);
+    artCtx.restore();
+  });
+  if (focusIndex >= 0 && focusIndex < items.length) {
+    const x = focusIndex * blockW + blockW / 2;
+    artCtx.strokeStyle = palette.accent;
+    artCtx.lineWidth = 2;
+    artCtx.beginPath();
+    artCtx.moveTo(x, 0);
+    artCtx.lineTo(x, height);
+    artCtx.stroke();
+  }
+  artCtx.restore();
+}
+
+function pickGuideIndexes(items, width) {
+  const targetCount = Math.max(4, Math.min(12, Math.floor(width / 140)));
+  const indexes = new Set([0, items.length - 1]);
+  const starts = items.map(item => safeTime(item));
+  const start = starts[0];
+  const end = starts[starts.length - 1];
+  const span = end - start;
+  if (span > ONE_HOUR_MS) {
+    const interval = span <= 6 * ONE_HOUR_MS ? 30 * ONE_MINUTE_MS : ONE_HOUR_MS;
+    let marker = Math.ceil(start / interval) * interval;
+    while (marker <= end) {
+      indexes.add(nearestIndex(starts, marker));
+      marker += interval;
+    }
+  }
+  const step = Math.max(1, Math.floor(items.length / targetCount));
+  for (let index = 0; index < items.length; index += step) indexes.add(index);
+  return Array.from(indexes).filter(index => index >= 0 && index < items.length).sort((a, b) => a - b);
+}
+
+function nearestIndex(times, target) {
+  let best = 0;
+  times.forEach((time, index) => {
+    if (Math.abs(time - target) < Math.abs(times[best] - target)) best = index;
+  });
+  return best;
+}
+
+function formatTimeGuide(item, items) {
+  const date = new Date(item.startTime || item.timestamp);
+  const first = new Date(items[0].startTime || items[0].timestamp);
+  const last = new Date(items[items.length - 1].endTime || items[items.length - 1].timestamp);
+  const showDate = first.toDateString() !== last.toDateString();
+  return date.toLocaleString([], showDate ? { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' } : { hour: 'numeric', minute: '2-digit' });
+}
+
+function updateTimeHud(items, focusIndex) {
+  if (!timeHud) return;
+  if (!items || !items.length) {
+    timeHud.innerHTML = 'Timeline ready — record audio, then hover the artwork to inspect exact moments like 2:00 PM or 2:30 PM.';
+    return;
+  }
+  const item = items[Math.max(0, Math.min(items.length - 1, focusIndex ?? items.length - 1))];
+  const sample = normalizeSample(item);
+  const range = `${formatDateTime(item.startTime || item.timestamp)} → ${formatDateTime(item.endTime || item.timestamp)}`;
+  const band = dominantBand(sample);
+  timeHud.innerHTML = `<strong>${focusIndex === null ? 'Latest visible moment' : 'Inspecting moment'}</strong><br>${range}<br>Energy ${sample.averageEnergy.toFixed(1)} · ${intensityClass(sample.averageEnergy).label} · dominant ${band.label}`;
+}
+
+function formatDateTime(value) {
+  const time = Date.parse(value);
+  if (!Number.isFinite(time)) return 'unknown time';
+  return new Date(time).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit' });
+}
+
+function inspectArtAt(clientX) {
+  if (!lastArtRender || !lastArtRender.items.length) return;
+  const rect = artCanvas.getBoundingClientRect();
+  const x = Math.max(0, Math.min(rect.width, clientX - rect.left));
+  const index = Math.min(lastArtRender.items.length - 1, Math.floor((x / Math.max(1, rect.width)) * lastArtRender.items.length));
+  renderArt(lastArtRender.model);
+  drawTimeGuides(lastArtRender.items, lastArtRender.palette, lastArtRender.width, lastArtRender.height, index);
+  updateTimeHud(lastArtRender.items, index);
 }
 
 function chooseArtComposites(model, width) {
@@ -765,6 +903,8 @@ function clearDisplays() {
 
 Object.keys(configControls).forEach(id => document.getElementById(id).addEventListener('change', readConfigControls));
 document.getElementById('artSeed').addEventListener('input', readConfigControls);
+artCanvas.addEventListener('mousemove', event => inspectArtAt(event.clientX));
+artCanvas.addEventListener('mouseleave', () => { if (lastArtRender) { renderArt(lastArtRender.model); updateTimeHud(lastArtRender.items, null); } });
 window.addEventListener('resize', resizeArtCanvas);
 applyConfig();
 initCharts();
