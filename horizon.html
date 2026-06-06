@@ -4,17 +4,32 @@
   <meta charset="UTF-8">
   <title>MAD Horizons v1.2</title>
   <style>
-    body { margin: 0; background: #000; color: #fff; font-family: Arial, sans-serif; overflow: hidden; }
+    body { margin: 0; background: #000; color: #fff; font-family: Arial, sans-serif; overflow-x: hidden; overflow-y: auto; }
     .controls, .config-row { padding: 10px; background: #111; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
     button, select, input { background: #333; color: white; border: none; padding: 8px 12px; cursor: pointer; }
     input[type="file"] { max-width: 210px; }
     label { color: #ccc; display: flex; align-items: center; gap: 6px; }
     details { background: #090909; border-top: 1px solid #222; }
     summary { cursor: pointer; padding: 8px 10px; color: #9df; }
-    #artCanvas { display: block; width: 100%; height: calc(100vh - 245px); min-height: 360px; background: #090710; }
-    .art-stage { position: relative; }
-    .time-hud { position: absolute; top: 14px; right: 16px; max-width: min(420px, 48vw); padding: 10px 12px; border: 1px solid rgba(157, 243, 255, 0.28); border-radius: 12px; background: rgba(5, 8, 18, 0.72); color: #eaffff; font-size: 13px; line-height: 1.35; pointer-events: none; box-shadow: 0 12px 30px rgba(0,0,0,0.35); backdrop-filter: blur(6px); }
+    #artCanvas { display: block; width: 100%; height: clamp(560px, calc(100svh - 230px), 980px); min-height: 560px; background: #090710; }
+    .art-stage { position: relative; min-height: 560px; }
+    .time-hud { display: none; position: absolute; top: 14px; right: 16px; max-width: min(420px, calc(100vw - 32px)); padding: 10px 12px; border: 1px solid rgba(157, 243, 255, 0.28); border-radius: 12px; background: rgba(5, 8, 18, 0.72); color: #eaffff; font-size: 13px; line-height: 1.35; pointer-events: none; box-shadow: 0 12px 30px rgba(0,0,0,0.35); backdrop-filter: blur(6px); z-index: 5; }
+    .time-hud.visible { display: block; }
     .time-hud strong { color: #7fffd4; }
+    .moment-modal { position: fixed; inset: 0; display: none; align-items: center; justify-content: center; padding: 18px; background: rgba(0,0,0,0.68); z-index: 20; }
+    .moment-modal.open { display: flex; }
+    .moment-card { width: min(720px, 96vw); max-height: 92vh; overflow: auto; border: 1px solid rgba(157, 243, 255, 0.32); border-radius: 16px; background: #071021; color: #effcff; box-shadow: 0 22px 70px rgba(0,0,0,0.65); }
+    .moment-card header, .moment-card footer { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 14px 16px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+    .moment-card footer { border-top: 1px solid rgba(255,255,255,0.08); border-bottom: 0; justify-content: flex-end; }
+    .moment-body { display: grid; grid-template-columns: minmax(0, 1fr) minmax(220px, 0.8fr); gap: 14px; padding: 16px; }
+    .moment-stats { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 8px 12px; font-size: 13px; }
+    .moment-stats dt { color: #9df3ff; }
+    .moment-stats dd { margin: 0; }
+    #momentGraphic { width: 100%; height: 180px; border-radius: 10px; background: #030712; }
+    .note-editor { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    #momentNote { min-height: 140px; resize: vertical; padding: 10px; border: 1px solid rgba(157, 243, 255, 0.2); background: #050916; color: #fff; }
+    .note-preview { min-height: 140px; padding: 10px; border: 1px solid rgba(157, 243, 255, 0.16); border-radius: 8px; background: rgba(255,255,255,0.035); color: #e9ffff; overflow: auto; }
+    @media (max-width: 680px) { .moment-body, .note-editor { grid-template-columns: 1fr; } }
     .panel-container { display: none; flex-direction: column; height: 300px; overflow-y: auto; opacity: 0.45; }
     .panel { flex: none; height: 350px; border-bottom: 1px solid #444; position: relative; padding: 5px; }
     .label { font-size: 18px; padding: 5px 10px; }
@@ -49,7 +64,8 @@
   <details open>
     <summary>Generative Artwork</summary>
     <div class="config-row">
-      <label>Mode<select id="artMode"><option value="story">Story</option><option value="shape">Shape</option><option value="color">Color</option><option value="scale">Scale</option><option value="weave">Weave</option></select></label>
+      <label>Horizon Mode<select id="artMode"><option value="stacked" selected>Stacked Color</option><option value="line">Line Chart</option><option value="percent">% Interval Patch</option></select></label>
+      <label>Patch Split<select id="artSegments"><option value="2">Halves</option><option value="3">Thirds</option><option value="4">Fourths</option><option value="5" selected>Fifths</option><option value="6">Sixths</option><option value="7">Sevenths</option><option value="8">Eighths</option><option value="9">Ninths</option><option value="10">Tenths</option></select></label>
       <label>Seed<input id="artSeed" value="horizon"></label>
       <label>Palette<select id="artPalette"><option value="aurora" selected>Aurora</option><option value="dusk">Dusk</option><option value="ember">Ember</option><option value="ocean">Ocean</option><option value="forest">Forest</option><option value="neon">Neon</option><option value="monochrome">Monochrome</option></select></label>
       <label>Color By<select id="artColorBy"><option value="intensity">Intensity</option><option value="frequency">Frequency</option></select></label>
@@ -62,7 +78,30 @@
   <div class="status" id="status">Idle</div>
   <div class="art-stage">
     <canvas id="artCanvas"></canvas>
-    <div class="time-hud" id="timeHud">Sound quilt ready — record audio, import data, or replay an archive to inspect noise pollution over seconds, minutes, hours, and days.</div>
+    <div class="time-hud" id="timeHud" aria-live="polite"></div>
+  </div>
+  <div class="moment-modal" id="momentModal" role="dialog" aria-modal="true" aria-labelledby="momentTitle">
+    <div class="moment-card">
+      <header>
+        <strong id="momentTitle">Recorded moment</strong>
+        <button type="button" onclick="closeMomentPopup()">Close</button>
+      </header>
+      <div class="moment-body">
+        <dl class="moment-stats" id="momentStats"></dl>
+        <canvas id="momentGraphic" width="520" height="180"></canvas>
+        <div class="note-editor">
+          <label style="display:block">Markdown note<textarea id="momentNote" placeholder="Add a note in Markdown..."></textarea></label>
+          <div>
+            <strong>Preview</strong>
+            <div class="note-preview" id="momentNotePreview"></div>
+          </div>
+        </div>
+      </div>
+      <footer>
+        <button type="button" onclick="closeMomentPopup()">Cancel</button>
+        <button type="button" onclick="saveMomentNote()">Save Note</button>
+      </footer>
+    </div>
   </div>
   <details>
     <summary>Legacy measurement horizons</summary>
@@ -115,7 +154,7 @@ const PALETTES = {
   neon: { background: '#020006', quiet: '#24004d', ambient: '#4b00b8', moderate: '#006cff', loud: '#00f5ff', louder: '#39ff14', loudest: '#fffb00', accent: '#ff2bd6', line: '#ffffff' }
 };
 const timeConfig = { source: 'all', range: 'last24h', startDate: '', endDate: '', weekday: 'any', timeStart: '', timeEnd: '', compare: 'none' };
-const artConfig = { mode: 'story', seed: 'horizon', palette: 'aurora', colorBy: 'intensity' };
+const artConfig = { mode: 'stacked', segments: '5', seed: 'horizon', palette: 'aurora', colorBy: 'intensity' };
 let viewMode = 'mean';
 const canvases = [1,2,3,4,5].map(n => document.getElementById('canvas'+n));
 const charts = [];
@@ -131,9 +170,11 @@ let replayTimer = null;
 let replaySamples = [];
 let replayIndex = 0;
 let replaySession = null;
+let selectedMoment = null;
+const momentNotes = new Map(JSON.parse(localStorage.getItem('madHorizonMomentNotes') || '[]'));
 const configControls = {
   timeSource: 'source', timeRange: 'range', timeStartDate: 'startDate', timeEndDate: 'endDate', timeWeekday: 'weekday', timeStart: 'timeStart', timeEnd: 'timeEnd', timeCompare: 'compare',
-  artMode: 'mode', artSeed: 'seed', artPalette: 'palette', artColorBy: 'colorBy'
+  artMode: 'mode', artSegments: 'segments', artSeed: 'seed', artPalette: 'palette', artColorBy: 'colorBy'
 };
 
 function setStatus(msg, color = "#0f0") {
@@ -582,6 +623,11 @@ function groupByMonth(samples) {
 }
 
 function resizeArtCanvas() {
+  const viewportH = window.innerHeight || document.documentElement.clientHeight || 800;
+  const viewportW = window.innerWidth || document.documentElement.clientWidth || 800;
+  const controlsH = Math.max(190, artCanvas.getBoundingClientRect().top);
+  const targetH = viewportW >= viewportH ? Math.max(560, viewportH - controlsH - 8) : Math.max(860, viewportH - controlsH - 8);
+  artCanvas.style.height = `${Math.min(1100, targetH)}px`;
   const rect = artCanvas.getBoundingClientRect();
   const ratio = window.devicePixelRatio || 1;
   artCanvas.width = Math.max(1, Math.floor(rect.width * ratio));
@@ -601,13 +647,13 @@ function renderArt(model = buildHorizonModel()) {
   if (!model || !Array.isArray(model.samples) || !model.samples.length) {
     drawSoundQuiltEmptyState(palette);
     lastArtRender = null;
-    updateTimeHud([], null);
+    hideTimeHud();
     return;
   }
   const quilt = buildSoundQuilt(model.samples);
   renderSoundQuilt(quilt, palette, width, height);
   lastArtRender = { items: quilt.inspectItems, palette, width, height, model, quilt };
-  updateTimeHud(quilt.inspectItems, null);
+  hideTimeHud();
 }
 
 function drawSoundQuiltEmptyState(palette) {
@@ -616,24 +662,29 @@ function drawSoundQuiltEmptyState(palette) {
   artCtx.font = '18px Arial';
   artCtx.fillText('Start recording or import an archive to paint your sound quilt.', 24, 42);
   artCtx.font = '13px Arial';
-  artCtx.fillText('Rows: 60 seconds · 5 minutes · 10 minutes · hour epilogue · last 24 hours · previous two days.', 24, 68);
+  artCtx.fillText('Modes: stacked color · line chart · percent patch. Minute and hour each use four 3×5 blocks; day shows hour blocks.', 24, 68);
   artCtx.globalAlpha = 1;
 }
 
 function buildSoundQuilt(samples) {
   const ordered = samples.map(normalizeSample).filter(sample => Number.isFinite(toTime(sample))).sort((a, b) => safeTime(a) - safeTime(b));
   const anchor = ordered.length ? safeTime(ordered[ordered.length - 1]) : Date.now();
+  const minuteSeconds = fixedTimeBuckets(ordered, anchor - ONE_MINUTE_MS, ONE_SECOND_MS, 60, 'minute second');
+  const hourMinutes = fixedTimeBuckets(ordered, anchor - ONE_HOUR_MS, ONE_MINUTE_MS, 60, 'hour minute');
   return {
-    seconds: fixedTimeBuckets(ordered, anchor - 60 * 1000, 1000, 60, 'second'),
-    fiveMinutes: fixedTimeBuckets(ordered, anchor - 5 * ONE_MINUTE_MS, 1000, 300, '5-minute second'),
-    tenMinutes: fixedTimeBuckets(ordered, anchor - 10 * ONE_MINUTE_MS, 1000, 600, '10-minute second'),
-    hour: fixedTimeBuckets(ordered, anchor - ONE_HOUR_MS, ONE_HOUR_MS / 100, 100, 'hour cell'),
-    last12: fixedTimeBuckets(ordered, anchor - 12 * ONE_HOUR_MS, 12 * ONE_HOUR_MS / 30, 30, 'last 12 hours'),
-    prior12: fixedTimeBuckets(ordered, anchor - 24 * ONE_HOUR_MS, 6 * ONE_HOUR_MS, 2, 'prior 12 hours'),
-    previousDay: fixedTimeBuckets(ordered, anchor - 48 * ONE_HOUR_MS, 24 * ONE_HOUR_MS / 24, 24, 'previous day'),
-    dayBefore: fixedTimeBuckets(ordered, anchor - 72 * ONE_HOUR_MS, 24 * ONE_HOUR_MS / 24, 24, 'day before previous'),
+    minuteTiles: chunkCells(minuteSeconds, 15),
+    hourTiles: chunkCells(hourMinutes, 15),
+    dayHours: fixedTimeBuckets(ordered, anchor - DAY_MS, ONE_HOUR_MS, 24, 'day hour'),
+    previousDay: fixedTimeBuckets(ordered, anchor - 2 * DAY_MS, ONE_HOUR_MS, 24, 'previous day hour'),
+    dayBefore: fixedTimeBuckets(ordered, anchor - 3 * DAY_MS, ONE_HOUR_MS, 24, 'day before hour'),
     inspectItems: ordered
   };
+}
+
+function chunkCells(cells, size) {
+  const chunks = [];
+  for (let index = 0; index < cells.length; index += size) chunks.push(cells.slice(index, index + size));
+  return chunks;
 }
 
 function fixedTimeBuckets(samples, startMs, intervalMs, count, label) {
@@ -658,38 +709,123 @@ function emptyBucket(start, end) {
 }
 
 function renderSoundQuilt(quilt, palette, width, height) {
-  const pad = Math.max(10, Math.min(18, width * 0.018));
-  const labelW = Math.min(132, Math.max(78, width * 0.16));
-  const gap = 8;
-  const usableW = width - pad * 2 - labelW;
+  const pad = Math.max(10, Math.min(22, width * 0.025));
+  const gap = Math.max(8, Math.min(16, width * 0.018));
+  const legendH = 34;
   let y = pad;
   artCtx.save();
   drawQuiltTitle(palette, pad, y, width);
-  y += 34;
-  y = drawCellRow('60 seconds', quilt.seconds, pad, labelW, y, usableW, Math.max(8, Math.min(18, height * 0.035)), palette, 60) + gap;
-  y = drawCellRow('5 minutes', quilt.fiveMinutes, pad, labelW, y, usableW, Math.max(6, Math.min(14, height * 0.026)), palette, 300) + gap;
-  y = drawCellRow('10 minutes', quilt.tenMinutes, pad, labelW, y, usableW, Math.max(5, Math.min(12, height * 0.022)), palette, 600) + gap + 2;
-  const squareSize = Math.min(usableW, Math.max(112, Math.min(230, height * 0.28)));
-  drawHourEpilogue(quilt.hour, pad, labelW, y, squareSize, palette);
-  const rightX = pad + labelW + squareSize + gap * 2;
-  const rightW = width - rightX - pad;
-  if (rightW >= 160) {
-    drawCellRow('last 12h', quilt.last12.slice(0, 10), rightX - labelW, labelW, y, rightW, 18, palette, 10);
-    drawCellRow('last 12h', quilt.last12.slice(10, 20), rightX - labelW, labelW, y + 28, rightW, 18, palette, 10);
-    drawCellRow('last 12h', quilt.last12.slice(20, 30), rightX - labelW, labelW, y + 56, rightW, 18, palette, 10);
-    drawCellRow('prior 12h', quilt.prior12, rightX - labelW, labelW, y + 90, rightW, 24, palette, 2);
-    y += squareSize + gap + 10;
+  y += width > 720 ? 34 : 50;
+
+  const landscape = width >= 860 && (window.innerWidth || width) >= (window.innerHeight || height);
+  const contentBottom = height - legendH - pad;
+  const cardW = landscape ? (width - pad * 2 - gap) / 2 : width - pad * 2;
+  const minuteH = landscape ? Math.min(260, Math.max(188, (contentBottom - y) * 0.44)) : Math.min(250, Math.max(196, width * 0.68));
+  const hourH = minuteH;
+  const dayH = landscape ? Math.max(120, Math.min(190, contentBottom - y - minuteH - gap)) : Math.max(184, Math.min(260, width * 0.58));
+
+  if (landscape) {
+    drawTileSection('Minute — 4 × 3×5 seconds', quilt.minuteTiles, pad, y, cardW, minuteH, palette);
+    drawTileSection('Hour — 4 × 3×5 minutes', quilt.hourTiles, pad + cardW + gap, y, cardW, hourH, palette);
+    y += Math.max(minuteH, hourH) + gap;
+    drawHourBlockSection('Day — 24 hour blocks', quilt.dayHours, pad, y, width - pad * 2, dayH, palette);
   } else {
-    y += squareSize + gap;
-    y = drawCellRow('last 12h', quilt.last12.slice(0, 10), pad, labelW, y, usableW, 16, palette, 10) + 4;
-    y = drawCellRow('last 12h', quilt.last12.slice(10, 20), pad, labelW, y, usableW, 16, palette, 10) + 4;
-    y = drawCellRow('last 12h', quilt.last12.slice(20, 30), pad, labelW, y, usableW, 16, palette, 10) + 4;
-    y = drawCellRow('prior 12h', quilt.prior12, pad, labelW, y, usableW, 20, palette, 2) + gap;
+    drawTileSection('Minute — 4 × 3×5 seconds', quilt.minuteTiles, pad, y, cardW, minuteH, palette);
+    y += minuteH + gap;
+    drawTileSection('Hour — 4 × 3×5 minutes', quilt.hourTiles, pad, y, cardW, hourH, palette);
+    y += hourH + gap;
+    drawHourBlockSection('Day — 24 hour blocks', quilt.dayHours, pad, y, cardW, dayH, palette);
   }
-  y = drawCellRow('previous day', quilt.previousDay, pad, labelW, y, usableW, Math.max(14, Math.min(22, height * 0.04)), palette, 24) + gap;
-  drawCellRow('day before', quilt.dayBefore, pad, labelW, y, usableW, Math.max(14, Math.min(22, height * 0.04)), palette, 24);
-  drawLegend(palette, pad, height - 24);
+
+  const previousY = y + dayH + gap;
+  if (previousY + 50 < contentBottom) {
+    drawCompactHistory('Previous day', quilt.previousDay, pad, previousY, width - pad * 2, 20, palette);
+    drawCompactHistory('Day before', quilt.dayBefore, pad, previousY + 26, width - pad * 2, 20, palette);
+  }
+  drawLegend(palette, pad, height - 22);
   artCtx.restore();
+}
+
+function drawTileSection(label, tileGroups, x, y, width, height, palette) {
+  drawSectionFrame(label, x, y, width, height, palette);
+  const innerPad = 14;
+  const top = y + 34;
+  const innerX = x + innerPad;
+  const innerY = top;
+  const innerW = width - innerPad * 2;
+  const innerH = height - 46;
+  const tileGap = Math.max(8, Math.min(14, width * 0.018));
+  const columns = width >= 520 ? 2 : 1;
+  const rows = Math.ceil(tileGroups.length / columns);
+  const tileW = (innerW - tileGap * (columns - 1)) / columns;
+  const tileH = (innerH - tileGap * (rows - 1)) / rows;
+  tileGroups.forEach((cells, index) => {
+    const tx = innerX + (index % columns) * (tileW + tileGap);
+    const ty = innerY + Math.floor(index / columns) * (tileH + tileGap);
+    drawThreeByFiveTile(cells, tx, ty, tileW, tileH, palette, index + 1);
+  });
+}
+
+function drawSectionFrame(label, x, y, width, height, palette) {
+  artCtx.fillStyle = 'rgba(255,255,255,0.035)';
+  artCtx.fillRect(x, y, width, height);
+  artCtx.strokeStyle = 'rgba(125,180,255,0.16)';
+  artCtx.strokeRect(x + 0.5, y + 0.5, width - 1, height - 1);
+  artCtx.fillStyle = palette.line;
+  artCtx.font = '700 13px Arial';
+  artCtx.textBaseline = 'top';
+  artCtx.fillText(label, x + 12, y + 10);
+}
+
+function drawThreeByFiveTile(cells, x, y, width, height, palette, tileNumber) {
+  const labelH = 16;
+  artCtx.fillStyle = 'rgba(255,255,255,0.58)';
+  artCtx.font = '10px Arial';
+  artCtx.textBaseline = 'top';
+  artCtx.fillText(`segment ${tileNumber}`, x, y);
+  const gridY = y + labelH;
+  const gridH = Math.max(1, height - labelH);
+  const gap = 2;
+  const cellW = (width - gap * 4) / 5;
+  const cellH = (gridH - gap * 2) / 3;
+  cells.forEach((cell, index) => {
+    const cx = x + (index % 5) * (cellW + gap);
+    const cy = gridY + Math.floor(index / 5) * (cellH + gap);
+    drawIntensityCell(cell, cx, cy, cellW, cellH, palette);
+  });
+  if (artConfig.mode === 'line') drawMiniLine(cells, x, gridY, width, gridH, palette.line);
+}
+
+function drawHourBlockSection(label, cells, x, y, width, height, palette) {
+  drawSectionFrame(label, x, y, width, height, palette);
+  const innerPad = 14;
+  const top = y + 34;
+  const innerX = x + innerPad;
+  const innerY = top;
+  const innerW = width - innerPad * 2;
+  const innerH = height - 46;
+  const columns = width >= 760 ? 12 : width >= 460 ? 8 : 6;
+  const rows = Math.ceil(cells.length / columns);
+  const gap = 2;
+  const cellW = (innerW - gap * (columns - 1)) / columns;
+  const cellH = (innerH - gap * (rows - 1)) / rows;
+  cells.forEach((cell, index) => {
+    const cx = innerX + (index % columns) * (cellW + gap);
+    const cy = innerY + Math.floor(index / columns) * (cellH + gap);
+    drawIntensityCell(cell, cx, cy, cellW, cellH, palette);
+  });
+  if (artConfig.mode === 'line') drawMiniLine(cells, innerX, innerY, innerW, innerH, palette.line);
+}
+
+function drawCompactHistory(label, cells, x, y, width, height, palette) {
+  const labelW = Math.min(96, Math.max(72, width * 0.16));
+  artCtx.fillStyle = 'rgba(255,255,255,0.62)';
+  artCtx.font = '11px Arial';
+  artCtx.textBaseline = 'middle';
+  artCtx.fillText(label, x, y + height / 2);
+  const startX = x + labelW;
+  const cellW = (width - labelW) / Math.max(1, cells.length);
+  cells.forEach((cell, index) => drawIntensityCell(cell, startX + index * cellW, y, Math.max(1, cellW - 1), height, palette));
 }
 
 function drawQuiltTitle(palette, x, y, width) {
@@ -745,15 +881,63 @@ function drawHourEpilogue(cells, x, labelW, y, size, palette) {
 function drawIntensityCell(item, x, y, width, height, palette) {
   const sample = normalizeSample(item);
   const fill = Math.max(0, Math.min(1, item.fillRatio ?? sample.averageEnergy / 180));
-  artCtx.fillStyle = 'rgba(255,255,255,0.055)';
+  artCtx.save();
+  artCtx.fillStyle = 'rgba(20, 90, 170, 0.42)';
   artCtx.fillRect(x, y, width, height);
-  if (item.empty || fill <= 0) return;
-  artCtx.fillStyle = colorForSample(sample, palette);
-  artCtx.globalAlpha = 0.88;
-  const fillHeight = Math.max(1, height * fill);
-  artCtx.fillRect(x, y + height - fillHeight, width, fillHeight);
-  artCtx.globalAlpha = 1;
+  artCtx.strokeStyle = 'rgba(125, 190, 255, 0.18)';
+  artCtx.strokeRect(x + 0.5, y + 0.5, Math.max(0, width - 1), Math.max(0, height - 1));
+  if (!item.empty && fill > 0) {
+    if (artConfig.mode === 'percent') {
+      drawPercentPatch(item, x, y, width, height, palette);
+    } else if (artConfig.mode === 'line') {
+      artCtx.fillStyle = colorForSample(sample, palette);
+      artCtx.globalAlpha = 0.24 + fill * 0.46;
+      artCtx.fillRect(x, y, width, height);
+      drawProfileLine(sample.profile, x + 2, y + 2, Math.max(1, width - 4), Math.max(1, height - 4), palette.line);
+    } else {
+      drawStackedCell(item, x, y, width, height, palette, fill);
+    }
+  }
+  artCtx.restore();
 }
+
+function drawStackedCell(item, x, y, width, height, palette, fill) {
+  const sample = normalizeSample(item);
+  const children = item.children && item.children.length ? item.children.map(normalizeSample) : [sample];
+  const total = children.reduce((sum, child) => sum + Math.max(1, child.sourceCount || 1), 0);
+  let cursorY = y + height;
+  children.slice(-8).forEach(child => {
+    const share = Math.max(1, child.sourceCount || 1) / total;
+    const sliceH = Math.max(1, height * fill * share);
+    cursorY -= sliceH;
+    artCtx.fillStyle = colorForSample(child, palette);
+    artCtx.globalAlpha = 0.82;
+    artCtx.fillRect(x, Math.max(y, cursorY), width, sliceH);
+  });
+}
+
+function drawPercentPatch(item, x, y, width, height, palette) {
+  const segments = Math.max(2, Math.min(10, Number(artConfig.segments) || 5));
+  const children = item.children && item.children.length ? item.children.map(normalizeSample) : [normalizeSample(item)];
+  const start = safeTime(item);
+  const end = Date.parse(item.endTime || item.timestamp);
+  const span = Number.isFinite(end - start) && end > start ? end - start : children.length;
+  for (let segment = 0; segment < segments; segment++) {
+    const sx = x + (segment / segments) * width;
+    const sw = Math.ceil(width / segments);
+    const sliceStart = start + (segment / segments) * span;
+    const sliceEnd = start + ((segment + 1) / segments) * span;
+    const slice = children.filter(child => {
+      const t = safeTime(child);
+      return Number.isFinite(t) && t >= sliceStart && t < sliceEnd;
+    });
+    const sample = slice.length ? aggregateBucket(slice) : children[Math.min(children.length - 1, Math.floor((segment / segments) * children.length))];
+    artCtx.fillStyle = colorForSample(sample, palette);
+    artCtx.globalAlpha = slice.length ? 0.9 : 0.34;
+    artCtx.fillRect(sx, y, sw, height);
+  }
+}
+
 
 function drawMiniLine(cells, x, y, width, height, color) {
   const values = cells.map(cell => normalizeSample(cell).averageEnergy);
@@ -862,17 +1046,28 @@ function formatTimeGuide(item, items) {
   return date.toLocaleString([], showDate ? { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' } : { hour: 'numeric', minute: '2-digit' });
 }
 
-function updateTimeHud(items, focusIndex) {
-  if (!timeHud) return;
-  if (!items || !items.length) {
-    timeHud.innerHTML = 'Timeline ready — record audio, then hover the artwork to inspect exact moments like 2:00 PM or 2:30 PM.';
-    return;
-  }
-  const item = items[Math.max(0, Math.min(items.length - 1, focusIndex ?? items.length - 1))];
+function updateTimeHud(items, focusIndex, clientX, clientY) {
+  if (!timeHud || !items || !items.length || focusIndex === null || focusIndex === undefined) return hideTimeHud();
+  const item = items[Math.max(0, Math.min(items.length - 1, focusIndex))];
   const sample = normalizeSample(item);
-  const range = `${formatDateTime(item.startTime || item.timestamp)} → ${formatDateTime(item.endTime || item.timestamp)}`;
   const band = dominantBand(sample);
-  timeHud.innerHTML = `<strong>${focusIndex === null ? 'Latest visible moment' : 'Inspecting moment'}</strong><br>${range}<br>Energy ${sample.averageEnergy.toFixed(1)} · ${intensityClass(sample.averageEnergy).label} · dominant ${band.label}`;
+  const levels = `avg ${sample.averageEnergy.toFixed(1)} · min ${sample.minEnergy.toFixed(1)} · max ${sample.maxEnergy.toFixed(1)}`;
+  timeHud.innerHTML = `<strong>${formatTimeOfDay(item.startTime || item.timestamp)}</strong><br>${levels}<br>${intensityClass(sample.averageEnergy).label} · dominant ${band.label} ${band.value.toFixed(1)}`;
+  timeHud.classList.add('visible');
+  if (Number.isFinite(clientX) && Number.isFinite(clientY)) positionTimeHud(clientX, clientY);
+}
+
+function hideTimeHud() {
+  if (timeHud) timeHud.classList.remove('visible');
+}
+
+function positionTimeHud(clientX, clientY) {
+  const stage = artCanvas.getBoundingClientRect();
+  const x = Math.max(10, Math.min(stage.width - 180, clientX - stage.left + 14));
+  const y = Math.max(10, Math.min(stage.height - 90, clientY - stage.top + 14));
+  timeHud.style.left = `${x}px`;
+  timeHud.style.right = 'auto';
+  timeHud.style.top = `${y}px`;
 }
 
 function formatDateTime(value) {
@@ -881,13 +1076,119 @@ function formatDateTime(value) {
   return new Date(time).toLocaleString([], { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit', second: '2-digit' });
 }
 
-function inspectArtAt(clientX) {
-  if (!lastArtRender || !lastArtRender.items.length) return;
+function formatTimeOfDay(value) {
+  const time = Date.parse(value);
+  if (!Number.isFinite(time)) return 'unknown time';
+  return new Date(time).toLocaleTimeString([], { hour: 'numeric', minute: '2-digit', second: '2-digit' });
+}
+
+function itemKey(item) {
+  return `${item.startTime || item.timestamp || ''}|${item.endTime || item.timestamp || ''}`;
+}
+
+function itemAtCanvasX(clientX) {
+  if (!lastArtRender || !lastArtRender.items.length) return null;
   const rect = artCanvas.getBoundingClientRect();
   const x = Math.max(0, Math.min(rect.width, clientX - rect.left));
   const index = Math.min(lastArtRender.items.length - 1, Math.floor((x / Math.max(1, rect.width)) * lastArtRender.items.length));
-  renderArt(lastArtRender.model);
-  updateTimeHud(lastArtRender.items, index);
+  return { item: lastArtRender.items[index], index };
+}
+
+function inspectArtAt(clientX, clientY) {
+  const hit = itemAtCanvasX(clientX);
+  if (!hit) return hideTimeHud();
+  updateTimeHud(lastArtRender.items, hit.index, clientX, clientY);
+}
+
+function openMomentPopup(clientX) {
+  const hit = itemAtCanvasX(clientX);
+  if (!hit) return;
+  selectedMoment = hit.item;
+  const sample = normalizeSample(selectedMoment);
+  const band = dominantBand(sample);
+  const note = momentNotes.get(itemKey(selectedMoment)) || selectedMoment.note || '';
+  document.getElementById('momentTitle').textContent = `Recorded moment · ${formatTimeOfDay(selectedMoment.startTime || selectedMoment.timestamp)}`;
+  document.getElementById('momentStats').innerHTML = `
+    <dt>Time</dt><dd>${formatDateTime(selectedMoment.startTime || selectedMoment.timestamp)} → ${formatDateTime(selectedMoment.endTime || selectedMoment.timestamp)}</dd>
+    <dt>Level</dt><dd>${intensityClass(sample.averageEnergy).label}</dd>
+    <dt>Energy</dt><dd>avg ${sample.averageEnergy.toFixed(1)} · min ${sample.minEnergy.toFixed(1)} · max ${sample.maxEnergy.toFixed(1)}</dd>
+    <dt>Dominant band</dt><dd>${band.label} (${band.value.toFixed(1)})</dd>
+    <dt>Readings</dt><dd>${sample.sourceCount || 1}</dd>`;
+  const noteEl = document.getElementById('momentNote');
+  noteEl.value = note;
+  updateNotePreview();
+  document.getElementById('momentModal').classList.add('open');
+  drawMomentGraphic(selectedMoment);
+}
+
+function closeMomentPopup() {
+  document.getElementById('momentModal').classList.remove('open');
+}
+
+function saveMomentNote() {
+  if (!selectedMoment) return closeMomentPopup();
+  const note = document.getElementById('momentNote').value;
+  selectedMoment.note = note;
+  momentNotes.set(itemKey(selectedMoment), note);
+  localStorage.setItem('madHorizonMomentNotes', JSON.stringify(Array.from(momentNotes.entries())));
+  closeMomentPopup();
+  setStatus('Moment note saved', '#9df');
+}
+
+function updateNotePreview() {
+  const preview = document.getElementById('momentNotePreview');
+  const note = document.getElementById('momentNote').value;
+  preview.innerHTML = renderMarkdown(note || '_No note yet._');
+}
+
+function renderMarkdown(markdown) {
+  return escapeHtml(markdown)
+    .replace(/^### (.*)$/gm, '<h3>$1</h3>')
+    .replace(/^## (.*)$/gm, '<h2>$1</h2>')
+    .replace(/^# (.*)$/gm, '<h1>$1</h1>')
+    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+    .replace(/\*(.*?)\*/g, '<em>$1</em>')
+    .replace(/`([^`]+)`/g, '<code>$1</code>')
+    .replace(/\n/g, '<br>');
+}
+
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[char]));
+}
+
+function drawMomentGraphic(item) {
+  const canvas = document.getElementById('momentGraphic');
+  const ctx = canvas.getContext('2d');
+  const sample = normalizeSample(item);
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#030712';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+  const palette = PALETTES[artConfig.palette] || PALETTES.aurora;
+  const bands = sample.bands || [];
+  const maxBand = Math.max(...bands, 1);
+  const barW = canvas.width / Math.max(1, bands.length);
+  bands.forEach((value, index) => {
+    const h = (value / maxBand) * (canvas.height - 46);
+    ctx.fillStyle = [palette.quiet, palette.ambient, palette.moderate, palette.loud, palette.louder, palette.loudest, palette.accent, palette.moderate, palette.ambient, palette.line][index] || palette.accent;
+    ctx.fillRect(index * barW + 5, canvas.height - h - 24, Math.max(2, barW - 10), h);
+    ctx.fillStyle = 'rgba(255,255,255,0.68)';
+    ctx.font = '10px Arial';
+    ctx.fillText(BAND_LABELS[index] || `${index + 1}`, index * barW + 5, canvas.height - 8);
+  });
+  drawCanvasProfile(ctx, sample.profile, 12, 10, canvas.width - 24, canvas.height - 44, palette.line);
+}
+
+function drawCanvasProfile(ctx, profile, x, y, width, height, color) {
+  const max = Math.max(...profile, 1);
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
+  ctx.beginPath();
+  profile.forEach((value, index) => {
+    const px = x + (index / Math.max(1, profile.length - 1)) * width;
+    const py = y + height - (value / max) * height;
+    if (index === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+  });
+  ctx.stroke();
 }
 
 
@@ -1146,8 +1447,15 @@ function clearDisplays() {
 
 Object.keys(configControls).forEach(id => document.getElementById(id).addEventListener('change', readConfigControls));
 document.getElementById('artSeed').addEventListener('input', readConfigControls);
-artCanvas.addEventListener('mousemove', event => inspectArtAt(event.clientX));
-artCanvas.addEventListener('mouseleave', () => { if (lastArtRender) { renderArt(lastArtRender.model); updateTimeHud(lastArtRender.items, null); } });
+artCanvas.addEventListener('mousemove', event => inspectArtAt(event.clientX, event.clientY));
+artCanvas.addEventListener('mouseleave', hideTimeHud);
+artCanvas.addEventListener('click', event => openMomentPopup(event.clientX));
+artCanvas.addEventListener('touchstart', event => {
+  const touch = event.touches && event.touches[0];
+  if (touch) openMomentPopup(touch.clientX);
+}, { passive: true });
+document.getElementById('momentNote').addEventListener('input', updateNotePreview);
+document.getElementById('momentModal').addEventListener('click', event => { if (event.target.id === 'momentModal') closeMomentPopup(); });
 window.addEventListener('resize', resizeArtCanvas);
 applyConfig();
 initCharts();
