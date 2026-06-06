@@ -5,14 +5,18 @@
   <title>MAD Horizons v1.2</title>
   <style>
     body { margin: 0; background: #000; color: #fff; font-family: Arial, sans-serif; overflow: hidden; }
-    .controls { padding: 10px; background: #111; display: flex; align-items: center; gap: 10px; }
-    button, select { background: #333; color: white; border: none; padding: 8px 12px; cursor: pointer; }
+    .controls, .config-row { padding: 10px; background: #111; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    button, select, input { background: #333; color: white; border: none; padding: 8px 12px; cursor: pointer; }
+    input[type="file"] { max-width: 210px; }
     label { color: #ccc; display: flex; align-items: center; gap: 6px; }
-    .panel-container { display: flex; flex-direction: column; height: calc(100vh - 100px); overflow-y: auto; }
+    details { background: #090909; border-top: 1px solid #222; }
+    summary { cursor: pointer; padding: 8px 10px; color: #9df; }
+    #artCanvas { display: block; width: 100%; height: calc(100vh - 245px); min-height: 360px; background: #090710; }
+    .panel-container { display: none; flex-direction: column; height: 300px; overflow-y: auto; opacity: 0.45; }
     .panel { flex: none; height: 350px; border-bottom: 1px solid #444; position: relative; padding: 5px; }
     .label { font-size: 18px; padding: 5px 10px; }
     canvas { width: 100%; height: 300px; background: black; }
-    .status { height: 40px; background: #222; color: #0f0; font-size: 16px; padding: 8px 12px; }
+    .status { height: 40px; background: #222; color: #0f0; font-size: 16px; padding: 8px 12px; box-sizing: border-box; }
   </style>
 </head>
 <body>
@@ -21,23 +25,45 @@
     <button onclick="stopCapture()">Stop</button>
     <button onclick="clearData()">Clear</button>
     <button onclick="downloadRaw()">Download Raw Data</button>
-    <label>View
-      <select id="viewMode" onchange="setViewMode(this.value)">
-        <option value="mean">Mean</option>
-        <option value="range">Trend</option>
-        <option value="shape">Shape</option>
-        <option value="nested">Nested</option>
-      </select>
-    </label>
   </div>
+  <details open>
+    <summary>Time Lens</summary>
+    <div class="config-row">
+      <label>Source<select id="timeSource"><option value="currentSession">Current Session</option><option value="all">All History</option></select></label>
+      <label>Range<select id="timeRange"><option value="currentSession">Current Session</option><option value="last24h">Last 24 Hours</option><option value="today">Today</option><option value="week">Week</option><option value="month">Month</option><option value="year">Year</option><option value="all">All</option><option value="custom">Custom</option></select></label>
+      <label>Start<input id="timeStartDate" type="date"></label>
+      <label>End<input id="timeEndDate" type="date"></label>
+      <label>Weekday<select id="timeWeekday"><option value="any">Any</option><option value="1">Monday</option><option value="2">Tuesday</option><option value="3">Wednesday</option><option value="4">Thursday</option><option value="5">Friday</option><option value="6">Saturday</option><option value="0">Sunday</option></select></label>
+      <label>Time Start<input id="timeStart" type="time"></label>
+      <label>Time End<input id="timeEnd" type="time"></label>
+      <label>Compare<select id="timeCompare"><option value="none">None</option><option value="weekdays">Weekdays</option><option value="hours">Hours</option><option value="days">Days</option><option value="months">Months</option></select></label>
+    </div>
+  </details>
+  <details open>
+    <summary>Generative Artwork</summary>
+    <div class="config-row">
+      <label>Mode<select id="artMode"><option value="story">Story</option><option value="shape">Shape</option><option value="color">Color</option><option value="scale">Scale</option><option value="weave">Weave</option></select></label>
+      <label>Seed<input id="artSeed" value="horizon"></label>
+      <label>Palette<select id="artPalette"><option value="dusk">Dusk</option><option value="ember">Ember</option><option value="ocean">Ocean</option><option value="forest">Forest</option><option value="monochrome">Monochrome</option></select></label>
+      <label>Color By<select id="artColorBy"><option value="intensity">Intensity</option><option value="frequency">Frequency</option></select></label>
+      <button onclick="saveConfig()">Save Config</button>
+      <button onclick="loadConfig()">Load Saved Config</button>
+      <button onclick="exportConfig()">Export Config</button>
+      <label>Import Config<input id="configImport" type="file" accept="application/json" onchange="importConfig(event)"></label>
+    </div>
+  </details>
   <div class="status" id="status">Idle</div>
-  <div class="panel-container">
-    <div class="panel"><div class="label">1 Minute Horizon</div><canvas id="canvas1"></canvas></div>
-    <div class="panel"><div class="label">10 Minute Horizon</div><canvas id="canvas2"></canvas></div>
-    <div class="panel"><div class="label">1 Hour Horizon</div><canvas id="canvas3"></canvas></div>
-    <div class="panel"><div class="label">8 Hour Horizon</div><canvas id="canvas4"></canvas></div>
-    <div class="panel"><div class="label">24 Hour Horizon</div><canvas id="canvas5"></canvas></div>
-  </div>
+  <canvas id="artCanvas"></canvas>
+  <details>
+    <summary>Legacy measurement horizons</summary>
+    <div class="panel-container" style="display:flex">
+      <div class="panel"><div class="label">Close Horizon</div><canvas id="canvas1"></canvas></div>
+      <div class="panel"><div class="label">Minute Horizon</div><canvas id="canvas2"></canvas></div>
+      <div class="panel"><div class="label">Hour Horizon</div><canvas id="canvas3"></canvas></div>
+      <div class="panel"><div class="label">Day Horizon</div><canvas id="canvas4"></canvas></div>
+      <div class="panel"><div class="label">Month Horizon</div><canvas id="canvas5"></canvas></div>
+    </div>
+  </details>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
 <script>
@@ -47,6 +73,8 @@ analyser.fftSize = 2048;
 const bufferLength = analyser.frequencyBinCount;
 const dataArray = new Uint8Array(bufferLength);
 let streamSource, captureInterval, fullCapture = [];
+const sessions = [];
+let currentSession = null;
 const BAND_COUNT = 10;
 const PROFILE_POINTS = 10;
 const ONE_SECOND_MS = 1000;
@@ -55,53 +83,93 @@ const TEN_MINUTES_MS = 10 * ONE_MINUTE_MS;
 const ONE_HOUR_MS = 60 * ONE_MINUTE_MS;
 const EIGHT_HOURS_MS = 8 * ONE_HOUR_MS;
 const DAY_MS = 24 * ONE_HOUR_MS;
-const VIEW_LABELS = {
-  mean: 'Mean environmental energy',
-  range: 'Energy trend with variation',
-  shape: 'Environmental energy profile',
-  nested: 'Nested energy profile'
+const WEEK_MS = 7 * DAY_MS;
+const MONTH_MS = 31 * DAY_MS;
+const YEAR_MS = 365 * DAY_MS;
+const INTENSITY_CLASSES = [
+  { label: 'Quiet', max: 20 },
+  { label: 'Ambient', max: 45 },
+  { label: 'Moderate', max: 80 },
+  { label: 'Loud', max: 120 },
+  { label: 'Louder', max: 180 },
+  { label: 'Loudest', max: Infinity }
+];
+const BAND_LABELS = ['Sub', 'Rumble', 'Low', 'Warmth', 'Body', 'Mid', 'Presence', 'Detail', 'Sharp', 'Air'];
+const PALETTES = {
+  dusk: { background: '#090710', quiet: '#25233f', ambient: '#3e3a6d', moderate: '#6a5191', loud: '#b45a86', louder: '#ec7a63', loudest: '#ffd38a', accent: '#9df3ff', line: '#f8e9ff' },
+  ember: { background: '#120806', quiet: '#2b1712', ambient: '#643018', moderate: '#a34a1d', loud: '#de6a22', louder: '#ff9838', loudest: '#ffe0a0', accent: '#ffcf6e', line: '#fff0c2' },
+  ocean: { background: '#031016', quiet: '#082637', ambient: '#0d4660', moderate: '#15748c', loud: '#20a7b2', louder: '#58d1d7', loudest: '#c1fffb', accent: '#7cc8ff', line: '#e5ffff' },
+  forest: { background: '#061107', quiet: '#122818', ambient: '#1f482b', moderate: '#3d7440', loud: '#68a554', louder: '#a1cf6b', loudest: '#efffc0', accent: '#d6a957', line: '#f4ffe0' },
+  monochrome: { background: '#050505', quiet: '#1c1c1c', ambient: '#333', moderate: '#666', loud: '#999', louder: '#ccc', loudest: '#fff', accent: '#aaa', line: '#f6f6f6' }
 };
+const timeConfig = { source: 'all', range: 'last24h', startDate: '', endDate: '', weekday: 'any', timeStart: '', timeEnd: '', compare: 'none' };
+const artConfig = { mode: 'story', seed: 'horizon', palette: 'dusk', colorBy: 'intensity' };
 let viewMode = 'mean';
 const canvases = [1,2,3,4,5].map(n => document.getElementById('canvas'+n));
 const charts = [];
 const statusEl = document.getElementById('status');
+const artCanvas = document.getElementById('artCanvas');
+const artCtx = artCanvas.getContext('2d');
+const configControls = {
+  timeSource: 'source', timeRange: 'range', timeStartDate: 'startDate', timeEndDate: 'endDate', timeWeekday: 'weekday', timeStart: 'timeStart', timeEnd: 'timeEnd', timeCompare: 'compare',
+  artMode: 'mode', artSeed: 'seed', artPalette: 'palette', artColorBy: 'colorBy'
+};
 
 function setStatus(msg, color = "#0f0") {
   statusEl.textContent = msg;
   statusEl.style.color = color;
 }
 
-function setViewMode(mode) {
-  viewMode = mode;
-  updatePanels();
-  setStatus(`View: ${VIEW_LABELS[mode]}`, "#0ff");
-}
-
 function startCapture() {
+  if (!currentSession) {
+    const startedAt = new Date().toISOString();
+    currentSession = { id: `session-${Date.now()}`, startedAt, stoppedAt: null, label: `Session ${sessions.length + 1}`, samples: [] };
+    sessions.push(currentSession);
+  }
   setStatus("Starting...");
   audioCtx.resume().then(() => {
     navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-      setStatus("Capturing Audio...");
+      stopStreamOnly();
+      setStatus("Capturing Audio", "#0f0");
       streamSource = audioCtx.createMediaStreamSource(stream);
       streamSource.connect(analyser);
+      clearInterval(captureInterval);
       captureInterval = setInterval(captureSample, 1000);
+      renderArt();
     }).catch(err => {
+      if (currentSession && !currentSession.samples.length) sessions.pop();
+      currentSession = null;
       setStatus("Mic Denied: "+err.name, "#f00");
       alert("Microphone access denied: "+err.message);
     });
   });
 }
 
-function stopCapture() {
+function stopStreamOnly() {
   clearInterval(captureInterval);
-  if (streamSource) streamSource.disconnect();
+  if (streamSource) {
+    const stream = streamSource.mediaStream;
+    streamSource.disconnect();
+    if (stream) stream.getTracks().forEach(track => track.stop());
+  }
+  streamSource = null;
+}
+
+function stopCapture() {
+  stopStreamOnly();
+  if (currentSession) currentSession.stoppedAt = new Date().toISOString();
+  currentSession = null;
+  updatePanels();
   setStatus("Stopped", "#ff0");
 }
 
 function clearData() {
   stopCapture();
+  sessions.length = 0;
+  currentSession = null;
   fullCapture = [];
   clearDisplays();
+  renderArt();
   setStatus("Cleared", "#0ff");
 }
 
@@ -114,91 +182,207 @@ function captureSample() {
     const slice = dataArray.slice(start, end);
     return slice.reduce((a,b)=>a+b,0)/slice.length;
   });
-  fullCapture.push({
+  const sample = {
     timestamp: now.toISOString(),
     startTime: now.toISOString(),
     endTime: now.toISOString(),
     energy: averageEnergy(bandData),
     bands: bandData
-  });
-  pruneCapture();
+  };
+  fullCapture.push(sample);
+  if (currentSession) currentSession.samples.push(sample);
   updatePanels();
 }
 
 function downloadRaw() {
-  const blob = new Blob([JSON.stringify(fullCapture, null, 2)], { type: "application/json" });
+  const payload = { exportedAt: new Date().toISOString(), sessions, samples: getAllSamples(), config: { artConfig, timeConfig } };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+  downloadBlob(blob, "mad_horizons_raw.json");
+}
+
+function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
-  a.download = "mad_horizons_raw.json";
+  a.download = filename;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+function saveConfig() {
+  localStorage.setItem('madHorizonConfig', JSON.stringify({ artConfig, timeConfig }));
+  setStatus('Config saved', '#9df');
+  renderArt();
+}
+
+function loadConfig() {
+  const saved = localStorage.getItem('madHorizonConfig');
+  if (!saved) return setStatus('No saved config', '#ff0');
+  mergeConfig(JSON.parse(saved));
+  applyConfig();
+  setStatus('Config loaded', '#9df');
+}
+
+function exportConfig() {
+  const blob = new Blob([JSON.stringify({ artConfig, timeConfig }, null, 2)], { type: 'application/json' });
+  downloadBlob(blob, 'mad_horizon_config.json');
+  setStatus('Config exported', '#9df');
+  renderArt();
+}
+
+function importConfig(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      mergeConfig(JSON.parse(reader.result));
+      applyConfig();
+      setStatus('Config imported', '#9df');
+    } catch (err) {
+      setStatus('Invalid config JSON', '#f00');
+    }
+    event.target.value = '';
+  };
+  reader.readAsText(file);
+}
+
+function mergeConfig(config) {
+  if (!config || typeof config !== 'object') throw new Error('Invalid config JSON');
+  Object.keys(timeConfig).forEach(key => {
+    if (config.timeConfig && Object.prototype.hasOwnProperty.call(config.timeConfig, key)) timeConfig[key] = String(config.timeConfig[key]);
+  });
+  Object.keys(artConfig).forEach(key => {
+    if (config.artConfig && Object.prototype.hasOwnProperty.call(config.artConfig, key)) artConfig[key] = String(config.artConfig[key]);
+  });
+}
+
+function applyConfig() {
+  Object.entries(configControls).forEach(([id, key]) => {
+    const el = document.getElementById(id);
+    const target = id.startsWith('time') ? timeConfig : artConfig;
+    if (el && Object.prototype.hasOwnProperty.call(target, key)) el.value = target[key];
+  });
+  updatePanels();
+}
+
+function readConfigControls() {
+  Object.entries(configControls).forEach(([id, key]) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const target = id.startsWith('time') ? timeConfig : artConfig;
+    target[key] = el.value;
+  });
+  updatePanels();
 }
 
 function initCharts() {
   for (let i = 0; i < 5; i++) {
     charts[i] = new Chart(canvases[i].getContext('2d'), {
       type: 'bar',
-      data: {
-        labels: [],
-        datasets: [{
-          label: 'Energy',
-          data: [],
-          backgroundColor: 'rgba(0, 200, 255, 0.85)',
-          stack: 'energy'
-        }]
-      },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        scales: {
-          x: { stacked: true },
-          y: { stacked: true, beginAtZero: true }
-        },
-        plugins: {
-          legend: { display: true },
-          zoom: {
-            pan: { enabled: true, mode: 'x' },
-            zoom: { wheel: {enabled: true}, pinch: {enabled: true}, mode: 'x' }
-          }
-        }
-      }
+      data: { labels: [], datasets: [{ label: 'Energy', data: [], backgroundColor: 'rgba(0, 200, 255, 0.45)', stack: 'energy' }] },
+      options: { responsive: true, maintainAspectRatio: false, scales: { x: { stacked: true }, y: { stacked: true, beginAtZero: true } }, plugins: { legend: { display: true }, zoom: { pan: { enabled: true, mode: 'x' }, zoom: { wheel: {enabled: true}, pinch: {enabled: true}, mode: 'x' } } } }
     });
   }
 }
 
 function updatePanels() {
-  const now = Date.now();
-  pruneCapture(now);
-
-  const last24h = fullCapture.filter(s => toTime(s) >= now - DAY_MS);
-  const oneMinute = last24h.filter(s => toTime(s) >= now - ONE_MINUTE_MS);
-  const minuteComposites = bucketSamples(last24h, ONE_MINUTE_MS);
-  const tenMinuteComposites = bucketSamples(minuteComposites, TEN_MINUTES_MS);
-  const hourComposites = bucketSamples(tenMinuteComposites, ONE_HOUR_MS);
-  const eightHourComposites = bucketSamples(hourComposites, EIGHT_HOURS_MS);
-
-  redrawChart(charts[0], oneMinute, viewMode);
-  redrawChart(charts[1], minuteComposites.filter(s => toTime(s) >= now - TEN_MINUTES_MS), viewMode);
-  redrawChart(charts[2], tenMinuteComposites.filter(s => toTime(s) >= now - ONE_HOUR_MS), viewMode);
-  redrawChart(charts[3], hourComposites.filter(s => toTime(s) >= now - EIGHT_HOURS_MS), viewMode);
-  redrawChart(charts[4], eightHourComposites.filter(s => toTime(s) >= now - DAY_MS), viewMode);
+  const model = buildHorizonModel();
+  redrawChart(charts[0], model.seconds, viewMode);
+  redrawChart(charts[1], model.minutes, viewMode);
+  redrawChart(charts[2], model.hours, viewMode);
+  redrawChart(charts[3], model.days, viewMode);
+  redrawChart(charts[4], model.months, viewMode);
+  renderArt(model);
 }
 
-function pruneCapture(now = Date.now()) {
-  fullCapture = fullCapture.filter(s => toTime(s) >= now - DAY_MS);
+function getAllSamples() {
+  const seen = new Set();
+  const collected = [];
+  const add = sample => {
+    const key = `${sample.timestamp || ''}|${sample.startTime || ''}|${sample.endTime || ''}`;
+    if (!seen.has(key)) {
+      seen.add(key);
+      collected.push(sample);
+    }
+  };
+  sessions.forEach(session => (session.samples || []).forEach(add));
+  fullCapture.forEach(add);
+  return collected.sort((a, b) => toTime(a) - toTime(b));
+}
+
+function filterSamplesByRange(samples, startTime, endTime) {
+  const start = startTime ? Date.parse(startTime) : -Infinity;
+  const end = endTime ? Date.parse(endTime) : Infinity;
+  return samples.filter(sample => {
+    const time = toTime(sample);
+    return time >= start && time <= end;
+  });
+}
+
+function filterSamplesByWeekday(samples, weekday) {
+  if (weekday === 'any') return samples;
+  return samples.filter(sample => new Date(toTime(sample)).getDay() === Number(weekday));
+}
+
+function filterSamplesByTimeOfDay(samples, startTime, endTime) {
+  if (!startTime && !endTime) return samples;
+  const toMinutes = value => {
+    const [h = 0, m = 0] = String(value || '00:00').split(':').map(Number);
+    return h * 60 + m;
+  };
+  const start = startTime ? toMinutes(startTime) : 0;
+  const end = endTime ? toMinutes(endTime) : 24 * 60 - 1;
+  return samples.filter(sample => {
+    const date = new Date(toTime(sample));
+    const minute = date.getHours() * 60 + date.getMinutes();
+    return start <= end ? minute >= start && minute <= end : minute >= start || minute <= end;
+  });
+}
+
+function filterSamplesForView(samples, config) {
+  let scoped = config.source === 'currentSession' && currentSession ? currentSession.samples.slice() : samples.slice();
+  const now = new Date();
+  if (config.range === 'currentSession') scoped = currentSession ? currentSession.samples.slice() : [];
+  if (config.range === 'last24h') scoped = filterSamplesByRange(scoped, new Date(now - DAY_MS).toISOString());
+  if (config.range === 'today') scoped = filterSamplesByRange(scoped, new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString());
+  if (config.range === 'week') scoped = filterSamplesByRange(scoped, new Date(now - WEEK_MS).toISOString());
+  if (config.range === 'month') scoped = filterSamplesByRange(scoped, new Date(now - MONTH_MS).toISOString());
+  if (config.range === 'year') scoped = filterSamplesByRange(scoped, new Date(now - YEAR_MS).toISOString());
+  if (config.range === 'custom') {
+    const start = config.startDate ? `${config.startDate}T00:00:00` : '';
+    const end = config.endDate ? `${config.endDate}T23:59:59` : '';
+    scoped = filterSamplesByRange(scoped, start, end);
+  }
+  scoped = filterSamplesByWeekday(scoped, config.weekday);
+  scoped = filterSamplesByTimeOfDay(scoped, config.timeStart, config.timeEnd);
+  return scoped.sort((a, b) => toTime(a) - toTime(b));
+}
+
+function buildHorizonModel() {
+  const samples = filterSamplesForView(getAllSamples(), timeConfig);
+  const seconds = samples.length > 900 ? bucketSamples(samples, Math.ceil((toTime(samples[samples.length - 1]) - toTime(samples[0])) / 900)) : samples.map(normalizeSample);
+  const minutes = bucketSamples(samples, ONE_MINUTE_MS);
+  const hours = bucketSamples(samples, ONE_HOUR_MS);
+  const days = bucketSamples(samples, DAY_MS);
+  const months = groupByMonth(samples);
+  let comparison = [];
+  if (timeConfig.compare === 'weekdays') comparison = groupByWeekday(samples);
+  if (timeConfig.compare === 'hours') comparison = groupByHourOfDay(samples);
+  if (timeConfig.compare === 'days') comparison = groupByDate(samples);
+  if (timeConfig.compare === 'months') comparison = groupByMonth(samples);
+  return { samples, seconds, minutes, hours, days, months, comparison };
 }
 
 function bucketSamples(samples, intervalMs) {
   const buckets = [];
   let current = [];
   let bucketStart = null;
-
   samples.forEach(sample => {
     const t = toTime(sample);
     if (bucketStart === null) bucketStart = t;
-
     if (t - bucketStart < intervalMs) {
       current.push(sample);
     } else {
@@ -207,7 +391,6 @@ function bucketSamples(samples, intervalMs) {
       bucketStart = t;
     }
   });
-
   if (current.length) buckets.push(aggregateBucket(current));
   return buckets;
 }
@@ -223,20 +406,10 @@ function aggregateBucket(bucket) {
   const profile = buildProfile(normalized);
   const startTime = new Date(Math.min(...normalized.map(sample => Date.parse(sample.startTime)))).toISOString();
   const endTime = new Date(Math.max(...normalized.map(sample => Date.parse(sample.endTime)))).toISOString();
+  const sourceCount = normalized.reduce((total, sample) => total + sample.sourceCount, 0);
+  const cumulativeEnergy = normalized.reduce((total, sample) => total + coerceEnergy(sample.cumulativeEnergy, sample.averageEnergy * sample.sourceCount), 0);
 
-  return {
-    timestamp: startTime,
-    startTime,
-    endTime,
-    energy,
-    averageEnergy: energy,
-    minEnergy,
-    maxEnergy,
-    profile,
-    bands,
-    children: normalized,
-    sourceCount: normalized.reduce((total, sample) => total + sample.sourceCount, 0)
-  };
+  return { timestamp: startTime, startTime, endTime, energy, averageEnergy: energy, minEnergy, maxEnergy, profile, bands, children: normalized, sourceCount, cumulativeEnergy };
 }
 
 function normalizeSample(sample) {
@@ -246,19 +419,215 @@ function normalizeSample(sample) {
   const maxEnergy = coerceEnergy(sample.maxEnergy, sample.max && averageEnergy(sample.max), energy);
   const profile = sample.profile || Array(PROFILE_POINTS).fill(energy);
   const timestamp = sample.timestamp || sample.startTime || new Date().toISOString();
+  const sourceCount = sample.sourceCount || 1;
+  const average = coerceEnergy(sample.averageEnergy, energy);
+  const cumulativeEnergy = coerceEnergy(sample.cumulativeEnergy, average * sourceCount);
 
-  return {
-    timestamp,
-    startTime: sample.startTime || timestamp,
-    endTime: sample.endTime || timestamp,
-    energy,
-    averageEnergy: coerceEnergy(sample.averageEnergy, energy),
-    minEnergy,
-    maxEnergy,
-    profile,
-    bands,
-    children: sample.children || [],
-    sourceCount: sample.sourceCount || 1
+  return { timestamp, startTime: sample.startTime || timestamp, endTime: sample.endTime || timestamp, energy, averageEnergy: average, minEnergy, maxEnergy, profile, bands, children: sample.children || [], sourceCount, cumulativeEnergy, label: sample.label };
+}
+
+function buildPeriodComposite(samples, label) {
+  if (!samples.length) return null;
+  const composite = aggregateBucket(samples);
+  composite.label = label;
+  return composite;
+}
+
+function groupBy(samples, keyFn, labelFn) {
+  const map = new Map();
+  samples.forEach(sample => {
+    const key = keyFn(sample);
+    if (!map.has(key)) map.set(key, []);
+    map.get(key).push(sample);
+  });
+  return Array.from(map.entries()).sort(([a], [b]) => String(a).localeCompare(String(b))).map(([key, group]) => buildPeriodComposite(group, labelFn(key))).filter(Boolean);
+}
+
+function groupByWeekday(samples) {
+  const names = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+  return groupBy(samples, sample => new Date(toTime(sample)).getDay(), key => names[key]);
+}
+
+function groupByHourOfDay(samples) {
+  return groupBy(samples, sample => new Date(toTime(sample)).getHours(), key => `${String(key).padStart(2, '0')}:00`);
+}
+
+function groupByDate(samples) {
+  return groupBy(samples, sample => new Date(toTime(sample)).toISOString().slice(0, 10), key => key);
+}
+
+function groupByMonth(samples) {
+  return groupBy(samples, sample => new Date(toTime(sample)).toISOString().slice(0, 7), key => key);
+}
+
+function resizeArtCanvas() {
+  const rect = artCanvas.getBoundingClientRect();
+  const ratio = window.devicePixelRatio || 1;
+  artCanvas.width = Math.max(1, Math.floor(rect.width * ratio));
+  artCanvas.height = Math.max(1, Math.floor(rect.height * ratio));
+  artCtx.setTransform(ratio, 0, 0, ratio, 0, 0);
+  renderArt();
+}
+
+function renderArt(model = buildHorizonModel()) {
+  if (!artCtx) return;
+  const width = artCanvas.clientWidth;
+  const height = artCanvas.clientHeight;
+  const palette = PALETTES[artConfig.palette] || PALETTES.dusk;
+  artCtx.clearRect(0, 0, width, height);
+  artCtx.fillStyle = palette.background;
+  artCtx.fillRect(0, 0, width, height);
+  const source = model.comparison.length ? model.comparison : chooseArtComposites(model, width);
+  if (!source.length) {
+    artCtx.fillStyle = palette.line;
+    artCtx.globalAlpha = 0.5;
+    artCtx.font = '18px Arial';
+    artCtx.fillText('Start recording to grow an open-ended sound archive.', 24, 44);
+    artCtx.globalAlpha = 1;
+    return;
+  }
+  if (artConfig.mode === 'shape') return renderShape(source, palette, width, height);
+  if (artConfig.mode === 'color') return renderColor(source, palette, width, height);
+  if (artConfig.mode === 'scale') return renderScale(source, palette, width, height);
+  if (artConfig.mode === 'weave') return renderWeave(source, palette, width, height);
+  renderStory(source, palette, width, height);
+}
+
+function chooseArtComposites(model, width) {
+  const maxBlocks = Math.max(24, Math.floor(width / 8));
+  const options = [model.seconds, model.minutes, model.hours, model.days, model.months].filter(items => items.length);
+  return options.find(items => items.length <= maxBlocks) || bucketSamples(model.samples, Math.ceil((toTime(model.samples[model.samples.length - 1]) - toTime(model.samples[0])) / maxBlocks));
+}
+
+function renderStory(items, palette, width, height) {
+  const maxEnergy = Math.max(...items.map(item => normalizeSample(item).cumulativeEnergy), 1);
+  const blockW = width / items.length;
+  items.forEach((item, i) => {
+    const sample = normalizeSample(item);
+    const h = Math.max(3, Math.sqrt(sample.cumulativeEnergy / maxEnergy) * height * 0.82);
+    const x = i * blockW;
+    const y = height - h;
+    artCtx.fillStyle = colorForSample(sample, palette);
+    artCtx.globalAlpha = 0.88;
+    artCtx.fillRect(x, y, Math.max(1, blockW - 1), h);
+    drawProfileLine(sample.profile, x, y + 8, Math.max(1, blockW - 1), Math.max(10, h - 16), palette.line);
+  });
+  artCtx.globalAlpha = 1;
+}
+
+function renderShape(items, palette, width, height) {
+  const blockW = width / items.length;
+  items.forEach((item, i) => {
+    const sample = normalizeSample(item);
+    artCtx.fillStyle = palette.ambient;
+    artCtx.globalAlpha = 0.72;
+    drawProfileShape(sample.profile, i * blockW, height * 0.1, Math.max(1, blockW - 1), height * 0.8, palette.line);
+  });
+  artCtx.globalAlpha = 1;
+}
+
+function renderColor(items, palette, width, height) {
+  const blockW = width / items.length;
+  items.forEach((item, i) => {
+    const sample = normalizeSample(item);
+    artCtx.fillStyle = colorForSample(sample, palette);
+    artCtx.fillRect(i * blockW, 0, Math.ceil(blockW), height);
+  });
+}
+
+function renderScale(items, palette, width, height) {
+  const rand = seededRandom(artConfig.seed);
+  const maxEnergy = Math.max(...items.map(item => normalizeSample(item).cumulativeEnergy), 1);
+  const blockW = width / items.length;
+  items.forEach((item, i) => {
+    const sample = normalizeSample(item);
+    const radius = Math.max(2, Math.sqrt(sample.cumulativeEnergy / maxEnergy) * Math.min(blockW, height) * 0.75);
+    artCtx.fillStyle = palette.accent;
+    artCtx.globalAlpha = 0.25 + (sample.averageEnergy / 255) * 0.65;
+    artCtx.beginPath();
+    artCtx.arc(i * blockW + blockW / 2, height * (0.3 + rand() * 0.4), radius, 0, Math.PI * 2);
+    artCtx.fill();
+  });
+  artCtx.globalAlpha = 1;
+}
+
+function renderWeave(items, palette, width, height) {
+  const rand = seededRandom(artConfig.seed);
+  const maxEnergy = Math.max(...items.map(item => normalizeSample(item).cumulativeEnergy), 1);
+  const blockW = width / Math.max(1, items.length - 1);
+  for (let pass = 0; pass < 4; pass++) {
+    artCtx.beginPath();
+    items.forEach((item, i) => {
+      const sample = normalizeSample(item);
+      const profile = sample.profile[pass % sample.profile.length] || sample.averageEnergy;
+      const x = i * blockW;
+      const y = height * (0.18 + pass * 0.18) + Math.sin(i * 0.7 + rand() * 2) * 14 - profile * 0.35;
+      if (i === 0) artCtx.moveTo(x, y); else artCtx.lineTo(x, y);
+      artCtx.strokeStyle = colorForSample(sample, palette);
+      artCtx.lineWidth = 1 + (sample.cumulativeEnergy / maxEnergy) * 18;
+    });
+    artCtx.globalAlpha = 0.65;
+    artCtx.stroke();
+  }
+  artCtx.globalAlpha = 1;
+}
+
+function drawProfileLine(profile, x, y, width, height, color) {
+  const max = Math.max(...profile, 1);
+  artCtx.strokeStyle = color;
+  artCtx.lineWidth = 1.5;
+  artCtx.globalAlpha = 0.8;
+  artCtx.beginPath();
+  profile.forEach((value, i) => {
+    const px = x + (i / Math.max(1, profile.length - 1)) * width;
+    const py = y + height - (value / max) * height;
+    if (i === 0) artCtx.moveTo(px, py); else artCtx.lineTo(px, py);
+  });
+  artCtx.stroke();
+}
+
+function drawProfileShape(profile, x, y, width, height, lineColor) {
+  const max = Math.max(...profile, 1);
+  artCtx.beginPath();
+  artCtx.moveTo(x, y + height);
+  profile.forEach((value, i) => {
+    artCtx.lineTo(x + (i / Math.max(1, profile.length - 1)) * width, y + height - (value / max) * height);
+  });
+  artCtx.lineTo(x + width, y + height);
+  artCtx.closePath();
+  artCtx.fill();
+  artCtx.strokeStyle = lineColor;
+  artCtx.stroke();
+}
+
+function colorForSample(sample, palette) {
+  if (artConfig.colorBy === 'frequency') {
+    const index = dominantBand(sample).index;
+    return [palette.quiet, palette.ambient, palette.moderate, palette.loud, palette.louder, palette.loudest, palette.accent, palette.line, palette.moderate, palette.ambient][index] || palette.accent;
+  }
+  return palette[intensityClass(sample.averageEnergy).label.toLowerCase()] || palette.accent;
+}
+
+function intensityClass(energy) {
+  return INTENSITY_CLASSES.find(item => energy <= item.max) || INTENSITY_CLASSES[INTENSITY_CLASSES.length - 1];
+}
+
+function dominantBand(sample) {
+  const bands = normalizeSample(sample).bands || [];
+  let index = 0;
+  bands.forEach((value, i) => { if (value > (bands[index] || 0)) index = i; });
+  return { index, label: BAND_LABELS[index] || 'Unknown', value: bands[index] || 0 };
+}
+
+function hashSeed(seed) {
+  return String(seed).split('').reduce((hash, char) => ((hash << 5) - hash + char.charCodeAt(0)) >>> 0, 2166136261);
+}
+
+function seededRandom(seed) {
+  let state = hashSeed(seed) || 1;
+  return function() {
+    state = (state * 1664525 + 1013904223) >>> 0;
+    return state / 4294967296;
   };
 }
 
@@ -275,11 +644,7 @@ function averageScalars(values) {
 function averageVectors(vectors) {
   const sums = Array(BAND_COUNT).fill(0);
   if (!vectors.length) return sums;
-
-  vectors.forEach(vector => {
-    vector.forEach((value, i) => sums[i] += value);
-  });
-
+  vectors.forEach(vector => vector.forEach((value, i) => sums[i] += value));
   return sums.map(sum => sum / vectors.length);
 }
 
@@ -287,17 +652,14 @@ function buildProfile(samples) {
   const profile = Array(PROFILE_POINTS).fill(0);
   const counts = Array(PROFILE_POINTS).fill(0);
   if (!samples.length) return profile;
-
   samples.forEach((sample, index) => {
     const profileSource = sample.profile && sample.profile.length ? sample.profile : [sample.energy || 0];
-
     profileSource.forEach((value, pointIndex) => {
       const slot = Math.min(PROFILE_POINTS - 1, Math.floor(((index + pointIndex / profileSource.length) / samples.length) * PROFILE_POINTS));
       profile[slot] += value;
       counts[slot] += 1;
     });
   });
-
   return profile.map((value, i) => counts[i] ? value / counts[i] : 0);
 }
 
@@ -315,6 +677,7 @@ function toTime(sample) {
 }
 
 function formatLabel(item) {
+  if (item.label) return item.label;
   const start = new Date(item.startTime || item.timestamp).toLocaleTimeString();
   const end = new Date(item.endTime || item.timestamp).toLocaleTimeString();
   return start === end ? start : `${start}-${end}`;
@@ -330,41 +693,27 @@ function scalarEnergySpread(sample) {
 
 function valuesForMode(item, mode) {
   const sample = normalizeSample(item);
-
-  if (mode === 'range') {
-    return [primaryEnergy(item, sample), scalarEnergySpread(sample)];
-  }
-
-  if (mode === 'shape') {
-    return sample.profile;
-  }
-
-  if (mode === 'nested') {
-    return childEnergyProfile(sample);
-  }
-
+  if (mode === 'range') return [primaryEnergy(item, sample), scalarEnergySpread(sample)];
+  if (mode === 'shape') return sample.profile;
+  if (mode === 'nested') return childEnergyProfile(sample);
   return [primaryEnergy(item, sample)];
 }
 
 function redrawChart(chart, data, mode) {
+  if (!chart) return;
   const isRangeView = mode === 'range';
   const isProfileView = mode === 'shape' || mode === 'nested';
   const datasetCount = isRangeView ? 2 : (isProfileView ? PROFILE_POINTS : 1);
   chart.data.labels = data.map(formatLabel);
   const values = data.map(item => valuesForMode(item, mode));
-
-  while (chart.data.datasets.length < datasetCount) {
-    chart.data.datasets.push({ label: '', data: [], backgroundColor: '', stack: 'energy' });
-  }
+  while (chart.data.datasets.length < datasetCount) chart.data.datasets.push({ label: '', data: [], backgroundColor: '', stack: 'energy' });
   chart.data.datasets.length = datasetCount;
-
   chart.data.datasets.forEach((dataset, i) => {
     dataset.label = datasetLabel(mode, i);
     dataset.data = values.map(value => value[i] || 0);
     dataset.backgroundColor = datasetColor(mode, i);
     dataset.stack = isProfileView ? 'profile' : 'energy';
   });
-
   chart.update();
 }
 
@@ -375,11 +724,10 @@ function datasetLabel(mode, index) {
 }
 
 function datasetColor(mode, index) {
-  if (mode === 'range') return index === 0 ? 'rgba(0, 200, 255, 0.85)' : 'rgba(255, 255, 255, 0.35)';
-  if (mode === 'shape' || mode === 'nested') return `hsl(${210 + index * 8},70%,${35 + index * 4}%)`;
-  return 'rgba(0, 200, 255, 0.85)';
+  if (mode === 'range') return index === 0 ? 'rgba(0, 200, 255, 0.45)' : 'rgba(255, 255, 255, 0.22)';
+  if (mode === 'shape' || mode === 'nested') return `hsla(${210 + index * 8},70%,${35 + index * 4}%,0.45)`;
+  return 'rgba(0, 200, 255, 0.45)';
 }
-
 
 function clearDisplays() {
   charts.forEach(chart => {
@@ -389,7 +737,12 @@ function clearDisplays() {
   });
 }
 
+Object.keys(configControls).forEach(id => document.getElementById(id).addEventListener('change', readConfigControls));
+document.getElementById('artSeed').addEventListener('input', readConfigControls);
+window.addEventListener('resize', resizeArtCanvas);
+applyConfig();
 initCharts();
+resizeArtCanvas();
 </script>
 </body>
 </html>
