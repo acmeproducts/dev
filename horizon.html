@@ -27,7 +27,11 @@
     <button onclick="startCapture()">Start</button>
     <button onclick="stopCapture()">Stop</button>
     <button onclick="clearData()">Clear</button>
-    <button onclick="downloadRaw()">Download Raw Data</button>
+    <button onclick="downloadRaw()">Export Data</button>
+    <label>Import Data<input id="dataImport" type="file" accept="application/json" onchange="importRawData(event)"></label>
+    <button onclick="startReplay(60)">Replay 60x</button>
+    <button onclick="startReplay(1)">Replay Real-Time</button>
+    <button onclick="stopReplay()">Stop Replay</button>
   </div>
   <details open>
     <summary>Time Lens</summary>
@@ -58,7 +62,7 @@
   <div class="status" id="status">Idle</div>
   <div class="art-stage">
     <canvas id="artCanvas"></canvas>
-    <div class="time-hud" id="timeHud">Timeline ready — record audio, then hover the artwork to inspect exact moments like 2:00 PM or 2:30 PM.</div>
+    <div class="time-hud" id="timeHud">Sound quilt ready — record audio, import data, or replay an archive to inspect noise pollution over seconds, minutes, hours, and days.</div>
   </div>
   <details>
     <summary>Legacy measurement horizons</summary>
@@ -123,6 +127,10 @@ let lastArtRender = null;
 let lastPanelUpdate = 0;
 let pendingPanelFrame = null;
 let lastChartUpdate = -Infinity;
+let replayTimer = null;
+let replaySamples = [];
+let replayIndex = 0;
+let replaySession = null;
 const configControls = {
   timeSource: 'source', timeRange: 'range', timeStartDate: 'startDate', timeEndDate: 'endDate', timeWeekday: 'weekday', timeStart: 'timeStart', timeEnd: 'timeEnd', timeCompare: 'compare',
   artMode: 'mode', artSeed: 'seed', artPalette: 'palette', artColorBy: 'colorBy'
@@ -173,6 +181,7 @@ function stopStreamOnly() {
 }
 
 function stopCapture() {
+  if (replayTimer) stopReplay(null);
   stopStreamOnly();
   if (currentSession) currentSession.stoppedAt = new Date().toISOString();
   currentSession = null;
@@ -206,16 +215,83 @@ function captureSample() {
     energy: averageEnergy(bandData),
     bands: bandData
   };
-  fullCapture.push(sample);
-  if (currentSession) currentSession.samples.push(sample);
+  recordSample(sample);
+}
+
+function recordSample(sample) {
+  const normalized = normalizeSample(sample);
+  fullCapture.push(normalized);
+  if (currentSession) currentSession.samples.push(normalized);
   requestPanelUpdate();
 }
 
 function downloadRaw() {
   const payload = { exportedAt: new Date().toISOString(), sessions, samples: getAllSamples(), config: { artConfig, timeConfig } };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-  downloadBlob(blob, "mad_horizons_raw.json");
+  downloadBlob(blob, "mad_horizons_sound_quilt.json");
 }
+
+function importRawData(event) {
+  const file = event.target.files && event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const payload = JSON.parse(reader.result);
+      const importedSessions = Array.isArray(payload.sessions) ? payload.sessions : [];
+      const importedSamples = importedSessions.length ? [] : (Array.isArray(payload.samples) ? payload.samples : (Array.isArray(payload) ? payload : []));
+      importedSessions.forEach(session => sessions.push({ ...session, samples: (session.samples || []).map(normalizeSample) }));
+      if (importedSamples.length) {
+        sessions.push({ id: `import-${Date.now()}`, startedAt: new Date().toISOString(), stoppedAt: new Date().toISOString(), label: `Imported ${new Date().toLocaleString()}`, samples: importedSamples.map(normalizeSample) });
+      }
+      if (payload.config) mergeConfig(payload.config);
+      applyConfig();
+      setStatus(`Imported ${importedSamples.length || importedSessions.length} sound records`, '#9df');
+    } catch (err) {
+      setStatus('Invalid data JSON', '#f00');
+    }
+    event.target.value = '';
+  };
+  reader.readAsText(file);
+}
+
+function startReplay(speed = 60) {
+  stopReplay();
+  const source = getAllSamples();
+  if (!source.length) return setStatus('No sound data to replay', '#ff0');
+  clearData();
+  replaySamples = source.map(normalizeSample);
+  replayIndex = 0;
+  const startedAt = new Date().toISOString();
+  replaySession = { id: `replay-${Date.now()}`, startedAt, stoppedAt: null, label: `Replay ${speed}x`, samples: [] };
+  currentSession = replaySession;
+  sessions.push(replaySession);
+  setStatus(`Replaying archive at ${speed}x`, '#9df');
+  replayNext(Number(speed) || 1);
+}
+
+function replayNext(speed) {
+  if (!replaySession || replayIndex >= replaySamples.length) return stopReplay('Replay complete');
+  const original = replaySamples[replayIndex++];
+  const now = new Date().toISOString();
+  recordSample({ ...original, timestamp: now, startTime: now, endTime: now, replayedFrom: original.startTime || original.timestamp });
+  if (replayIndex >= replaySamples.length) return stopReplay('Replay complete');
+  const previousTime = safeTime(original);
+  const nextTime = safeTime(replaySamples[replayIndex]);
+  const sourceGap = Number.isFinite(previousTime) && Number.isFinite(nextTime) ? Math.max(0, nextTime - previousTime) : 1000;
+  const delay = Math.max(16, sourceGap / Math.max(1, speed));
+  replayTimer = setTimeout(() => replayNext(speed), delay);
+}
+
+function stopReplay(message = 'Replay stopped') {
+  if (replayTimer) clearTimeout(replayTimer);
+  replayTimer = null;
+  if (replaySession) replaySession.stoppedAt = new Date().toISOString();
+  replaySession = null;
+  if (currentSession && String(currentSession.id || '').startsWith('replay-')) currentSession = null;
+  if (message) setStatus(message, '#ff0');
+}
+
 
 function downloadBlob(blob, filename) {
   const url = URL.createObjectURL(blob);
@@ -518,31 +594,198 @@ function renderArt(model = buildHorizonModel()) {
   if (!artCtx) return;
   const width = artCanvas.clientWidth;
   const height = artCanvas.clientHeight;
-  const palette = PALETTES[artConfig.palette] || PALETTES.dusk;
+  const palette = PALETTES[artConfig.palette] || PALETTES.aurora;
   artCtx.clearRect(0, 0, width, height);
   artCtx.fillStyle = palette.background;
   artCtx.fillRect(0, 0, width, height);
-  const drawEmptyState = () => {
-    artCtx.fillStyle = palette.line;
-    artCtx.globalAlpha = 0.5;
-    artCtx.font = '18px Arial';
-    artCtx.fillText('Start recording to grow an open-ended sound archive.', 24, 44);
-    artCtx.globalAlpha = 1;
+  if (!model || !Array.isArray(model.samples) || !model.samples.length) {
+    drawSoundQuiltEmptyState(palette);
     lastArtRender = null;
     updateTimeHud([], null);
+    return;
+  }
+  const quilt = buildSoundQuilt(model.samples);
+  renderSoundQuilt(quilt, palette, width, height);
+  lastArtRender = { items: quilt.inspectItems, palette, width, height, model, quilt };
+  updateTimeHud(quilt.inspectItems, null);
+}
+
+function drawSoundQuiltEmptyState(palette) {
+  artCtx.fillStyle = palette.line;
+  artCtx.globalAlpha = 0.72;
+  artCtx.font = '18px Arial';
+  artCtx.fillText('Start recording or import an archive to paint your sound quilt.', 24, 42);
+  artCtx.font = '13px Arial';
+  artCtx.fillText('Rows: 60 seconds · 5 minutes · 10 minutes · hour epilogue · last 24 hours · previous two days.', 24, 68);
+  artCtx.globalAlpha = 1;
+}
+
+function buildSoundQuilt(samples) {
+  const ordered = samples.map(normalizeSample).filter(sample => Number.isFinite(toTime(sample))).sort((a, b) => safeTime(a) - safeTime(b));
+  const anchor = ordered.length ? safeTime(ordered[ordered.length - 1]) : Date.now();
+  return {
+    seconds: fixedTimeBuckets(ordered, anchor - 60 * 1000, 1000, 60, 'second'),
+    fiveMinutes: fixedTimeBuckets(ordered, anchor - 5 * ONE_MINUTE_MS, 1000, 300, '5-minute second'),
+    tenMinutes: fixedTimeBuckets(ordered, anchor - 10 * ONE_MINUTE_MS, 1000, 600, '10-minute second'),
+    hour: fixedTimeBuckets(ordered, anchor - ONE_HOUR_MS, ONE_HOUR_MS / 100, 100, 'hour cell'),
+    last12: fixedTimeBuckets(ordered, anchor - 12 * ONE_HOUR_MS, 12 * ONE_HOUR_MS / 30, 30, 'last 12 hours'),
+    prior12: fixedTimeBuckets(ordered, anchor - 24 * ONE_HOUR_MS, 6 * ONE_HOUR_MS, 2, 'prior 12 hours'),
+    previousDay: fixedTimeBuckets(ordered, anchor - 48 * ONE_HOUR_MS, 24 * ONE_HOUR_MS / 24, 24, 'previous day'),
+    dayBefore: fixedTimeBuckets(ordered, anchor - 72 * ONE_HOUR_MS, 24 * ONE_HOUR_MS / 24, 24, 'day before previous'),
+    inspectItems: ordered
   };
-  if (!model || !Array.isArray(model.samples) || !model.samples.length) return drawEmptyState();
-  const comparison = Array.isArray(model.comparison) ? model.comparison : [];
-  const source = comparison.length ? comparison : chooseArtComposites(model, width);
-  if (!source.length) return drawEmptyState();
-  if (artConfig.mode === 'shape') renderShape(source, palette, width, height);
-  else if (artConfig.mode === 'color') renderColor(source, palette, width, height);
-  else if (artConfig.mode === 'scale') renderScale(source, palette, width, height);
-  else if (artConfig.mode === 'weave') renderWeave(source, palette, width, height);
-  else renderStory(source, palette, width, height);
-  drawTimeGuides(source, palette, width, height);
-  lastArtRender = { items: source, palette, width, height, model };
-  updateTimeHud(source, null);
+}
+
+function fixedTimeBuckets(samples, startMs, intervalMs, count, label) {
+  let cursor = 0;
+  return Array.from({ length: count }, (_, index) => {
+    const start = startMs + index * intervalMs;
+    const end = start + intervalMs;
+    while (cursor < samples.length && safeTime(samples[cursor]) < start) cursor++;
+    const bucket = [];
+    let scan = cursor;
+    while (scan < samples.length && safeTime(samples[scan]) < end) bucket.push(samples[scan++]);
+    const item = bucket.length ? aggregateBucket(bucket) : emptyBucket(start, end);
+    item.label = `${label} ${index + 1}`;
+    item.fillRatio = Math.max(0, Math.min(1, item.averageEnergy / 180));
+    return item;
+  });
+}
+
+function emptyBucket(start, end) {
+  const timestamp = new Date(start).toISOString();
+  return { timestamp, startTime: timestamp, endTime: new Date(end).toISOString(), energy: 0, averageEnergy: 0, minEnergy: 0, maxEnergy: 0, profile: Array(PROFILE_POINTS).fill(0), bands: Array(BAND_COUNT).fill(0), sourceCount: 0, cumulativeEnergy: 0, empty: true };
+}
+
+function renderSoundQuilt(quilt, palette, width, height) {
+  const pad = Math.max(10, Math.min(18, width * 0.018));
+  const labelW = Math.min(132, Math.max(78, width * 0.16));
+  const gap = 8;
+  const usableW = width - pad * 2 - labelW;
+  let y = pad;
+  artCtx.save();
+  drawQuiltTitle(palette, pad, y, width);
+  y += 34;
+  y = drawCellRow('60 seconds', quilt.seconds, pad, labelW, y, usableW, Math.max(8, Math.min(18, height * 0.035)), palette, 60) + gap;
+  y = drawCellRow('5 minutes', quilt.fiveMinutes, pad, labelW, y, usableW, Math.max(6, Math.min(14, height * 0.026)), palette, 300) + gap;
+  y = drawCellRow('10 minutes', quilt.tenMinutes, pad, labelW, y, usableW, Math.max(5, Math.min(12, height * 0.022)), palette, 600) + gap + 2;
+  const squareSize = Math.min(usableW, Math.max(112, Math.min(230, height * 0.28)));
+  drawHourEpilogue(quilt.hour, pad, labelW, y, squareSize, palette);
+  const rightX = pad + labelW + squareSize + gap * 2;
+  const rightW = width - rightX - pad;
+  if (rightW >= 160) {
+    drawCellRow('last 12h', quilt.last12.slice(0, 10), rightX - labelW, labelW, y, rightW, 18, palette, 10);
+    drawCellRow('last 12h', quilt.last12.slice(10, 20), rightX - labelW, labelW, y + 28, rightW, 18, palette, 10);
+    drawCellRow('last 12h', quilt.last12.slice(20, 30), rightX - labelW, labelW, y + 56, rightW, 18, palette, 10);
+    drawCellRow('prior 12h', quilt.prior12, rightX - labelW, labelW, y + 90, rightW, 24, palette, 2);
+    y += squareSize + gap + 10;
+  } else {
+    y += squareSize + gap;
+    y = drawCellRow('last 12h', quilt.last12.slice(0, 10), pad, labelW, y, usableW, 16, palette, 10) + 4;
+    y = drawCellRow('last 12h', quilt.last12.slice(10, 20), pad, labelW, y, usableW, 16, palette, 10) + 4;
+    y = drawCellRow('last 12h', quilt.last12.slice(20, 30), pad, labelW, y, usableW, 16, palette, 10) + 4;
+    y = drawCellRow('prior 12h', quilt.prior12, pad, labelW, y, usableW, 20, palette, 2) + gap;
+  }
+  y = drawCellRow('previous day', quilt.previousDay, pad, labelW, y, usableW, Math.max(14, Math.min(22, height * 0.04)), palette, 24) + gap;
+  drawCellRow('day before', quilt.dayBefore, pad, labelW, y, usableW, Math.max(14, Math.min(22, height * 0.04)), palette, 24);
+  drawLegend(palette, pad, height - 24);
+  artCtx.restore();
+}
+
+function drawQuiltTitle(palette, x, y, width) {
+  artCtx.fillStyle = palette.line;
+  artCtx.font = '700 18px Arial';
+  artCtx.fillText('Sound Quilt Horizon', x, y + 16);
+  artCtx.globalAlpha = 0.72;
+  artCtx.font = '12px Arial';
+  if (width > 720) {
+    artCtx.fillText('Color and fill show relative sound intensity over time — glanceable quiet, ambient life, and noise pollution.', x + 190, y + 16);
+  } else {
+    artCtx.fillText('Intensity over seconds, minutes, hours, and days.', x, y + 32);
+  }
+  artCtx.globalAlpha = 1;
+}
+
+function drawCellRow(label, cells, x, labelW, y, width, height, palette, columns) {
+  artCtx.fillStyle = 'rgba(255,255,255,0.72)';
+  artCtx.font = '12px Arial';
+  artCtx.textBaseline = 'middle';
+  artCtx.fillText(label, x, y + height / 2);
+  const startX = x + labelW;
+  const cellW = width / Math.max(1, columns);
+  cells.forEach((cell, index) => drawIntensityCell(cell, startX + index * cellW, y, Math.max(1, cellW - 1), height, palette));
+  return y + height;
+}
+
+function drawHourEpilogue(cells, x, labelW, y, size, palette) {
+  artCtx.fillStyle = 'rgba(255,255,255,0.72)';
+  artCtx.font = '12px Arial';
+  artCtx.textBaseline = 'top';
+  artCtx.fillText('last hour epilogue', x, y + 4);
+  const gridX = x + labelW;
+  const cell = size / 10;
+  cells.forEach((item, index) => {
+    const cx = gridX + (index % 10) * cell;
+    const cy = y + Math.floor(index / 10) * cell;
+    drawIntensityCell(item, cx, cy, Math.max(1, cell - 1), Math.max(1, cell - 1), palette);
+  });
+  for (let segment = 1; segment < 6; segment++) {
+    const index = Math.round(segment * 100 / 6);
+    const sx = gridX + (index % 10) * cell;
+    const sy = y + Math.floor(index / 10) * cell;
+    artCtx.strokeStyle = 'rgba(255,255,255,0.28)';
+    artCtx.beginPath();
+    artCtx.moveTo(sx, sy);
+    artCtx.lineTo(gridX + size, sy);
+    artCtx.stroke();
+  }
+  drawMiniLine(cells, gridX, y, size, size, palette.line);
+}
+
+function drawIntensityCell(item, x, y, width, height, palette) {
+  const sample = normalizeSample(item);
+  const fill = Math.max(0, Math.min(1, item.fillRatio ?? sample.averageEnergy / 180));
+  artCtx.fillStyle = 'rgba(255,255,255,0.055)';
+  artCtx.fillRect(x, y, width, height);
+  if (item.empty || fill <= 0) return;
+  artCtx.fillStyle = colorForSample(sample, palette);
+  artCtx.globalAlpha = 0.88;
+  const fillHeight = Math.max(1, height * fill);
+  artCtx.fillRect(x, y + height - fillHeight, width, fillHeight);
+  artCtx.globalAlpha = 1;
+}
+
+function drawMiniLine(cells, x, y, width, height, color) {
+  const values = cells.map(cell => normalizeSample(cell).averageEnergy);
+  const max = Math.max(...values, 1);
+  artCtx.save();
+  artCtx.strokeStyle = color;
+  artCtx.globalAlpha = 0.72;
+  artCtx.lineWidth = 1.5;
+  artCtx.beginPath();
+  values.forEach((value, index) => {
+    const px = x + (index / Math.max(1, values.length - 1)) * width;
+    const py = y + height - (value / max) * height;
+    if (index === 0) artCtx.moveTo(px, py);
+    else artCtx.lineTo(px, py);
+  });
+  artCtx.stroke();
+  artCtx.restore();
+}
+
+function drawLegend(palette, x, y) {
+  const labels = INTENSITY_CLASSES.slice(0, -1).concat(INTENSITY_CLASSES.slice(-1));
+  let cursor = x;
+  artCtx.font = '11px Arial';
+  artCtx.textBaseline = 'middle';
+  labels.forEach(item => {
+    const key = item.label.toLowerCase();
+    artCtx.fillStyle = palette[key] || palette.accent;
+    artCtx.fillRect(cursor, y - 6, 12, 12);
+    artCtx.fillStyle = 'rgba(255,255,255,0.72)';
+    artCtx.fillText(item.label, cursor + 16, y);
+    cursor += 78;
+  });
 }
 
 
@@ -644,9 +887,9 @@ function inspectArtAt(clientX) {
   const x = Math.max(0, Math.min(rect.width, clientX - rect.left));
   const index = Math.min(lastArtRender.items.length - 1, Math.floor((x / Math.max(1, rect.width)) * lastArtRender.items.length));
   renderArt(lastArtRender.model);
-  drawTimeGuides(lastArtRender.items, lastArtRender.palette, lastArtRender.width, lastArtRender.height, index);
   updateTimeHud(lastArtRender.items, index);
 }
+
 
 function chooseArtComposites(model, width) {
   if (!model || !model.samples || !model.samples.length) return [];
