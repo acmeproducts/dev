@@ -127,22 +127,25 @@ function startCapture() {
     sessions.push(currentSession);
   }
   setStatus("Starting...");
-  audioCtx.resume().then(() => {
-    navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-      stopStreamOnly();
-      setStatus("Capturing Audio", "#0f0");
-      streamSource = audioCtx.createMediaStreamSource(stream);
-      streamSource.connect(analyser);
-      clearInterval(captureInterval);
-      captureInterval = setInterval(captureSample, 1000);
+  audioCtx.resume().then(() => navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+    stopStreamOnly();
+    setStatus("Capturing Audio", "#0f0");
+    streamSource = audioCtx.createMediaStreamSource(stream);
+    streamSource.connect(analyser);
+    clearInterval(captureInterval);
+    captureInterval = setInterval(captureSample, 1000);
+    try {
       renderArt();
-    }).catch(err => {
-      if (currentSession && !currentSession.samples.length) sessions.pop();
-      currentSession = null;
-      setStatus("Mic Denied: "+err.name, "#f00");
-      alert("Microphone access denied: "+err.message);
-    });
-  });
+    } catch (err) {
+      console.error(err);
+      setStatus("Render error", "#f00");
+    }
+  }, err => {
+    if (currentSession && !currentSession.samples.length) sessions.pop();
+    currentSession = null;
+    setStatus("Mic Denied: "+err.name, "#f00");
+    alert("Microphone access denied: "+err.message);
+  }));
 }
 
 function stopStreamOnly() {
@@ -302,6 +305,7 @@ function getAllSamples() {
   const seen = new Set();
   const collected = [];
   const add = sample => {
+    if (!sample) return;
     const key = `${sample.timestamp || ''}|${sample.startTime || ''}|${sample.endTime || ''}`;
     if (!seen.has(key)) {
       seen.add(key);
@@ -310,21 +314,26 @@ function getAllSamples() {
   };
   sessions.forEach(session => (session.samples || []).forEach(add));
   fullCapture.forEach(add);
-  return collected.sort((a, b) => toTime(a) - toTime(b));
+  return collected.filter(sample => Number.isFinite(toTime(sample))).sort((a, b) => toTime(a) - toTime(b));
 }
 
 function filterSamplesByRange(samples, startTime, endTime) {
-  const start = startTime ? Date.parse(startTime) : -Infinity;
-  const end = endTime ? Date.parse(endTime) : Infinity;
+  const parsedStart = startTime ? Date.parse(startTime) : -Infinity;
+  const parsedEnd = endTime ? Date.parse(endTime) : Infinity;
+  const start = Number.isFinite(parsedStart) ? parsedStart : -Infinity;
+  const end = Number.isFinite(parsedEnd) ? parsedEnd : Infinity;
   return samples.filter(sample => {
     const time = toTime(sample);
-    return time >= start && time <= end;
+    return Number.isFinite(time) && time >= start && time <= end;
   });
 }
 
 function filterSamplesByWeekday(samples, weekday) {
-  if (weekday === 'any') return samples;
-  return samples.filter(sample => new Date(toTime(sample)).getDay() === Number(weekday));
+  if (weekday === 'any') return samples.filter(sample => Number.isFinite(toTime(sample)));
+  return samples.filter(sample => {
+    const time = toTime(sample);
+    return Number.isFinite(time) && new Date(time).getDay() === Number(weekday);
+  });
 }
 
 function filterSamplesByTimeOfDay(samples, startTime, endTime) {
@@ -336,7 +345,9 @@ function filterSamplesByTimeOfDay(samples, startTime, endTime) {
   const start = startTime ? toMinutes(startTime) : 0;
   const end = endTime ? toMinutes(endTime) : 24 * 60 - 1;
   return samples.filter(sample => {
-    const date = new Date(toTime(sample));
+    const time = toTime(sample);
+    if (!Number.isFinite(time)) return false;
+    const date = new Date(time);
     const minute = date.getHours() * 60 + date.getMinutes();
     return start <= end ? minute >= start && minute <= end : minute >= start || minute <= end;
   });
@@ -358,12 +369,14 @@ function filterSamplesForView(samples, config) {
   }
   scoped = filterSamplesByWeekday(scoped, config.weekday);
   scoped = filterSamplesByTimeOfDay(scoped, config.timeStart, config.timeEnd);
-  return scoped.sort((a, b) => toTime(a) - toTime(b));
+  return scoped.filter(sample => Number.isFinite(toTime(sample))).sort((a, b) => toTime(a) - toTime(b));
 }
 
 function buildHorizonModel() {
   const samples = filterSamplesForView(getAllSamples(), timeConfig);
-  const seconds = samples.length > 900 ? bucketSamples(samples, Math.ceil((toTime(samples[samples.length - 1]) - toTime(samples[0])) / 900)) : samples.map(normalizeSample);
+  if (!samples.length) return { samples: [], seconds: [], minutes: [], hours: [], days: [], months: [], comparison: [] };
+  const duration = toTime(samples[samples.length - 1]) - toTime(samples[0]);
+  const seconds = samples.length > 900 && Number.isFinite(duration) ? bucketSamples(samples, Math.ceil(duration / 900)) : samples.map(normalizeSample);
   const minutes = bucketSamples(samples, ONE_MINUTE_MS);
   const hours = bucketSamples(samples, ONE_HOUR_MS);
   const days = bucketSamples(samples, DAY_MS);
@@ -377,10 +390,13 @@ function buildHorizonModel() {
 }
 
 function bucketSamples(samples, intervalMs) {
+  if (!Array.isArray(samples) || !samples.length || !Number.isFinite(intervalMs) || intervalMs <= 0) return [];
+  const ordered = samples.filter(sample => Number.isFinite(toTime(sample))).sort((a, b) => toTime(a) - toTime(b));
+  if (!ordered.length) return [];
   const buckets = [];
   let current = [];
   let bucketStart = null;
-  samples.forEach(sample => {
+  ordered.forEach(sample => {
     const t = toTime(sample);
     if (bucketStart === null) bucketStart = t;
     if (t - bucketStart < intervalMs) {
@@ -477,15 +493,17 @@ function renderArt(model = buildHorizonModel()) {
   artCtx.clearRect(0, 0, width, height);
   artCtx.fillStyle = palette.background;
   artCtx.fillRect(0, 0, width, height);
-  const source = model.comparison.length ? model.comparison : chooseArtComposites(model, width);
-  if (!source.length) {
+  const drawEmptyState = () => {
     artCtx.fillStyle = palette.line;
     artCtx.globalAlpha = 0.5;
     artCtx.font = '18px Arial';
     artCtx.fillText('Start recording to grow an open-ended sound archive.', 24, 44);
     artCtx.globalAlpha = 1;
-    return;
-  }
+  };
+  if (!model || !Array.isArray(model.samples) || !model.samples.length) return drawEmptyState();
+  const comparison = Array.isArray(model.comparison) ? model.comparison : [];
+  const source = comparison.length ? comparison : chooseArtComposites(model, width);
+  if (!source.length) return drawEmptyState();
   if (artConfig.mode === 'shape') return renderShape(source, palette, width, height);
   if (artConfig.mode === 'color') return renderColor(source, palette, width, height);
   if (artConfig.mode === 'scale') return renderScale(source, palette, width, height);
@@ -494,9 +512,12 @@ function renderArt(model = buildHorizonModel()) {
 }
 
 function chooseArtComposites(model, width) {
+  if (!model || !Array.isArray(model.samples) || !model.samples.length) return [];
   const maxBlocks = Math.max(24, Math.floor(width / 8));
-  const options = [model.seconds, model.minutes, model.hours, model.days, model.months].filter(items => items.length);
-  return options.find(items => items.length <= maxBlocks) || bucketSamples(model.samples, Math.ceil((toTime(model.samples[model.samples.length - 1]) - toTime(model.samples[0])) / maxBlocks));
+  const options = [model.seconds, model.minutes, model.hours, model.days, model.months].filter(items => Array.isArray(items) && items.length);
+  if (options.length) return options.find(items => items.length <= maxBlocks) || options[options.length - 1];
+  const duration = toTime(model.samples[model.samples.length - 1]) - toTime(model.samples[0]);
+  return Number.isFinite(duration) ? bucketSamples(model.samples, Math.ceil(duration / maxBlocks)) : [];
 }
 
 function renderStory(items, palette, width, height) {
@@ -673,7 +694,11 @@ function childEnergyProfile(item) {
 }
 
 function toTime(sample) {
-  return Date.parse(sample.startTime || sample.timestamp);
+  if (!sample) return NaN;
+  const time = [sample.startTime, sample.timestamp, sample.endTime]
+    .map(value => Date.parse(value))
+    .find(value => Number.isFinite(value));
+  return time === undefined ? NaN : time;
 }
 
 function formatLabel(item) {
