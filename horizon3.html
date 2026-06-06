@@ -2,165 +2,687 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>MAD Horizons Single Chart Control</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>MAD Horizon Peace & Quiet</title>
   <style>
-    body { margin: 0; font-family: sans-serif; background: #000; color: #fff; overflow: hidden; }
-    .config-toggle { position: fixed; top: 10px; left: 10px; background: #222; color: #fff; border: none; padding: 8px 12px; cursor: pointer; z-index: 1000; }
-    .config-panel { position: fixed; top: 0; left: 0; height: 100%; width: 300px; background: #111; transform: translateX(-100%); transition: transform 0.3s ease; overflow-y: auto; z-index: 999; padding: 14px; box-sizing: border-box; }
+    :root {
+      --bg: #07090d;
+      --panel: rgba(16, 22, 31, 0.92);
+      --panel-soft: rgba(255, 255, 255, 0.07);
+      --text: #f7fafc;
+      --muted: #9aa7b5;
+      --line: rgba(255, 255, 255, 0.16);
+      --accent: #7dd3fc;
+      --gap: 7px;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: radial-gradient(circle at top left, #172033 0, var(--bg) 42%);
+      color: var(--text);
+      overflow: hidden;
+    }
+
+    button, select, input, textarea {
+      font: inherit;
+    }
+
+    .config-toggle {
+      position: fixed;
+      top: 14px;
+      left: 14px;
+      width: 44px;
+      height: 44px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(4, 8, 13, 0.9);
+      color: var(--text);
+      cursor: pointer;
+      z-index: 20;
+      font-size: 22px;
+    }
+
+    .config-panel {
+      position: fixed;
+      inset: 0 auto 0 0;
+      width: min(390px, 92vw);
+      padding: 72px 18px 18px;
+      background: rgba(7, 10, 15, 0.97);
+      border-right: 1px solid var(--line);
+      transform: translateX(-100%);
+      transition: transform 280ms ease;
+      overflow-y: auto;
+      z-index: 15;
+      box-shadow: 18px 0 50px rgba(0, 0, 0, 0.34);
+    }
+
     .config-panel.open { transform: translateX(0); }
-    .main-top { background: #111; padding: 10px; position: fixed; top: 0; left: 0; right: 0; z-index: 500; display: flex; justify-content: center; gap: 10px; }
-    .main-top button { background: #333; color: #fff; border: none; padding: 8px 16px; cursor: pointer; }
-    .panelArea { margin-top: 60px; height: calc(100vh - 60px); overflow-y: scroll; display: flex; flex-direction: column; }
-    .panel { height: 320px; padding: 4px; flex-shrink: 0; }
-    canvas { width: 100%; height: 100%; background: black; }
-    label { display: block; margin-top: 8px; }
+    .config-panel h2, .config-panel h3 { margin: 0 0 10px; }
+    .config-section { padding: 14px 0; border-bottom: 1px solid var(--line); }
+    .field { display: grid; gap: 5px; margin: 10px 0; color: var(--muted); font-size: 13px; }
+    .field input, .field select, .field textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 9px 10px;
+      background: #0c121b;
+      color: var(--text);
+    }
+    .field textarea { min-height: 92px; resize: vertical; }
+    .hint { color: var(--muted); font-size: 12px; line-height: 1.45; }
+    .button-row { display: flex; flex-wrap: wrap; gap: 8px; }
+    .button-row button, .journal-link {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 9px 13px;
+      background: var(--panel-soft);
+      color: var(--text);
+      cursor: pointer;
+      text-decoration: none;
+    }
+
+    .topbar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 72px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      padding: 10px 78px;
+      background: linear-gradient(180deg, rgba(7, 10, 15, 0.96), rgba(7, 10, 15, 0.58));
+      backdrop-filter: blur(12px);
+      z-index: 10;
+    }
+    .topbar button {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 10px 16px;
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text);
+      cursor: pointer;
+    }
+    .status-pill {
+      min-width: 92px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 9px 12px;
+      color: var(--muted);
+      text-align: center;
+      background: rgba(0, 0, 0, 0.22);
+      font-size: 13px;
+    }
+
+    #horizonApp {
+      height: 100vh;
+      padding: 84px 14px 14px;
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      grid-template-rows: repeat(2, minmax(0, 1fr));
+      gap: 12px;
+    }
+    #horizonApp.inverted .seconds { order: 4; }
+    #horizonApp.inverted .minutes { order: 3; }
+    #horizonApp.inverted .hours { order: 2; }
+    #horizonApp.inverted .streak { order: 1; }
+
+    .section-card {
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      border: 1px solid var(--line);
+      border-radius: 22px;
+      background: var(--panel);
+      box-shadow: 0 18px 44px rgba(0, 0, 0, 0.28);
+      overflow: hidden;
+    }
+    .section-head {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 13px 15px 9px;
+      border-bottom: 1px solid var(--line);
+    }
+    .section-head h2 { margin: 0; font-size: 15px; letter-spacing: 0.08em; text-transform: uppercase; }
+    .section-head span { color: var(--muted); font-size: 12px; }
+
+    .block-grid {
+      --cols: 6;
+      --rows: 10;
+      min-height: 0;
+      flex: 1;
+      display: grid;
+      grid-template-columns: repeat(var(--cols), minmax(0, 1fr));
+      grid-template-rows: repeat(var(--rows), minmax(0, 1fr));
+      gap: var(--gap);
+      padding: 12px;
+    }
+    .hours .block-grid { --rows: 4; }
+
+    .block {
+      position: relative;
+      border: 1px solid rgba(255, 255, 255, 0.11);
+      border-radius: 10px;
+      overflow: hidden;
+      background: rgba(255, 255, 255, 0.04);
+      transition: background-color 900ms ease, border-color 900ms ease, opacity 900ms ease;
+    }
+    .block.empty { opacity: 0.38; }
+    .block.active { outline: 2px solid rgba(255, 255, 255, 0.7); outline-offset: -2px; }
+    .block.resetting { background: linear-gradient(135deg, #f8fafc, #e8dcc8 46%, #b9d7ea); }
+    .block .line {
+      position: absolute;
+      left: 13%;
+      right: 13%;
+      height: 3px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.88);
+      box-shadow: 0 0 10px currentColor;
+    }
+    .block .stack {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      grid-template-rows: repeat(3, 1fr);
+    }
+    .block .meta {
+      position: absolute;
+      inset: auto 4px 3px;
+      color: rgba(255, 255, 255, 0.8);
+      font-size: clamp(8px, 1.2vw, 11px);
+      text-align: center;
+      text-shadow: 0 1px 5px #000;
+      pointer-events: none;
+    }
+    .block .hour-label {
+      position: absolute;
+      top: 4px;
+      left: 5px;
+      color: rgba(255, 255, 255, 0.68);
+      font-size: 10px;
+    }
+    .replay .block.populated::after {
+      content: "";
+      position: absolute;
+      inset: 24% 18%;
+      border-radius: 999px;
+      border: 2px solid rgba(255, 255, 255, 0.55);
+      opacity: 0;
+      animation: replayPulse 6s infinite ease-in-out;
+    }
+    @keyframes replayPulse {
+      0%, 100% { transform: scale(0.65); opacity: 0; }
+      18%, 45% { opacity: 0.82; }
+      62% { transform: scale(1.28); opacity: 0; }
+    }
+
+    .journal {
+      padding: 0 12px 12px;
+      display: grid;
+      gap: 8px;
+    }
+    .journal-preview {
+      max-height: 72px;
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      padding: 8px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+      background: rgba(0, 0, 0, 0.18);
+    }
+    .journal-preview a { color: var(--accent); }
+
+    @media (max-width: 820px) {
+      body { overflow: auto; }
+      #horizonApp { height: auto; min-height: 100vh; grid-template-columns: 1fr; grid-template-rows: none; }
+      .section-card { min-height: 420px; }
+      .topbar { justify-content: flex-end; padding-right: 12px; gap: 7px; }
+      .topbar button { padding: 9px 11px; }
+      .status-pill { display: none; }
+    }
   </style>
 </head>
 <body>
+  <button class="config-toggle" onclick="togglePanel()" aria-label="Open settings">⌄</button>
 
-<button class="config-toggle" onclick="togglePanel()">☰</button>
-<div class="config-panel" id="configPanel">
-  <h3>Chart Settings</h3>
-  <label>Background</label>
-  <input type="color" id="bgColor" value="#000000" onchange="applySettings()">
-  <label>Sample Interval (ms)</label>
-  <input type="number" id="interval" value="1000" min="100" step="100" onchange="applySettings()">
-  <label>Window Size (points)</label>
-  <input type="number" id="windowSize" value="60" min="10" step="10" onchange="applySettings()">
-  <label><input type="checkbox" id="showTitle" checked onchange="applySettings()"> Show Title</label>
-</div>
+  <aside class="config-panel" id="configPanel">
+    <h2>Horizon Controls</h2>
+    <p class="hint">Horizon measures only relative peace and quiet. Each second fills one block, each minute updates the hour section, and the day section always maps to the current 24-hour clock.</p>
 
-<div class="main-top">
-  <button onclick="start()">Start</button>
-  <button onclick="stop()">Stop</button>
-  <button onclick="clearAll()">Clear</button>
-  <button onclick="download()">Download</button>
-</div>
+    <div class="config-section">
+      <h3>Display</h3>
+      <label class="field">Mode
+        <select id="viewMode" onchange="renderAll()">
+          <option value="absolute">Absolute lines</option>
+          <option value="relative">Relative colors</option>
+          <option value="hybrid">Hybrid line + color</option>
+          <option value="replay">Replay pulse</option>
+        </select>
+      </label>
+      <label class="field">Palette
+        <select id="paletteSelect" onchange="renderAll()">
+          <option value="serene">Serene</option>
+          <option value="reggae">Reggae</option>
+          <option value="patriotic">Patriotic</option>
+          <option value="neom">Neom</option>
+          <option value="graduatedBlues">Graduated blues</option>
+          <option value="fire">Fire</option>
+          <option value="water">Water</option>
+          <option value="wind">Wind</option>
+          <option value="sea">Sea</option>
+          <option value="earth">Earth</option>
+        </select>
+      </label>
+      <label class="field">Minute block metric
+        <select id="minuteMetric" onchange="renderAll()">
+          <option value="avg">Average</option>
+          <option value="min">Minimum</option>
+          <option value="max">Maximum</option>
+          <option value="stack">Min / Avg / Max stacked</option>
+        </select>
+      </label>
+      <label class="field">Layout
+        <select id="layoutDirection" onchange="applyLayout()">
+          <option value="normal">Seconds | Hour, Day | Streak</option>
+          <option value="inverted">Invert sections</option>
+        </select>
+      </label>
+      <label class="field">Streak rows
+        <input id="streakRows" type="number" min="1" max="30" value="10" onchange="resizeStreak()">
+      </label>
+    </div>
 
-<div class="panelArea" id="panelArea">
-  <div class="panel">
-    <div id="chartTitle" style="color:#0f0; font-size:14px; padding:4px;">Live Mic Data</div>
-    <canvas id="chart"></canvas>
-  </div>
-</div>
+    <div class="config-section">
+      <h3>Journal</h3>
+      <label class="field">Markdown notes and links
+        <textarea id="journalText" placeholder="Day notes, links, or goals..." oninput="saveJournal(); renderJournal();"></textarea>
+      </label>
+      <label class="field">Attach photo
+        <input id="photoInput" type="file" accept="image/*" onchange="attachPhoto(event)">
+      </label>
+      <p class="hint">Notes stay in this browser with localStorage. Links in markdown format become clickable in the streak preview.</p>
+    </div>
+  </aside>
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-zoom"></script>
-<script>
-let chart, micStream, audioCtx, analyser, dataArray, captureTimer, fullData = [];
+  <header class="topbar">
+    <button onclick="start()">Start</button>
+    <button onclick="stop()">Stop</button>
+    <button onclick="clearAll()">Clear</button>
+    <button onclick="download()">Download</button>
+    <div class="status-pill" id="status">idle</div>
+  </header>
 
-function togglePanel() {
-  document.getElementById("configPanel").classList.toggle("open");
-}
+  <main id="horizonApp">
+    <section class="section-card seconds">
+      <div class="section-head"><h2>Seconds</h2><span>60 blocks · one minute</span></div>
+      <div class="block-grid" id="secondsGrid"></div>
+    </section>
 
-function applySettings() {
-  document.body.style.backgroundColor = document.getElementById("bgColor").value;
-  document.getElementById("panelArea").style.backgroundColor = document.getElementById("bgColor").value;
-  document.getElementById("chartTitle").style.display = document.getElementById("showTitle").checked ? 'block' : 'none';
-}
+    <section class="section-card minutes">
+      <div class="section-head"><h2>Hour</h2><span>60 minute blocks</span></div>
+      <div class="block-grid" id="minutesGrid"></div>
+    </section>
 
-function buildChart() {
-  const ctx = document.getElementById('chart').getContext('2d');
-  chart = new Chart(ctx, {
-    type: 'bar',
-    data: {
-      labels: [],
-      datasets: [{
-        label: 'Sum',
-        data: [],
-        backgroundColor: 'white',
-        borderColor: 'white',
-        fill: false
-      }]
-    },
-    options: {
-      responsive: true,
-      maintainAspectRatio: false,
-      scales: {
-        x: { ticks: { maxTicksLimit: 10 } },
-        y: { beginAtZero: true }
-      },
-      plugins: {
-        zoom: {
-          pan: { enabled: true, mode: 'x' },
-          zoom: { wheel: { enabled: true }, pinch: { enabled: true }, mode: 'x' }
+    <section class="section-card hours">
+      <div class="section-head"><h2>Day</h2><span>24-hour clock mapped blocks</span></div>
+      <div class="block-grid" id="hoursGrid"></div>
+    </section>
+
+    <section class="section-card streak">
+      <div class="section-head"><h2>Streak</h2><span id="streakCaption">60 day goal journal</span></div>
+      <div class="block-grid" id="streakGrid"></div>
+      <div class="journal">
+        <div class="journal-preview" id="journalPreview">Add notes, links, or a photo from the controls.</div>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    const TOTAL_SECONDS = 60;
+    const TOTAL_MINUTES = 60;
+    const TOTAL_HOURS = 24;
+    const LEVEL_MAX = 10;
+    const storageKey = 'madHorizonPeaceQuiet';
+    const palettes = {
+      serene: ['#f8fafc', '#efe7d7', '#cfd8dc', '#9cc7df', '#5d8fb5'],
+      reggae: ['#1f8f45', '#f4b400', '#111111', '#d72828', '#f7e35f'],
+      patriotic: ['#f8fafc', '#b9d9ff', '#4b82d8', '#d94545', '#821d30'],
+      neom: ['#e2fbf4', '#80ffe8', '#2bd9c7', '#7a7cff', '#ff62c7'],
+      graduatedBlues: ['#eaf7ff', '#bddfff', '#7bbcff', '#367ee8', '#123f8c'],
+      fire: ['#fff2b3', '#ffb347', '#ff7a1a', '#d42c1f', '#4b0f0a'],
+      water: ['#e4fbff', '#98e7f5', '#45bfd8', '#167ba8', '#0b3154'],
+      wind: ['#f7fff7', '#d8f3dc', '#b7e4c7', '#74c69d', '#40916c'],
+      sea: ['#ecfeff', '#a7f3d0', '#5eead4', '#0f9f9a', '#075985'],
+      earth: ['#f4ead5', '#d9c19b', '#b8895b', '#75533b', '#2f241d']
+    };
+
+    let state = {
+      running: false,
+      timer: null,
+      seconds: Array(TOTAL_SECONDS).fill(null),
+      minutes: Array(TOTAL_MINUTES).fill(null),
+      hours: Array(TOTAL_HOURS).fill(null),
+      streak: Array(TOTAL_SECONDS).fill(null),
+      secondIndex: 0,
+      minuteIndex: 0,
+      minuteSamples: [],
+      hourSamples: [],
+      audioCtx: null,
+      analyser: null,
+      dataArray: null,
+      micStream: null,
+      photo: null
+    };
+
+    function togglePanel() {
+      document.getElementById('configPanel').classList.toggle('open');
+    }
+
+    function buildGrid(id, count, labeler) {
+      const grid = document.getElementById(id);
+      grid.innerHTML = '';
+      for (let i = 0; i < count; i++) {
+        const block = document.createElement('div');
+        block.className = 'block empty';
+        block.id = `${id}-${i}`;
+        if (labeler) {
+          const label = document.createElement('span');
+          label.className = 'hour-label';
+          label.textContent = labeler(i);
+          block.appendChild(label);
         }
+        grid.appendChild(block);
       }
     }
-  });
-}
 
-function start() {
-  if (!audioCtx) {
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-    analyser = audioCtx.createAnalyser();
-    analyser.fftSize = 2048;
-    dataArray = new Uint8Array(analyser.frequencyBinCount);
-  }
-  navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-    micStream = stream;
-    const source = audioCtx.createMediaStreamSource(stream);
-    source.connect(analyser);
-    const interval = parseInt(document.getElementById('interval').value);
-    captureTimer = setInterval(capture, interval);
-  }).catch(e => alert('Mic access denied.'));
-}
+    function buildAllGrids() {
+      buildGrid('secondsGrid', TOTAL_SECONDS);
+      buildGrid('minutesGrid', TOTAL_MINUTES);
+      buildGrid('hoursGrid', TOTAL_HOURS, i => String(i).padStart(2, '0'));
+      resizeStreak();
+    }
 
-function stop() {
-  clearInterval(captureTimer);
-  if (micStream) {
-    micStream.getTracks().forEach(t => t.stop());
-    micStream = null;
-  }
-  audioCtx = null;
-}
+    function resizeStreak() {
+      const rows = Math.max(1, Math.min(30, parseInt(document.getElementById('streakRows').value || '10', 10)));
+      const total = rows * 6;
+      const grid = document.getElementById('streakGrid');
+      grid.style.setProperty('--rows', rows);
+      document.getElementById('streakCaption').textContent = `${total} day goal journal`;
+      if (state.streak.length !== total) {
+        state.streak = Array(total).fill(null).map((_, i) => state.streak[i] || null);
+      }
+      buildGrid('streakGrid', total);
+      renderAll();
+    }
 
-function capture() {
-  if (!analyser) return;
-  analyser.getByteFrequencyData(dataArray);
-  const values = Array.from({ length: 10 }, (_, idx) => {
-    const start = Math.floor(idx * dataArray.length / 10);
-    const end = Math.floor((idx + 1) * dataArray.length / 10);
-    return dataArray.slice(start, end).reduce((a, b) => a + b, 0) / (end - start);
-  });
-  const sum = values.reduce((a, b) => a + b, 0);
-  const now = new Date().toLocaleTimeString();
-  fullData.push({ timestamp: now, sum: sum });
+    function applyLayout() {
+      document.getElementById('horizonApp').classList.toggle('inverted', document.getElementById('layoutDirection').value === 'inverted');
+    }
 
-  if (chart.data.labels.length >= parseInt(document.getElementById('windowSize').value)) {
-    chart.data.labels.shift();
-    chart.data.datasets.forEach(d => d.data.shift());
-  }
-  chart.data.labels.push(now);
-  chart.data.datasets.forEach(d => d.data.push(sum));
-  chart.update();
-}
+    async function start() {
+      if (state.running) return;
+      try {
+        if (!state.audioCtx) {
+          state.audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+          state.analyser = state.audioCtx.createAnalyser();
+          state.analyser.fftSize = 2048;
+          state.dataArray = new Uint8Array(state.analyser.frequencyBinCount);
+        }
+        state.micStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const source = state.audioCtx.createMediaStreamSource(state.micStream);
+        source.connect(state.analyser);
+        state.running = true;
+        document.getElementById('status').textContent = 'listening';
+        tick();
+        state.timer = setInterval(tick, 1000);
+      } catch (error) {
+        document.getElementById('status').textContent = 'mic blocked';
+        alert('Mic access denied: ' + error.message);
+      }
+    }
 
-function clearAll() {
-  if (chart) {
-    chart.data.labels = [];
-    chart.data.datasets.forEach(d => d.data = []);
-    chart.update();
-  }
-  fullData = [];
-}
+    function stop() {
+      clearInterval(state.timer);
+      state.timer = null;
+      state.running = false;
+      if (state.micStream) {
+        state.micStream.getTracks().forEach(track => track.stop());
+        state.micStream = null;
+      }
+      if (state.audioCtx) {
+        state.audioCtx.close();
+        state.audioCtx = null;
+        state.analyser = null;
+      }
+      document.getElementById('status').textContent = 'idle';
+    }
 
-function download() {
-  const blob = new Blob([JSON.stringify(fullData, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'single_chart_data.json';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-}
+    function sampleLevel() {
+      if (!state.analyser) return Math.ceil(Math.random() * LEVEL_MAX);
+      state.analyser.getByteTimeDomainData(state.dataArray);
+      let sumSquares = 0;
+      for (let i = 0; i < state.dataArray.length; i++) {
+        const centered = (state.dataArray[i] - 128) / 128;
+        sumSquares += centered * centered;
+      }
+      const rms = Math.sqrt(sumSquares / state.dataArray.length);
+      return clamp(Math.ceil(rms * 26), 1, LEVEL_MAX);
+    }
 
-window.onload = () => {
-  buildChart();
-  applySettings();
-};
-</script>
+    function tick() {
+      const now = new Date();
+      const level = sampleLevel();
+      recordSecond(level, now);
+      renderAll();
+    }
 
+    function recordSecond(level, now) {
+      state.seconds[state.secondIndex] = { level, time: now.toISOString() };
+      state.minuteSamples.push(level);
+      state.secondIndex += 1;
+      if (state.secondIndex >= TOTAL_SECONDS) {
+        resetSection('secondsGrid');
+        const minuteSummary = summarize(state.minuteSamples);
+        state.minutes[state.minuteIndex] = { ...minuteSummary, time: now.toISOString(), samples: state.minuteSamples.slice() };
+        state.hourSamples.push(minuteSummary.avg);
+        state.minuteSamples = [];
+        state.seconds = Array(TOTAL_SECONDS).fill(null);
+        state.secondIndex = 0;
+        state.minuteIndex += 1;
+        if (state.minuteIndex >= TOTAL_MINUTES) {
+          resetSection('minutesGrid');
+          recordHour(now);
+          state.minutes = Array(TOTAL_MINUTES).fill(null);
+          state.minuteIndex = 0;
+          state.hourSamples = [];
+        }
+      }
+      recordCurrentHour(level, now);
+      recordStreak(now);
+    }
+
+    function recordHour(now) {
+      const hour = now.getHours();
+      const summary = summarize(state.hourSamples.length ? state.hourSamples : [state.minutes[state.minuteIndex]?.avg || 1]);
+      state.hours[hour] = { ...summary, time: now.toISOString() };
+    }
+
+    function recordCurrentHour(level, now) {
+      const hour = now.getHours();
+      const prior = state.hours[hour];
+      const samples = prior?.samples ? prior.samples.concat(level) : [level];
+      state.hours[hour] = { ...summarize(samples), samples, time: now.toISOString() };
+    }
+
+    function recordStreak(now) {
+      const startOfYear = new Date(now.getFullYear(), 0, 0);
+      const dayOfYear = Math.floor((now - startOfYear) / 86400000);
+      const index = dayOfYear % state.streak.length;
+      state.streak[index] = { level: Math.max(1, 11 - Math.round(average(state.minuteSamples) || 1)), time: now.toISOString() };
+    }
+
+    function resetSection(gridId) {
+      document.querySelectorAll(`#${gridId} .block`).forEach(block => {
+        block.classList.add('resetting');
+        setTimeout(() => block.classList.remove('resetting'), 1200);
+      });
+    }
+
+    function renderAll() {
+      const mode = document.getElementById('viewMode').value;
+      document.getElementById('horizonApp').classList.toggle('replay', mode === 'replay');
+      renderSeries('secondsGrid', state.seconds, state.secondIndex, item => item?.level, mode);
+      renderSeries('minutesGrid', state.minutes, state.minuteIndex, minuteValue, mode);
+      renderSeries('hoursGrid', state.hours, new Date().getHours(), minuteValue, mode, true);
+      renderSeries('streakGrid', state.streak, -1, item => item?.level, mode);
+      renderJournal();
+    }
+
+    function renderSeries(gridId, data, activeIndex, valueGetter, mode, hourClock = false) {
+      data.forEach((item, index) => {
+        const block = document.getElementById(`${gridId}-${index}`);
+        if (!block) return;
+        const existingLabel = block.querySelector('.hour-label')?.outerHTML || '';
+        block.className = 'block' + (item ? ' populated' : ' empty') + (index === activeIndex ? ' active' : '');
+        block.innerHTML = existingLabel;
+        if (!item) {
+          block.style.background = '';
+          return;
+        }
+        const value = clamp(Math.round(valueGetter(item) || 1), 1, LEVEL_MAX);
+        const color = colorForLevel(value);
+        block.style.background = color;
+        if (mode === 'absolute' || mode === 'hybrid') drawLine(block, value);
+        if ((gridId === 'minutesGrid' || gridId === 'hoursGrid') && (mode === 'relative' || mode === 'hybrid' || mode === 'replay')) drawSummary(block, item);
+        if (gridId === 'minutesGrid' && mode === 'replay' && item.samples) block.style.animationDelay = `${(index % 10) * 0.6}s`;
+        if (hourClock) appendMeta(block, `${index}:00`);
+      });
+    }
+
+    function minuteValue(item) {
+      const metric = document.getElementById('minuteMetric').value;
+      if (metric === 'min') return item?.min;
+      if (metric === 'max') return item?.max;
+      return item?.avg;
+    }
+
+    function drawLine(block, level) {
+      const line = document.createElement('div');
+      line.className = 'line';
+      line.style.bottom = `${((level - 1) / (LEVEL_MAX - 1)) * 88 + 6}%`;
+      block.appendChild(line);
+    }
+
+    function drawSummary(block, item) {
+      const metric = document.getElementById('minuteMetric').value;
+      if (metric !== 'stack') return appendMeta(block, `↓${item.min} · Ø${Math.round(item.avg)} · ↑${item.max}`);
+      const stack = document.createElement('div');
+      stack.className = 'stack';
+      [item.max, item.avg, item.min].forEach(value => {
+        const stripe = document.createElement('div');
+        stripe.style.background = colorForLevel(value);
+        stack.appendChild(stripe);
+      });
+      block.appendChild(stack);
+    }
+
+    function appendMeta(block, text) {
+      const meta = document.createElement('div');
+      meta.className = 'meta';
+      meta.textContent = text;
+      block.appendChild(meta);
+    }
+
+    function colorForLevel(level) {
+      const palette = palettes[document.getElementById('paletteSelect').value] || palettes.serene;
+      return palette[clamp(Math.ceil(level / 2), 1, 5) - 1];
+    }
+
+    function summarize(samples) {
+      const values = samples.length ? samples : [1];
+      return {
+        min: Math.min(...values),
+        max: Math.max(...values),
+        avg: average(values)
+      };
+    }
+
+    function average(values) {
+      return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : 0;
+    }
+
+    function clamp(value, min, max) {
+      return Math.max(min, Math.min(max, value));
+    }
+
+    function clearAll() {
+      state.seconds = Array(TOTAL_SECONDS).fill(null);
+      state.minutes = Array(TOTAL_MINUTES).fill(null);
+      state.hours = Array(TOTAL_HOURS).fill(null);
+      state.streak = Array(state.streak.length).fill(null);
+      state.secondIndex = 0;
+      state.minuteIndex = 0;
+      state.minuteSamples = [];
+      state.hourSamples = [];
+      renderAll();
+    }
+
+    function download() {
+      const blob = new Blob([JSON.stringify({ seconds: state.seconds, minutes: state.minutes, hours: state.hours, streak: state.streak }, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'horizon_peace_quiet.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }
+
+    function saveJournal() {
+      localStorage.setItem(storageKey + ':journal', document.getElementById('journalText').value);
+    }
+
+    function renderJournal() {
+      const raw = document.getElementById('journalText').value.trim();
+      const preview = document.getElementById('journalPreview');
+      const photo = state.photo ? `<img alt="attached journal" src="${state.photo}" style="max-width:100%;border-radius:10px;margin-top:6px;">` : '';
+      preview.innerHTML = raw ? markdownLinks(raw).replace(/\n/g, '<br>') + photo : 'Add notes, links, or a photo from the controls.' + photo;
+    }
+
+    function markdownLinks(text) {
+      return escapeHtml(text).replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+    }
+
+    function escapeHtml(text) {
+      return text.replace(/[&<>"]/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[char]));
+    }
+
+    function attachPhoto(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        state.photo = reader.result;
+        renderJournal();
+      };
+      reader.readAsDataURL(file);
+    }
+
+    window.onload = () => {
+      buildAllGrids();
+      applyLayout();
+      document.getElementById('journalText').value = localStorage.getItem(storageKey + ':journal') || '';
+      renderAll();
+    };
+  </script>
 </body>
 </html>
