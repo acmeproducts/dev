@@ -1,0 +1,14 @@
+# Secret credentials file - DO NOT COMMIT
+secrets.ps1
+
+# Generated logs
+logs/
+*.log
+
+# Temporary files
+temp/
+*.tmp
+
+# WSL base tarballs
+*.tar
+*.tar.gz
